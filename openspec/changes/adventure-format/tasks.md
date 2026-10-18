@@ -49,6 +49,6 @@
 ## 6. Fixtures and acceptance
 
 - [ ] 6.1 Copy the template's `esempio.md` from the public `rpg-prep` plugin into `packages/format/fixtures/`, with its source in a README; convert it and check the result parses with no errors
-- [ ] 6.2 Private fixture: tests that read L'Ancora di Sabaoth from `PROMPTBOOK_PRIVATE_FIXTURES`, skipped when the variable is unset; after conversion the report includes the unknown field in S5 and the threat nested in Salvi's sheet
-- [ ] 6.3 Timing check: parsing the converted Sabaoth (or `esempio.md` in CI) takes under 50 ms on the CI runner, reported in the test output
-- [ ] 6.4 A short `packages/format/README.md`: the API, the problem codes, how to run the private fixtures
+- [ ] 6.2 Copy L'Ancora di Sabaoth as it is (the architect puts it at `packages/format/fixtures/l-ancora-di-sabaoth.md` in the plan commit); after conversion the report includes the unknown field in S5 and the threat nested in Salvi's sheet
+- [ ] 6.3 Timing check: parsing the converted Sabaoth takes under 50 ms on the CI runner, reported in the test output
+- [ ] 6.4 A short `packages/format/README.md`: the API and the problem codes

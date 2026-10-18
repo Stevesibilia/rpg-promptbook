@@ -121,9 +121,10 @@ two whole adventures:
 
 - the template's own example, `esempio.md`, from the public `rpg-prep` plugin,
   copied into `packages/format/fixtures/` with its source noted;
-- L'Ancora di Sabaoth, which is not public. Its tests read it from a path in
-  `PROMPTBOOK_PRIVATE_FIXTURES` and are skipped when that is not set, so CI
-  runs without it and the owner runs them locally.
+- L'Ancora di Sabaoth, the owner's adventure in today's conventions, copied
+  as it is into `packages/format/fixtures/` (the owner agreed to publish it,
+  2026-10-18). It is the converter's main test case, because it carries most of
+  the problems the research found.
 
 ### Workspace and CI
 
@@ -152,7 +153,5 @@ exists.
 
 ## Open Questions
 
-- May L'Ancora di Sabaoth be published in the repository as a fixture? Until
-  the owner says so, it stays a private fixture outside the repository.
 - Problem messages are English for now. If the app's interface is translated
   later, the stable codes allow it without touching the package.
