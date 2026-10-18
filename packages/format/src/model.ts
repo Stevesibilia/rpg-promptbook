@@ -177,6 +177,9 @@ export interface Reference {
   range: Range;
   // The scene field the reference stands in, if any.
   field: string | null;
+  // The id of the sheet it resolves to. Set by the parser when the name
+  // resolves to exactly one sheet; absent when it is unresolved or ambiguous.
+  sheet?: string;
 }
 
 export interface AssetImage {

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { defineTemplate, parseAdventure, templates, type Problem, type TemplateInput } from '../src/index.js';
-import { parse, sample, topLevelBlocks, uncoveredBlocks } from './helpers.js';
+import { parseOnly as parse, sample, topLevelBlocks, uncoveredBlocks } from './helpers.js';
 
 const sabaoth = readFileSync(new URL('../fixtures/l-ancora-di-sabaoth.md', import.meta.url), 'utf8');
 

@@ -8,6 +8,7 @@ import type { Model, ParseResult, Problem, Unplaced } from '../model.js';
 import { templateName, type Template } from '../template/schema.js';
 import type { ParseContext } from './blocks.js';
 import { readFrontMatter } from './frontmatter.js';
+import { resolveReferences } from './references.js';
 import { readSection } from './sections.js';
 import { createSource } from './source.js';
 
@@ -61,6 +62,7 @@ export function parseAdventure(text: string, { template }: ParseOptions): ParseR
     }
   }
   flush();
+  resolveReferences(model);
 
   model.unplaced.sort((a, b) => a.range.start.offset - b.range.start.offset);
   for (const item of model.unplaced) problems.push(unplacedProblem(item));

@@ -26,10 +26,10 @@
 
 ## 4. Checks
 
-- [ ] 4.1 Sections: missing, order, «La vicenda in breve» first
-- [ ] 4.2 Scene fields: unknown label (with the "turn into a box" fix), missing required field, text before the first label, missing blank line, missing id, duplicate id
-- [ ] 4.3 Callouts: one `leggi` per scene and in «Inizio forte», untitled `documento`, unknown type, plain blockquote in a scene
-- [ ] 4.4 References: unresolved and ambiguous names, threats from `Chi c'è`, graded sheet cited outside `Chi c'è`
+- [x] 4.1 Sections: missing, order, «La vicenda in breve» first
+- [x] 4.2 Scene fields: unknown label (with the "turn into a box" fix), missing required field, text before the first label, missing blank line, missing id, duplicate id
+- [x] 4.3 Callouts: one `leggi` per scene and in «Inizio forte», untitled `documento`, unknown type, plain blockquote in a scene
+- [x] 4.4 References: unresolved and ambiguous names, threats from `Chi c'è`, graded sheet cited outside `Chi c'è`
 - [ ] 4.5 Sheets: grade versus counts, threat nested in another sheet
 - [ ] 4.6 Clues and revelations: at least three clues per revelation, clues in at least two scenes, tracker versus scenes, references to missing revelations or scenes, `Indizi qui` with numbers only, scene map versus scenes
 - [ ] 4.7 Appendix: row per scene by id, title mismatch, missing `visual:` or `mood:`, `visual:`/`mood:` outside the appendix

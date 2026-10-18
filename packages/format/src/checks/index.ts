@@ -1,6 +1,10 @@
 import type { Model, Problem } from '../model.js';
 import type { Template } from '../template/schema.js';
 import type { Source } from '../parse/source.js';
+import { checkCallouts } from './callouts.js';
+import { checkReferences } from './references.js';
+import { checkScenes } from './scenes.js';
+import { checkSections } from './sections.js';
 
 export interface CheckInput {
   model: Model;
@@ -13,9 +17,7 @@ export interface CheckInput {
 // content, invalid YAML, malformed callouts, scene headings without an id).
 export type Check = (input: CheckInput) => Problem[];
 
-// The rule checks (sections, scene fields, callouts, references, sheets, clues,
-// appendix, limits and style) come in the plan's group 4.
-export const checks: Check[] = [];
+export const checks: Check[] = [checkSections, checkScenes, checkCallouts, checkReferences];
 
 export function runChecks(input: CheckInput): Problem[] {
   return checks.flatMap((check) => check(input));

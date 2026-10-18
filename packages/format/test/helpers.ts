@@ -9,6 +9,25 @@ export function parse(text: string): ParseResult {
   return parseAdventure(text, { template: templates.avventura });
 }
 
+// The problems the parser itself reports; the checks add the rest.
+export const parserCodes = [
+  'content.unplaced',
+  'meta.yaml',
+  'meta.type',
+  'meta.required',
+  'meta.unknown',
+  'meta.licence.unknown',
+  'section.unknown',
+  'callout.malformed',
+  'scene.id.missing',
+];
+
+// parse without the checks' problems, for tests of the parser alone.
+export function parseOnly(text: string): ParseResult {
+  const result = parse(text);
+  return { ...result, problems: result.problems.filter((p) => parserCodes.includes(p.code)) };
+}
+
 // A short adventure in the new format, with one of everything the parser reads.
 export const sample = `---
 titolo: La prova
