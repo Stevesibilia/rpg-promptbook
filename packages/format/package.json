@@ -1,0 +1,25 @@
+{
+  "name": "promptbook-format",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reads an RPG Promptbook adventure into a model and lists its problems.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "vitest": "^5.0.5"
+  }
+}

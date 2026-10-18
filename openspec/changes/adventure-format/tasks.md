@@ -1,10 +1,10 @@
 ## 1. Workspace and CI
 
-- [ ] 1.1 Root `package.json` with npm workspaces (`packages/*`), `"private": true`, Node 26 in `engines` and `.nvmrc`
-- [ ] 1.2 Shared `tsconfig.base.json` (strict, ESM, `moduleResolution: bundler`), and `packages/format` with its own `package.json` (unscoped name `promptbook-format`, private) and `tsconfig.json`
-- [ ] 1.3 Dependencies: `unified`, `remark-parse`, `remark-gfm`, `remark-frontmatter`, `yaml`, `zod` 4; dev: `typescript`, `vitest`
-- [ ] 1.4 Root scripts `typecheck` and `test`; `npm test` runs vitest in every workspace
-- [ ] 1.5 GitHub Actions workflow on pull requests into `main`: `npm ci`, typecheck, test, and Prettier check on the Markdown files the pull request changes
+- [x] 1.1 Root `package.json` with npm workspaces (`packages/*`), `"private": true`, Node 26 in `engines` and `.nvmrc`
+- [x] 1.2 Shared `tsconfig.base.json` (strict, ESM, `moduleResolution: bundler`), and `packages/format` with its own `package.json` (unscoped name `promptbook-format`, private) and `tsconfig.json`
+- [x] 1.3 Dependencies: `unified`, `remark-parse`, `remark-gfm`, `remark-frontmatter`, `yaml`, `zod` 4; dev: `typescript`, `vitest`
+- [x] 1.4 Root scripts `typecheck` and `test`; `npm test` runs vitest in every workspace
+- [x] 1.5 GitHub Actions workflow on pull requests into `main`: `npm ci`, typecheck, test, and Prettier check on the Markdown files the pull request changes
 
 ## 2. Template definition
 
