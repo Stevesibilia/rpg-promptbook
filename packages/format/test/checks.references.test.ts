@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parse, sample } from './helpers.js';
-import { applyEdits, change, codes, expectCase, type Case } from './checks.helpers.js';
+import { parse } from './helpers.js';
+import { applyEdits, base, change, codes, expectCase, type Case } from './checks.helpers.js';
 
 const castRef = '- **Il guardiano**, vuole silenzio. → Schede: Guardiano';
 const leggi = '> [!leggi]\n> Una porta socchiusa.\n\n';
@@ -86,7 +86,7 @@ describe('callout and reference checks', () => {
   });
 
   it('resolves a reference by its short name, and by its full title', () => {
-    const short = parse(sample).model.scenes[0]!.references;
+    const short = parse(base).model.scenes[0]!.references;
     expect(short.map((r) => r.sheet)).toEqual(['guardiano', 'guardiano']);
     const full = parse(change(castRef, `${castRef}, il custode della porta`));
     expect(full.model.scenes[0]!.references.at(-1)!.sheet).toBe('guardiano');
@@ -110,7 +110,7 @@ describe('callout and reference checks', () => {
   });
 
   it('does not warn about a graded sheet that is also in the cast', () => {
-    expect(codes(parse(sample).problems)).not.toContain('ref.threat.outside');
+    expect(codes(parse(base).problems)).not.toContain('ref.threat.outside');
   });
 
   it('warns once per scene and sheet', () => {

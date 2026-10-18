@@ -30,11 +30,11 @@
 - [x] 4.2 Scene fields: unknown label (with the "turn into a box" fix), missing required field, text before the first label, missing blank line, missing id, duplicate id
 - [x] 4.3 Callouts: one `leggi` per scene and in «Inizio forte», untitled `documento`, unknown type, plain blockquote in a scene
 - [x] 4.4 References: unresolved and ambiguous names, threats from `Chi c'è`, graded sheet cited outside `Chi c'è`
-- [ ] 4.5 Sheets: grade versus counts, threat nested in another sheet
-- [ ] 4.6 Clues and revelations: at least three clues per revelation, clues in at least two scenes, tracker versus scenes, references to missing revelations or scenes, `Indizi qui` with numbers only, scene map versus scenes
-- [ ] 4.7 Appendix: row per scene by id, title mismatch, missing `visual:` or `mood:`, `visual:`/`mood:` outside the appendix
-- [ ] 4.8 Limits and style: synopsis words, overview words, at most 5 global reminders, em and en dash
-- [ ] 4.9 One table-driven test per problem code, each with a minimal document
+- [x] 4.5 Sheets: grade versus counts, threat nested in another sheet
+- [x] 4.6 Clues and revelations: at least three clues per revelation, clues in at least two scenes, tracker versus scenes, references to missing revelations or scenes, `Indizi qui` with numbers only, scene map versus scenes
+- [x] 4.7 Appendix: row per scene by id, title mismatch, missing `visual:` or `mood:`, `visual:`/`mood:` outside the appendix
+- [x] 4.8 Limits and style: synopsis words, overview words, at most 5 global reminders, em and en dash
+- [x] 4.9 One table-driven test per problem code, each with a minimal document
 
 ## 5. Converter
 

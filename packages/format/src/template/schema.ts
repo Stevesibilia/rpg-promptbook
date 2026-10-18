@@ -123,6 +123,9 @@ export const templateSchema = z
       synopsisWords: wordRange,
       preambleWords: z.int().positive(),
       reminders: z.int().positive(),
+      // Clues a revelation needs, and the scenes they must be spread over.
+      revelationClues: z.int().positive(),
+      revelationScenes: z.int().positive(),
     }),
     style: z.object({
       forbidden: z.array(z.object({ text: z.string().min(1), name: label })),

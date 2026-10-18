@@ -99,7 +99,11 @@ describe('shipped template', () => {
   });
 
   it('has the limits and the forbidden dashes', () => {
-    expect(template.limits).toEqual({ synopsisWords: { min: 300, max: 600 }, preambleWords: 700, reminders: 5 });
+    expect(template.limits).toEqual({ synopsisWords: { min: 300, max: 600 }, preambleWords: 700,
+      reminders: 5,
+      revelationClues: 3,
+      revelationScenes: 2,
+    });
     expect(template.style.forbidden.map((f) => f.text)).toEqual(['—', '–']);
   });
 });

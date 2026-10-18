@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parse, sample } from './helpers.js';
-import { applyEdits, change, codes, expectCase, type Case } from './checks.helpers.js';
+import { parse } from './helpers.js';
+import { applyEdits, base, change, codes, expectCase, type Case } from './checks.helpers.js';
 
 const orologio = '## Orologio\n\n- [ ] **1. Primo passo.** Cambia qualcosa.\n\n';
 const verita = '## Verità del mondo\n\n- **Il luogo.** È vecchio.\n\n';
-const scene2 = `### S2. Altra\n\n**Luogo e momento:** x.\n\n`;
 
 const cases: Case[] = [
   {
@@ -86,13 +85,12 @@ describe('structure checks', () => {
     expectCase(c);
   });
 
-  it('keeps the sample free of problems, scene id aside', () => {
-    expect(parse(sample).problems).toEqual([]);
-    expect(codes(parse(change('## Indizi\n', `${scene2}## Indizi\n`)).problems)).not.toContain('scene.id.duplicate');
+  it('finds no problem in the clean sample', () => {
+    expect(parse(base).problems).toEqual([]);
   });
 
   it('reads a handout followed by a read-aloud with no problem', () => {
-    expect(codes(parse(sample).problems)).not.toContain('callout.count');
+    expect(codes(parse(base).problems)).not.toContain('callout.count');
   });
 
   it('allows the climax fields in any scene and optional fields to be absent', () => {

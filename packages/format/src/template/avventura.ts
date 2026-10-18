@@ -138,6 +138,8 @@ export const avventura = defineTemplate({
     synopsisWords: { min: 300, max: 600 },
     preambleWords: 700,
     reminders: 5,
+    revelationClues: 3,
+    revelationScenes: 2,
   },
   style: {
     forbidden: [
