@@ -1,5 +1,5 @@
 import type { Block, BoxBlock, CalloutBlock, Problem } from '../model.js';
-import type { CalloutDefinition, Template } from '../template/schema.js';
+import type { CalloutDefinition, Place, Template } from '../template/schema.js';
 import type { Check } from './index.js';
 import { problem } from './util.js';
 
@@ -11,15 +11,44 @@ const definitionOf = (template: Template, box: CalloutBlock): CalloutDefinition 
 const boxes = (blocks: Block[]): BoxBlock[] =>
   blocks.filter((b): b is BoxBlock => b.kind === 'callout' || b.kind === 'quote');
 
-// Callout counts per place, titles, unknown types and plain quotes in scenes.
+// Where a box stands: a scene, a sheet, or a section with its role (null for a
+// section the template gives no role).
+type Where = { kind: 'scene' } | { kind: 'sheet' } | { kind: 'section'; role: Place | null };
+
+const allowed = (definition: CalloutDefinition, where: Where): boolean =>
+  where.kind === 'section'
+    ? definition.allowedIn.includes('anySection') || (where.role !== null && definition.allowedIn.includes(where.role))
+    : definition.allowedIn.includes(where.kind);
+
+const placeName = (template: Template, place: Place): string => {
+  if (place === 'scene') return 'scenes';
+  if (place === 'sheet') return 'sheets';
+  if (place === 'anySection') return 'any section';
+  const section = template.sections.find((s) => s.role === place);
+  return section ? `"${section.name}"` : place;
+};
+
+// Callout counts per place, titles, unknown types, places and plain quotes in
+// scenes.
 export const checkCallouts: Check = ({ model, template }) => {
   const out: Problem[] = [];
   const valid = template.callouts.map(header).join(', ');
 
-  const each = (list: BoxBlock[], sceneId: string | undefined) => {
+  const each = (list: BoxBlock[], where: Where, sceneId: string | undefined) => {
     for (const box of list) {
       if (box.kind !== 'callout') continue;
       const definition = definitionOf(template, box);
+      if (definition && !allowed(definition, where)) {
+        out.push(
+          problem(
+            'callout.place',
+            'warning',
+            `A "${definition.label}" box ${header(box)} is not expected here; it belongs in ${definition.allowedIn.map((p) => placeName(template, p)).join(', ')}.`,
+            box.headerRange,
+            { sceneId },
+          ),
+        );
+      }
       if (!definition) {
         out.push(
           problem(
@@ -70,7 +99,7 @@ export const checkCallouts: Check = ({ model, template }) => {
 
   for (const scene of model.scenes) {
     const sceneId = scene.id ?? undefined;
-    each(scene.boxes, sceneId);
+    each(scene.boxes, { kind: 'scene' }, sceneId);
     count(scene.boxes, 'scene', `Scene ${scene.id ?? `"${scene.heading}"`}`, scene.headingRange, sceneId);
     for (const box of scene.boxes) {
       if (box.kind !== 'quote') continue;
@@ -95,13 +124,15 @@ export const checkCallouts: Check = ({ model, template }) => {
 
   for (const section of model.sections) {
     const list = boxes(section.blocks);
-    each(list, undefined);
+    each(list, { kind: 'section', role: section.role }, undefined);
     if (section.role) count(list, section.role, `Section "${section.heading}"`, section.headingRange);
   }
-  for (const sheet of model.sheets) each(boxes(sheet.blocks), undefined);
+  // Pregenerated characters are sheets too.
+  const sheet: Where = { kind: 'sheet' };
+  for (const s of model.sheets) each(boxes(s.blocks), sheet, undefined);
   if (model.pregenerated) {
-    each(boxes(model.pregenerated.blocks), undefined);
-    for (const character of model.pregenerated.characters) each(boxes(character.blocks), undefined);
+    each(boxes(model.pregenerated.blocks), sheet, undefined);
+    for (const character of model.pregenerated.characters) each(boxes(character.blocks), sheet, undefined);
   }
   return out;
 };

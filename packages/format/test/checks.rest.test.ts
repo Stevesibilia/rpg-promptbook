@@ -45,6 +45,13 @@ const cases: Case[] = [
     at: '- **Avatar del Guardiano**',
   },
   {
+    name: 'two sheets with the same name (the spec example)',
+    code: 'sheet.name.duplicate',
+    doc: change('### Pregenerati', '### Guardiano, il vecchio\n\n- **Volontà:** nessuna.\n\n### Pregenerati'),
+    severity: 'error',
+    at: '### Guardiano, il vecchio',
+  },
+  {
     name: 'a revelation with fewer than three clues',
     code: 'clue.revelation.count',
     doc: change('- **R1.** La verità. (I1, I2, I3)', '- **R1.** La verità. (I1, I2, I3)\n- **R2.** Altro. (I1, I2)'),

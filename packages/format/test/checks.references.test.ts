@@ -54,6 +54,20 @@ const cases: Case[] = [
     sceneId: 'S1',
   },
   {
+    name: 'a side box in «Orologio» (the spec example)',
+    code: 'callout.place',
+    doc: change('## Verità del mondo', '> [!riquadro|laterale] Nota\n> A lato.\n\n## Verità del mondo'),
+    severity: 'warning',
+    at: '> [!riquadro|laterale] Nota',
+  },
+  {
+    name: 'a read-aloud in a sheet',
+    code: 'callout.place',
+    doc: change('- **Volontà:** che nessuno entri.\n', '- **Volontà:** che nessuno entri.\n\n> [!leggi]\n> Ringhia.\n'),
+    severity: 'warning',
+    at: '> [!leggi]\n> Ringhia.',
+  },
+  {
     name: 'a reference to a sheet that does not exist',
     code: 'ref.unresolved',
     doc: change(castRef, '- **Il guardiano**, vuole silenzio. → Schede: Fantasma'),
@@ -119,6 +133,16 @@ describe('callout and reference checks', () => {
       '**Se deragliano:** la porta si apre da sola (→ Schede: Guardiano).',
     );
     expect(parse(doc).problems.filter((p) => p.code === 'ref.threat.outside')).toHaveLength(1);
+  });
+
+  it('names the places a callout belongs in, and accepts it where the template allows it', () => {
+    const doc = change('## Verità del mondo', '> [!riquadro|laterale] Nota\n> A lato.\n\n## Verità del mondo');
+    expect(parse(doc).problems.find((p) => p.code === 'callout.place')!.message).toBe(
+      'A "Riquadro laterale" box [!riquadro|laterale] is not expected here; it belongs in scenes, "A colpo d\'occhio".',
+    );
+    expect(codes(parse(base).problems)).not.toContain('callout.place');
+    const box = change('## Verità del mondo', '> [!riquadro] Nota\n> Ovunque.\n\n## Verità del mondo');
+    expect(codes(parse(box).problems)).not.toContain('callout.place');
   });
 
   it('turns a plain quote into a read-aloud or a handout with a fix', () => {

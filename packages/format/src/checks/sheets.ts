@@ -7,8 +7,8 @@ import { plural, problem } from './util.js';
 const keyOf = (template: Template, role: Template['sheets']['keys'][number]['role']) =>
   template.sheets.keys.find((k) => k.role === role)?.key;
 
-// A grade against the counts written for it, and threats written inside
-// another sheet.
+// A grade against the counts written for it, threats written inside another
+// sheet, and two sheets with one name.
 export const checkSheets: Check = ({ model, template }) => {
   const out: Problem[] = [];
   const systemKey = template.meta.find((m) => m.role === 'system')?.key;
@@ -22,7 +22,23 @@ export const checkSheets: Check = ({ model, template }) => {
     : null;
   const threatKeys = new Set(template.sheets.keys.map((k) => k.key));
 
+  // Sheet ids come from the name, so a second sheet with the same name would
+  // share the first one's id.
+  const seen = new Map<string, Sheet>();
   for (const sheet of model.sheets) {
+    const first = seen.get(sheet.id);
+    if (first) {
+      out.push(
+        problem(
+          'sheet.name.duplicate',
+          'error',
+          `Sheet "${sheet.title}" has the same name as "${first.title}"; sheet names (the part before the comma) must be unique.`,
+          sheet.headingRange,
+        ),
+      );
+    } else {
+      seen.set(sheet.id, sheet);
+    }
     out.push(...counts(template, sheet));
     for (const block of sheet.blocks) {
       if (block.kind === 'heading' && block.depth >= 4) {

@@ -38,9 +38,9 @@
 
 ## 4b. Checks added at review
 
-- [ ] 4b.1 `callout.place` (warning): a known callout type in a place its definition's `allowedIn` does not list
-- [ ] 4b.2 `sheet.name.duplicate` (error): two sheets with the same name, at the second heading
-- [ ] 4b.3 Table-driven tests for both codes
+- [x] 4b.1 `callout.place` (warning): a known callout type in a place its definition's `allowedIn` does not list
+- [x] 4b.2 `sheet.name.duplicate` (error): two sheets with the same name, at the second heading
+- [x] 4b.3 Table-driven tests for both codes
 
 ## 5. Converter
 
