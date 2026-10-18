@@ -133,7 +133,9 @@ and `riquadro|laterale` (box in the side column). Each scene and «Inizio
 forte» SHALL have exactly one `leggi`; none or more than one SHALL be an error.
 A `documento` without a title SHALL be a warning. An unknown type SHALL be an
 error listing the valid ones. A plain blockquote inside a scene SHALL be a
-warning asking whether it is a read-aloud or a handout.
+warning asking whether it is a read-aloud or a handout. A callout of a known
+type in a place its template definition does not allow SHALL be a warning
+(`callout.place`).
 
 #### Scenario: Read-aloud after a handout
 
@@ -146,6 +148,11 @@ warning asking whether it is a read-aloud or a handout.
 
 - **WHEN** a scene has `> [!nota]`
 - **THEN** an error with code `callout.type.unknown` lists the valid types
+
+#### Scenario: Callout out of place
+
+- **WHEN** «Orologio» holds a `[!riquadro|laterale]` callout
+- **THEN** a warning with code `callout.place` names the places it is allowed
 
 ### Requirement: Tables are recognised by their header
 
@@ -166,6 +173,7 @@ bold keys are its fields. `Tipo`, `Grado`, `Natura`, `Ferite`, `Afflizioni`,
 `Branco` and `Talenti` SHALL be read as data. A sheet with `Grado` SHALL get
 its wound and affliction counts from the system's grade table; `Ferite` and
 `Afflizioni`, when written, SHALL agree with the grade, or a warning says how.
+Two sheets with the same name (the part before the comma) SHALL be an error.
 Talents SHALL come only from `Talenti`. Other bold keys are free and SHALL be
 kept as the sheet's fields. A `####` heading inside a sheet, or an item other
 than `Tipo` that describes a threat with a grade (Ordinaria, Straordinaria,
@@ -185,6 +193,13 @@ characters.
 Straordinaria, risvegliata, …`
 - **THEN** a warning with code `sheet.nested-threat` suggests a sheet of its own
   for the Avatar
+
+#### Scenario: Two sheets with the same name
+
+- **WHEN** two sheets are titled `Guardiano, il vecchio` and `Guardiano, il
+custode`
+- **THEN** an error with code `sheet.name.duplicate` points at the second
+  heading, since sheet ids come from the name and must be unique
 
 ### Requirement: References to sheets resolve
 

@@ -36,6 +36,12 @@
 - [x] 4.8 Limits and style: synopsis words, overview words, at most 5 global reminders, em and en dash
 - [x] 4.9 One table-driven test per problem code, each with a minimal document
 
+## 4b. Checks added at review
+
+- [ ] 4b.1 `callout.place` (warning): a known callout type in a place its definition's `allowedIn` does not list
+- [ ] 4b.2 `sheet.name.duplicate` (error): two sheets with the same name, at the second heading
+- [ ] 4b.3 Table-driven tests for both codes
+
 ## 5. Converter
 
 - [ ] 5.1 `convertNote(text, { title })` computing edits from tree positions and applying them to the original text

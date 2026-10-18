@@ -76,7 +76,14 @@ keeps the box in one place.)
 
 Ids are stable across edits that do not touch them: scenes by their `S` id,
 sheets by a slug of their title before the comma, sections by name, boxes by
-scene id plus index. Later changes key assets and MCP edits on these.
+scene id plus index. Later changes key assets and MCP edits on these. Sheet
+names must be unique for this; the checks report a duplicate.
+
+`→ Schede:` references are resolved by the parser, after every section is
+read and before the checks run: each reference that matches exactly one sheet
+gets that sheet's id. The checks only read it, so they stay read-only over the
+model, and the editor and the PDF get the resolution without running them.
+(Amended at review of task group 4.)
 
 ### Template definition
 
@@ -96,7 +103,8 @@ definition; the meta role was added so the sheets can find the system.)
 - `callouts`: type, label, where allowed, how many per scene.
 - `sheetKeys`, and per system a grade table (Kulthos: Ordinaria 3 wounds and 1
   affliction, Straordinaria 6 and 2, Leggendaria 9 and 3).
-- `limits`: the word and line limits from `controlla.py`.
+- `limits`: the word and line limits from `controlla.py`, and the clue minima
+  (3 clues per revelation, in at least 2 scenes).
 - `style`: forbidden characters (the em and en dash, per the owner's Italian
   writing rules).
 
