@@ -42,7 +42,9 @@ the Electron renderer, in the browser and in Node on the server, offline.
 `packages/format`, ESM, TypeScript strict, no Node-only imports. Public API:
 
 - `parseAdventure(text, { template }) → { model, problems }`
-- `convertNote(text, { title? }) → { text, edits, report }`
+- `convertNote(text, { title?, template? }) → { text, edits, report }`, with
+  `template` defaulting to `avventura` (amended at review of groups 4b to 6, so
+  the result is checked against the caller's template)
 - `templates.avventura` and `defineTemplate(definition)`, which validates a
   definition with zod and returns it typed.
 
@@ -131,6 +133,15 @@ not by re-serializing the tree: re-serializing would reformat the whole note
 review. It is idempotent: a converted text produces no edits. After
 converting, it runs `parseAdventure` and puts the remaining problems in the
 report, so the report says both what it changed and what still needs a human.
+
+The report holds counts of edits by kind, notices about what the converter
+left alone (an unknown header label, a `Tipo` line of another shape, an
+untitled handout), with ranges in the original text, and the remaining
+problems, with ranges in the converted text. Each edit carries its kind and a
+message. Words of today's notes that are not part of the format ("Minaccia",
+"branco", "sì") live in one constant in the converter; the subtitle key is
+found through a meta role `subtitle`, since the PDF needs it too. (Amended at
+review of groups 4b to 6.)
 
 ### Fixtures and tests
 
