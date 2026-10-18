@@ -56,7 +56,8 @@ None. This is the first change in the repository.
 - New: the npm workspace root and `packages/format`. Workspace packages are
   never published and never use the `@promptbook` scope.
 - Dependencies: `unified`, `remark-parse`, `remark-gfm`, `remark-frontmatter`,
-  `yaml`, `zod` 4; `vitest` for tests.
+  `yaml`, `zod` 4, `spdx-license-ids` (the list of SPDX ids, data only); for
+  development `typescript`, `vitest`, `@types/mdast`, `@types/node`.
 - First CI on GitHub Actions: typecheck and tests on pull requests into `main`.
 - Later changes (editor, PDF, asset board, connector) depend on this package's
   model and problem list; its API is the contract between them.

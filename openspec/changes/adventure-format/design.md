@@ -66,9 +66,13 @@ A plain, serializable object (JSON-safe, so it can cross the Electron IPC and
 the MCP boundary): `meta`, `sections[]`, `scenes[]` (id, title, fields, boxes,
 read-aloud, reactions table, references, images), `sheets[]` (key, title,
 fields, threat data), `revelations[]`, `clues[]`, `tracker[]`, `sceneMap[]`,
-`appendix[]` (scene id, visual, mood), and `unplaced[]` for content the model
-does not understand. Every item has a `range` with start and end offsets and
-1-based line and column.
+`appendix[]` (scene id, visual, mood), `reminders[]`, `npcs[]`,
+`pregenerated`, and `unplaced[]` for content the model does not understand.
+Every item has a `range` with start and end offsets and 1-based line and
+column. A scene's `readAloud` is the id of its read-aloud box (`S1.2`), not a
+copy of it. (Amended at review of tasks 1–3: `reminders`, `npcs` and
+`pregenerated` were added because the checks and the PDF read them; an id
+keeps the box in one place.)
 
 Ids are stable across edits that do not touch them: scenes by their `S` id,
 sheets by a slug of their title before the comma, sections by name, boxes by
@@ -78,9 +82,16 @@ scene id plus index. Later changes key assets and MCP edits on these.
 
 A zod-validated object, versioned (`avventura@1`):
 
-- `meta`: front matter keys, required or optional, with their types.
-- `sections`: name, required or optional, position in the order, and what
-  they contain (prose, scenes, sheets, tables).
+- `meta`: front matter keys with their requirement level and type, and an
+  optional role (`title`, `system`) so the code finds the title and the game
+  system without naming `titolo` or `sistema`.
+- `sections`: name, requirement level, position in the order, and a role
+  saying what they contain (synopsis, overview, scenes, sheets, tables…).
+
+(Amended at review of tasks 1–3: meta keys, sections and scene fields share one
+requirement level, `required | recommended | optional`, for one rule across the
+definition; the meta role was added so the sheets can find the system.)
+
 - `sceneFields`: label, inline (`**Label:** text`) or block (`**Label**` then a list or a table), requirement level (`required`, `recommended` or `optional`; a missing recommended field is a warning), climax only. In avventura@1: required Luogo e momento, In gioco, Da non perdere qui, Cosa succede da sé, Se deragliano; recommended Indizi qui; optional Chi c'è, Prove e regole and the climax fields, as controlla.py allows scenes without clues, NPCs or rolls.
 - `callouts`: type, label, where allowed, how many per scene.
 - `sheetKeys`, and per system a grade table (Kulthos: Ordinaria 3 wounds and 1
@@ -128,7 +139,11 @@ two whole adventures:
 ### Workspace and CI
 
 npm workspaces at the root, TypeScript project references, Node 26 (as
-gdrarchive). GitHub Actions on pull requests into `main`: install, typecheck,
+gdrarchive). `packages/format` has two TypeScript projects: `src` with no Node
+types, so a Node-only import fails the typecheck, and `test` with Node types,
+since the tests read fixtures from disk. TypeScript sits in the root's dev
+dependencies because the root script runs `tsc -b`. (Amended at review of
+tasks 1–3.) GitHub Actions on pull requests into `main`: install, typecheck,
 test, and Prettier check on changed Markdown. Branch protection on `main`
 (required check, no direct pushes) is applied by the owner once the workflow
 exists.
