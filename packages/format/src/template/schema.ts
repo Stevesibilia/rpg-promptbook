@@ -30,9 +30,9 @@ const metaKeySchema = z.object({
   key: label,
   requirement: requirementSchema,
   type: z.enum(['text', 'list', 'licence']),
-  // What the code reads the key for: the title, or the game system whose
-  // grade table the sheets use.
-  role: z.enum(['title', 'system']).optional(),
+  // What the code reads the key for: the title, the subtitle, or the game
+  // system whose grade table the sheets use.
+  role: z.enum(['title', 'subtitle', 'system']).optional(),
 });
 
 const sectionSchema = z.object({

@@ -44,13 +44,13 @@
 
 ## 5. Converter
 
-- [ ] 5.1 `convertNote(text, { title })` computing edits from tree positions and applying them to the original text
-- [ ] 5.2 Header and `# Title` to front matter, with subtitle and the caller's title as fallback
-- [ ] 5.3 Plain blockquotes to `[!leggi]` and `[!documento]` in scenes and «Inizio forte»
-- [ ] 5.4 `Tipo` line split into `Tipo`, `Grado`, `Natura`, `Ferite`, `Afflizioni`, `Branco`
-- [ ] 5.5 HTML comments removed
-- [ ] 5.6 Report: edits made plus the problems left after parsing the result
-- [ ] 5.7 Tests: lines outside the converted parts are byte-identical; a second run makes no edits
+- [x] 5.1 `convertNote(text, { title })` computing edits from tree positions and applying them to the original text
+- [x] 5.2 Header and `# Title` to front matter, with subtitle and the caller's title as fallback
+- [x] 5.3 Plain blockquotes to `[!leggi]` and `[!documento]` in scenes and «Inizio forte»
+- [x] 5.4 `Tipo` line split into `Tipo`, `Grado`, `Natura`, `Ferite`, `Afflizioni`, `Branco`
+- [x] 5.5 HTML comments removed
+- [x] 5.6 Report: edits made plus the problems left after parsing the result
+- [x] 5.7 Tests: lines outside the converted parts are byte-identical; a second run makes no edits
 
 ## 6. Fixtures and acceptance
 

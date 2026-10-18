@@ -11,7 +11,7 @@ export const avventura = defineTemplate({
   ids: { scene: 'S', revelation: 'R', clue: 'I' },
   meta: [
     { key: 'titolo', requirement: 'required', type: 'text', role: 'title' },
-    { key: 'sottotitolo', requirement: 'optional', type: 'text' },
+    { key: 'sottotitolo', requirement: 'optional', type: 'text', role: 'subtitle' },
     { key: 'sistema', requirement: 'optional', type: 'text', role: 'system' },
     { key: 'formato', requirement: 'optional', type: 'text' },
     { key: 'durata', requirement: 'optional', type: 'text' },
