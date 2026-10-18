@@ -109,7 +109,7 @@ Inside `## Scene`, each `### S<n>. Name` heading SHALL start a scene with id
 duplicate id. Each paragraph that starts with a bold label SHALL be matched
 against the template's scene fields: inline fields (`**Label:** text`) and
 block fields (`**Label**` followed by a list or a table). An unknown label
-SHALL be an error. A missing required field SHALL be an error. Climax-only
+SHALL be an error. A missing required field SHALL be an error and a missing recommended field a warning. Climax-only
 fields (`Regole della situazione`, `Cosa decide la notte`) SHALL be allowed in
 any scene. A label that starts a line inside another paragraph SHALL be an
 error saying a blank line is missing.

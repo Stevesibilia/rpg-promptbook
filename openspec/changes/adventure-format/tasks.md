@@ -8,9 +8,9 @@
 
 ## 2. Template definition
 
-- [ ] 2.1 zod schema for a template definition (meta keys, sections, scene fields, callouts, sheet keys, grade tables per system, limits, style) and `defineTemplate`, which validates and returns it typed
-- [ ] 2.2 Template `avventura@1` from the `enhanced-avventure-rpg` model: sections and their order, required and optional; scene fields inline or block, required or climax-only; callouts `leggi`, `documento`, `riquadro`, `riquadro|laterale`; sheet keys; Kulthos grades (Ordinaria 3/1, Straordinaria 6/2, Leggendaria 9/3); limits 300–600, 700, 5; forbidden em and en dash
-- [ ] 2.3 Tests: the shipped template loads; an invalid definition fails with a message naming the bad entry
+- [x] 2.1 zod schema for a template definition (meta keys, sections, scene fields, callouts, sheet keys, grade tables per system, limits, style) and `defineTemplate`, which validates and returns it typed
+- [x] 2.2 Template `avventura@1` from the `enhanced-avventure-rpg` model: sections and their order, required and optional; scene fields inline or block, required or climax-only; callouts `leggi`, `documento`, `riquadro`, `riquadro|laterale`; sheet keys; Kulthos grades (Ordinaria 3/1, Straordinaria 6/2, Leggendaria 9/3); limits 300–600, 700, 5; forbidden em and en dash
+- [x] 2.3 Tests: the shipped template loads; an invalid definition fails with a message naming the bad entry
 
 ## 3. Parser and model
 

@@ -81,8 +81,7 @@ A zod-validated object, versioned (`avventura@1`):
 - `meta`: front matter keys, required or optional, with their types.
 - `sections`: name, required or optional, position in the order, and what
   they contain (prose, scenes, sheets, tables).
-- `sceneFields`: label, inline (`**Label:** text`) or block (`**Label**` then a
-  list or a table), required, climax only.
+- `sceneFields`: label, inline (`**Label:** text`) or block (`**Label**` then a list or a table), requirement level (`required`, `recommended` or `optional`; a missing recommended field is a warning), climax only. In avventura@1: required Luogo e momento, In gioco, Da non perdere qui, Cosa succede da sé, Se deragliano; recommended Indizi qui; optional Chi c'è, Prove e regole and the climax fields, as controlla.py allows scenes without clues, NPCs or rolls.
 - `callouts`: type, label, where allowed, how many per scene.
 - `sheetKeys`, and per system a grade table (Kulthos: Ordinaria 3 wounds and 1
   affliction, Straordinaria 6 and 2, Leggendaria 9 and 3).
