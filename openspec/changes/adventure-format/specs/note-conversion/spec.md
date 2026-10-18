@@ -16,9 +16,8 @@ as it was.
 
 ### Requirement: Header to front matter
 
-The `# Title` line and the bold header lines that follow it (`**Sistema:** … ·
-**Formato:** …`, `**Ambientazione:**`, `**Tempi:**`, `**Campagna:** … ·
-**Arco:** …`) SHALL become YAML front matter with the template's keys. A
+The converter SHALL turn into YAML front matter the `# Title` line and the bold header lines that follow it (`**Sistema:** … ·
+**Formato:** …`, `**Ambientazione:**`, `**Tempi:**`, `**Campagna:** … · **Arco:** …`), using the template's keys. A
 subtitle in parentheses or after a colon in the title SHALL become
 `sottotitolo`. When the note has no `# Title` line, the title passed by the
 caller (for example the Joplin note title) SHALL become `titolo`.
@@ -45,8 +44,7 @@ Blockquotes that are already callouts SHALL be left as they are.
 
 ### Requirement: Threat line split into keys
 
-A sheet line `- **Tipo:** Minaccia <Grado>, <natura> · Ferite: … ·
-Afflizioni: …` SHALL become separate `Tipo`, `Grado`, `Natura`, `Ferite` and
+The converter SHALL split a sheet line `- **Tipo:** Minaccia <Grado>, <natura> · Ferite: … · Afflizioni: …` into separate `Tipo`, `Grado`, `Natura`, `Ferite` and
 `Afflizioni` items. A `branco` mention in the `Tipo` line SHALL become
 `Branco: sì`. A `Tipo` line that does not match this shape SHALL be left as it
 is and reported.

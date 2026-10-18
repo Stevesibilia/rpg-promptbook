@@ -55,9 +55,7 @@ each a list of text edits.
 
 ### Requirement: Templates are data
 
-The sections, their order, the scene fields, the callout types, the sheet keys,
-the grade tables per system, the limits and the style rules SHALL come from a
-template definition, validated when it is loaded. The package SHALL ship the
+The checks SHALL read the sections, their order, the scene fields, the callout types, the sheet keys, the grade tables per system, the limits and the style rules from a template definition, validated when it is loaded. The package SHALL ship the
 template `avventura` version 1, matching the `enhanced-avventure-rpg` model,
 with the Kulthos grade table. No template label SHALL be hard-coded in the
 parser or the checks.
@@ -129,8 +127,7 @@ error saying a blank line is missing.
 
 ### Requirement: Callouts mark typed boxes
 
-A blockquote whose first line is `[!type]`, `[!type] Title` or
-`[!type|meta] Title` SHALL be a callout. The template SHALL define the types:
+The parser SHALL read as a callout a blockquote whose first line is `[!type]`, `[!type] Title` or `[!type|meta] Title`. The template SHALL define the types:
 `leggi` (read-aloud), `documento` (handout, title expected), `riquadro` (box)
 and `riquadro|laterale` (box in the side column). Each scene and «Inizio
 forte» SHALL have exactly one `leggi`; none or more than one SHALL be an error.
