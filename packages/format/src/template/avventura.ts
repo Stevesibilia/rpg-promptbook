@@ -10,9 +10,9 @@ export const avventura = defineTemplate({
   name: 'Avventura',
   ids: { scene: 'S', revelation: 'R', clue: 'I' },
   meta: [
-    { key: 'titolo', requirement: 'required', type: 'text' },
+    { key: 'titolo', requirement: 'required', type: 'text', role: 'title' },
     { key: 'sottotitolo', requirement: 'optional', type: 'text' },
-    { key: 'sistema', requirement: 'optional', type: 'text' },
+    { key: 'sistema', requirement: 'optional', type: 'text', role: 'system' },
     { key: 'formato', requirement: 'optional', type: 'text' },
     { key: 'durata', requirement: 'optional', type: 'text' },
     { key: 'giocatori', requirement: 'optional', type: 'text' },

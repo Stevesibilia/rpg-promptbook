@@ -30,6 +30,9 @@ const metaKeySchema = z.object({
   key: label,
   requirement: requirementSchema,
   type: z.enum(['text', 'list', 'licence']),
+  // What the code reads the key for: the title, or the game system whose
+  // grade table the sheets use.
+  role: z.enum(['title', 'system']).optional(),
 });
 
 const sectionSchema = z.object({
@@ -143,6 +146,7 @@ export const templateSchema = z
       });
     };
     unique(template.meta, (k) => k.key, ['meta'], 'key');
+    unique(template.meta, (k) => k.role, ['meta'], 'role');
     unique(template.sections, (s) => s.name, ['sections'], 'section');
     unique(template.sections, (s) => s.role, ['sections'], 'role');
     unique(template.sceneFields, (f) => f.label, ['sceneFields'], 'label');

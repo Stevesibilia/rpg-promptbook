@@ -14,15 +14,15 @@
 
 ## 3. Parser and model
 
-- [ ] 3.1 Model and problem types (serializable; every item with a `range` of offsets plus 1-based line and column; problems with code, severity, message, range, scene id, fixes as text edits)
-- [ ] 3.2 Front matter: YAML parse with key positions, required and unknown keys, SPDX check for `licenza`
-- [ ] 3.3 Callout transform over blockquotes: `[!type]`, `[!type] Title`, `[!type|meta] Title`
-- [ ] 3.4 Sections by `##` name; unknown sections kept as plain sections
-- [ ] 3.5 Scenes: `### S<n>. Name`, inline and block fields, callouts, reactions table and other tables, `→ Schede:` references, `asset:` images; anything else in a scene goes to unplaced content
-- [ ] 3.6 Overview: revelations under `**Rivelazioni**`, the scene map, «Da non perdere stasera»
-- [ ] 3.7 Sheets: fields with bold keys, threat data (`Tipo`, `Grado`, `Natura`, `Ferite`, `Afflizioni`, `Branco`, `Talenti`), pregenerated characters under `### Pregenerati`
-- [ ] 3.8 Clue tracker, NPC table, appendix rows by scene id
-- [ ] 3.9 `parseAdventure(text, { template })` assembling model and problems; a test that every top-level block of a document lands in the model or in a problem
+- [x] 3.1 Model and problem types (serializable; every item with a `range` of offsets plus 1-based line and column; problems with code, severity, message, range, scene id, fixes as text edits)
+- [x] 3.2 Front matter: YAML parse with key positions, required and unknown keys, SPDX check for `licenza`
+- [x] 3.3 Callout transform over blockquotes: `[!type]`, `[!type] Title`, `[!type|meta] Title`
+- [x] 3.4 Sections by `##` name; unknown sections kept as plain sections
+- [x] 3.5 Scenes: `### S<n>. Name`, inline and block fields, callouts, reactions table and other tables, `→ Schede:` references, `asset:` images; anything else in a scene goes to unplaced content
+- [x] 3.6 Overview: revelations under `**Rivelazioni**`, the scene map, «Da non perdere stasera»
+- [x] 3.7 Sheets: fields with bold keys, threat data (`Tipo`, `Grado`, `Natura`, `Ferite`, `Afflizioni`, `Branco`, `Talenti`), pregenerated characters under `### Pregenerati`
+- [x] 3.8 Clue tracker, NPC table, appendix rows by scene id
+- [x] 3.9 `parseAdventure(text, { template })` assembling model and problems; a test that every top-level block of a document lands in the model or in a problem
 
 ## 4. Checks
 
