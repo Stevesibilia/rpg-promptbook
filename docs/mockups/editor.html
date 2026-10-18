@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook — editor mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Tokens follow gdrarchive's Emerald look so the apps feel related. */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  --doc: rgba(245,166,35,.09); --doc-line: #f5a623;
+  --box: rgba(106,168,255,.09); --box-line: #6aa8ff;
+  --paper: #f7f3ea; --ink: #1d1b17;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1;
+  --leggi: rgba(15,143,105,.08); --doc: rgba(185,116,10,.08); --box: rgba(47,111,209,.07);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.app { display: grid; height: 100vh; grid-template-rows: 44px 1fr 26px;
+  grid-template-columns: 48px var(--left, 248px) 1fr var(--right, 330px); }
+.app.no-left { --left: 0px; } .app.no-right { --right: 0px; }
+.app.focus { --left: 0px; --right: 0px; }
+.app.focus .rail, .app.focus .topbar .hide-in-focus { display: none; }
+.app.focus { grid-template-columns: 0 0 1fr 0; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.status-select { font: inherit; font-size: 12px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.sync.local i { background: var(--amber); } .sync.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.sync.fail i { background: var(--danger); } .sync.fail { color: var(--danger); border-color: var(--danger); font-weight: 600; }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.on { color: var(--primary); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+
+/* Activity rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; margin-bottom: 8px; }
+.rail svg, .tb svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9;
+  background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+
+/* Left: outline */
+.left { grid-column: 2; grid-row: 2; background: var(--surface); border-right: 1px solid var(--border); overflow: auto; min-width: 0; }
+.app.no-left .left, .app.focus .left { display: none; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px;
+  font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.ol { list-style: none; margin: 0; padding: 0 6px 12px; }
+.ol li { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; color: var(--muted); cursor: pointer; }
+.ol li:hover { background: var(--hover); color: var(--text); }
+.ol li.cur { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); }
+.ol li.sub { padding-left: 22px; }
+.ol li .grip { opacity: 0; color: var(--faint); font-size: 11px; cursor: grab; }
+.ol li:hover .grip { opacity: 1; }
+.ol li .id { font: 500 11px var(--mono); color: var(--primary); min-width: 20px; }
+.ol li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { font: 600 10px var(--font); min-width: 16px; height: 16px; border-radius: 8px; display: grid; place-items: center; padding: 0 4px; }
+.badge.err { background: var(--danger); color: #fff; } .badge.warn { background: var(--amber); color: #1a1205; }
+.ol .grp { padding: 10px 8px 4px; color: var(--faint); font-size: 12px; cursor: default; }
+.ol .grp:hover { background: none; color: var(--faint); }
+
+/* Center */
+.center { grid-column: 3; grid-row: 2; overflow: auto; position: relative; min-width: 0; }
+.view { display: none; } .view.on { display: block; }
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.app.focus .doc { max-width: 760px; }
+.unused-ln { text-align: right; padding-right: 14px; font: 12px/26px var(--mono); color: var(--faint); user-select: none; }
+.ln span { display: block; position: relative; }
+.ln span.e::before { content: ''; position: absolute; left: 8px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.ln span.w::before { content: ''; position: absolute; left: 8px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+.ed { font: 17px/26px var(--prose); outline: none; caret-color: var(--primary); }
+.ed .l { min-height: 26px; position: relative; }
+/* Live preview: Markdown markers show only on the line being edited. */
+.ed .mk { display: none; } .ed .active .mk, .ed .fm .mk { display: inline; }
+.ed .active { background: color-mix(in srgb, var(--primary) 6%, transparent); box-shadow: -48px 0 0 color-mix(in srgb, var(--primary) 6%, transparent); }
+.ed .l.err::before, .ed .l.warn::before { content: ''; position: absolute; left: -26px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.ed .l.warn::before { background: var(--amber); }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; }
+.fm .k { color: var(--info); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; color: var(--text); }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.task { display: inline-block; width: 13px; height: 13px; border: 1.5px solid var(--faint); border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+.callout .ct .mk { text-transform: none; letter-spacing: 0; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.callout.doc { background: var(--doc); border-color: var(--doc-line); } .callout.doc .ct { color: var(--doc-line); }
+.callout.box { background: var(--box); border-color: var(--box-line); } .callout.box .ct { color: var(--box-line); }
+.ref { color: var(--info); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+.squig { text-decoration: underline wavy var(--danger); text-decoration-skip-ink: none; text-underline-offset: 4px; position: relative; cursor: help; }
+.squig.w { text-decoration-color: var(--amber); }
+.squig:hover .tip { display: block; }
+.tip { display: none; position: absolute; left: 0; top: 28px; z-index: 5; width: 360px; padding: 8px 10px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+  font: 13px/1.4 var(--font); color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.tip b { color: var(--danger); } .squig.w .tip b { color: var(--amber); }
+.tip .fix { display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); color: var(--primary); }
+table.md { border-collapse: collapse; font: 15px/22px var(--prose); margin: 6px 0; width: 100%; }
+table.md td, table.md th { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+table.md th { font: 600 13px var(--font); color: var(--muted); background: var(--surface); }
+.cursor { display: inline-block; width: 2px; height: 20px; background: var(--primary); vertical-align: -4px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.gap { height: 10px; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+
+/* Right: inspector */
+.right { grid-column: 4; grid-row: 2; background: var(--surface); border-left: 1px solid var(--border); overflow: auto; min-width: 0; }
+.app.no-right .right, .app.focus .right { display: none; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.acc .body { padding: 0 12px 12px; }
+.rules { list-style: none; margin: 0; padding: 0; }
+.rules li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.rules li .ok { color: var(--primary); width: 14px; } .rules li .no { color: var(--faint); width: 14px; }
+.rules li.req.miss .nm { color: var(--danger); }
+.rules li .nm { flex: 1; }
+.rules li .ins { opacity: 0; font-size: 12px; color: var(--primary); }
+.rules li:hover .ins { opacity: 1; }
+.snips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.snip { font-size: 12px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
+.snip:hover { border-color: var(--primary); color: var(--primary); }
+.snip.l { border-left: 3px solid var(--leggi-line); } .snip.d { border-left: 3px solid var(--doc-line); } .snip.b { border-left: 3px solid var(--box-line); }
+.hint { font-size: 12px; color: var(--faint); margin-top: 8px; }
+.prob { display: flex; gap: 8px; padding: 6px 8px; margin: 0 -8px; border-radius: 5px; cursor: pointer; }
+.prob:hover { background: var(--hover); }
+.prob .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; }
+.prob .where { font: 11px var(--mono); color: var(--faint); }
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.todo input { accent-color: var(--primary); margin-top: 3px; }
+.todo li.done span { color: var(--faint); text-decoration: line-through; }
+.todo .due { margin-left: auto; font-size: 11px; color: var(--amber); white-space: nowrap; }
+.bar { height: 4px; border-radius: 2px; background: var(--border); margin: 2px 0 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); }
+.add { color: var(--faint); font-size: 13px; padding: 4px 0; }
+.add:hover { color: var(--primary); }
+.note { padding: 7px 0; border-top: 1px solid var(--border); }
+.note:first-child { border-top: 0; }
+.note b { font-weight: 600; } .note .meta { font-size: 12px; color: var(--faint); }
+.note .acts { font-size: 12px; color: var(--primary); margin-top: 2px; }
+.seed { font: italic 15px/1.45 var(--prose); color: var(--muted); border-left: 3px solid var(--amber); padding-left: 10px; }
+
+/* PDF preview pane (replaces the inspector) */
+.pdfpane { display: none; grid-column: 4; grid-row: 2; background: #2b2f2d; border-left: 1px solid var(--border); overflow: auto; padding: 18px; }
+.app.pdf .pdfpane { display: block; } .app.pdf .right { display: none; } .app.pdf { --right: 460px; }
+.pdfpane .bar2 { display: flex; justify-content: space-between; color: #cfd6d2; font-size: 12px; margin-bottom: 10px; }
+.page { background: var(--paper); color: var(--ink); aspect-ratio: 210/297; width: 100%; position: relative; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  padding: 7% 8% 9% 8%; font: 9.5px/1.4 var(--prose); overflow: hidden; margin-bottom: 16px; }
+.page .tab { position: absolute; right: 0; top: 18%; width: 22px; height: 70px; background: #0f6b50; color: #fff; writing-mode: vertical-rl;
+  display: grid; place-items: center; font: 600 9px var(--font); letter-spacing: .1em; border-radius: 4px 0 0 4px; }
+.page h4 { font: 600 15px var(--prose); margin: 0 0 2px; } .page .sub { font: 600 8px var(--font); color: #0f6b50; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+.page .cols { display: grid; grid-template-columns: 1fr 32%; gap: 10px; }
+.page .side { background: #ece5d6; padding: 6px 7px; font-size: 8.5px; }
+.page .ra { background: #e3efe8; border-left: 2px solid #0f6b50; padding: 5px 7px; font-style: italic; margin: 6px 0; }
+.page .hd { border: 1px dashed #8a7a55; padding: 5px 7px; margin: 6px 0; }
+.page .thr { border: 1.5px solid #1d1b17; padding: 5px 7px; margin-top: 6px; font-size: 8.5px; }
+.page .thr .bx { display: inline-block; width: 7px; height: 7px; border: 1px solid #1d1b17; margin-right: 2px; }
+.page .foot { position: absolute; left: 8%; right: 8%; bottom: 4%; display: flex; justify-content: space-between; font: 7.5px var(--font); color: #6d6656; border-top: .5px solid #c9bfa8; padding-top: 3px; }
+.page p { margin: 0 0 4px; } .page .lab { font-weight: 600; color: #0f6b50; }
+
+
+/* Full-screen PDF review */
+.review { display: none; position: fixed; inset: 44px 0 0 0; z-index: 15; background: #262a28; grid-template-columns: 150px 1fr 290px; }
+.app.reviewing ~ .review, .review.on { display: grid; }
+.review .thumbs-col { background: var(--surface); border-right: 1px solid var(--border); overflow: auto; padding: 10px 14px; }
+.review .th { cursor: pointer; margin-bottom: 12px; text-align: center; font-size: 11px; color: var(--muted); }
+.review .th .mini { aspect-ratio: 210/297; background: var(--paper); border-radius: 2px; position: relative; margin-bottom: 4px; outline: 2px solid transparent; outline-offset: 2px;
+  background-image: linear-gradient(#cfc6b3 0 0), linear-gradient(#ddd5c3 0 0), linear-gradient(#ddd5c3 0 0), linear-gradient(#ddd5c3 0 0);
+  background-size: 60% 5%, 75% 2%, 70% 2%, 72% 2%; background-position: 20% 12%, 20% 24%, 20% 30%, 20% 36%; background-repeat: no-repeat; }
+.review .th .mini .t { position: absolute; right: 0; width: 7px; height: 22px; background: #0f6b50; border-radius: 2px 0 0 2px; }
+.review .th.cur .mini { outline-color: var(--primary); }
+.review .th .warnmark { position: absolute; left: 4px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
+.review .stage { overflow: auto; display: flex; flex-direction: column; align-items: center; padding: 18px; gap: 10px; }
+.review .tools { display: flex; gap: 8px; align-items: center; color: #cfd6d2; font-size: 12px; position: sticky; top: 0; z-index: 2;
+  background: #262a28; padding: 4px 8px; border-radius: 6px; }
+.review .tools button { padding: 3px 9px; border: 1px solid #4a514d; border-radius: 4px; color: #e3e8e5; }
+.review .tools button.on { border-color: var(--primary); color: var(--primary); }
+.review .spread { display: flex; gap: 14px; width: min(100%, 1100px); }
+.review .spread .page { flex: 1; margin: 0; font-size: 10.5px; cursor: text; }
+.review .spread .page.left .tab { right: auto; left: 0; border-radius: 0 4px 4px 0; }
+.review .spread .page .flag { position: absolute; left: 8%; right: 8%; border: 2px dashed var(--amber); border-radius: 4px; background: rgba(245,166,35,.08); }
+.review .side-col { background: var(--surface); border-left: 1px solid var(--border); overflow: auto; }
+.review .opt { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; }
+.review .opt select, .review .opt input { accent-color: var(--primary); font: inherit; font-size: 12px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.review .actions { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+.review .actions .tb { flex: 1; justify-content: center; border: 1px solid var(--border); }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); }
+.app.focus .status { grid-column: 1 / -1; }
+.status .e { color: var(--danger); } .status .w { color: var(--amber); }
+.status .r { margin-left: auto; }
+
+/* Other views */
+.pane { max-width: 980px; margin: 0 auto; padding: 28px 32px 80px; }
+.pane h1 { font: 700 28px var(--display); margin: 0 0 4px; letter-spacing: .02em; }
+.pane .lead { color: var(--muted); margin: 0 0 20px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.assets { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.assets > div { padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.assets .hdr { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+.assets .sc b { font: 600 12px var(--mono); color: var(--primary); display: block; }
+.prompt { font: 12px/1.45 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; margin: 6px 0; }
+.arow { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.pill { padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); }
+.pill.want { color: var(--faint); } .pill.got { color: var(--amber); border-color: var(--amber); } .pill.chosen { color: var(--primary); border-color: var(--primary); }
+.thumbs { display: flex; gap: 6px; } .thumbs span { width: 46px; height: 46px; border-radius: 4px; background: linear-gradient(135deg,#3b3326,#6b5a3e); display: block; }
+.copy { color: var(--primary); font-size: 12px; }
+.drop { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; color: var(--faint); margin-bottom: 14px; }
+
+/* Notes for the reviewer */
+.callouts-legend { position: fixed; left: 54px; bottom: 34px; z-index: 20; width: 236px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.callouts-legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
+.callouts-legend ul { margin: 0; padding-left: 16px; color: var(--muted); } .callouts-legend li { margin: 3px 0; }
+.callouts-legend.hidden { display: none; }
+
+@media (max-width: 1150px) {
+  .app { --left: 0px; } .app .left { display: none; }
+  .app.show-left .left { display: block; position: fixed; top: 44px; left: 48px; bottom: 26px; width: 248px; z-index: 8; box-shadow: 8px 0 24px rgba(0,0,0,.35); }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span class="hide-in-focus">Kulthos</span><span class="hide-in-focus">›</span><b>L'Ancora di Sabaoth</b></div>
+    <span class="chip hide-in-focus">One-shot</span>
+    <select class="status-select hide-in-focus" aria-label="Status">
+      <option>Draft</option><option selected>In progress</option><option>Complete</option>
+    </select>
+    <div class="spacer"></div>
+    <button class="sync" id="sync" title="Click to cycle through the three states (mockup)"><i></i><span>Synced</span></button>
+    <button class="tb hide-in-focus" id="tLeft" title="Outline (⌘1)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+    <button class="tb hide-in-focus" id="tRight" title="Inspector (⌘2)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    <button class="tb" id="tFocus" title="Focus mode (⌘.)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="tb hide-in-focus" title="History and snapshots"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+    <button class="tb hide-in-focus" title="Export: Markdown folder, .cbpack"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></button>
+    <button class="tb primary hide-in-focus" id="tPdf"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <span class="kbd hide-in-focus" title="Command palette">⌘K</span>
+  </header>
+
+  <nav class="rail">
+    <button class="on" data-view="document" data-tip="Document"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+    <button data-view="inspiration" data-tip="Inspiration"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+    <button data-view="research" data-tip="Research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+    <button data-view="assets" data-tip="Images and music"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/></svg></button>
+    <button data-view="log" data-tip="Brainstorm log"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+    <button class="bottom" data-tip="Projects"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+    <button data-tip="Settings and templates" id="theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+
+  <aside class="left">
+    <div class="panel-h">Outline <span class="kbd">⌘1</span></div>
+    <ul class="ol">
+      <li><span class="grip">⠿</span><span class="nm">Front matter</span></li>
+      <li><span class="grip">⠿</span><span class="nm">A colpo d'occhio</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Da non perdere stasera</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Orologio</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Verità del mondo</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Inizio forte</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Mappa delle scene</span></li>
+      <li class="grp">Scene</li>
+      <li class="sub cur" data-jump="s1"><span class="grip">⠿</span><span class="id">S1</span><span class="nm">La casa che cede</span></li>
+      <li class="sub"><span class="grip">⠿</span><span class="id">S2</span><span class="nm">L'ambulatorio di Salvi</span></li>
+      <li class="sub"><span class="grip">⠿</span><span class="id">S3</span><span class="nm">Il cordone di Donato</span><span class="badge warn">1</span></li>
+      <li class="sub"><span class="grip">⠿</span><span class="id">S4</span><span class="nm">Torre Faro e la canzone</span></li>
+      <li class="sub" data-jump="s5"><span class="grip">⠿</span><span class="id">S5</span><span class="nm">Capo Peloro, la terza scossa</span><span class="badge err">1</span></li>
+      <li class="grp">Riferimenti</li>
+      <li><span class="grip">⠿</span><span class="nm">Indizi</span></li>
+      <li><span class="grip">⠿</span><span class="nm">PNG</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Schede</span><span class="badge warn">1</span></li>
+      <li class="sub"><span class="nm">Sabaoth, l'Arconte…</span></li>
+      <li class="sub"><span class="nm">Dottor Umberto Salvi</span></li>
+      <li class="sub"><span class="nm">Tenente Donato</span></li>
+      <li class="sub"><span class="nm">Pattuglia di Quieti</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Prima della sessione</span></li>
+      <li><span class="grip">⠿</span><span class="nm">Appendice: immagini e musica</span></li>
+    </ul>
+  </aside>
+
+  <main class="center" id="center">
+    <!-- DOCUMENT -->
+    <section class="view on" id="v-document">
+      <div class="doc">
+                <div class="ed" id="ed">
+          <div class="l fm"><span class="mk">---</span></div>
+          <div class="l fm"><span class="k">titolo:</span> L'Ancora di Sabaoth</div>
+          <div class="l fm"><span class="k">sottotitolo:</span> Messina, 1908</div>
+          <div class="l fm"><span class="k">sistema:</span> Kulthos · <span class="k">formato:</span> one-shot · <span class="k">durata:</span> 4 ore</div>
+          <div class="l fm"><span class="k">autore:</span> Stefano Sibilia · <span class="k">licenza:</span> CC-BY-NC-SA-4.0</div>
+          <div class="l fm"><span class="mk">---</span> <span class="mk" style="margin-left:8px">▸ 6 more keys</span></div>
+          <div class="skip">… A colpo d'occhio, Orologio, Inizio forte, Mappa delle scene …</div>
+          <div class="l h2"><span class="mk">## </span>Scene</div>
+          <div class="l h3" id="s1"><span class="mk">### </span><span class="sid">S1.</span> La casa che cede</div>
+          <div class="gap"></div>
+          <div class="l"><span class="mk">**</span><span class="fl">Luogo e momento:</span><span class="mk">**</span> casa-biblioteca di Neri, vicino al porto, 5:20 circa.</div>
+          <div class="l"><span class="mk">**</span><span class="fl">In gioco:</span><span class="mk">**</span> chi esce vivo, Neri, la lettera.</div>
+          <div class="l"><span class="mk">**</span><span class="fl">Da non perdere qui</span><span class="mk">**</span></div>
+          <div class="l li"><span class="task"></span>Neri pronuncia le sue due frasi prima di morire.</div>
+          <div class="l li"><span class="task"></span>La lettera di Neri è nella sua tasca: si trova senza cercare fra i libri.</div>
+          <div class="callout leggi">
+            <div class="ct"><span class="mk">&gt; [!leggi]</span> Da leggere</div>
+            <div class="tx">Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano con gli occhiali spezzati ancora stretti fra le dita. Una voce rauca chiama i vostri nomi. Sopra le vostre teste, il soffitto scricchiola di nuovo.</div>
+          </div>
+          <div class="l"><span class="mk">**</span><span class="fl">Cosa succede da sé</span><span class="mk">**</span></div>
+          <div class="l li">– La casa crolla per gradi.</div>
+          <div class="l li active"><span class="mk">- </span>Neri è schiacciato sotto la trave, lucido ma morente; ha tempo per poche <b><span class="mk">**</span>frasi<span class="mk">**</span></b>.<span class="cursor"></span></div>
+          <div class="l"><span class="mk">**</span><span class="fl">Chi c'è</span><span class="mk">**</span></div>
+          <div class="l li">– <b>Aleramo Neri</b>, vuole che qualcuno finisca ciò che lui non può.</div>
+          <div class="l"><span class="mk">**</span><span class="fl">Indizi qui</span><span class="mk">**</span></div>
+          <div class="l li">– <b>I1.</b> Le ultime frasi di Neri: «Salvi… ha preso l'Ancora». <span class="ref">(R1)</span></div>
+          <div class="l li">– <b>I2.</b> In tasca a Neri, una lettera mai spedita. <span class="ref">(R3)</span></div>
+          <div class="callout doc">
+            <div class="ct"><span class="mk">&gt; [!documento]</span> Documento · La lettera di Neri</div>
+            <div class="tx">Umberto, non sei pazzo: sei ingannato. Sabaoth non libera, incatena.</div>
+          </div>
+          <table class="md">
+            <tr><th>Se i PG…</th><th>Allora…</th></tr>
+            <tr><td>restano a cercare tra i libri</td><td>trovano gli appunti (I3); il maremoto arriva mentre sono ancora dentro</td></tr>
+            <tr><td>scappano verso l'alto</td><td>vedono il mare rientrare in città come un muro nero</td></tr>
+          </table>
+          <div class="l"><span class="mk">**</span><span class="fl">Se deragliano:</span><span class="mk">**</span> l'onda non aspetta; chi resta nella casa la incontra dentro.</div>
+          <div class="skip">… S2, S3, S4 …</div>
+          <div class="l h3" id="s5"><span class="mk">### </span><span class="sid">S5.</span> Capo Peloro, la terza scossa</div>
+          <div class="l"><span class="mk">**</span><span class="fl">Luogo e momento:</span><span class="mk">**</span> la punta di Capo Peloro, scogli e torre.</div>
+          <div class="l"><span class="mk">**</span><span class="fl">Chi c'è</span><span class="mk">**</span></div>
+          <div class="l li">– <b>Dottor Salvi</b>, vuole liberare il dio che crede vero. <span class="ref">→ Schede: Dottor Umberto Salvi</span></div>
+          <div class="l err"><span class="squig"><span class="mk">**</span><span class="fl">Se il tempo stringe:</span><span class="mk">**</span><span class="tip"><b>Unknown field «Se il tempo stringe».</b> Scenes accept the fields listed in the Inspector. Today's script would have merged it into «Regole della situazione» without a word.<br><span class="fix">Turn into a box</span><span class="fix">Add to the template</span></span></span> Donato e i Quieti restano sulla strada; la via più corta è l'offerta di Sabaoth.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSPIRATION -->
+    <section class="view" id="v-inspiration"><div class="pane">
+      <h1>Inspiration</h1><p class="lead">The spark this project started from. Never rewritten; every change is kept as a dated version.</p>
+      <div class="card"><div class="panel-h" style="padding:0 0 8px">Seed · first written 3 Oct 2026 · 2 versions</div>
+        <div class="seed">Il terremoto di Messina del 1908 come squarcio nel Velo: un medico eretico crede di liberare un dio, e invece apre la porta a un carceriere. Colapesce regge la Sicilia su una colonna incrinata.</div></div>
+      <div class="card"><div class="panel-h" style="padding:0 0 8px">Sources of inspiration <button class="add">+ Add</button></div>
+        <div class="note"><b>Leggenda di Colapesce</b> · myth<div class="meta">Why: the column that holds up Sicily; the strait as a body.</div></div>
+        <div class="note"><b>Terremoto e maremoto, 28 dicembre 1908</b> · history · link<div class="meta">Why: 5:20, the wave minutes later, the soldiers among the ruins.</div></div>
+        <div class="note"><b>Gnostic archons, Sabaoth</b> · religion · quote<div class="meta">Why: the jailer who passes for a liberator.</div></div>
+      </div>
+    </div></section>
+
+    <!-- RESEARCH -->
+    <section class="view" id="v-research"><div class="pane">
+      <h1>Research</h1><p class="lead">One note per topic, with sources. Filled by Claude through the connector, or clipped by hand. Never printed.</p>
+      <div class="card"><div class="panel-h" style="padding:0 0 8px">Proposed topics from the seed</div>
+        <div class="snips"><span class="snip">Messina 1908 timeline ✓</span><span class="snip">Colapesce ✓</span><span class="snip">Soccorsi militari 1908</span><span class="snip">Capo Peloro, Torre Faro</span><span class="snip">+ topic</span></div></div>
+      <div class="card"><b>Messina 1908 timeline</b> <span class="meta" style="color:var(--faint)">· Claude · 12 Oct · 4 sources</span>
+        <p style="margin:6px 0 0;color:var(--muted)">Scossa alle 5:20:27, circa 37 secondi; maremoto 10–15 minuti dopo, onde fino a 12 m sulla costa calabra… <span class="ref">Usable at the table (3)</span></p></div>
+    </div></section>
+
+    <!-- ASSETS -->
+    <section class="view" id="v-assets"><div class="pane">
+      <h1>Images and music</h1><p class="lead">One row per scene, from the <code>visual:</code> and <code>mood:</code> lines. Copy the prompt, generate, then drop the downloads here.</p>
+      <div class="drop">Drop Midjourney and Suno downloads here: they match their scene by filename · 2 unassigned</div>
+      <div class="assets">
+        <div class="hdr">Scene</div><div class="hdr">Image · Midjourney</div><div class="hdr">Music · Suno</div>
+        <div class="sc"><b>S1</b>La casa che cede</div>
+        <div><div class="prompt">wide interior shot, collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light… --ar 16:9</div>
+          <div class="arow"><button class="copy">Copy prompt</button><span class="pill chosen">chosen</span><span class="thumbs"><span></span></span><span title="Shown to players">👁 players</span></div></div>
+        <div><div class="prompt">style: dark ambient drone, slow, low strings, distant rumble, oppressive · title: S1 la casa che cede</div>
+          <div class="arow"><button class="copy">Copy prompt</button><span class="pill got">2 received</span></div></div>
+        <div class="sc"><b>S5</b>Capo Peloro</div>
+        <div><div class="prompt">rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor… --ar 16:9</div>
+          <div class="arow"><button class="copy">Copy prompt</button><span class="pill want">wanted</span></div></div>
+        <div><div class="prompt">style: apocalyptic choral, sustained, overwhelming low brass · title: S5 capo peloro</div>
+          <div class="arow"><button class="copy">Copy prompt</button><span class="pill want">wanted</span></div></div>
+      </div>
+    </div></section>
+
+    <!-- LOG -->
+    <section class="view" id="v-log"><div class="pane">
+      <h1>Brainstorm log</h1><p class="lead">Dated entries written by Claude at the end of a chat. A new chat reads them first.</p>
+      <div class="card"><b>12 Oct 2026</b> · Claude web<div style="margin-top:6px;color:var(--muted)"><b style="color:var(--primary)">Decided:</b> Salvi loses faith at the third crack. <b style="color:var(--amber)">Rejected:</b> a fourth PG (too long for 4 hours). <b style="color:var(--info)">Open:</b> how the Anchor is destroyed, and its cost.</div></div>
+    </div></section>
+  </main>
+
+  <aside class="right" id="right">
+    <details class="acc" open>
+      <summary>This scene · S1 <span class="cnt">template rules</span></summary>
+      <div class="body">
+        <ul class="rules">
+          <li class="req"><span class="ok">✓</span><span class="nm">Luogo e momento</span></li>
+          <li class="req"><span class="ok">✓</span><span class="nm">In gioco</span></li>
+          <li class="req"><span class="ok">✓</span><span class="nm">Da non perdere qui</span></li>
+          <li class="req"><span class="ok">✓</span><span class="nm">Da leggere <span class="mk">[!leggi] · 1 per scene</span></span></li>
+          <li><span class="ok">✓</span><span class="nm">Cosa succede da sé</span></li>
+          <li><span class="ok">✓</span><span class="nm">Chi c'è</span></li>
+          <li><span class="ok">✓</span><span class="nm">Indizi qui</span></li>
+          <li><span class="no">○</span><span class="nm">Prove e regole</span><button class="ins">Insert</button></li>
+          <li><span class="no">○</span><span class="nm">Regole della situazione</span><button class="ins">Insert</button></li>
+          <li><span class="ok">✓</span><span class="nm">Se deragliano</span></li>
+        </ul>
+        <div class="snips">
+          <button class="snip l">Read-aloud</button><button class="snip d">Handout</button><button class="snip b">Box</button><button class="snip b">Side box</button><button class="snip">→ Sheet</button><button class="snip">Reactions table</button>
+        </div>
+        <div class="hint">Full syntax: <span class="kbd">⌘/</span> · type <span class="kbd">/</span> at the start of a line to insert</div>
+      </div>
+    </details>
+    <details class="acc" open>
+      <summary>Checks <span class="cnt"><span style="color:var(--danger)">1 error</span> · <span style="color:var(--amber)">2 warnings</span></span></summary>
+      <div class="body">
+        <div class="prob" data-jump="s5"><span class="dot" style="background:var(--danger)"></span><div>Unknown field «Se il tempo stringe»<div class="where">S5 · line 44</div></div></div>
+        <div class="prob"><span class="dot" style="background:var(--amber)"></span><div>«Pattuglia di Quieti»: grade Ordinaria but 3 wound boxes (expected 1)<div class="where">Schede · line 212</div></div></div>
+        <div class="prob"><span class="dot" style="background:var(--amber)"></span><div>S3 has no read-aloud<div class="where">S3 · line 128</div></div></div>
+      </div>
+    </details>
+    <details class="acc" open>
+      <summary>To-do <span class="cnt">5 / 9</span></summary>
+      <div class="body">
+        <div class="bar"><i style="width:56%"></i></div>
+        <ul class="todo">
+          <li class="done"><input type="checkbox" checked><span>Write the scenes</span></li>
+          <li class="done"><input type="checkbox" checked><span>NPC sheets</span></li>
+          <li class="done"><input type="checkbox" checked><span>Midjourney prompts</span></li>
+          <li><input type="checkbox"><span>Images chosen</span><span class="due">3 / 5</span></li>
+          <li class="done"><input type="checkbox" checked><span>Suno prompts</span></li>
+          <li><input type="checkbox"><span>Tracks chosen</span></li>
+          <li class="done"><input type="checkbox" checked><span>Handout: Neri's letter</span></li>
+          <li><input type="checkbox"><span>PDF for the table</span><span class="due">by 25 Oct</span></li>
+          <li><input type="checkbox"><span>Read through once</span></li>
+        </ul>
+        <button class="add">+ Add item</button>
+      </div>
+    </details>
+    <details class="acc">
+      <summary>Research <span class="cnt">4 notes</span></summary>
+      <div class="body">
+        <div class="note"><b>Messina 1908 timeline</b><div class="meta">4 sources · 12 Oct</div><div class="acts">Open · Insert a fact</div></div>
+        <div class="note"><b>Colapesce</b><div class="meta">3 sources · 12 Oct</div><div class="acts">Open · Insert a fact</div></div>
+      </div>
+    </details>
+    <details class="acc">
+      <summary>Seed</summary>
+      <div class="body"><div class="seed">Il terremoto di Messina del 1908 come squarcio nel Velo: un medico eretico crede di liberare un dio…</div></div>
+    </details>
+  </aside>
+
+  <aside class="pdfpane" id="pdfpane">
+    <div class="bar2"><span>PDF preview · page 6 of 14 · follows the cursor</span><span><button class="tb" id="pdfFull" style="color:#cfd6d2" title="Review the whole PDF (⌘⇧P)">⤢ Review</button><button class="tb" id="pdfClose" style="color:#cfd6d2">✕</button></span></div>
+    <div class="page">
+      <div class="tab">S1</div>
+      <h4>La casa che cede</h4><div class="sub">Scena 1 · casa-biblioteca di Neri, 5:20</div>
+      <div class="cols">
+        <div>
+          <p><span class="lab">In gioco:</span> chi esce vivo, Neri, la lettera.</p>
+          <div class="ra">Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano…</div>
+          <p><span class="lab">Cosa succede da sé</span> La casa crolla per gradi. Neri è schiacciato sotto la trave…</p>
+          <div class="hd"><b>Documento · La lettera di Neri</b><br>Umberto, non sei pazzo: sei ingannato.</div>
+        </div>
+        <div class="side"><b>Da non perdere qui</b><br>☐ Le due frasi di Neri<br>☐ La lettera in tasca<br><br><b>Indizi qui</b><br>I1 · I2 · I3 · I4</div>
+      </div>
+      <div class="foot"><span>L'Ancora di Sabaoth · S1</span><span>Stefano Sibilia · CC BY-NC-SA 4.0</span><span>6</span></div>
+    </div>
+  </aside>
+
+  <footer class="status">
+    <span>S1 · La casa che cede</span><span>Ln 27, Col 84</span>
+    <span class="e">● 1 error</span><span class="w">● 2 warnings</span>
+    <span>3 412 words</span>
+    <span class="r">Template: Avventura (Kulthos) v1</span><span>Saved on this Mac · synced 12:41</span>
+  </footer>
+</div>
+
+
+<section class="review" id="review">
+  <div class="thumbs-col" id="thumbs"></div>
+  <div class="stage">
+    <div class="tools">
+      <button id="rBack">← Editor <span class="kbd">Esc</span></button>
+      <span style="margin-left:8px">Pages 6–7 of 14</span>
+      <span style="flex:1"></span>
+      <button>−</button><span>100%</span><button>+</button>
+      <button>Single</button><button class="on">Spread</button><button>Fit width</button>
+    </div>
+    <div class="spread">
+      <div class="page left">
+        <div class="tab">S1</div>
+        <h4>La casa che cede</h4><div class="sub">Scena 1 · casa-biblioteca di Neri, 5:20</div>
+        <div class="cols">
+          <div>
+            <p><span class="lab">In gioco:</span> chi esce vivo, Neri, la lettera.</p>
+            <div class="ra">Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano con gli occhiali spezzati ancora stretti fra le dita. Una voce rauca chiama i vostri nomi.</div>
+            <p><span class="lab">Cosa succede da sé</span> La casa crolla per gradi. Neri è schiacciato sotto la trave, lucido ma morente; ha tempo per poche frasi. Pochi minuti dopo arriva l'onda.</p>
+            <p><span class="lab">Chi c'è</span> <b>Aleramo Neri</b>, vuole che qualcuno finisca ciò che lui non può.</p>
+            <div class="hd"><b>Documento · La lettera di Neri</b><br>Umberto, non sei pazzo: sei ingannato. Sabaoth non libera, incatena.</div>
+            <p><span class="lab">Se deragliano:</span> l'onda non aspetta.</p>
+          </div>
+          <div class="side"><b>Da non perdere qui</b><br>☐ Le due frasi di Neri<br>☐ La lettera in tasca<br>☐ Dissonanza: il crollo<br><br><b>Indizi qui</b><br>I1 → R1 · I2 → R3<br>I3 → R2, R4 · I4 → R2, R5<br><br><b>Prove</b><br>Uscire dalla casa: da manuale</div>
+        </div>
+        <div class="foot"><span>L'Ancora di Sabaoth · S1</span><span>Stefano Sibilia · CC BY-NC-SA 4.0</span><span>6</span></div>
+      </div>
+      <div class="page">
+        <div class="tab" style="top:30%">S2</div>
+        <h4>L'ambulatorio di Salvi</h4><div class="sub">Scena 2 · Messina, mattina</div>
+        <div class="cols"><div>
+          <p><span class="lab">In gioco:</span> capire chi è Salvi e dove sta andando.</p>
+          <div class="ra">L'ambulatorio è un dente rotto in una fila di case crollate. Disegni anatomici alle pareti: lo Stretto, disegnato come un corpo.</div>
+          <p><span class="lab">Cosa succede da sé</span> Il fumo dell'etere; un registro aperto…</p>
+        </div><div class="side"><b>Da non perdere qui</b><br>☐ Il disegno dello Stretto<br>☐ Il registro</div></div>
+        <div class="flag" style="top:46%;bottom:9%"></div>
+        <div class="foot"><span>L'Ancora di Sabaoth · S2</span><span>Stefano Sibilia · CC BY-NC-SA 4.0</span><span>7</span></div>
+      </div>
+    </div>
+    <div style="color:#9aa39e;font-size:12px">Double-click any text to jump to it in the editor.</div>
+  </div>
+  <aside class="side-col">
+    <details class="acc" open><summary>Layout checks <span class="cnt"><span style="color:var(--amber)">3</span></span></summary><div class="body">
+      <div class="prob"><span class="dot" style="background:var(--amber)"></span><div>Half of page 7 is empty: S2 ends early<div class="where">S2 · page 7</div></div></div>
+      <div class="prob"><span class="dot" style="background:var(--amber)"></span><div>S5 runs to 3 pages (the others take 1–2)<div class="where">S5 · pages 10–12</div></div></div>
+      <div class="prob"><span class="dot" style="background:var(--amber)"></span><div>Image «S4 Torre Faro» missing: placeholder printed<div class="where">S4 · page 9</div></div></div>
+    </div></details>
+    <details class="acc" open><summary>Options</summary><div class="body">
+      <div class="opt">Paper <select><option>A4</option><option>Letter</option><option>A5 booklet</option></select></div>
+      <div class="opt">Images <select><option>Scene images</option><option>None</option></select></div>
+      <div class="opt">Ink saver (no tints) <input type="checkbox"></div>
+      <div class="opt">Pregenerated sheets <input type="checkbox" checked></div>
+      <div class="opt">Template <select><option>Avventura (Kulthos) v1</option></select></div>
+    </div></details>
+    <details class="acc"><summary>Versions <span class="cnt">3</span></summary><div class="body">
+      <div class="note"><b>Today 12:40</b><div class="meta">14 pages · current</div></div>
+      <div class="note"><b>15 Oct</b><div class="meta">13 pages · <span class="ref">compare</span></div></div>
+    </div></details>
+    <div class="actions"><button class="tb">Print…</button><button class="tb primary">Save PDF</button></div>
+  </aside>
+</section>
+<div class="callouts-legend" id="legend">
+  <h5>Mockup notes <button id="legendX">✕</button></h5>
+  <ul>
+    <li>The editor takes the width; both side panels collapse (⌘1, ⌘2) and <b>focus mode</b> (⌘.) hides everything but the text.</li>
+    <li>Source Markdown with live preview: <code>**</code>, <code>###</code> and <code>&gt; [!leggi]</code> show only on the line you are editing; callouts show as boxes. Problems get a dot in the margin and a squiggle.</li>
+    <li>The Inspector replaces a static rules recap with <b>this scene's</b> checklist and insert buttons.</li>
+    <li><b>PDF</b> opens a preview next to the editor that follows the cursor.</li>
+    <li><b>Review</b> in the PDF pane (or ⌘⇧P) opens the whole PDF full screen: thumbnails, spreads, layout checks, options, save and print.</li>
+    <li>Click the sync pill to see its three states; hover the red squiggle in S5.</li>
+    <li>Rail on the left: Document, Inspiration, Research, Images and music, Brainstorm log. Gear: light/dark.</li>
+  </ul>
+</div>
+
+<script>
+const app = document.getElementById('app');
+
+const names = ['Cover','La vicenda','La notte','Inizio','Mappa','S1','S2','S3','S4','S5','S5','S5','Indizi · PNG','Schede'];
+const thumbs = document.getElementById('thumbs');
+names.forEach((nm, i) => {
+  const d = document.createElement('div'); d.className = 'th' + (i === 5 || i === 6 ? ' cur' : '');
+  const tab = i >= 5 && i <= 11 ? `<span class="t" style="top:${10 + (i - 5) * 11}%"></span>` : '';
+  const warn = [6, 9, 8].includes(i) ? '<span class="warnmark"></span>' : '';
+  d.innerHTML = `<div class="mini">${tab}${warn}</div>${i + 1} · ${nm}`; thumbs.appendChild(d);
+});
+const review = document.getElementById('review');
+const openReview = () => { review.classList.add('on'); };
+document.getElementById('pdfFull').onclick = openReview;
+document.getElementById('rBack').onclick = () => review.classList.remove('on');
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') review.classList.remove('on');
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openReview(); }
+});
+const toggle = (cls) => app.classList.toggle(cls);
+document.getElementById('tLeft').onclick = () => { toggle('no-left'); toggle('show-left'); };
+document.getElementById('tRight').onclick = () => { app.classList.remove('pdf'); toggle('no-right'); };
+document.getElementById('tFocus').onclick = () => toggle('focus');
+document.getElementById('tPdf').onclick = () => { app.classList.remove('no-right'); toggle('pdf'); };
+document.getElementById('pdfClose').onclick = () => app.classList.remove('pdf');
+document.getElementById('legendX').onclick = () => document.getElementById('legend').classList.add('hidden');
+document.getElementById('theme').onclick = () => {
+  const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+};
+const states = [['', 'Synced'], ['local', 'Saved on this device only'], ['fail', 'Not saved · disk full']];
+let si = 0; const sync = document.getElementById('sync');
+sync.onclick = () => { si = (si + 1) % 3; sync.className = 'sync ' + states[si][0]; sync.querySelector('span').textContent = states[si][1]; };
+document.querySelectorAll('.rail [data-view]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.rail [data-view]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.view));
+  const doc = b.dataset.view === 'document';
+  document.querySelector('.left').style.visibility = doc ? '' : 'hidden';
+});
+document.querySelectorAll('[data-jump]').forEach(el => el.onclick = () => {
+  document.getElementById(el.dataset.jump).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('.ol li').forEach(li => li.classList.toggle('cur', li.dataset.jump === el.dataset.jump));
+});
+document.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey)) return;
+  if (e.key === '.') { e.preventDefault(); toggle('focus'); }
+  if (e.key === '1') { e.preventDefault(); toggle('no-left'); }
+  if (e.key === '2') { e.preventDefault(); toggle('no-right'); }
+});
+</script>
+</body>
+</html>
