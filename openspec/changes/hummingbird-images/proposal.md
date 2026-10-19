@@ -16,10 +16,13 @@ the image on them builds, starts read-only and signs in.
 - **Chart:** the pod runs as 65532, and the `wait-for-database` init
   container uses `registry.access.redhat.com/hi/postgresql:18`.
 - **Runbook:** a line on where the base images come from.
+- **Local and CI databases:** `compose.yaml` and the `check` job's service in
+  `.github/workflows/ci.yml` use `registry.access.redhat.com/hi/postgresql:18`.
 
-Not in this change: the PostgreSQL image of `compose.yaml` and of the CI
-service (developer and test databases, not the build); the database image
-CloudNativePG runs, which the cluster's `postgresql` ImageCatalog owns.
+Not in this change: the database image CloudNativePG runs, which the cluster's
+`postgresql` ImageCatalog owns (the owner's one exception); the GitLab job
+images (`siberio-ops`, the shared components of `homelab/ci-cd`), which are CI
+tooling owned elsewhere.
 
 ## Capabilities
 
@@ -36,5 +39,5 @@ None.
 
 - Changed: `Dockerfile`, `charts/rpg-promptbook/values.yaml`,
   `charts/rpg-promptbook/templates/deployment.yaml`,
-  `docs/deploy-homelab.md`.
+  `docs/deploy-homelab.md`, `compose.yaml`, `.github/workflows/ci.yml`.
 - Released as `v0.1.1`.

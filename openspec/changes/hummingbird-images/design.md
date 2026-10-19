@@ -29,10 +29,11 @@ Measured by the architect on 2026-10-19 (arm64, OrbStack):
 
 ## Goals / Non-Goals
 
-**Goals:** the deployed image and its init container on Hummingbird images,
-with the same behaviour and the same hardening.
+**Goals:** every image the software runs on: the server image, its init
+container, the compose and CI databases, on Hummingbird images, with the same
+behaviour and the same hardening.
 
-**Non-Goals:** the compose and CI databases; the CloudNativePG database image;
+**Non-Goals:** the CloudNativePG database image;
 FIPS variants; pinning by digest.
 
 ## Decisions
@@ -82,7 +83,21 @@ registry.access.redhat.com/hi/postgresql`, `tag: "18"`. Its script needs
   overrides the image's `postgres` user, as it did for `postgres:18-alpine`.
 - `Chart.yaml`: `version: 0.1.1`.
 
-### 5. Proof and release
+### 5. Local and CI databases
+
+`compose.yaml`'s `postgres` service and the `postgres` service of the `check`
+job in `.github/workflows/ci.yml` use `registry.access.redhat.com/hi/postgresql:18`.
+Measured by the architect: same `POSTGRES_USER`, `POSTGRES_PASSWORD` and
+`POSTGRES_DB` variables as the official image, `pg_isready` in the image, a
+password-only start (as in CI) works. Two differences from `postgres:18-alpine`:
+`PGDATA` is `/var/lib/postgresql/data` (the volume stays mounted at
+`/var/lib/postgresql`), and it runs as uid 999 (Alpine's is 70). A local volume
+made by the old image therefore does not carry over: the new image would not
+find the old data and could not write there. These are developer and test
+databases, so the fix is a fresh volume (`docker compose down -v`), said in a
+comment above the service in `compose.yaml`; do not migrate them.
+
+### 6. Proof and release
 
 CI's `e2e` job builds the image on GitHub's amd64 runner and runs the
 end-to-end tests against it: that is the amd64 proof. The arm64 proof is the
