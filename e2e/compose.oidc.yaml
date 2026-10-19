@@ -1,0 +1,50 @@
+# Added to compose.yaml by the end-to-end tests (e2e/stack.ts) and the
+# owner's preview: the test issuer over https and a second app with single
+# sign-on, on the same Postgres. Both run the app's image; the issuer's files
+# are mounted, not built in. Paths are relative to compose.yaml's folder.
+
+services:
+  issuer:
+    build: .
+    command: ["node", "/app/issuer/serve.mjs"]
+    environment:
+      ISSUER_ORIGIN: ${ISSUER_ORIGIN}
+      ISSUER_PORT: ${ISSUER_PORT}
+      ISSUER_CERTS: /certs
+      NODE_EXTRA_CA_CERTS: /certs/ca.pem
+    volumes:
+      - ./e2e/issuer/serve.mjs:/app/issuer/serve.mjs:ro
+      - ./packages/server/test/db/oidc-issuer.ts:/app/issuer/oidc-issuer.ts:ro
+      - ${ISSUER_CERTS}:/certs:ro
+    ports:
+      - "${ISSUER_PORT}:${ISSUER_PORT}"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('https://127.0.0.1:${ISSUER_PORT}/application/o/promptbook/jwks/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app-oidc:
+    build: .
+    depends_on:
+      # One app at a time runs the migrations of a new database.
+      app:
+        condition: service_healthy
+      issuer:
+        condition: service_healthy
+    ports:
+      - "${OIDC_APP_PORT}:3000"
+    environment:
+      DATABASE_URL: postgres://promptbook:${POSTGRES_PASSWORD:-promptbook}@postgres:5432/promptbook
+      PUBLIC_URL: ${OIDC_PUBLIC_URL}
+      OIDC_ISSUER: ${ISSUER_ORIGIN}/application/o/promptbook/
+      OIDC_CLIENT_ID: promptbook-test
+      OIDC_CLIENT_SECRET: test-secret
+      OIDC_PROVIDER_NAME: Authentik
+      NODE_EXTRA_CA_CERTS: /certs/ca.pem
+    volumes:
+      - ${ISSUER_CERTS}:/certs:ro

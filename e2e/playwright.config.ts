@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { baseURL } from './stack.js';
+import { baseURL, issuerHost } from './stack.js';
 
 // End-to-end tests against the compose stack. `npm run e2e` builds and starts
 // it on E2E_PORT (8091), runs the tests and removes it with its volume, unless
@@ -21,5 +21,15 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        // The single sign-on tests' issuer, published on this machine.
+        launchOptions: { args: [`--host-resolver-rules=MAP ${issuerHost} 127.0.0.1`] },
+      },
+    },
+  ],
 });

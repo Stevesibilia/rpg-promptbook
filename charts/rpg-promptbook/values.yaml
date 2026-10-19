@@ -25,10 +25,31 @@ app:
   # address, which the sign-in throttle keys on. 1: the ingress controller.
   trustProxyHops: 1
   # -- A Secret with the keys `admin-username` and `admin-password`: the first
-  # account, created only while the database has none. Written by the deploy
-  # pipeline, never by this chart, so the password stays out of Helm's release.
+  # account, created only while the database has none. Written outside this
+  # chart, so the password stays out of Helm's release. Read only while
+  # `admin.enabled`.
   credentialsSecret: rpg-promptbook-credentials
   sessionTtlHours: 720
+
+  admin:
+    # -- Pass the credentials Secret to the server, for a deployment that
+    # signs in with passwords. The server refuses to start with it and single
+    # sign-on together, and so does this chart.
+    enabled: true
+
+  # Single sign-on through an OpenID Connect provider. While it is on, the
+  # sign-in page offers only the provider and the server refuses passwords;
+  # turning it off is the way back in when the provider is down
+  # (docs/deploy-homelab.md).
+  oidc:
+    enabled: false
+    # -- The issuer URL, as the provider's discovery document states it.
+    issuer: ""
+    # -- The name on the sign-in button: "Sign in with <providerName>".
+    providerName: single sign-on
+    # -- A Secret with the keys `client-id` and `client-secret`, written
+    # outside this chart (on the homelab, by the cluster's Terraform).
+    secret: rpg-promptbook-oidc
 
 waitForDatabase:
   # -- Hold the server back until the database accepts connections, so the

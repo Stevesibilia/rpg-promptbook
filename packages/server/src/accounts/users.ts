@@ -6,16 +6,29 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  // From the provider, for display only; null for a password account.
+  email: string | null;
+  // How this account signs in.
+  signIn: 'oidc' | 'password';
 }
 
-interface UserRow {
+export interface UserRow {
   id: string;
   username: string;
   display_name: string;
-  password_hash: string;
+  // Null for a single sign-on account.
+  password_hash: string | null;
+  oidc_issuer: string | null;
+  email: string | null;
 }
 
-const toUser = (row: UserRow): User => ({ id: row.id, username: row.username, displayName: row.display_name });
+export const toUser = (row: Omit<UserRow, 'password_hash'>): User => ({
+  id: row.id,
+  username: row.username,
+  displayName: row.display_name,
+  email: row.email,
+  signIn: row.oidc_issuer === null ? 'password' : 'oidc',
+});
 
 // Letters, digits, dot, dash and underscore; compared without case.
 const USERNAME = /^[\p{L}\p{N}._-]{1,64}$/u;
@@ -30,7 +43,10 @@ export function assertUsername(username: string): void {
   }
 }
 
-export async function findUserByUsername(db: Queryable, username: string): Promise<(User & { passwordHash: string }) | null> {
+export async function findUserByUsername(
+  db: Queryable,
+  username: string,
+): Promise<(User & { passwordHash: string | null }) | null> {
   const row = await db.queryOne<UserRow>('select * from users where lower(username) = lower($1)', [username.trim()]);
   return row ? { ...toUser(row), passwordHash: row.password_hash } : null;
 }
@@ -73,6 +89,27 @@ export async function setDisplayName(db: Queryable, userId: string, displayName:
     [userId, displayName],
   );
   return toUser(row!);
+}
+
+// Deletes an account; the cascades take its sessions, settings and projects,
+// the bin included. Answers how many projects went, or null when there is no
+// such account.
+export async function deleteUser(
+  db: { withTransaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> },
+  username: string,
+): Promise<{ username: string; projects: number } | null> {
+  return db.withTransaction(async (tx) => {
+    const row = await tx.queryOne<{ id: string; username: string }>(
+      'select id, username from users where lower(username) = lower($1) for update',
+      [username.trim()],
+    );
+    if (!row) return null;
+    const projects = await tx.queryOne<{ count: string }>('select count(*) as count from projects where owner_id = $1', [
+      row.id,
+    ]);
+    await tx.query('delete from users where id = $1', [row.id]);
+    return { username: row.username, projects: Number(projects?.count ?? 0) };
+  });
 }
 
 // The account from PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD,

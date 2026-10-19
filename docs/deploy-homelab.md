@@ -2,8 +2,9 @@
 
 Promptbook runs at `https://promptbook.siberio.eu` on the homelab cluster. A
 `v*` tag on `main` builds the image, installs the Helm chart and checks that the
-live site reports the new version. This page covers the setup, a release, a
-rollback, a restore and the yearly token renewal.
+live site reports the new version. This page covers the setup, a release,
+single sign-on and the way in when Authentik is down, a rollback, a restore
+and the yearly token renewal.
 
 ## What runs where
 
@@ -16,6 +17,10 @@ rollback, a restore and the yearly token renewal.
   websocket), a Service and an Ingress in the namespace `rpg-promptbook`, and
   a CloudNativePG cluster `rpg-promptbook-db` with WAL archiving and a daily
   backup to the bucket `cnpg-rpg-promptbook` on Silo, kept 30 days.
+- **Authentik** (`auth.siberio.eu`) signs people in. Its application
+  `rpg-promptbook` lets in the members of the group `Promptbook` only. Both,
+  and the Secret `rpg-promptbook-oidc` holding the client, come from the
+  `homelab/kubernetes_cluster` repository.
 
 The chart is `charts/rpg-promptbook`; `values-homelab.yaml` holds the homelab
 settings. The pipeline is `.gitlab-ci.yml`, and only a tag `vX.Y.Z` starts it.
@@ -33,16 +38,23 @@ Done once, before the first tag.
 1. **Cluster side.** Merge and apply the change to `homelab/kubernetes_cluster`
    that creates the namespace `rpg-promptbook`, the bucket `cnpg-rpg-promptbook`
    with the Secret `cnpg-backup-s3`, and the DNS record `promptbook.siberio.eu`.
-   The pipeline refuses to run without the namespace.
+   Then, one after the other, the change that adds the Authentik group
+   `Promptbook` (join it in the Authentik UI), and the change that adds the
+   Authentik application and writes the Secret `rpg-promptbook-oidc`, with the
+   keys `client-id` and `client-secret`, into the namespace. The application
+   looks the group up when it is planned, so the group must be applied first.
+   The pipeline refuses to run without the namespace or the Secret.
 2. **GitLab project.** Create `utilities/rpg-promptbook` (private) and protect
    the tag pattern `v*` under Settings, Repository, Protected tags.
 3. **Deploy token.** In the project, create a deploy token with the scope
    `read_registry`. The cluster uses it to pull the image.
 4. **CI/CD variables.** Add these as masked and protected variables:
    - `PB_REGISTRY_USER` and `PB_REGISTRY_PASSWORD`: the deploy token.
-   - `PB_ADMIN_USERNAME` and `PB_ADMIN_PASSWORD`: the first account, created
-     only while the database has no account. The password needs at least 12
-     characters.
+
+   Since `v0.2.0` the pipeline no longer reads `PB_ADMIN_USERNAME` and
+   `PB_ADMIN_PASSWORD`, nor writes the Secret `rpg-promptbook-credentials`:
+   accounts come from Authentik. Both variables and that Secret can be deleted.
+
 5. **Mirror token.** Create a project access token (role Maintainer, scope
    `write_repository`, one year) and store it as the GitHub secret
    `GITLAB_MIRROR_TOKEN`.
@@ -71,8 +83,8 @@ GitLab.
 The GitLab pipeline for the tag runs four stages:
 
 - **build** pushes `registry.siberio.eu/utilities/rpg-promptbook:vX.Y.Z`.
-- **secrets** creates the pull secret `rpg-promptbook-registry` and the
-  credentials secret `rpg-promptbook-credentials` from the CI/CD variables.
+- **secrets** creates the pull secret `rpg-promptbook-registry` from the
+  CI/CD variables and checks that the Secret `rpg-promptbook-oidc` exists.
 - **deploy** runs `helm upgrade --install` with `values-homelab.yaml`.
 - **verify** retries for two minutes until `/api/health` reports
   `"ok": true` and `"version": "vX.Y.Z"`, then checks that the database
@@ -88,6 +100,72 @@ The server runs as one replica, and a release replaces the pod. Open sync
 connections drop once and the clients reconnect. Migrations run as the new
 pod starts.
 
+## Single sign-on
+
+`values-homelab.yaml` turns single sign-on on (`app.oidc`): the sign-in page
+offers only "Sign in with Authentik", and the server refuses passwords. The
+first sign-in of a member of the group `Promptbook` creates their account,
+keyed by Authentik's issuer and subject; the username is their Authentik
+username, with `-2`, `-3`… added if another account already has it. Someone
+outside the group never gets back to Promptbook: Authentik tells them they
+have no access. There is no linking to an existing account.
+
+The Authentik provider's subject mode must stay `hashed_user_id`, the
+module's default. Accounts are keyed by the subject, so changing it would
+make every sign-in create a new, empty account.
+
+A new client secret, after the Terraform writes it, needs a restart of the
+pod, which reads it at start:
+
+```sh
+kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook
+```
+
+### When Authentik is down
+
+Turn single sign-on off, give your own account a password, and sign in with
+it. Your projects are on that account, so they are all there.
+
+1. From a checkout of the tag that is deployed, upgrade the release with
+   single sign-on off:
+
+   ```sh
+   git switch --detach vX.Y.Z
+   helm -n rpg-promptbook upgrade rpg-promptbook charts/rpg-promptbook \
+     -f charts/rpg-promptbook/values-homelab.yaml \
+     --set image.tag=vX.Y.Z --set app.oidc.enabled=false
+   ```
+
+   Or deploy values with `app.oidc.enabled: false` through the pipeline. The
+   sign-in page now shows the password form.
+
+2. Give your account a password. `user:create` would make a new, empty
+   account; `user:password` sets one on the account you already have. It
+   asks for the password, at least 12 characters:
+
+   ```sh
+   kubectl -n rpg-promptbook exec -it deploy/rpg-promptbook -- \
+     node dist/cli.js user:password <your username>
+   ```
+
+3. Sign in at `https://promptbook.siberio.eu` with that username and password.
+
+When Authentik is back, re-run the `helm-deploy` job of the deployed tag's
+pipeline: `values-homelab.yaml` turns single sign-on on again, and sign-in
+goes through Authentik. The password stays on the account but is refused
+while single sign-on is on.
+
+### Deleting an account
+
+`user:delete` removes an account with its sessions, settings and projects,
+the bin included, and prints how many projects went with it:
+
+```sh
+kubectl -n rpg-promptbook exec deploy/rpg-promptbook -- node dist/cli.js user:delete <username>
+```
+
+A sync connection still open for that account ends at its next reconnect.
+
 ## Rolling back
 
 Re-run the `helm-deploy` job in the pipeline of an older tag. The chart and
@@ -101,14 +179,9 @@ together.
 
 ## Changing credentials
 
-A change to `PB_REGISTRY_*` or `PB_ADMIN_*` takes effect when the `secrets`
-job runs again, so re-run the pipeline of the current tag. The admin
-credentials only matter while the database has no account. The pod reads
-them at start, so after changing them restart it:
-
-```sh
-kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook
-```
+A change to `PB_REGISTRY_*` takes effect when the `secrets` job runs again, so
+re-run the pipeline of the current tag. The single sign-on client is the
+cluster's (see Single sign-on).
 
 ## Restoring the database
 

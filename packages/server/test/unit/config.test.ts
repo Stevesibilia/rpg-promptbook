@@ -12,6 +12,7 @@ describe('configuration', () => {
       sessionTtlHours: 720,
       trustProxyHops: 0,
       admin: null,
+      oidc: null,
       webDist: null,
       appVersion: 'dev',
     });
@@ -37,6 +38,7 @@ describe('configuration', () => {
       sessionTtlHours: 24,
       trustProxyHops: 1,
       admin: { username: 'steve', password: '14-characters!' },
+      oidc: null,
       webDist: '/srv/web',
       appVersion: 'v0.1.0',
     });
@@ -52,6 +54,72 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, PROMPTBOOK_ADMIN_USERNAME: 'steve' })).toThrow(
       /PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD must be set together/,
     );
+  });
+
+  describe('single sign-on', () => {
+    const oidc = {
+      OIDC_ISSUER: 'https://auth.example/application/o/rpg-promptbook/',
+      OIDC_CLIENT_ID: 'client',
+      OIDC_CLIENT_SECRET: 'secret',
+    };
+
+    it('turns on with the three variables, with defaults from PUBLIC_URL', () => {
+      expect(loadConfig({ ...base, ...oidc }).oidc).toEqual({
+        issuer: oidc.OIDC_ISSUER,
+        clientId: 'client',
+        clientSecret: 'secret',
+        providerName: 'single sign-on',
+        redirectUri: 'http://localhost:8090/api/auth/oidc/callback',
+      });
+    });
+
+    it('reads the provider name and the redirect URI', () => {
+      expect(
+        loadConfig({
+          ...base,
+          ...oidc,
+          PUBLIC_URL: 'https://promptbook.example/app',
+          OIDC_PROVIDER_NAME: 'Authentik',
+          OIDC_REDIRECT_URI: 'https://promptbook.example/api/auth/oidc/callback',
+        }).oidc,
+      ).toMatchObject({ providerName: 'Authentik', redirectUri: 'https://promptbook.example/api/auth/oidc/callback' });
+    });
+
+    it('wants the redirect URI to be the callback route at PUBLIC_URL', () => {
+      for (const uri of [
+        'https://localhost:8090/api/auth/oidc/callback',
+        'http://localhost:8091/api/auth/oidc/callback',
+        'http://promptbook.example/api/auth/oidc/callback',
+        'http://localhost:8090/api/auth/oidc/callback/',
+        'http://localhost:8090/callback',
+        'http://localhost:8090/api/auth/oidc/callback?next=/',
+      ]) {
+        expect(() => loadConfig({ ...base, ...oidc, OIDC_REDIRECT_URI: uri })).toThrow(
+          /OIDC_REDIRECT_URI must be http:\/\/localhost:8090\/api\/auth\/oidc\/callback/,
+        );
+      }
+    });
+
+    it('names the variables missing from a partial setup', () => {
+      expect(() => loadConfig({ ...base, OIDC_ISSUER: oidc.OIDC_ISSUER })).toThrow(
+        /OIDC_CLIENT_ID and OIDC_CLIENT_SECRET must be set with OIDC_ISSUER/,
+      );
+      expect(() => loadConfig({ ...base, OIDC_CLIENT_ID: 'client', OIDC_CLIENT_SECRET: 'secret' })).toThrow(
+        /OIDC_ISSUER must be set with OIDC_CLIENT_ID and OIDC_CLIENT_SECRET/,
+      );
+      expect(() => loadConfig({ ...base, ...oidc, OIDC_CLIENT_SECRET: '  ' })).toThrow(/OIDC_CLIENT_SECRET must be set/);
+      expect(() => loadConfig({ ...base, ...oidc, OIDC_ISSUER: 'auth.example' })).toThrow(
+        /OIDC_ISSUER must be a http: or https: URL/,
+      );
+    });
+
+    it('refuses the admin variables with single sign-on', () => {
+      const admin = { PROMPTBOOK_ADMIN_USERNAME: 'steve', PROMPTBOOK_ADMIN_PASSWORD: '14-characters!' };
+      expect(() => loadConfig({ ...base, ...oidc, ...admin })).toThrow(/cannot be used with single sign-on/);
+      expect(() => loadConfig({ ...base, ...oidc, PROMPTBOOK_ADMIN_USERNAME: 'steve' })).toThrow(
+        /PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD/,
+      );
+    });
   });
 
   it('needs only the database for the command line', () => {

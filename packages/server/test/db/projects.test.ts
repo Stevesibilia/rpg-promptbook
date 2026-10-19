@@ -175,7 +175,13 @@ describe('the bin', () => {
       "insert into login_failures (username, ip, at) values ('x', '127.0.0.1', now() - interval '25 hours'), ('y', '127.0.0.1', now())",
     );
 
-    expect(await purge(db)).toEqual({ projects: 1, loginFailures: 1 });
+    await db.query(
+      `insert into oidc_logins (state, browser_hash, nonce, code_verifier, return_to, expires_at)
+       values ('old', 'h', 'n', 'v', '/', now() - interval '1 second'), ('live', 'h', 'n', 'v', '/', now() + interval '10 minutes')`,
+    );
+
+    expect(await purge(db)).toEqual({ projects: 1, loginFailures: 1, oidcLogins: 1 });
+    expect(await db.query('select state from oidc_logins')).toEqual([{ state: 'live' }]);
     expect((await list(true)).map((p) => p.id)).toEqual([recent.id]);
     expect(await db.query('select 1 from project_docs where project_id = $1', [old.id])).toEqual([]);
     expect(await loadProjectDoc(db, recent.id)).not.toBeNull();

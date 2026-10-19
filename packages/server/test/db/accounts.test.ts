@@ -41,7 +41,7 @@ describe('local accounts', () => {
     await createUser(db, { username: 'steve', password: 'twelve chars' });
     const user = await findUserByUsername(db, 'steve');
     expect(user!.passwordHash).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
-    expect(await verifyPassword(user!.passwordHash, 'twelve chars')).toBe(true);
+    expect(await verifyPassword(user!.passwordHash!, 'twelve chars')).toBe(true);
   });
 });
 
@@ -51,7 +51,9 @@ describe('sign in and sign out', () => {
     const app = await startApp();
     const response = await signIn(app);
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ user: { id: user.id, username: 'steve', displayName: 'Stefano' } });
+    expect(response.json()).toEqual({
+      user: { id: user.id, username: 'steve', displayName: 'Stefano', email: null, signIn: 'password' },
+    });
     const set = response.cookies.find((c) => c.name === 'pb_session')!;
     expect(set).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: '/', maxAge: 720 * 3600 });
     expect(set.secure).toBeUndefined();
@@ -65,7 +67,9 @@ describe('sign in and sign out', () => {
     expect(days).toBeLessThanOrEqual(30);
 
     const me = await app.inject({ url: '/api/auth/me', headers: cookie(set.value) });
-    expect(me.json()).toEqual({ user: { id: user.id, username: 'steve', displayName: 'Stefano' } });
+    expect(me.json()).toEqual({
+      user: { id: user.id, username: 'steve', displayName: 'Stefano', email: null, signIn: 'password' },
+    });
   });
 
   it('marks the cookie Secure behind a trusted HTTPS proxy, and follows SESSION_TTL_HOURS', async () => {
@@ -167,8 +171,16 @@ describe('requests are protected by default', () => {
       answers.push(`${route} ${response.statusCode}`);
     }
     expect(answers).toEqual(api.filter((r) => !PUBLIC_ROUTES.has(r)).map((r) => `${r} 401`));
-    expect([...PUBLIC_ROUTES].sort()).toEqual(['GET /api/auth/me', 'GET /api/health', 'POST /api/auth/login']);
-    for (const route of PUBLIC_ROUTES) expect(app.routeList.has(route)).toBe(true);
+    expect([...PUBLIC_ROUTES].sort()).toEqual([
+      'GET /api/auth/config',
+      'GET /api/auth/me',
+      'GET /api/auth/oidc/callback',
+      'GET /api/auth/oidc/start',
+      'GET /api/health',
+      'POST /api/auth/login',
+    ]);
+    // The handshake routes exist only with single sign-on (oidc.test.ts).
+    for (const route of PUBLIC_ROUTES) expect(app.routeList.has(route)).toBe(!route.includes('/oidc/'));
     expect((await app.inject({ url: '/api/health' })).json()).toEqual({ ok: true, version: 'dev' });
     expect((await app.inject({ url: '/api/auth/me' })).json()).toEqual({ user: null });
     expect((await app.inject({ url: '/api/no-such-route' })).statusCode).toBe(401);

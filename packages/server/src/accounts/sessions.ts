@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Queryable } from '../db.js';
-import type { User } from './users.js';
+import { toUser, type User, type UserRow } from './users.js';
 
 // 32 random bytes: far beyond guessing, which is why a plain SHA-256 of the
 // token is enough in the database. The token itself is never stored.
@@ -38,14 +38,8 @@ export async function createSession(
 export async function resolveSession(db: Queryable, token: string): Promise<Session | null> {
   if (!token) return null;
   const tokenHash = hashToken(token);
-  const row = await db.queryOne<{
-    expires_at: Date;
-    last_seen_at: Date;
-    id: string;
-    username: string;
-    display_name: string;
-  }>(
-    `select s.expires_at, s.last_seen_at, u.id, u.username, u.display_name
+  const row = await db.queryOne<Omit<UserRow, 'password_hash'> & { expires_at: Date; last_seen_at: Date }>(
+    `select s.expires_at, s.last_seen_at, u.id, u.username, u.display_name, u.oidc_issuer, u.email
      from sessions s join users u on u.id = s.user_id
      where s.token_hash = $1`,
     [tokenHash],
@@ -58,7 +52,7 @@ export async function resolveSession(db: Queryable, token: string): Promise<Sess
   if (Date.now() - row.last_seen_at.getTime() > LAST_SEEN_WRITE_INTERVAL_MS) {
     await db.query('update sessions set last_seen_at = now() where token_hash = $1', [tokenHash]);
   }
-  return { tokenHash, user: { id: row.id, username: row.username, displayName: row.display_name } };
+  return { tokenHash, user: toUser(row) };
 }
 
 export async function deleteSession(db: Queryable, tokenHash: string): Promise<void> {

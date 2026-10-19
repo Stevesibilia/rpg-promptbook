@@ -18,21 +18,42 @@ const meBody = z.object({ displayName: z.string().trim().min(1, 'is required').m
 const passwordBody = z.object({ current: z.string().max(4096), next: z.string().max(4096) });
 
 export async function authRoutes(app: FastifyInstance, { config, db, sync }: { config: Config; db: Db; sync: Sync }) {
+  // While single sign-on is on, a password neither signs in nor changes:
+  // refused before any Argon2 work or throttle count.
+  const refusePasswords = () => {
+    if (config.oidc) {
+      throw new AppError(403, 'password_sign_in_off', `Password sign-in is off: sign in with ${config.oidc.providerName}.`);
+    }
+  };
+
+  // Public: which sign-in the web client shows.
+  app.get('/api/auth/config', async () =>
+    config.oidc
+      ? { signIn: 'oidc', providerName: config.oidc.providerName, issuerHost: new URL(config.oidc.issuer).host }
+      : { signIn: 'password' },
+  );
+
   // Every failure answers the same message and spends comparable time, the
   // unknown username included: a faster or different answer for a username
   // with no account would let anyone list the accounts.
   app.post('/api/auth/login', async (req, reply) => {
+    refusePasswords();
     const { username, password } = parseBody(loginBody, req.body);
     const attempt = await reserveAttempt(db, username, req.ip);
     const user = await findUserByUsername(db, username);
-    const valid = user ? await verifyPassword(user.passwordHash, password) : await burnVerificationTime(password);
+    // A single sign-on account has no password, and fails like an unknown
+    // username.
+    const valid = user?.passwordHash
+      ? await verifyPassword(user.passwordHash, password)
+      : await burnVerificationTime(password);
     if (!user || !valid) throw new AppError(401, 'invalid_credentials', WRONG_CREDENTIALS);
 
     await releaseAttempt(db, attempt);
     const { token } = await createSession(db, user.id, config.sessionTtlHours);
     await db.query('update users set last_login_at = now() where id = $1', [user.id]);
     setSessionCookie(reply, req, token, config.sessionTtlHours);
-    return { user: { id: user.id, username: user.username, displayName: user.displayName } };
+    const { passwordHash: _, ...signedIn } = user;
+    return { user: signedIn };
   });
 
   app.post('/api/auth/logout', async (req, reply) => {
@@ -55,10 +76,11 @@ export async function authRoutes(app: FastifyInstance, { config, db, sync }: { c
   // Ends every other session of the user and their sync connections; the one
   // making the change stays.
   app.post('/api/auth/password', async (req, reply) => {
+    refusePasswords();
     const session = requireSession(req);
     const { current, next } = parseBody(passwordBody, req.body);
     const user = await findUserByUsername(db, session.user.username);
-    if (!user || !(await verifyPassword(user.passwordHash, current))) {
+    if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, current))) {
       throw new AppError(400, 'wrong_password', 'The current password is wrong.');
     }
     await setPassword(db, user.id, next);

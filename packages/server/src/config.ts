@@ -18,6 +18,12 @@ const url = (protocols: string[]) =>
       message: `must be a ${protocols.join(' or ')} URL`,
     });
 
+const optionalUrl = (protocols: string[]) =>
+  optional.refine(
+    (value) => value === undefined || (URL.canParse(value) && protocols.includes(new URL(value).protocol)),
+    { message: `must be a ${protocols.join(' or ')} URL` },
+  );
+
 const integer = (fallback: number, min: number) =>
   z
     .string()
@@ -45,7 +51,15 @@ const schema = databaseSchema.extend({
   PROMPTBOOK_ADMIN_PASSWORD: optional,
   WEB_DIST: optional,
   APP_VERSION: optional,
+  OIDC_ISSUER: optionalUrl(['http:', 'https:']),
+  OIDC_CLIENT_ID: optional,
+  OIDC_CLIENT_SECRET: optional,
+  OIDC_PROVIDER_NAME: optional,
+  OIDC_REDIRECT_URI: optionalUrl(['http:', 'https:']),
 });
+
+// The three variables that turn single sign-on on.
+const OIDC_REQUIRED = ['OIDC_ISSUER', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'] as const;
 
 export interface Config {
   databaseUrl: string;
@@ -55,11 +69,23 @@ export interface Config {
   sessionTtlHours: number;
   trustProxyHops: number;
   admin: { username: string; password: string } | null;
+  // Single sign-on through an OpenID Connect provider (single-sign-on design
+  // decision 2); null signs in with local passwords.
+  oidc: OidcConfig | null;
   // Where the web build is; unset in development, where Vite serves it.
   webDist: string | null;
   // The release this server runs, reported by the health check; "dev" when
   // unset.
   appVersion: string;
+}
+
+export interface OidcConfig {
+  issuer: string;
+  clientId: string;
+  clientSecret: string;
+  // The provider's name on the sign-in button.
+  providerName: string;
+  redirectUri: string;
 }
 
 export class ConfigError extends Error {}
@@ -82,15 +108,47 @@ export function loadConfig(env: Env = process.env): Config {
       'Invalid configuration:\n  PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD must be set together',
     );
   }
+  const publicOrigin = new URL(values.PUBLIC_URL).origin;
+  const oidc = oidcConfig(values, publicOrigin);
+  if (oidc && (username !== undefined || password !== undefined)) {
+    throw new ConfigError(
+      'Invalid configuration:\n  PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD cannot be used with single sign-on',
+    );
+  }
   return {
     databaseUrl: values.DATABASE_URL,
-    publicOrigin: new URL(values.PUBLIC_URL).origin,
+    publicOrigin,
     port: values.PORT,
     sessionTtlHours: values.SESSION_TTL_HOURS,
     trustProxyHops: values.TRUST_PROXY_HOPS,
     admin: username !== undefined && password !== undefined ? { username, password } : null,
+    oidc,
     webDist: values.WEB_DIST ?? null,
     appVersion: values.APP_VERSION ?? 'dev',
+  };
+}
+
+// All three of OIDC_REQUIRED or none: a deployment that sets only some of
+// them means single sign-on and must not start with passwords instead.
+function oidcConfig(values: z.output<typeof schema>, publicOrigin: string): OidcConfig | null {
+  const missing = OIDC_REQUIRED.filter((name) => values[name] === undefined);
+  if (missing.length === OIDC_REQUIRED.length) return null;
+  if (missing.length > 0) {
+    const set = OIDC_REQUIRED.filter((name) => !missing.includes(name));
+    throw new ConfigError(`Invalid configuration:\n  ${missing.join(' and ')} must be set with ${set.join(' and ')}`);
+  }
+  // The callback route and the handshake cookie exist only there.
+  const callback = `${publicOrigin}/api/auth/oidc/callback`;
+  const redirectUri = values.OIDC_REDIRECT_URI ?? callback;
+  if (new URL(redirectUri).href !== callback) {
+    throw new ConfigError(`Invalid configuration:\n  OIDC_REDIRECT_URI must be ${callback}, PUBLIC_URL's origin`);
+  }
+  return {
+    issuer: values.OIDC_ISSUER!,
+    clientId: values.OIDC_CLIENT_ID!,
+    clientSecret: values.OIDC_CLIENT_SECRET!,
+    providerName: values.OIDC_PROVIDER_NAME ?? 'single sign-on',
+    redirectUri,
   };
 }
 

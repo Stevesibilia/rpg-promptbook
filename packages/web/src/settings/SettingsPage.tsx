@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { categories, type Category, type Settings } from 'promptbook-project';
 import { api, ApiError, exportAllUrl } from '../api.js';
+import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
@@ -258,6 +259,8 @@ function AuthorDefaults({ settings, onSave }: { settings: Settings; onSave(next:
 
 function Account() {
   const { user, setUser } = useAuth();
+  const config = useAuthConfig();
+  const provider = providerName(config);
   const [name, setName] = useState(user.displayName);
   const [nameNote, setNameNote] = useState('');
   const [changing, setChanging] = useState(false);
@@ -294,29 +297,59 @@ function Account() {
     }
   }
 
+  const nameField = (hint: string | null) => (
+    <div className="field">
+      <label htmlFor="acc-name">Display name</label>
+      <input
+        id="acc-name"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setNameNote('');
+        }}
+        onBlur={() => void saveName()}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+      {(nameNote || hint) && <span className="hint">{nameNote || hint}</span>}
+    </div>
+  );
+  const usernameField = (
+    <div className="field">
+      <label htmlFor="acc-user">Username</label>
+      <input id="acc-user" value={user.username} disabled />
+    </div>
+  );
+
+  // An account from the provider has no password here: its name and email
+  // come from there.
+  if (user.signIn === 'oidc') {
+    // The texts name the provider: wait for its name rather than flash a
+    // stand-in.
+    if (config.state === 'loading') return null;
+    return (
+      <section>
+        <h2>Account</h2>
+        <p className="lead">Your account comes from {provider}. Players have no accounts.</p>
+        <div className="card narrow">
+          {nameField(`Taken from ${provider} at the first sign-in; change it here if you like.`)}
+          {usernameField}
+          <p className="okline">
+            <i />
+            Signed in through {provider}
+            {user.email && ` · ${user.email}`}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section>
       <h2>Account</h2>
       <p className="lead">One game master per server. Players have no accounts.</p>
       <div className="card narrow">
-        <div className="field">
-          <label htmlFor="acc-name">Display name</label>
-          <input
-            id="acc-name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setNameNote('');
-            }}
-            onBlur={() => void saveName()}
-            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          />
-          {nameNote && <span className="hint">{nameNote}</span>}
-        </div>
-        <div className="field">
-          <label htmlFor="acc-user">Username</label>
-          <input id="acc-user" value={user.username} disabled />
-        </div>
+        {nameField(null)}
+        {usernameField}
         {changing ? (
           <form onSubmit={(e) => void changePassword(e)}>
             <div className="field">

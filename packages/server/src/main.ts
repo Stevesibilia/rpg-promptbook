@@ -20,7 +20,8 @@ async function main() {
 
   const app = await buildApp({ config, db, logger: true });
 
-  // The bin and old sign-in failures, at start and every hour.
+  // The bin, old sign-in failures and expired handshakes, at start and every
+  // hour.
   const runPurge = () =>
     purge(db)
       .then((removed) => {

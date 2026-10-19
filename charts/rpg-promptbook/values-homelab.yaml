@@ -21,7 +21,16 @@ app:
   publicUrl: https://promptbook.siberio.eu
   # Traefik is the only proxy.
   trustProxyHops: 1
-  credentialsSecret: rpg-promptbook-credentials
+  # Accounts come from Authentik: the first sign-in of a member of its group
+  # Promptbook creates theirs. The Secret rpg-promptbook-oidc is written by
+  # the cluster's Terraform (homelab/kubernetes_cluster, app_rpg_promptbook.tf).
+  oidc:
+    enabled: true
+    issuer: https://auth.siberio.eu/application/o/rpg-promptbook/
+    providerName: Authentik
+  # No password account: the server would refuse one beside single sign-on.
+  admin:
+    enabled: false
 
 ingress:
   enabled: true
