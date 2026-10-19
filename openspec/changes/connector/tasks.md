@@ -46,9 +46,9 @@
 
 - [x] 6.1 `/authorize` page: request check, account, scope choice, Allow, Deny, errors, loopback warning (decision 8)
 - [x] 6.2 Settings, Connected apps at `/settings/apps`: list, Revoke, how to connect with Copy
-- [ ] 6.3 `e2e/connector.spec.ts`: the full flow of decision 17, History, Inspiration and Research; the whole suite passes, once with `E2E_CPU_THROTTLE=3`
+- [x] 6.3 `e2e/connector.spec.ts`: the full flow of decision 17, History, Inspiration and Research; the whole suite passes, once with `E2E_CPU_THROTTLE=3`
 - [ ] 6.4 README connector section; `docs/design.md` (rail, connector, snapshots, research engine first through Claude); Prettier on the files touched
-- [ ] 6.5 Screenshots of every view, the banner, Authorize and Connected apps for the architect (the owner is away)
+- [x] 6.5 Screenshots of every view, the banner, Authorize and Connected apps for the architect (the owner is away)
 - [ ] 6.6 Checks and hand-back of brief D
 
 ## 7. Release (architect)
