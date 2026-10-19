@@ -1,0 +1,117 @@
+## ADDED Requirements
+
+### Requirement: PDF of an adventure
+
+The app SHALL build the PDF of an adventure or one-shot from its document,
+in the browser, with the Typst template ported from `impagina-avventura`:
+cover and opening, the night, strong start and scene map, rules, one scene
+per page start with edge tabs, and the references (clues, NPCs, sheets with
+threat boxes, pregenerated). References to a sheet SHALL print the sheet's
+page number. The seed, the inspiration items and the research notes SHALL
+NOT be printed. Two builds of the same text with the same options SHALL
+give the same bytes.
+
+#### Scenario: Sabaoth
+
+- **WHEN** the PDF of «L'Ancora di Sabaoth» is built with the default
+  options
+- **THEN** it has no build error, and each of its scenes starts on a new
+  page with its tab marked
+
+#### Scenario: Reference to a sheet
+
+- **WHEN** a scene says `→ Schede: Tenente Donato`
+- **THEN** the PDF prints «Tenente Donato, p. N» with the page of that sheet
+
+### Requirement: Footer and cover
+
+Every page footer SHALL show the title and the current section, then the
+author, the copyright and the short licence when the front matter sets
+them, then the page number. The cover SHALL show the author, the copyright
+and the licence in full, with the licence's link for an SPDX id. A `CC-`
+SPDX id SHALL print in its short form («CC BY-NC-SA 4.0»); free text SHALL
+print as written; a missing key SHALL leave its part out.
+
+#### Scenario: Creative Commons licence
+
+- **WHEN** the front matter has `autore: Stefano Sibilia` and
+  `licenza: CC-BY-NC-SA-4.0`
+- **THEN** every footer shows «Stefano Sibilia · CC BY-NC-SA 4.0», and the
+  cover links `https://spdx.org/licenses/CC-BY-NC-SA-4.0.html`
+
+### Requirement: PDF preview pane
+
+The project page of an adventure or one-shot SHALL have a **PDF** button in
+the top bar that opens a pane in place of the inspector, showing the page
+under the cursor and rebuilt while the user types. Its header SHALL read
+«PDF preview · page N of M · follows the cursor», with «Review» and close.
+A build error SHALL show «The PDF could not be built.» with the error's
+message. Campaigns SHALL NOT show the button.
+
+#### Scenario: Follows the cursor
+
+- **WHEN** the pane is open and the user moves the cursor from S1 to S4
+- **THEN** the pane shows the page where that text of S4 is printed
+
+### Requirement: PDF review
+
+⌘⇧P, the pane's «Review» and the palette SHALL open the whole PDF full
+screen: page thumbnails labelled with their section, single page, spread or
+fit width, zoom, layout checks, options, «Save PDF» and «Print…». Esc and
+«← Editor» SHALL close it. Double-clicking a page in the review or the pane
+SHALL put the cursor in the editor on the text printed there.
+
+#### Scenario: Jump to the text
+
+- **WHEN** the user double-clicks the read-aloud on S2's page in the review
+- **THEN** the review closes and the cursor is in S2's read-aloud in the
+  editor
+
+#### Scenario: Save
+
+- **WHEN** the user clicks «Save PDF»
+- **THEN** the browser downloads a PDF named after the project's title,
+  built with the current options
+
+#### Scenario: Print
+
+- **WHEN** the user clicks «Print…»
+- **THEN** the PDF opens in a new tab, ready to print from the browser
+
+### Requirement: Layout checks
+
+The review SHALL list as warnings a scene whose end leaves more than half
+of its last page empty before the next scene's page, and a scene running to
+three pages or more, each with its scene and pages; clicking one SHALL show
+its page, and its thumbnail SHALL carry a mark. These checks SHALL NOT join
+the editor's problems.
+
+#### Scenario: Short scene
+
+- **WHEN** S2 ends in the top half of page 7 and S3 starts on page 8
+- **THEN** the review lists «Half of page 7 is empty: S2 ends early»
+
+### Requirement: Print options
+
+The review SHALL offer paper (A4 or Letter), ink saver (tints removed),
+pregenerated sheets (on or off) and the template (one today), kept per
+project on the device. Changing one SHALL rebuild the preview, and Save and
+Print SHALL use them.
+
+#### Scenario: Letter paper
+
+- **WHEN** the user picks Letter
+- **THEN** the pages in the review and the saved PDF are US Letter
+
+### Requirement: PDF engine loading
+
+The PDF engine SHALL load only when a PDF is first opened on a page, with
+«Loading the PDF engine…» shown until it is ready. The server SHALL allow
+WebAssembly in its content security policy, serve compressed copies of the
+web build's files to clients that accept them, and let browsers cache
+hashed assets for a year.
+
+#### Scenario: Editor without PDF
+
+- **WHEN** the user opens a project and never opens the PDF
+- **THEN** the browser does not download the PDF engine
