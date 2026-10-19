@@ -27,11 +27,38 @@ export const PUBLIC_ROUTES = new Set([
   'GET /api/health',
 ]);
 
+// The connector's OAuth routes (connector design decision 9): called by
+// programs from any origin, with a bearer token or no credential at all.
+// They skip the same-origin check and never read the cookie, so a page in a
+// signed-in browser cannot make them act. The MCP methods that are not POST
+// answer 405 to anyone: which methods an endpoint has is not a secret, and a
+// 401 would send a client to authorize again for nothing.
+export const OAUTH_ROUTES = new Set([
+  'POST /api/oauth/register',
+  'POST /api/oauth/token',
+  'POST /api/oauth/revoke',
+  'POST /api/mcp',
+  'GET /api/mcp',
+  'HEAD /api/mcp',
+  'DELETE /api/mcp',
+]);
+
+// The paths any origin may call without credentials, as concrete paths: a
+// preflight arrives on the wildcard OPTIONS route, whose pattern is *.
+// Discovery, registration, tokens, revocation and the MCP endpoint, none of
+// which reads the cookie.
+export function isPermissiveCorsPath(path: string): boolean {
+  if (path.startsWith('/.well-known/oauth-')) return true;
+  return ['/api/mcp', '/api/oauth/token', '/api/oauth/register', '/api/oauth/revoke'].includes(path);
+}
+
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export const isApiUrl = (url: string) => url === '/api' || url.startsWith('/api/') || url.startsWith('/api?');
 
-const isPublic = (req: FastifyRequest) => PUBLIC_ROUTES.has(`${req.method} ${req.routeOptions.url ?? ''}`);
+const routeKey = (req: FastifyRequest) => `${req.method} ${req.routeOptions.url ?? ''}`;
+const isPublic = (req: FastifyRequest) => PUBLIC_ROUTES.has(routeKey(req));
+export const isOAuthRoute = (req: FastifyRequest) => OAUTH_ROUTES.has(routeKey(req));
 
 function originOf(value: string): string | null {
   try {
@@ -81,6 +108,7 @@ async function plugin(app: FastifyInstance, { config, db }: { config: Config; db
   // a cross-site post that signs the victim into another account is a real
   // attack, and it happens before there is any session.
   app.addHook('onRequest', async (req, reply) => {
+    if (isOAuthRoute(req)) return;
     assertSameOrigin(req, config.publicOrigin);
 
     const token = req.cookies[SESSION_COOKIE];

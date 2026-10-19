@@ -11,6 +11,7 @@ import {
 import * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
+import { sweepExpired } from './oauth/tokens.js';
 import { getSettings } from './routes/settings.js';
 
 // The projects table and the stored documents. The document is the source;
@@ -275,12 +276,16 @@ export interface Purged {
   loginFailures: number;
   oidcLogins: number;
   snapshots: number;
+  oauthCodes: number;
+  oauthTokens: number;
+  oauthRegistrations: number;
 }
 
 // Removes projects in the bin for more than 30 days, with their documents
 // and snapshots, sign-in failures older than a day, expired single sign-on
-// handshakes, and Claude and restore snapshots older than 30 days. Answers
-// what it removed.
+// handshakes, Claude and restore snapshots older than 30 days, expired OAuth
+// codes and tokens, and registration counts older than a day. Answers what it
+// removed.
 export async function purge(db: Queryable): Promise<Purged> {
   const projects = await db.query(
     `delete from projects where deleted_at < now() - make_interval(days => $1) returning id`,
@@ -292,10 +297,17 @@ export async function purge(db: Queryable): Promise<Purged> {
     `delete from snapshots where kind <> 'user' and created_at < now() - make_interval(days => $1) returning id`,
     [SNAPSHOT_DAYS],
   );
+  const oauth = await sweepExpired(db);
+  const registrations = await db.query(
+    `delete from oauth_registrations where at < now() - interval '1 day' returning id`,
+  );
   return {
     projects: projects.length,
     loginFailures: failures.length,
     oidcLogins: logins.length,
     snapshots: snapshots.length,
+    oauthCodes: oauth.codes,
+    oauthTokens: oauth.tokens,
+    oauthRegistrations: registrations.length,
   };
 }

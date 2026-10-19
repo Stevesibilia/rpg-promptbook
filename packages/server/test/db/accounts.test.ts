@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_ROUTES } from '../../src/accounts/auth.js';
+import { OAUTH_ROUTES, PUBLIC_ROUTES } from '../../src/accounts/auth.js';
 import { hashToken } from '../../src/accounts/sessions.js';
 import { TOO_MANY_ATTEMPTS } from '../../src/accounts/throttle.js';
 import { createUser, ensureAdmin, findUserByUsername } from '../../src/accounts/users.js';
@@ -155,12 +155,16 @@ describe('sign in and sign out', () => {
 });
 
 describe('requests are protected by default', () => {
-  it('requires a session on every API route but sign-in, the account check and health', async () => {
+  it('requires a session on every API route but sign-in, the account check, health and the OAuth routes', async () => {
     const app = await startApp();
     const api = [...app.routeList].filter((route) => route.includes(' /api') && !route.startsWith('HEAD '));
     expect(api.length).toBeGreaterThan(5);
+    // Every route is in exactly one class: public, OAuth (oauth.test.ts and
+    // mcp.test.ts check those), or behind a session.
+    const sessionOnly = api.filter((r) => !PUBLIC_ROUTES.has(r) && !OAUTH_ROUTES.has(r));
+    for (const route of OAUTH_ROUTES) expect(PUBLIC_ROUTES.has(route)).toBe(false);
     const answers: string[] = [];
-    for (const route of api.filter((r) => !PUBLIC_ROUTES.has(r))) {
+    for (const route of sessionOnly) {
       const [method, url] = route.split(' ') as ['GET', string];
       const response = await app.inject({
         method,
@@ -170,7 +174,9 @@ describe('requests are protected by default', () => {
       });
       answers.push(`${route} ${response.statusCode}`);
     }
-    expect(answers).toEqual(api.filter((r) => !PUBLIC_ROUTES.has(r)).map((r) => `${r} 401`));
+    expect(answers).toEqual(sessionOnly.map((r) => `${r} 401`));
+    expect(sessionOnly).toContain('POST /api/oauth/authorize');
+    expect(sessionOnly).toContain('GET /api/auth/grants');
     expect([...PUBLIC_ROUTES].sort()).toEqual([
       'GET /api/auth/config',
       'GET /api/auth/me',

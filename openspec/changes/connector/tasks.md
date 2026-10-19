@@ -16,11 +16,11 @@
 
 ## 3. OAuth authorization server (brief B)
 
-- [ ] 3.1 `src/oauth/config.ts`, `clients.ts` (registration, metadata documents with the address guards, redirect rules, registration throttle, sweep), `tokens.ts` (codes, access, refresh rotation, reuse, revocation, verification, sweep), `grants.ts` (decision 7)
-- [ ] 3.2 `routes/oauth.ts`: both metadata documents, register, token (form parser in its own scope), revoke, consent `GET`/`POST /api/oauth/authorize` and `/deny`, `GET`/`DELETE /api/auth/grants` (decisions 7, 8)
-- [ ] 3.3 `accounts/auth.ts`: `OAUTH_ROUTES` skip the origin check and the cookie; `@fastify/cors` with the delegator; the route test's new class (decision 9)
-- [ ] 3.4 `purge`: expired codes and tokens, old registration counts
-- [ ] 3.5 Db tests ported from gdrarchive's `oauthMetadata`, `oauthAuthorize`, `oauthClients`, `oauthTokens`, `oauthGrants` and `oauthCredentials` (decision 17)
+- [x] 3.1 `src/oauth/config.ts`, `clients.ts` (registration, metadata documents with the address guards, redirect rules, registration throttle, sweep), `tokens.ts` (codes, access, refresh rotation, reuse, revocation, verification, sweep), `grants.ts` (decision 7)
+- [x] 3.2 `routes/oauth.ts`: both metadata documents, register, token (form parser in its own scope), revoke, consent `GET`/`POST /api/oauth/authorize` and `/deny`, `GET`/`DELETE /api/auth/grants` (decisions 7, 8)
+- [x] 3.3 `accounts/auth.ts`: `OAUTH_ROUTES` skip the origin check and the cookie; `@fastify/cors` with the delegator; the route test's new class (decision 9)
+- [x] 3.4 `purge`: expired codes and tokens, old registration counts
+- [x] 3.5 Db tests ported from gdrarchive's `oauthMetadata`, `oauthAuthorize`, `oauthClients`, `oauthTokens`, `oauthGrants` and `oauthCredentials` (decision 17)
 
 ## 4. MCP endpoint and tools (brief B)
 
