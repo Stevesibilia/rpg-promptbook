@@ -12,7 +12,6 @@ import type { CalloutDefinition, Model, Place, Template } from 'promptbook-forma
 import { analysisField, writableResult } from '../analysis/field.js';
 import { insertText, nextSceneNumber, placeInsert, sceneAt, type Insert } from '../inserts.js';
 import { currentItem } from '../outline.js';
-import { matches } from '../palette.js';
 import { write } from '../writes.js';
 
 // The `/` insert menu and the sheet names' completion (design decision 9).
@@ -176,26 +175,25 @@ function existingField(model: Model, pos: number, label: string): number | null 
   return field ? field.range.start.offset : null;
 }
 
-function slashSource(template: Template): CompletionSource {
-  return (context: CompletionContext): CompletionResult | null => {
-    const slash = slashLine(context.state, context.pos);
-    if (!slash) return null;
-    const entries = slashEntries(context.state, slash.from, template).filter((e) => matches(e.label, slash.query));
-    if (!entries.length) return null;
-    return {
-      from: slash.from + 1,
-      to: context.pos,
-      // Filtered here, accents ignored, in the order above.
-      filter: false,
-      options: entries.map(
-        (entry): Completion => ({
-          label: entry.label,
-          detail: entry.detail,
-          section: groups[entry.group],
-          apply: (view) => applySlash(view, entry.insert, template),
-        }),
-      ),
-    };
+function slashResult(template: Template, context: CompletionContext): CompletionResult | null {
+  const slash = slashLine(context.state, context.pos);
+  if (!slash) return null;
+  const entries = slashEntries(context.state, slash.from, template);
+  if (!entries.length) return null;
+  return {
+    from: slash.from + 1,
+    to: context.pos,
+    // Narrowed by CodeMirror as the user types, without asking again, so
+    // Enter right after typing picks from the menu shown; the boost keeps
+    // the order above.
+    validFor: /^[^/]*$/,
+    options: entries.map((entry, i): Completion => ({
+      label: entry.label,
+      detail: entry.detail,
+      section: groups[entry.group],
+      boost: Math.max(-99, 99 - i),
+      apply: (view) => applySlash(view, entry.insert, template),
+    })),
   };
 }
 
@@ -219,21 +217,29 @@ export function sheetNames(state: EditorState): string[] {
   return [...new Set(sheets.map((s) => s.name))];
 }
 
-function sheetSource(template: Template): CompletionSource {
-  return (context: CompletionContext): CompletionResult | null => {
-    const at = sheetQuery(context.state, context.pos, template.references.marker);
-    if (!at) return null;
-    const names = sheetNames(context.state).filter((name) => matches(name, at.query));
-    if (!names.length) return null;
-    return { from: at.from, to: context.pos, filter: false, options: names.map((label) => ({ label, type: 'text' })) };
+function sheetResult(template: Template, context: CompletionContext): CompletionResult | null {
+  const at = sheetQuery(context.state, context.pos, template.references.marker);
+  if (!at) return null;
+  const names = sheetNames(context.state);
+  if (!names.length) return null;
+  return {
+    from: at.from,
+    to: context.pos,
+    validFor: /^[^,;()«»]*$/,
+    // In the order of the document.
+    options: names.map((label, i) => ({ label, boost: Math.max(-99, 99 - i) })),
   };
 }
 
-// The completion for an adventure or a one-shot, with both sources; for a
-// campaign, the `/` menu with headings only.
+// One source for both: a second source would be asked again at every
+// keystroke, and while it is pending CodeMirror disables the open menu, so
+// Enter typed quickly after a letter would insert a line break.
+function source(template: Template, checked: boolean): CompletionSource {
+  return (context) => slashResult(template, context) ?? (checked ? sheetResult(template, context) : null);
+}
+
+// The completion: the `/` menu, and for an adventure or a one-shot the sheet
+// names; a campaign's menu has the headings only.
 export function slashMenu(template: Template, checked: boolean): Extension {
-  return autocompletion({
-    override: checked ? [slashSource(template), sheetSource(template)] : [slashSource(template)],
-    icons: false,
-  });
+  return autocompletion({ override: [source(template, checked)], icons: false });
 }

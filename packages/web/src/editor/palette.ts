@@ -36,33 +36,25 @@ export function paletteEntries(items: readonly OutlineItem[], { checked }: { che
     fromTable('inspector'),
     fromTable('focus'),
     fromTable('syntax'),
-    ...statuses.map(
-      (status): PaletteEntry => ({
-        key: `status:${status}`,
-        label: `Set status: ${statusLabels[status]}`,
-        keys: null,
-        action: { kind: 'status', status },
-      }),
-    ),
+    ...statuses.map((status): PaletteEntry => ({
+      key: `status:${status}`,
+      label: `Set status: ${statusLabels[status]}`,
+      keys: null,
+      action: { kind: 'status', status },
+    })),
     ...(checked ? [fromTable('nextProblem'), fromTable('previousProblem')] : []),
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
-    ...items.map(
-      (item): PaletteEntry => ({
-        key: `go:${item.key}`,
-        label: `Go to ${item.id ? `${item.id} ` : ''}${item.name}`,
-        keys: null,
-        action: { kind: 'go', key: item.key, name: item.name },
-      }),
-    ),
+    ...items.map((item): PaletteEntry => ({
+      key: `go:${item.key}`,
+      label: `Go to ${item.id ? `${item.id} ` : ''}${item.name}`,
+      keys: null,
+      action: { kind: 'go', key: item.key, name: item.name },
+    })),
   ];
 }
 
 // Lower case, without accents: «Verità» and «verita» are the same.
-export const fold = (text: string): string =>
-  text
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase();
+export const fold = (text: string): string => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 // Whether every word of the query is in the text, in the order typed.
 export function matches(text: string, query: string): boolean {

@@ -36,9 +36,31 @@ export const focusedField = StateField.define<boolean>({
   update: (value, tr) => tr.effects.reduce((v, e) => (e.is(setFocused) ? e.value : v), value),
 });
 
+// CodeMirror sends a focus change after the transaction that noticed it,
+// once the current task is over. A panel that moves the cursor and then
+// focuses the editor (an outline jump, an Insert) gets the blur of its own
+// click delivered after the focus, and no focus change after it. So the
+// field is checked against the view once things settle, and put right.
+const focusCheck = ViewPlugin.define((view) => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const check = () => {
+    timer = null;
+    if (view.hasFocus !== view.state.field(focusedField)) view.dispatch({ effects: setFocused.of(view.hasFocus) });
+  };
+  return {
+    update(update: ViewUpdate) {
+      if (timer === null && update.view.hasFocus !== update.state.field(focusedField)) timer = setTimeout(check, 20);
+    },
+    destroy() {
+      if (timer !== null) clearTimeout(timer);
+    },
+  };
+});
+
 export const focusTracking: Extension = [
   focusedField,
   EditorView.focusChangeEffect.of((_state, focusing) => setFocused.of(focusing)),
+  focusCheck,
 ];
 
 // The lines touched by a selection, as [first, last] line numbers.
@@ -332,7 +354,7 @@ function inlinePlugin(config: PreviewConfig) {
           update.docChanged ||
           update.viewportChanged ||
           update.selectionSet ||
-          update.focusChanged ||
+          update.state.field(focusedField) !== update.startState.field(focusedField) ||
           syntaxTree(update.state) !== syntaxTree(update.startState)
         ) {
           this.decorations = toDecorations(inlineItems(update.state, update.view.visibleRanges, config));
