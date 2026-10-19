@@ -2,10 +2,27 @@
   display: grid;
   height: 100vh;
   grid-template-rows: 44px auto 1fr 26px;
-  grid-template-columns: 48px 1fr var(--right, 340px);
+  grid-template-columns: 48px var(--left, 0px) 1fr var(--right, 340px);
+}
+.app.with-left {
+  --left: 248px;
 }
 .app.no-sel {
   --right: 0px;
+}
+/* Focus mode: the text, the sync pill and the status bar. */
+.app.focus {
+  grid-template-columns: 0 0 1fr 0;
+}
+.app.focus .rail,
+.app.focus .left,
+.app.focus .right,
+.app.focus .topbar .crumbs,
+.app.focus .topbar .hide-in-focus {
+  display: none;
+}
+.app.focus .status {
+  grid-column: 1 / -1;
 }
 
 /* Top bar */
@@ -289,15 +306,23 @@
   border-radius: 4px;
 }
 
-/* Centre and right */
-.center {
+/* Left, centre and right */
+.left {
   grid-column: 2;
+  grid-row: 3;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  min-width: 0;
+}
+.center {
+  grid-column: 3;
   grid-row: 3;
   overflow: auto;
   min-width: 0;
 }
 .right {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 3;
   background: var(--surface);
   border-left: 1px solid var(--border);
@@ -343,6 +368,9 @@
 }
 .status .r {
   margin-left: auto;
+}
+.status .r ~ .r {
+  margin-left: 0;
 }
 .status .a {
   color: var(--amber);

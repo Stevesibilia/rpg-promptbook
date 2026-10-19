@@ -154,7 +154,7 @@ Each command SHALL show its shortcut.
 ### Requirement: Focus mode
 
 ⌘. and its button SHALL toggle focus mode, which hides the rail, the outline,
-the inspector, the breadcrumbs and the top-bar controls except the sync pill,
+the inspector, the breadcrumbs and the top-bar controls except the focus button and the sync pill,
 keeping the text and the status bar. Escape SHALL leave focus mode when no
 dialog is open.
 

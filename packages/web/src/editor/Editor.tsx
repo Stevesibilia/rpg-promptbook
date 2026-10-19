@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { defaultKeymap, indentWithTab } from '@codemirror/commands';
+import { indentWithTab } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
-import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
 import { templates } from 'promptbook-format';
@@ -9,6 +8,7 @@ import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
 import * as Y from 'yjs';
 import { analysis } from './analysis/field.js';
 import { connectWorker } from './analysis/client.js';
+import { baseKeymap } from './cm/keymap.js';
 import { preview, previewConfigOf } from './cm/preview.js';
 import { problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
 import { editorHighlight } from './cm/theme.js';
@@ -43,13 +43,7 @@ export function Editor({
         doc: text.toString(),
         extensions: [
           latest.current.extensions,
-          keymap.of([
-            { key: 'F8', run: nextDiagnostic, preventDefault: true },
-            { key: 'Shift-F8', run: previousDiagnostic, preventDefault: true },
-            ...yUndoManagerKeymap,
-            ...defaultKeymap,
-            indentWithTab,
-          ]),
+          keymap.of([...yUndoManagerKeymap, ...baseKeymap, indentWithTab]),
           markdown(),
           editorHighlight,
           preview(previewConfigOf(templates.avventura, checked)),

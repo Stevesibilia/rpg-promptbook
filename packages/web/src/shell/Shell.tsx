@@ -9,20 +9,29 @@ import './shell.css';
 export type RailItem = 'projects' | 'document' | 'settings';
 
 // The frame of every signed-in page, as in the mockup: top bar, banner, rail,
-// centre, optional right panel and status bar.
+// optional left panel, centre, optional right panel and status bar. Focus
+// mode (the editor's) hides the rail, the panels and the top bar's controls
+// but for the sync pill and those marked `.keep-in-focus`.
 export function Shell({
   crumbs,
   topExtra,
+  topEnd,
   rail,
+  left,
   right,
+  focus = false,
   status,
   documentLink,
   children,
 }: {
   crumbs: ReactNode;
   topExtra?: ReactNode;
+  // Controls after the sync pill.
+  topEnd?: ReactNode;
   rail: RailItem;
+  left?: ReactNode;
   right?: ReactNode;
+  focus?: boolean;
   status?: ReactNode;
   // The open project's page, when there is one to go back to.
   documentLink?: string;
@@ -31,7 +40,7 @@ export function Shell({
   const sync = useSync();
   const navigate = useNavigate();
   return (
-    <div className={`app${right ? '' : ' no-sel'}`}>
+    <div className={`app${left ? ' with-left' : ''}${right ? '' : ' no-sel'}${focus ? ' focus' : ''}`}>
       <header className="topbar">
         <Link className="logo" to="/" title="Promptbook">
           P
@@ -40,6 +49,7 @@ export function Shell({
         {topExtra}
         <div className="spacer" />
         <SyncPill />
+        {topEnd}
       </header>
 
       <Banner />
@@ -71,6 +81,8 @@ export function Shell({
           <SettingsIcon />
         </button>
       </nav>
+
+      {left && <aside className="left">{left}</aside>}
 
       <main className="center">{children}</main>
 

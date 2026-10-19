@@ -8,10 +8,10 @@
 
 ## 2. Layout, status bar and focus mode
 
-- [ ] 2.1 `Shell`: optional `left` panel and `focus` flag; project page top bar with outline and inspector toggles, focus button, ⌘K hint (decision 11); projects, bin and settings pages unchanged
-- [ ] 2.2 `cm/keymap.ts` shortcut table, document-level handler, Mod-/ replacing `toggleComment`; panel states in `localStorage`
-- [ ] 2.3 Focus mode (decision 11) and the status bar (decision 12)
-- [ ] 2.4 Styles from editor.html (outline, inspector, callout boxes, status bar), dark and light
+- [x] 2.1 `Shell`: optional `left` panel and `focus` flag; project page top bar with outline and inspector toggles, focus button, ⌘K hint (decision 11); projects, bin and settings pages unchanged
+- [x] 2.2 `cm/keymap.ts` shortcut table, document-level handler, Mod-/ replacing `toggleComment`; panel states in `localStorage`
+- [x] 2.3 Focus mode (decision 11) and the status bar (decision 12)
+- [x] 2.4 Styles from editor.html (outline, inspector, callout boxes, status bar), dark and light
 
 ## 3. Outline and moving scenes
 

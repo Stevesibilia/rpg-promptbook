@@ -243,3 +243,269 @@
 .editor .cm-editor .cm-diagnosticAction:hover {
   border-color: var(--primary);
 }
+
+/* Top bar tools */
+.top-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.tb.on {
+  color: var(--primary);
+}
+.kbd {
+  font: 11px var(--mono);
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.top-tools .kbd {
+  margin-left: 6px;
+}
+
+/* Focus mode keeps the text centred. */
+.app.focus .editor {
+  max-width: calc(70ch + 48px);
+}
+
+/* Status bar */
+.status .counts {
+  display: flex;
+  gap: 16px;
+  font-size: inherit;
+  color: inherit;
+  padding: 0;
+}
+.status .counts:hover span {
+  text-decoration: underline;
+}
+
+/* Panels: the outline on the left, the inspector on the right. */
+.panel-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+  font: 600 11px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.panel-h .kbd {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ol {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 12px;
+}
+.ol li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ol li:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.ol li.cur {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--text);
+}
+.ol li.sub {
+  padding-left: 22px;
+}
+.ol li .grip {
+  opacity: 0;
+  color: var(--faint);
+  font-size: 11px;
+  cursor: grab;
+}
+.ol li:hover .grip,
+.ol li:focus-within .grip {
+  opacity: 1;
+}
+.ol li .id {
+  font: 500 11px var(--mono);
+  color: var(--primary);
+  min-width: 20px;
+}
+.ol li .nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ol .grp {
+  padding: 10px 8px 4px;
+  color: var(--faint);
+  font-size: 12px;
+  cursor: default;
+}
+.ol .grp:hover {
+  background: none;
+  color: var(--faint);
+}
+.badge {
+  font: 600 10px var(--font);
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+}
+.badge.err {
+  background: var(--danger);
+  color: #fff;
+}
+.badge.warn {
+  background: var(--amber);
+  color: #1a1205;
+}
+
+.acc {
+  border-bottom: 1px solid var(--border);
+}
+.acc > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font: 600 12px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.acc > summary::-webkit-details-marker {
+  display: none;
+}
+.acc > summary::before {
+  content: '▸';
+  color: var(--faint);
+  transition: transform 0.15s;
+}
+.acc[open] > summary::before {
+  transform: rotate(90deg);
+}
+.acc > summary .cnt {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--faint);
+}
+.acc .body {
+  padding: 0 12px 12px;
+}
+.rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.rules li .ok {
+  color: var(--primary);
+  width: 14px;
+}
+.rules li .no {
+  color: var(--faint);
+  width: 14px;
+}
+.rules li.req.miss .nm {
+  color: var(--danger);
+}
+.rules li.opt .nm {
+  color: var(--muted);
+}
+.rules li .nm {
+  flex: 1;
+}
+.rules li .ins {
+  opacity: 0;
+  font-size: 12px;
+  color: var(--primary);
+}
+.rules li:hover .ins,
+.rules li .ins:focus-visible {
+  opacity: 1;
+}
+.snips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.snip {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.snip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.snip.l {
+  border-left: 3px solid var(--leggi-line);
+}
+.snip.d {
+  border-left: 3px solid var(--doc-line);
+}
+.snip.b {
+  border-left: 3px solid var(--box-line);
+}
+.hint {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 8px;
+}
+.prob {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  width: calc(100% + 16px);
+}
+.prob:hover {
+  background: var(--hover);
+}
+.prob .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex: none;
+  background: var(--amber);
+}
+.prob .dot.err {
+  background: var(--danger);
+}
+.prob .where {
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+.seed {
+  font: italic 15px/1.45 var(--prose);
+  color: var(--muted);
+  border-left: 3px solid var(--amber);
+  padding-left: 10px;
+}

@@ -318,7 +318,7 @@ shortcuts also work when focus is outside the editor (a document-level
 handler), except while a dialog has focus.
 
 **Focus mode** hides the rail, the outline, the inspector, the breadcrumbs
-and the top-bar controls except the sync pill; the status bar stays; the
+and the top-bar controls except the focus button and the sync pill; the status bar stays; the
 text stays centred. It is not remembered across reloads.
 
 The top bar of the project page: breadcrumbs, category, status, the outline
