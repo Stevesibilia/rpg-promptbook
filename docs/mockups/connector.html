@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook: Claude connector mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Same tokens as editor.html (gdrarchive's Emerald look). */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  --doc: rgba(245,166,35,.09); --doc-line: #f5a623;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1;
+  --leggi: rgba(15,143,105,.08); --doc: rgba(185,116,10,.08);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+a { color: var(--primary); text-decoration: none; cursor: pointer; } a:hover { text-decoration: underline; }
+code { font: 12.5px var(--mono); }
+.app { display: grid; height: 100vh; grid-template-rows: 44px auto 1fr 26px;
+  grid-template-columns: 48px var(--left, 248px) 1fr var(--right, 330px); }
+.app.wide { --left: 0px; --right: 0px; }
+.app.wide .left, .app.wide .right { display: none; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; }
+.crumbs b { color: var(--text); font-weight: 600; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.on { color: var(--primary); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.danger { color: var(--danger); }
+.tb.sm { padding: 3px 8px; font-size: 12.5px; }
+.tb:disabled { opacity: .5; cursor: default; }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); color: var(--text); flex: none; }
+.avatar.cl { background: color-mix(in srgb, var(--info) 28%, var(--surface-2)); }
+
+/* Claude edit banner (same strip as the alert banner in projects.html) */
+.banner { grid-column: 1 / -1; grid-row: 2; display: none; align-items: center; gap: 10px; padding: 7px 14px;
+  background: color-mix(in srgb, var(--info) 12%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--info) 55%, transparent); }
+.banner.on { display: flex; }
+.banner b { color: var(--info); font-weight: 600; }
+.banner .sep { color: var(--faint); }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 3 / 5; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9;
+  background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+
+/* Left: outline */
+.left { grid-column: 2; grid-row: 3; background: var(--surface); border-right: 1px solid var(--border); overflow: auto; min-width: 0; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 6px;
+  font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.ol { list-style: none; margin: 0; padding: 0 6px 12px; }
+.ol li { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; color: var(--muted); }
+.ol li.cur { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); }
+.ol li.sub { padding-left: 22px; }
+.ol li .id { font: 500 11px var(--mono); color: var(--primary); min-width: 20px; }
+.ol li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ol li .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--info); }
+.ol .grp { padding: 10px 8px 4px; color: var(--faint); font-size: 12px; }
+
+/* Center: document */
+.center { grid-column: 3; grid-row: 3; overflow: auto; min-width: 0; }
+.view { display: none; } .view.on { display: block; }
+.docw { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; }
+.fm .k { color: var(--info); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.task { display: inline-block; width: 13px; height: 13px; border: 1.5px solid var(--faint); border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.callout.doc { background: var(--doc); border-color: var(--doc-line); } .callout.doc .ct { color: var(--doc-line); }
+.ref { color: var(--info); text-decoration: underline dotted; text-underline-offset: 3px; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+.claude-mark { box-shadow: -14px 0 0 -11px var(--info); }
+
+/* Right: inspector */
+.right { grid-column: 4; grid-row: 3; background: var(--surface); border-left: 1px solid var(--border); overflow: auto; min-width: 0; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.acc .body { padding: 0 12px 12px; }
+.rules { list-style: none; margin: 0; padding: 0; }
+.rules li { display: flex; gap: 8px; padding: 3px 0; } .rules .ok { color: var(--primary); width: 14px; } .rules .no { color: var(--faint); width: 14px; }
+.hint { font-size: 12px; color: var(--faint); margin-top: 8px; }
+.note { padding: 7px 0; border-top: 1px solid var(--border); }
+.note:first-child { border-top: 0; }
+.note b { font-weight: 600; } .note .meta { font-size: 12px; color: var(--faint); }
+.note .acts { font-size: 12px; margin-top: 2px; display: flex; gap: 10px; }
+.seed { font: italic 15px/1.45 var(--prose); color: var(--muted); border-left: 3px solid var(--amber); padding-left: 10px; margin: 0; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); }
+.status .r { margin-left: auto; }
+
+/* Panes (Inspiration, Research, Log, History, Settings) */
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 80px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.card > .panel-h { padding: 0 0 8px; }
+.info { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 8px 12px; margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--info) 45%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--info) 8%, transparent); }
+.info .ic { color: var(--info); width: 16px; height: 16px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { padding: 4px 10px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.who-cl { color: var(--info); } .who-you { color: var(--primary); }
+.ro { background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px 12px; margin-top: 10px; }
+.ro .panel-h { padding: 0 0 6px; }
+
+/* Inspiration */
+.seedbox { font: 16px/1.55 var(--prose); }
+.seedbox p { margin: 0 0 8px; }
+.seedbox textarea { width: 100%; height: 130px; font: 13px/1.5 var(--mono); }
+.vers { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--border); font-size: 13px; }
+.vers li { display: flex; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.vers li .d { flex: 1; } .vers .tag { font-size: 11px; color: var(--amber); border: 1px solid var(--amber); border-radius: 999px; padding: 0 7px; }
+.vers .tag.cur { color: var(--primary); border-color: var(--primary); }
+.item { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); align-items: start; }
+.item:first-of-type { border-top: 0; }
+.kind { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid; justify-self: start; margin-top: 2px; }
+.kind.link { color: var(--info); } .kind.quote { color: var(--amber); } .kind.image { color: var(--primary); } .kind.note { color: var(--muted); }
+.item .tx { font: 15px/1.45 var(--prose); } .item .tx.q { font-style: italic; }
+.item .dom { font: 12px var(--mono); color: var(--faint); }
+.item .why { font-size: 13px; color: var(--muted); margin-top: 3px; } .item .why b { color: var(--text); font-weight: 600; }
+.item .by { font-size: 12px; color: var(--faint); text-align: right; white-space: nowrap; }
+.addform { display: grid; grid-template-columns: 130px 1fr; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.addform .full-w { grid-column: 1 / -1; }
+
+/* Research */
+.rgrid { display: grid; grid-template-columns: 310px 1fr; gap: 16px; align-items: start; }
+.topics { display: flex; flex-wrap: wrap; gap: 6px; }
+.topic { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); display: inline-flex; gap: 6px; align-items: center; }
+.topic i { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+.topic.done i { background: var(--primary); } .topic .s { color: var(--faint); font-size: 11px; }
+.ask { font: 12.5px/1.45 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; margin-top: 10px; }
+.nl { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.nli { padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.nli:last-child { border-bottom: 0; } .nli:hover { background: var(--hover); }
+.nli.cur { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 3px 0 0 var(--primary); }
+.nli b { font-weight: 600; display: block; } .nli span { font-size: 12px; color: var(--faint); }
+.nd h2 { font: 700 24px var(--display); letter-spacing: .02em; margin: 0; }
+.nd h4 { margin: 16px 0 6px; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.nd .sum { font: 16px/1.55 var(--prose); margin: 0; }
+.nd ul.facts { margin: 0; padding-left: 20px; font: 15px/1.5 var(--prose); } .nd ul.facts li { margin: 3px 0; }
+.src { list-style: none; margin: 0; padding: 0; }
+.src li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.src li .dom { font: 12px var(--mono); } .src li .acc-d { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+[contenteditable="true"] { outline: 1px dashed var(--primary); outline-offset: 3px; border-radius: 3px; }
+
+/* Brainstorm log */
+.entry .eh { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.entry .eh .dt { font: 500 12px var(--mono); color: var(--faint); }
+.entry .eh h3 { margin: 0; font: 700 19px var(--display); letter-spacing: .02em; }
+.parts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.part h6 { margin: 0 0 3px; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; }
+.part ul { margin: 0; padding-left: 18px; font: 14.5px/1.45 var(--prose); } .part li { margin: 2px 0; }
+.part .why { font: 13px var(--font); color: var(--faint); display: block; }
+.part.i h6 { color: var(--muted); } .part.d h6 { color: var(--primary); } .part.r h6 { color: var(--amber); } .part.o h6 { color: var(--info); }
+.entry .eacts { display: flex; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* History */
+.snap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.sr { display: grid; grid-template-columns: 130px minmax(0,1fr) 90px 170px; gap: 12px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.sr:last-child { border-bottom: 0; }
+.sr.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding-top: 7px; padding-bottom: 7px; }
+.sr .when { font: 12.5px var(--mono); color: var(--muted); }
+.sr .k b { font-weight: 600; } .sr .k .meta { font-size: 12px; color: var(--faint); }
+.sr .w { font: 12px var(--mono); color: var(--faint); text-align: right; }
+.sr .a { display: flex; gap: 6px; justify-content: flex-end; }
+.sr.now { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+.who-chip { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px solid; margin-right: 6px; vertical-align: 1px; }
+.who-chip.cl { color: var(--info); } .who-chip.you { color: var(--primary); } .who-chip.rs { color: var(--amber); }
+.diff { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); font: 12.5px/1.65 var(--mono); }
+.dl { display: grid; grid-template-columns: 38px 38px 18px 1fr; }
+.dl .n { color: var(--faint); text-align: right; padding-right: 8px; user-select: none; }
+.dl .t { white-space: pre-wrap; padding-right: 12px; }
+.dl.add { background: color-mix(in srgb, var(--primary) 15%, transparent); } .dl.add .g { color: var(--primary); }
+.dl.del { background: color-mix(in srgb, var(--danger) 14%, transparent); } .dl.del .g { color: var(--danger); }
+.dl.hunk { background: var(--surface-2); color: var(--info); }
+
+/* Settings (as projects.html and sso.html) */
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set section { display: none; } .set section.on { display: block; }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.apps { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); margin-bottom: 14px; }
+.ar { display: grid; grid-template-columns: minmax(0,1fr) 120px 110px 120px 90px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.ar:last-child { border-bottom: 0; }
+.ar.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding-top: 7px; padding-bottom: 7px; }
+.ar .nm { display: flex; gap: 10px; align-items: center; } .ar .nm b { display: block; font-weight: 600; }
+.ar .d { font-size: 12.5px; color: var(--muted); }
+.urlrow { display: flex; gap: 8px; } .urlrow input { flex: 1; font: 13px var(--mono); }
+.steps { margin: 12px 0 0; padding-left: 20px; } .steps li { margin: 6px 0; } .steps b { font-weight: 600; }
+
+/* Modals and toast */
+.scrim { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(5,10,8,.62); align-items: flex-start; justify-content: center; padding-top: 12vh; }
+.scrim.on { display: flex; }
+.modal { width: min(460px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 16px 18px; } .modal .mb p { margin: 0 0 8px; } .modal .mb p.m { color: var(--muted); margin: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--border); }
+.tb.red { background: var(--danger); color: #fff; font-weight: 600; }
+.toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 45; background: var(--text); color: var(--bg);
+  padding: 8px 14px; border-radius: var(--radius); font-size: 13px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.toast.on { display: block; }
+
+/* Full-screen page: authorize (as the sign-in page of sso.html) */
+.full { display: none; position: fixed; inset: 0; z-index: 35; background: var(--bg); place-items: center; padding: 16px; overflow: auto; }
+.full.on { display: grid; }
+.auth { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 22px; }
+.auth .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.auth .brand .logo { width: 40px; height: 40px; border-radius: 9px; background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); font-size: 22px; }
+.auth .brand b { font: 700 24px var(--display); letter-spacing: .02em; display: block; line-height: 1; }
+.auth .brand span { font-size: 12px; color: var(--faint); }
+.auth h3 { font: 700 22px var(--display); letter-spacing: .02em; margin: 0 0 12px; }
+.auth .box { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); margin-bottom: 8px; }
+.auth .box b { display: block; font-weight: 600; } .auth .box small, .choice small, .ar .nm small { display: block; font-size: 12px; color: var(--faint); }
+.auth .box .end { margin-left: auto; font-size: 12px; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+.choice input { accent-color: var(--primary); margin-top: 3px; padding: 0; }
+.choice b { display: block; font-weight: 600; } .choice small { font-size: 12.5px; color: var(--muted); }
+.auth .btns { display: flex; gap: 8px; margin-top: 14px; } .auth .btns .tb { flex: 1; justify-content: center; padding: 8px 10px; }
+.auth .foot { margin-top: 16px; font-size: 12px; color: var(--faint); text-align: center; }
+.auth .done { display: none; text-align: center; } .auth.ok .done.yes, .auth.no .done.no { display: block; }
+.auth.ok .ask-part, .auth.no .ask-part { display: none; }
+.done .big { font: 700 22px var(--display); margin: 6px 0; }
+.mock-back { position: fixed; top: 10px; left: 10px; z-index: 36; font-size: 12.5px; }
+
+/* Notes for the reviewer (as projects.html) */
+.legend { position: fixed; left: 54px; bottom: 34px; z-index: 50; width: 280px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px rgba(0,0,0,.4); max-height: calc(100vh - 80px); overflow: auto; }
+.legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
+.legend ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); } .legend li { margin: 3px 0; }
+.legend .lrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.legend .lrow button { font-size: 11.5px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.legend .lab { font: 600 10.5px var(--font); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.legend.min ul, .legend.min .lrow, .legend.min .lab { display: none; }
+
+@media (max-width: 1150px) {
+  .app { --left: 0px; } .app .left { display: none; }
+  .rgrid, .parts { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="logo" title="Promptbook">P</div>
+    <div class="crumbs" id="crumbs"><span>Kulthos</span><span>›</span><b>L'Ancora di Sabaoth</b></div>
+    <span class="chip" id="catChip">One-shot</span>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb" data-go="history" title="History and snapshots"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+    <button class="tb" id="theme" title="Light or dark (mockup)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16a8 8 0 0 0 0-16z" fill="currentColor"/></svg></button>
+    <button class="tb primary"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <span class="kbd" title="Command palette">⌘K</span>
+    <span class="avatar" title="Signed in as Stefano">S</span>
+  </header>
+
+  <div class="banner on" id="banner">
+    <span class="avatar cl" style="width:22px;height:22px;font-size:11px">C</span>
+    <span><b>Claude</b> edited <b style="color:var(--text)">S3 · Il cordone di Donato</b> at 21:14</span>
+    <span class="sep">·</span><a data-compare="s1">Compare</a>
+    <span class="sep">·</span><a id="bUndo">Undo</a>
+    <span class="spacer"></span>
+    <span style="font-size:12px;color:var(--faint)">Undo restores the snapshot taken before the edit</span>
+    <button class="tb sm" id="bClose" title="Dismiss">✕</button>
+  </div>
+
+  <nav class="rail">
+    <button class="on" data-view="document" data-tip="Document"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+    <button data-view="inspiration" data-tip="Inspiration"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+    <button data-view="research" data-tip="Research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+    <button data-view="log" data-tip="Brainstorm log"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+    <button data-view="history" data-tip="History"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+    <button class="bottom" data-tip="Projects"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+    <button class="last" data-view="settings" data-tip="Settings and templates"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+
+  <aside class="left">
+    <div class="panel-h">Outline <span class="kbd">⌘1</span></div>
+    <ul class="ol">
+      <li><span class="nm">Front matter</span></li>
+      <li><span class="nm">A colpo d'occhio</span></li>
+      <li><span class="nm">Orologio</span></li>
+      <li><span class="nm">Inizio forte</span></li>
+      <li class="grp">Scene</li>
+      <li class="sub cur"><span class="id">S1</span><span class="nm">La casa che cede</span></li>
+      <li class="sub"><span class="id">S2</span><span class="nm">L'ambulatorio di Salvi</span></li>
+      <li class="sub" title="Edited by Claude at 21:14"><span class="id">S3</span><span class="nm">Il cordone di Donato</span><span class="dot"></span></li>
+      <li class="sub"><span class="id">S4</span><span class="nm">Torre Faro e la canzone</span></li>
+      <li class="sub"><span class="id">S5</span><span class="nm">Capo Peloro, la terza scossa</span></li>
+      <li class="grp">Riferimenti</li>
+      <li><span class="nm">Indizi</span></li>
+      <li><span class="nm">PNG</span></li>
+      <li><span class="nm">Schede</span></li>
+    </ul>
+  </aside>
+
+  <main class="center">
+    <!-- 1 DOCUMENT (reduced copy of editor.html) -->
+    <section class="view on" id="v-document"><div class="docw"><div class="ed">
+      <div class="l fm"><span class="k">titolo:</span> L'Ancora di Sabaoth · <span class="k">sistema:</span> Kulthos · <span class="k">formato:</span> one-shot</div>
+      <div class="skip">… A colpo d'occhio, Orologio, Inizio forte, Mappa delle scene …</div>
+      <div class="l h2">Scene</div>
+      <div class="l h3"><span class="sid">S1.</span> La casa che cede</div>
+      <div class="l"><span class="fl">Luogo e momento:</span> casa-biblioteca di Neri, vicino al porto, 5:20 circa.</div>
+      <div class="l"><span class="fl">In gioco:</span> chi esce vivo, Neri, la lettera.</div>
+      <div class="l"><span class="fl">Da non perdere qui</span></div>
+      <div class="l li"><span class="task"></span>Neri pronuncia le sue due frasi prima di morire.</div>
+      <div class="l li"><span class="task"></span>La lettera di Neri è nella sua tasca: si trova senza cercare fra i libri.</div>
+      <div class="callout leggi"><div class="ct">Da leggere</div>
+        <div class="tx">Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano con gli occhiali spezzati ancora stretti fra le dita. Una voce rauca chiama i vostri nomi.</div></div>
+      <div class="l"><span class="fl">Cosa succede da sé</span></div>
+      <div class="l li">• La casa crolla per gradi; dal porto sale un rumore d'acqua che non dovrebbe esserci.</div>
+      <div class="l li">• Neri è schiacciato sotto la trave, lucido ma morente; ha tempo per poche frasi.</div>
+      <div class="l"><span class="fl">Indizi qui</span></div>
+      <div class="l li">• <b>I1.</b> Le ultime frasi di Neri: «Salvi… ha preso l'Ancora». <span class="ref">(R1)</span></div>
+      <div class="l"><span class="fl">Se deragliano:</span> l'onda non aspetta; chi resta nella casa la incontra dentro.</div>
+      <div class="skip">… S2 …</div>
+      <div class="l h3 claude-mark"><span class="sid">S3.</span> Il cordone di Donato</div>
+      <div class="callout leggi claude-mark"><div class="ct">Da leggere</div>
+        <div class="tx">I soldati hanno teso una corda fra due lampioni piegati. Dietro, il tenente Donato fuma senza guardarvi: «Nessuno passa. Ordini del Re.»</div></div>
+      <div class="skip">… S3 continues, S4, S5 …</div>
+    </div></div></section>
+
+    <!-- 2 INSPIRATION -->
+    <section class="view" id="v-inspiration"><div class="pane" style="max-width:900px">
+      <div class="head"><h1>Inspiration</h1><p class="lead">The spark this project started from. Prep only: never printed.</p></div>
+      <div class="card">
+        <div class="panel-h">Seed <span class="row">
+          <button class="tb sm line" id="seedEdit">Edit</button>
+          <button class="tb sm line" id="seedVers">Versions (3) ▾</button></span></div>
+        <div class="seedbox" id="seedView">
+          <p>Il <b>terremoto di Messina del 1908</b> come squarcio nel Velo: un medico eretico, il dottor Salvi, crede di liberare un dio e invece apre la porta a un carceriere, <i>Sabaoth</i>.</p>
+          <p>Colapesce regge la Sicilia su una colonna incrinata. La terza scossa la spezza, se nessuno la ferma.</p>
+        </div>
+        <div class="seedbox" id="seedEditor" hidden>
+          <textarea>Il **terremoto di Messina del 1908** come squarcio nel Velo: un medico eretico, il dottor Salvi, crede di liberare un dio e invece apre la porta a un carceriere, *Sabaoth*.
+
+Colapesce regge la Sicilia su una colonna incrinata. La terza scossa la spezza, se nessuno la ferma.</textarea>
+          <div class="row" style="margin-top:8px"><button class="tb primary sm" data-seed-done>Save as a new version</button><button class="tb sm line" data-seed-done>Cancel</button><span class="hint" style="margin:0">Markdown. The old text stays in Versions.</span></div>
+        </div>
+        <ul class="vers" id="versList" hidden>
+          <li><span class="d">14 Oct 2026, 22:10</span><span class="tag cur">current</span><a data-ver="2">View</a></li>
+          <li><span class="d">9 Oct 2026, 18:32</span><a data-ver="1">View</a></li>
+          <li><span class="d">3 Oct 2026, 23:05</span><span class="tag">first idea</span><a data-ver="0">View</a></li>
+        </ul>
+        <div class="ro" id="verView" hidden><div class="panel-h"><span id="verTitle">Version</span><button class="tb sm" id="verClose">Close</button></div><div class="seedbox" id="verText"></div></div>
+        <div class="hint"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px;vertical-align:-2px;color:var(--info)"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg> Claude can read the seed but never rewrites it.</div>
+      </div>
+
+      <div class="card">
+        <div class="panel-h">Sources of inspiration <span class="cnt" id="itemCnt">4 items</span></div>
+        <div id="items">
+          <div class="item"><span class="kind quote">Quote</span><div><div class="tx q">«Sotto la Sicilia ci sono tre colonne: una è sana, una è scheggiata, e la terza sta per spezzarsi.»</div><div class="why"><b>Why it matters:</b> la colonna incrinata è il cuore del mito e la terza scossa di S5.</div></div><div class="by">You · 3 Oct 2026</div></div>
+          <div class="item"><span class="kind link">Link</span><div><div class="tx"><a>Terremoto di Messina del 1908</a> <span class="dom">it.wikipedia.org</span></div><div class="why"><b>Why it matters:</b> l'ora (5:20), il maremoto pochi minuti dopo, i soldati fra le macerie.</div></div><div class="by"><span class="who-cl">Claude</span> · 12 Oct 2026</div></div>
+          <div class="item"><span class="kind image">Image link</span><div><div class="tx"><a>Via Garibaldi dopo il sisma, fotografia d'epoca</a> <span class="dom">commons.wikimedia.org</span></div><div class="why"><b>Why it matters:</b> le facciate senza case dietro; il colore del cordone di S3.</div></div><div class="by">You · 13 Oct 2026</div></div>
+          <div class="item"><span class="kind note">Note</span><div><div class="tx">Sabaoth è il carceriere che si fa passare per liberatore.</div><div class="why"><b>Why it matters:</b> il rovesciamento finale: Salvi crede di aprire una porta e chiude una cella.</div></div><div class="by"><span class="who-cl">Claude</span> · 12 Oct 2026</div></div>
+        </div>
+        <div class="addform">
+          <select id="addKind"><option>Link</option><option>Quote</option><option>Image link</option><option>Note</option></select>
+          <input id="addText" placeholder="Text, or a URL for a link">
+          <input id="addWhy" class="full-w" placeholder="Why it matters">
+          <div class="full-w row"><button class="tb primary sm" id="addItem"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add item</button><span class="hint" style="margin:0">Claude adds items the same way during a chat.</span></div>
+        </div>
+      </div>
+    </div></section>
+
+    <!-- 3 RESEARCH -->
+    <section class="view" id="v-research"><div class="pane">
+      <div class="head"><h1>Research</h1><p class="lead">One note per topic, with sources. Prep only: never printed.</p><span class="spacer"></span>
+        <button class="tb primary" id="newNote"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New note</button></div>
+      <div class="rgrid">
+        <div>
+          <div class="card">
+            <div class="panel-h">Topics to research</div>
+            <div class="topics" id="topics"></div>
+            <div class="row" style="margin-top:10px"><input id="topicIn" placeholder="Add a topic" style="flex:1;padding:4px 8px"><button class="tb sm line" id="topicAdd">Add</button></div>
+            <div class="ask">Ask Claude: "research the open topics of L'Ancora di Sabaoth"</div>
+            <div class="hint">Click a topic to switch its state.</div>
+          </div>
+          <div class="nl" id="noteList"></div>
+        </div>
+        <div class="card nd" id="noteDetail"></div>
+      </div>
+    </div></section>
+
+    <!-- 4 BRAINSTORM LOG -->
+    <section class="view" id="v-log"><div class="pane" style="max-width:900px">
+      <div class="head"><h1>Brainstorm log</h1><p class="lead">Dated entries, newest first. Claude writes one at the end of a chat; you can too.</p><span class="spacer"></span>
+        <button class="tb line"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New entry</button></div>
+      <div class="info"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>A new chat with Claude reads this log first.</div>
+      <div id="entries">
+        <div class="card entry">
+          <div class="eh"><span class="dt">19 Oct 2026 · 21:16</span><h3>Il cordone di Donato</h3><span class="who-chip cl">via Claude</span></div>
+          <div class="parts" data-body>
+            <div class="part i"><h6>Ideas</h6><ul><li>Donato lascia passare chi ha visto Salvi con i propri occhi.</li><li>Un lampione piegato fa da sbarra: il cordone è una corda, non un muro.</li></ul></div>
+            <div class="part d"><h6>Decisions</h6><ul><li>S3 ha il suo testo da leggere (scritto nel documento alle 21:14).</li></ul></div>
+            <div class="part r"><h6>Rejected</h6><ul><li>Donato adepto segreto di Sabaoth.<span class="why">Why: troppi traditori per una one-shot di 4 ore.</span></li></ul></div>
+            <div class="part o"><h6>Open questions</h6><ul><li>Cosa chiede Donato in cambio del passaggio?</li><li>Donato sopravvive alla terza scossa?</li></ul></div>
+          </div>
+          <div class="eacts"><button class="tb sm line" data-edit>Edit</button><button class="tb sm danger" data-del="entry">Delete</button><span class="spacer"></span><button class="tb sm line" data-todo="2">Add open questions to the to-do list</button></div>
+        </div>
+        <div class="card entry">
+          <div class="eh"><span class="dt">15 Oct 2026 · 23:40</span><h3>Il finale a Capo Peloro</h3><span class="who-chip you">by you</span></div>
+          <div class="parts" data-body>
+            <div class="part i"><h6>Ideas</h6><ul><li>La canzone di Colapesce sentita a Torre Faro torna nel finale come chiave.</li></ul></div>
+            <div class="part d"><h6>Decisions</h6><ul><li>Salvi perde la fede alla terza scossa, non prima.</li></ul></div>
+            <div class="part r"><h6>Rejected</h6><ul><li>Un quarto PG.<span class="why">Why: allunga la sessione oltre le 4 ore.</span></li></ul></div>
+            <div class="part o"><h6>Open questions</h6><ul><li>Come si distrugge l'Ancora, e a che prezzo?</li></ul></div>
+          </div>
+          <div class="eacts"><button class="tb sm line" data-edit>Edit</button><button class="tb sm danger" data-del="entry">Delete</button><span class="spacer"></span><button class="tb sm line" data-todo="1">Add open questions to the to-do list</button></div>
+        </div>
+        <div class="card entry">
+          <div class="eh"><span class="dt">12 Oct 2026 · 22:05</span><h3>Dal seme alle scene</h3><span class="who-chip cl">via Claude</span></div>
+          <div class="parts" data-body>
+            <div class="part i"><h6>Ideas</h6><ul><li>Cinque scene, dalla casa che cede fino a Capo Peloro.</li><li>La lettera di Neri come primo documento.</li></ul></div>
+            <div class="part d"><h6>Decisions</h6><ul><li>One-shot di 4 ore per Kulthos, tre PG.</li></ul></div>
+            <div class="part r"><h6>Rejected</h6><ul><li>Aprire a Reggio Calabria.<span class="why">Why: il mito di Colapesce sta tutto a Messina.</span></li></ul></div>
+            <div class="part o"><h6>Open questions</h6><ul><li>Che cosa è davvero l'Ancora?</li></ul></div>
+          </div>
+          <div class="eacts"><button class="tb sm line" data-edit>Edit</button><button class="tb sm danger" data-del="entry">Delete</button><span class="spacer"></span><button class="tb sm line" disabled>Added to the to-do list ✓</button></div>
+        </div>
+      </div>
+    </div></section>
+
+    <!-- 5 HISTORY -->
+    <section class="view" id="v-history"><div class="pane">
+      <div id="histList">
+        <div class="head"><h1>History</h1><p class="lead">Snapshots of the prep document. Restoring never loses the current text.</p></div>
+        <div class="card row"><b style="margin-right:4px">Save snapshot</b><input id="snapName" placeholder="Name, e.g. before the read-through" style="flex:1;min-width:200px"><button class="tb primary" id="snapSave">Save snapshot</button></div>
+        <div class="snap" id="snaps"></div>
+        <p class="hint">Claude's snapshots are kept 30 days; yours until you delete them.</p>
+      </div>
+      <div id="histDiff" hidden>
+        <div class="head"><button class="tb line" id="diffBack">← History</button><h1>Compare</h1><p class="lead" id="diffLead"></p></div>
+        <div class="card row" style="justify-content:space-between">
+          <span><span class="who-chip cl">Claude</span><span id="diffWhat"></span></span>
+          <span class="row"><span style="font-size:12px;color:var(--faint)"><span style="color:var(--primary)">+4</span> · <span style="color:var(--danger)">−1</span> lines · unified</span><button class="tb primary" id="diffRestore">Restore this version</button></span>
+        </div>
+        <div class="diff" id="diff"></div>
+      </div>
+    </div></section>
+
+    <!-- 8 SETTINGS -->
+    <section class="view" id="v-settings"><div class="pane">
+      <div class="head"><h1>Settings</h1></div>
+      <div class="set">
+        <nav id="setNav">
+          <button data-s="other">To-do templates</button>
+          <button data-s="other">Document templates</button>
+          <button data-s="other">Author and licence</button>
+          <button data-s="other">Account</button>
+          <button class="on" data-s="apps">Connected apps</button>
+          <button data-s="other">Sync and storage</button>
+          <button data-s="other">Appearance</button>
+        </nav>
+        <div>
+          <section class="on" data-s="apps">
+            <h2>Connected apps</h2>
+            <p class="lead">Apps you allowed to use your Promptbook. Each one acts as you, within the access you gave it.</p>
+            <div class="apps" id="apps">
+              <div class="ar th"><span>App</span><span>Access</span><span>Approved</span><span>Last used</span><span></span></div>
+              <div class="ar" id="appClaude"><span class="nm"><span class="avatar cl">C</span><span><b>Claude</b><small>claude.ai · custom connector</small></span></span>
+                <span class="d">Read and edit</span><span class="d">18 Oct 2026</span><span class="d">Today, 21:14</span>
+                <button class="tb sm danger" id="revoke">Revoke</button></div>
+            </div>
+            <div class="card">
+              <b>How to connect Claude</b>
+              <p style="color:var(--muted);margin:4px 0 10px">Works in Claude on the web and in Claude Desktop.</p>
+              <div class="urlrow"><input value="https://promptbook.siberio.eu/api/mcp" readonly><button class="tb line" id="copyUrl">Copy</button></div>
+              <ol class="steps">
+                <li>In claude.ai open <b>Settings → Connectors → Add custom connector</b>.</li>
+                <li>Paste the URL above.</li>
+                <li>Sign in with Authentik and <b>Allow</b> on the Promptbook page that opens. <a data-full="auth">See that page</a></li>
+              </ol>
+            </div>
+          </section>
+          <section data-s="other"><div class="card" style="color:var(--muted)">Unchanged from projects.html and sso.html.</div></section>
+        </div>
+      </div>
+    </div></section>
+  </main>
+
+  <aside class="right">
+    <details class="acc">
+      <summary>This scene · S1 <span class="cnt">template rules</span></summary>
+      <div class="body"><ul class="rules">
+        <li><span class="ok">✓</span>Luogo e momento</li><li><span class="ok">✓</span>In gioco</li><li><span class="ok">✓</span>Da non perdere qui</li>
+        <li><span class="ok">✓</span>Da leggere</li><li><span class="no">○</span>Prove e regole</li><li><span class="ok">✓</span>Se deragliano</li></ul></div>
+    </details>
+    <details class="acc" open>
+      <summary>Research <span class="cnt">2 for S1</span></summary>
+      <div class="body">
+        <div class="note"><b>Il terremoto del 1908: cronologia</b><div class="meta">Matches «5:20» · by Claude · 12 Oct</div><div class="acts"><a data-note="n1">Open</a></div></div>
+        <div class="note"><b>Il maremoto nel porto di Messina</b><div class="meta">Matches «porto», «onda» · by Claude · 12 Oct</div><div class="acts"><a data-note="n2">Open</a></div></div>
+        <div class="hint">Notes whose topic shares words with this scene. <a data-go="research">All 5 notes</a></div>
+      </div>
+    </details>
+    <details class="acc">
+      <summary>Seed</summary>
+      <div class="body"><p class="seed">Il terremoto di Messina del 1908 come squarcio nel Velo: un medico eretico crede di liberare un dio…</p></div>
+    </details>
+  </aside>
+
+  <footer class="status">
+    <span id="sbWhere">S1 · La casa che cede</span><span>3 412 words</span>
+    <span>Last snapshot 21:14, before Claude's edit</span>
+    <span class="r" id="sbClaude">Claude connected · read and edit</span><span>Synced 21:14 · promptbook.siberio.eu</span>
+  </footer>
+</div>
+
+<!-- 7 AUTHORIZE (full page, like the sign-in of sso.html) -->
+<div class="full" id="f-auth">
+  <button class="tb line mock-back" data-full-close>← Back to the app (mockup)</button>
+  <div class="auth" id="auth">
+    <div class="brand"><div class="logo">P</div><div><b>Promptbook</b><span>RPG Promptbook</span></div></div>
+    <div class="ask-part">
+      <h3>Claude wants to use your Promptbook</h3>
+      <div class="box"><span class="avatar cl">C</span><span><b>Claude</b><small>Request from claude.ai</small></span></div>
+      <div class="box"><span class="avatar">S</span><span><b>Stefano · steve</b><small>Signed in through Authentik</small></span><a class="end">Not you?</a></div>
+      <div style="font:600 12px var(--font);color:var(--muted);letter-spacing:.04em;margin:14px 0 6px">Claude may</div>
+      <label class="choice"><input type="radio" name="scope"><span><b>Read your projects</b><small>Documents, seed, research, brainstorm log and to-do lists. No changes.</small></span></label>
+      <label class="choice"><input type="radio" name="scope" checked><span><b>Read and edit your projects</b><small>Claude's edits are checked against the template and saved as snapshots first.</small></span></label>
+      <div class="btns"><button class="tb line" id="deny">Deny</button><button class="tb primary" id="allow">Allow</button></div>
+      <div class="foot">promptbook.siberio.eu · revoke any time in Settings → Connected apps.</div>
+    </div>
+    <div class="done yes"><div class="big" style="color:var(--primary)">Claude is connected</div><p style="color:var(--muted)">Go back to claude.ai: the Promptbook connector is ready.</p><button class="tb line" data-go-apps>Settings → Connected apps (mockup)</button></div>
+    <div class="done no"><div class="big" style="color:var(--danger)">Access denied</div><p style="color:var(--muted)">Claude was told no. Nothing was shared.</p><button class="tb line" id="authReset">Show the request again (mockup)</button></div>
+  </div>
+</div>
+
+<!-- Confirm dialog, shared -->
+<div class="scrim" id="confirm"><div class="modal">
+  <div class="mh"><h3 id="cTitle">Restore?</h3><button class="tb" data-cancel>✕</button></div>
+  <div class="mb"><p id="cText"></p><p class="m" id="cNote"></p></div>
+  <div class="mf"><button class="tb line" data-cancel>Cancel</button><button class="tb primary" id="cOk">OK</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<div class="legend" id="legend">
+  <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
+  <div class="lab">Jump to</div>
+  <div class="lrow">
+    <button data-go="document">Document</button><button data-go="inspiration">Inspiration</button><button data-go="research">Research</button>
+    <button data-go="log">Log</button><button data-go="history">History</button><button data-compare="s1">Compare</button>
+    <button data-full="auth">Authorize</button><button data-go="settings">Connected apps</button><button id="bShow">Banner</button>
+  </div>
+  <ul>
+    <li><b>Document</b>: a reduced editor. The blue strip says Claude edited S3; Compare opens the diff, Undo restores the snapshot taken before the edit. The inspector's <b>Research</b> section lists the notes that share words with S1.</li>
+    <li><b>Inspiration</b>: the seed in Markdown with Edit and dated Versions (read-only); sources with a kind, why each matters, who added it.</li>
+    <li><b>Research</b>: topics to research (click to switch state), notes list, the open note with facts and sources; Edit, Delete, New note.</li>
+    <li><b>Brainstorm log</b>: newest first; ideas, decisions, rejected with why, open questions, which can go to the to-do list.</li>
+    <li><b>History</b>: snapshots by kind, Save snapshot, Compare (unified diff) and Restore with a confirm.</li>
+    <li><b>Authorize</b>: the page Promptbook shows when Claude connects. <b>Connected apps</b>: approved apps, Revoke, how to connect.</li>
+    <li>The half-circle in the top bar switches light and dark.</li>
+  </ul>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const app = $('#app');
+let bannerDismissed = false;
+
+/* Views */
+function go(view) {
+  $$('.rail [data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + view));
+  app.classList.toggle('wide', view !== 'document');
+  $('#banner').classList.toggle('on', view === 'document' && !bannerDismissed);
+  $('#catChip').hidden = view === 'settings';
+  $('#crumbs').innerHTML = view === 'settings' ? '<b>Settings</b>' : "<span>Kulthos</span><span>›</span><b>L'Ancora di Sabaoth</b>";
+  $('#sbWhere').textContent = { document: 'S1 · La casa che cede', inspiration: 'Inspiration', research: 'Research', log: 'Brainstorm log', history: 'History', settings: 'Settings' }[view];
+  if (view === 'history') showDiff(false);
+  $$('.full').forEach(f => f.classList.remove('on'));
+}
+$$('.rail [data-view]').forEach(b => b.onclick = () => go(b.dataset.view));
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go);
+  const c = e.target.closest('[data-compare]'); if (c) { go('history'); openDiff(c.dataset.compare); }
+  const n = e.target.closest('[data-note]'); if (n) { go('research'); openNote(n.dataset.note); }
+  const f = e.target.closest('[data-full]'); if (f) $('#f-' + f.dataset.full).classList.add('on');
+  if (e.target.closest('[data-full-close]')) $$('.full').forEach(x => x.classList.remove('on'));
+});
+$('#theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; };
+$('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
+
+/* Toast and confirm */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
+let onOk = null;
+function ask(title, text, note, okLabel, cb, red) {
+  $('#cTitle').textContent = title; $('#cText').textContent = text; $('#cNote').textContent = note || '';
+  $('#cOk').textContent = okLabel; $('#cOk').className = 'tb ' + (red ? 'red' : 'primary');
+  onOk = cb; $('#confirm').classList.add('on');
+}
+$$('#confirm [data-cancel]').forEach(b => b.onclick = () => $('#confirm').classList.remove('on'));
+$('#cOk').onclick = () => { $('#confirm').classList.remove('on'); if (onOk) onOk(); };
+
+/* 6 Banner */
+$('#bClose').onclick = () => { bannerDismissed = true; $('#banner').classList.remove('on'); };
+$('#bShow').onclick = () => { bannerDismissed = false; go('document'); };
+$('#bUndo').onclick = () => ask("Undo Claude's edit?",
+  "S3 · Il cordone di Donato goes back to the snapshot taken at 21:14, before Claude's edit.",
+  'The current text is saved as a snapshot first.', 'Undo the edit', () => restore(snaps.find(s => s.id === 's1')));
+
+/* 2 Inspiration */
+const versions = [
+  ['3 Oct 2026, 23:05 · first idea', '<p>Il terremoto di Messina del 1908 come squarcio nel Velo.</p>'],
+  ['9 Oct 2026, 18:32', '<p>Il terremoto di Messina del 1908 come squarcio nel Velo: un medico eretico crede di liberare un dio e invece apre la porta a un carceriere.</p>'],
+  ['14 Oct 2026, 22:10 · current', $('#seedView').innerHTML]
+];
+$('#seedVers').onclick = () => { $('#versList').hidden = !$('#versList').hidden; };
+$$('[data-ver]').forEach(a => a.onclick = () => {
+  const v = versions[+a.dataset.ver]; $('#verTitle').textContent = 'Version of ' + v[0] + ' · read-only';
+  $('#verText').innerHTML = v[1]; $('#verView').hidden = false;
+});
+$('#verClose').onclick = () => { $('#verView').hidden = true; };
+$('#seedEdit').onclick = () => { $('#seedView').hidden = true; $('#seedEditor').hidden = false; };
+$$('[data-seed-done]').forEach(b => b.onclick = () => {
+  $('#seedView').hidden = false; $('#seedEditor').hidden = true;
+  if (b.classList.contains('primary')) toast('Saved. The previous text is kept in Versions.');
+});
+$('#addItem').onclick = () => {
+  const kind = $('#addKind').value, text = $('#addText').value.trim(), why = $('#addWhy').value.trim();
+  if (!text) { $('#addText').focus(); return; }
+  const cls = { 'Link': 'link', 'Quote': 'quote', 'Image link': 'image', 'Note': 'note' }[kind];
+  const d = document.createElement('div'); d.className = 'item';
+  d.innerHTML = `<span class="kind ${cls}">${kind}</span><div><div class="tx"></div><div class="why"><b>Why it matters:</b> <span></span></div></div><div class="by">You · 19 Oct 2026</div>`;
+  d.querySelector('.tx').textContent = text; d.querySelector('.why span').textContent = why || '…';
+  $('#items').prepend(d); $('#addText').value = ''; $('#addWhy').value = '';
+  $('#itemCnt').textContent = $$('#items .item').length + ' items';
+};
+
+/* 3 Research */
+const topics = [['Il terremoto del 1908', 1], ['Il maremoto', 1], ['Colapesce', 1], ['I soccorsi del 1908', 1], ['Torre Faro', 1],
+  ['Gli ospedali da campo', 0], ['Arconti gnostici: Sabaoth', 0], ['Il dialetto messinese', 0]];
+function drawTopics() {
+  $('#topics').innerHTML = '';
+  topics.forEach((t, i) => {
+    const b = document.createElement('button'); b.className = 'topic' + (t[1] ? ' done' : '');
+    b.innerHTML = `<i></i><span></span><span class="s">${t[1] ? 'noted' : 'to research'}</span>`;
+    b.querySelector('span').textContent = t[0];
+    b.onclick = () => { t[1] = !t[1]; drawTopics(); }; $('#topics').appendChild(b);
+  });
+}
+$('#topicAdd').onclick = () => { const v = $('#topicIn').value.trim(); if (v) { topics.push([v, 0]); $('#topicIn').value = ''; drawTopics(); } };
+let notes = [
+  { id: 'n1', t: 'Il terremoto del 1908: cronologia', by: 'Claude', d: '12 Oct 2026', sc: 'S1, S2',
+    sum: 'La scossa colpisce Messina e Reggio Calabria alle 5:20 del 28 dicembre 1908 e dura circa mezzo minuto. È ancora buio e quasi tutti dormono: in pochi secondi crolla gran parte delle case.',
+    facts: ['Ora: 5:20 del mattino, notte fonda di fine dicembre.', 'Durata: una trentina di secondi; repliche per tutto il giorno.', 'Le linee del telegrafo saltano: per ore fuori dallo Stretto nessuno sa niente.', 'Morti: decine di migliaia fra le due sponde, la gran parte a Messina.'],
+    src: [['Terremoto di Messina del 1908', 'it.wikipedia.org', '12 Oct 2026'], ['Il terremoto del 28 dicembre 1908', 'ingv.it', '12 Oct 2026'], ['Messina, terremoto del 1908', 'treccani.it', '12 Oct 2026']] },
+  { id: 'n2', t: 'Il maremoto nel porto di Messina', by: 'Claude', d: '12 Oct 2026', sc: 'S1, S4',
+    sum: 'Pochi minuti dopo la scossa il mare si ritira e torna in più ondate. Nel porto le barche finiscono sulla banchina; sulla costa calabra le onde superano i dieci metri.',
+    facts: ['Prima onda: pochi minuti dopo la scossa.', 'Il mare si ritira prima di tornare: chi è sulla riva lo vede.', 'Più ondate, le più alte sulla sponda calabra.'],
+    src: [['Il maremoto del 1908 nello Stretto', 'ingv.it', '12 Oct 2026'], ['Terremoto di Messina del 1908: il maremoto', 'it.wikipedia.org', '12 Oct 2026']] },
+  { id: 'n3', t: 'Colapesce', by: 'Claude', d: '12 Oct 2026', sc: 'S4, S5',
+    sum: 'Nicola, detto Cola Pesce, è un ragazzo di Messina che vive più in mare che in terra. Il re lo manda sul fondo dello Stretto; lui scopre che la Sicilia poggia su tre colonne, una delle quali incrinata, e resta laggiù a reggerla.',
+    facts: ['Nella versione più nota il re è Federico II.', 'Le tre colonne stanno sotto Capo Peloro, Capo Passero e Capo Lilibeo.', 'La colonna rovinata è quella sotto Messina.'],
+    src: [['Colapesce', 'it.wikipedia.org', '12 Oct 2026'], ['Italo Calvino, Fiabe italiane: Cola Pesce', 'einaudi.it', '12 Oct 2026']] },
+  { id: 'n4', t: 'I soccorsi: marinai russi e soldati', by: 'Claude', d: '13 Oct 2026', sc: 'S3',
+    sum: "Fra i primi ad arrivare sono i marinai delle navi russe in esercitazione al largo della Sicilia. L'esercito presidia poi le macerie con cordoni contro gli sciacalli.",
+    facts: ['I marinai russi scavano a mani nude fra le macerie.', "Contro gli sciacalli gli ordini sono duri: da qui nasce il cordone di Donato."],
+    src: [['Terremoto di Messina del 1908: i soccorsi', 'it.wikipedia.org', '13 Oct 2026']] },
+  { id: 'n5', t: 'Torre Faro e Capo Peloro', by: 'you', d: '15 Oct 2026', sc: 'S4, S5',
+    sum: 'Il villaggio di pescatori sulla punta nord-est della Sicilia, dove lo Stretto è più stretto. Dalla riva la Calabria sembra a un passo.',
+    facts: ['Fra Capo Peloro e la Calabria ci sono circa tre chilometri di mare.', 'Correnti fortissime: qui stanno Scilla e Cariddi.'],
+    src: [['Capo Peloro', 'it.wikipedia.org', '15 Oct 2026']] }
+];
+let curNote = 'n1';
+function drawNotes() {
+  $('#noteList').innerHTML = '';
+  notes.forEach(n => {
+    const d = document.createElement('div'); d.className = 'nli' + (n.id === curNote ? ' cur' : '');
+    d.innerHTML = `<b></b><span>${n.d} · <span class="${n.by === 'Claude' ? 'who-cl' : 'who-you'}">by ${n.by}</span> · ${n.src.length} source${n.src.length === 1 ? '' : 's'}</span>`;
+    d.querySelector('b').textContent = n.t; d.onclick = () => openNote(n.id); $('#noteList').appendChild(d);
+  });
+}
+function openNote(id) {
+  curNote = id; drawNotes();
+  const n = notes.find(x => x.id === id), el = $('#noteDetail');
+  if (!n) { el.innerHTML = '<p style="color:var(--faint)">No note selected.</p>'; return; }
+  el.innerHTML = `<div class="row" style="justify-content:space-between"><h4 style="margin:0">Topic</h4><span class="row"><button class="tb sm line" id="nEdit">Edit</button><button class="tb sm danger" id="nDel">Delete</button></span></div>
+    <h2 data-f></h2>
+    <div class="hint" style="margin-top:2px">by ${n.by === 'Claude' ? '<span class="who-cl">Claude</span>' : 'you'} · ${n.d} · mentioned in ${n.sc || 'no scene yet'}</div>
+    <h4>Summary</h4><p class="sum" data-f></p>
+    <h4>Facts for the table</h4><ul class="facts" data-f>${n.facts.map(f => '<li></li>').join('')}</ul>
+    <h4>Sources</h4><ul class="src">${n.src.map(() => '<li><span class="t"></span><a class="dom"></a><span class="acc-d"></span></li>').join('')}</ul>`;
+  const f = el.querySelectorAll('[data-f]');
+  f[0].textContent = n.t; f[1].textContent = n.sum;
+  el.querySelectorAll('.facts li').forEach((li, i) => li.textContent = n.facts[i]);
+  el.querySelectorAll('.src li').forEach((li, i) => {
+    li.querySelector('.t').textContent = n.src[i][0]; li.querySelector('.dom').textContent = n.src[i][1];
+    li.querySelector('.acc-d').textContent = 'accessed ' + n.src[i][2];
+  });
+  $('#nEdit').onclick = e => {
+    const on = e.target.textContent === 'Edit';
+    [f[0], f[1], f[2]].forEach(x => x.contentEditable = on); e.target.textContent = on ? 'Done' : 'Edit';
+    if (!on) { n.t = f[0].textContent; n.sum = f[1].textContent; n.facts = [...f[2].children].map(li => li.textContent); drawNotes(); }
+  };
+  $('#nDel').onclick = () => ask('Delete this note?', `«${n.t}» is removed from the project's research.`, 'The prep document is not touched.', 'Delete', () => {
+    notes = notes.filter(x => x !== n); openNote(notes[0] && notes[0].id);
+  }, true);
+}
+$('#newNote').onclick = () => {
+  const id = 'n' + Date.now();
+  notes.unshift({ id, t: 'Nuova nota', by: 'you', d: '19 Oct 2026', sc: '', sum: 'Riassunto…', facts: ['Un fatto da usare al tavolo…'], src: [] });
+  openNote(id); $('#nEdit').click();
+};
+
+/* 4 Brainstorm log */
+$$('[data-edit]').forEach(b => b.onclick = () => {
+  const body = b.closest('.entry').querySelector('[data-body]'); const on = b.textContent === 'Edit';
+  body.contentEditable = on; b.textContent = on ? 'Done' : 'Edit';
+});
+$$('[data-del="entry"]').forEach(b => b.onclick = () => {
+  const e = b.closest('.entry');
+  ask('Delete this entry?', `«${e.querySelector('h3').textContent}» leaves the brainstorm log.`, 'A new chat with Claude will no longer read it.', 'Delete', () => e.remove(), true);
+});
+$$('[data-todo]').forEach(b => b.onclick = () => {
+  toast(b.dataset.todo + (b.dataset.todo === '1' ? ' open question' : ' open questions') + ' added to the to-do list.');
+  b.textContent = 'Added to the to-do list ✓'; b.disabled = true;
+});
+
+/* 5 History */
+const snaps = [
+  { id: 'now', when: 'Now', kind: 'Current text', who: '', words: 3412 },
+  { id: 's1', when: 'Today 21:14', kind: "Before Claude's edit: S3 Il cordone di Donato", who: 'cl', words: 3380, meta: 'kept until 18 Nov' },
+  { id: 's2', when: 'Today 18:02', kind: 'Before restore', who: 'rs', words: 3290, meta: 'made when you restored the snapshot of 17 Oct' },
+  { id: 's3', when: '17 Oct 22:40', kind: 'Saved by you: before playtest', who: 'you', words: 3251, meta: 'kept until you delete it' },
+  { id: 's4', when: '16 Oct 11:15', kind: "Before Claude's edit: S5 Capo Peloro, la terza scossa", who: 'cl', words: 3102, meta: 'kept until 15 Nov' }
+];
+const whoLab = { cl: 'Claude', you: 'You', rs: 'Restore' };
+function drawSnaps() {
+  $('#snaps').innerHTML = '<div class="sr th"><span>When</span><span>Snapshot</span><span style="text-align:right">Words</span><span></span></div>';
+  snaps.forEach(s => {
+    const r = document.createElement('div'); r.className = 'sr' + (s.id === 'now' ? ' now' : '');
+    r.innerHTML = `<span class="when"></span><span class="k">${s.who ? `<span class="who-chip ${s.who}">${whoLab[s.who]}</span>` : ''}<b></b>${s.meta ? `<div class="meta"></div>` : ''}</span>
+      <span class="w">${String(s.words).replace(/\B(?=(\d{3})+$)/g, ' ')}</span>
+      <span class="a">${s.id === 'now' ? '' : '<button class="tb sm line" data-c>Compare</button><button class="tb sm line" data-r>Restore</button>'}</span>`;
+    r.querySelector('.when').textContent = s.when; r.querySelector('b').textContent = s.kind;
+    if (s.meta) r.querySelector('.meta').textContent = s.meta;
+    if (s.id !== 'now') { r.querySelector('[data-c]').onclick = () => openDiff(s.id); r.querySelector('[data-r]').onclick = () => confirmRestore(s); }
+    $('#snaps').appendChild(r);
+  });
+}
+$('#snapSave').onclick = () => {
+  const name = $('#snapName').value.trim() || 'untitled';
+  snaps.splice(1, 0, { id: 'u' + Date.now(), when: 'Today 21:30', kind: 'Saved by you: ' + name, who: 'you', words: 3412, meta: 'kept until you delete it' });
+  $('#snapName').value = ''; drawSnaps(); toast('Snapshot saved.');
+};
+function confirmRestore(s) {
+  ask('Restore this version?', `The document goes back to the snapshot of ${s.when}: «${s.kind}».`, 'The current text is saved as a snapshot first.', 'Restore', () => restore(s));
+}
+function restore(s) {
+  snaps.splice(1, 0, { id: 'b' + Date.now(), when: 'Today 21:31', kind: 'Before restore', who: 'rs', words: 3412, meta: 'made when you restored the snapshot of ' + s.when });
+  drawSnaps(); showDiff(false); bannerDismissed = true; $('#banner').classList.remove('on');
+  toast(`Restored the snapshot of ${s.when}. The text before it is in History as «Before restore».`);
+}
+let diffSnap = null;
+function showDiff(on) { $('#histDiff').hidden = !on; $('#histList').hidden = on; }
+$('#diffBack').onclick = () => showDiff(false);
+$('#diffRestore').onclick = () => confirmRestore(diffSnap);
+const diffLines = [
+  ['h', '', '', '@@ S3. Il cordone di Donato @@'],
+  [' ', 128, 128, '### S3. Il cordone di Donato'],
+  [' ', 129, 129, '**Luogo e momento:** via Garibaldi, fra le macerie, a mezzogiorno.'],
+  [' ', 130, 130, '**In gioco:** passare il cordone prima che Salvi arrivi a Torre Faro.'],
+  ['+', '', 131, ''],
+  ['+', '', 132, '> [!leggi]'],
+  ['+', '', 133, '> I soldati hanno teso una corda fra due lampioni piegati. Dietro, il tenente Donato fuma senza guardarvi: «Nessuno passa. Ordini del Re.»'],
+  [' ', 131, 134, ''],
+  [' ', 132, 135, '**Cosa succede da sé**'],
+  ['-', 133, '', '- Donato non lascia passare nessuno.'],
+  ['+', '', 136, '- Donato non lascia passare nessuno, ma ascolta chi ha visto Salvi con i propri occhi.'],
+  [' ', 134, 137, '- I Quieti si muovono fra le macerie, in silenzio.']
+];
+function openDiff(id) {
+  diffSnap = snaps.find(s => s.id === id) || snaps[1];
+  $('#diffLead').textContent = `Snapshot of ${diffSnap.when} → now`;
+  $('#diffWhat').textContent = diffSnap.kind;
+  $('#diff').innerHTML = '';
+  diffLines.forEach(([g, a, b, t]) => {
+    const d = document.createElement('div'); d.className = 'dl' + ({ '+': ' add', '-': ' del', h: ' hunk' }[g] || '');
+    d.innerHTML = `<span class="n">${a}</span><span class="n">${b}</span><span class="g">${g === 'h' ? '' : g === '-' ? '−' : g}</span><span class="t"></span>`;
+    d.querySelector('.t').textContent = t; $('#diff').appendChild(d);
+  });
+  showDiff(true);
+}
+
+/* 7 Authorize */
+$('#allow').onclick = () => $('#auth').classList.add('ok');
+$('#deny').onclick = () => $('#auth').classList.add('no');
+$('#authReset').onclick = () => $('#auth').classList.remove('ok', 'no');
+$('[data-go-apps]').onclick = () => { $('#auth').classList.remove('ok', 'no'); go('settings'); };
+
+/* 8 Settings */
+$$('#setNav button').forEach(b => b.onclick = () => {
+  $$('#setNav button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.set section').forEach(s => s.classList.toggle('on', s.dataset.s === b.dataset.s));
+});
+$('#revoke').onclick = () => ask('Revoke Claude?', 'Claude loses access to your projects at once, in every chat.', 'To use it again, connect it from claude.ai and allow it on the authorize page.', 'Revoke', () => {
+  $('#appClaude').outerHTML = '<div class="ar" style="grid-template-columns:1fr;color:var(--faint)">No connected apps.</div>';
+  $('#sbClaude').textContent = 'No connected apps'; toast('Claude revoked.');
+}, true);
+$('#copyUrl').onclick = () => toast('Connector URL copied.');
+
+drawTopics(); drawNotes(); openNote('n1'); drawSnaps();
+</script>
+</body>
+</html>
