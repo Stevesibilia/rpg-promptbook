@@ -3,6 +3,7 @@ import { templates } from 'promptbook-format';
 import type { LayoutOptions } from 'promptbook-layout';
 import type { PdfSnapshot } from './client.js';
 import { checkedPages, pageLabels, pagesLabel, shownPages, stepPage, type StageMode } from './pages.js';
+import { NoticeError } from './notice.js';
 import { PdfNotice, stale } from './PdfPane.js';
 import { PdfSheet } from './PdfSheet.js';
 
@@ -68,7 +69,7 @@ export function PdfReview({
   const [mode, setMode] = useState<StageMode>('spread');
   const [zoom, setZoom] = useState(100);
   const [busy, setBusy] = useState<'save' | 'print' | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ message: string; alone: boolean } | null>(null);
   const [roomRef, room] = useRoom();
   const thumbs = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLElement>(null);
@@ -105,7 +106,10 @@ export function PdfReview({
     try {
       await action();
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
+      setFailure({
+        message: error instanceof Error ? error.message : String(error),
+        alone: error instanceof NoticeError,
+      });
     } finally {
       running.current = false;
       setBusy(null);
@@ -259,8 +263,14 @@ export function PdfReview({
         </div>
         {failure && (
           <p className="pdf-note error side" role="alert">
-            <b>The PDF could not be made.</b>
-            <span>{failure}</span>
+            {failure.alone ? (
+              <b>{failure.message}</b>
+            ) : (
+              <>
+                <b>The PDF could not be made.</b>
+                <span>{failure.message}</span>
+              </>
+            )}
           </p>
         )}
       </aside>

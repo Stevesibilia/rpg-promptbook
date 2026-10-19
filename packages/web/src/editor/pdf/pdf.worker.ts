@@ -38,10 +38,21 @@ const post = (answer: PdfAnswer, transfer: Transferable[] = []) => self.postMess
 const inputOf = ({ text, options, project }: PdfRequest) =>
   toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project);
 
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const failedBuild = (diagnostics: PdfBuild['diagnostics']): PdfBuild => ({
+  svg: null,
+  pages: [],
+  positions: [],
+  checks: [],
+  diagnostics,
+});
+// A build with no error that still drew nothing is a failed one.
+const NOTHING = { severity: 'error', message: 'The layout produced no pages.' } as const;
+
 async function build({ engine, renderer }: Tools, request: PdfRequest): Promise<PdfBuild> {
   const result = await engine.build(inputOf(request));
-  const empty = { svg: null, pages: [], positions: [], checks: [], diagnostics: result.diagnostics };
-  if (result.diagnostics.some((d) => d.severity === 'error') || !result.vector.length) return empty;
+  if (result.diagnostics.some((d) => d.severity === 'error')) return failedBuild(result.diagnostics);
+  if (!result.vector.length) return failedBuild([...result.diagnostics, NOTHING]);
   const svg = await renderer.runWithSession(async (session) => {
     renderer.manipulateData({ renderSession: session, action: 'reset', data: result.vector });
     return renderer.renderSvg({
@@ -50,6 +61,7 @@ async function build({ engine, renderer }: Tools, request: PdfRequest): Promise<
     });
   });
   const prepared = prepareSvg(svg);
+  if (!prepared.pages.length) return failedBuild([...result.diagnostics, NOTHING]);
   return {
     svg: prepared.svg,
     pages: prepared.pages,
@@ -64,30 +76,32 @@ async function answer(request: PdfRequest): Promise<void> {
   try {
     loaded = await (tools ??= load());
   } catch (error) {
-    return post({ kind: 'failed', error: error instanceof Error ? error.message : String(error) });
+    return post({ kind: 'failed', error: message(error) });
   }
   const { version } = request;
   if (request.kind === 'build') {
-    let result: PdfBuild;
-    try {
-      result = await build(loaded, request);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      result = { svg: null, pages: [], positions: [], checks: [], diagnostics: [{ severity: 'error', message }] };
-    }
-    return post({ kind: 'build', version, build: result });
+    return post({ kind: 'build', version, build: await build(loaded, request) });
   }
+  // A copy of its own, so the transfer cannot take the compiler's memory.
+  const bytes = (await loaded.engine.pdf(inputOf(request))).slice();
+  post({ kind: 'pdf', version, bytes }, [bytes.buffer]);
+}
+
+// Every request gets an answer, an error when anything fails.
+async function answerOrError(request: PdfRequest): Promise<void> {
   try {
-    // A copy of its own, so the transfer cannot take the compiler's memory.
-    const bytes = (await loaded.engine.pdf(inputOf(request))).slice();
-    post({ kind: 'pdf', version, bytes }, [bytes.buffer]);
+    await answer(request);
   } catch (error) {
-    post({ kind: 'pdf', version, error: error instanceof Error ? error.message : String(error) });
+    const { version } = request;
+    if (request.kind === 'build')
+      post({ kind: 'build', version, build: failedBuild([{ severity: 'error', message: message(error) }]) });
+    else post({ kind: 'pdf', version, error: message(error) });
   }
 }
 
-// One request at a time: they share the engine and the renderer.
+// One request at a time: they share the engine and the renderer. The queue
+// never rejects, so a failed request cannot stop the next ones.
 let queue: Promise<void> = Promise.resolve();
 self.addEventListener('message', (event: MessageEvent<PdfRequest>) => {
-  queue = queue.then(() => answer(event.data));
+  queue = queue.then(() => answerOrError(event.data)).catch(() => undefined);
 });

@@ -1,6 +1,6 @@
 import { defaultLayoutOptions } from 'promptbook-layout';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPdfClient } from '../src/editor/pdf/client.js';
+import { createPdfClient, noAnswer } from '../src/editor/pdf/client.js';
 import type { PdfAnswer, PdfBuild, PdfRequest } from '../src/editor/pdf/protocol.js';
 
 // A worker that answers only when the test says so.
@@ -181,14 +181,94 @@ describe('the PDF worker client', () => {
     await expect(client.pdf()).rejects.toThrow('CompileError: refused');
   });
 
-  it('stops asking a worker that crashed', () => {
+  it('stops asking a worker that crashed, and lets it go', () => {
     const { worker, client, builds, type } = setup();
     client.setActive(true);
     worker.crash('the PDF worker failed to load');
     expect(client.get().engine).toBe('failed');
+    expect(worker.disposed).toBe(true);
     type('b');
     vi.advanceTimersByTime(1000);
     expect(builds()).toEqual(['a']);
+  });
+
+  it('gives the shown build the version of its request', () => {
+    const { worker, client, type } = setup();
+    client.setActive(true);
+    worker.answer(worker.sent[0]!);
+    expect(client.get().goodVersion).toBe(worker.sent[0]!.version);
+    type('broken');
+    vi.advanceTimersByTime(400);
+    worker.answer(worker.sent[1]!, false);
+    expect(client.get().goodVersion).toBe(worker.sent[0]!.version);
+  });
+
+  it('ends a worker that does not answer in 60 s, and starts a new one at the next opening', async () => {
+    const { worker, client, builds } = setup();
+    client.setActive(true);
+    const pdf = client.pdf();
+    vi.advanceTimersByTime(59_999);
+    expect(client.get().engine).toBe('loading');
+    vi.advanceTimersByTime(1);
+    await expect(pdf).rejects.toThrow(noAnswer(60));
+    expect(client.get()).toMatchObject({ engine: 'failed', error: 'The PDF engine did not answer within 60 seconds.' });
+    expect(worker.disposed).toBe(true);
+    // A late answer from the old worker changes nothing.
+    worker.answer(worker.sent[0]!);
+    expect(client.get().latest).toBeNull();
+
+    client.setActive(false);
+    client.setActive(true);
+    expect(worker.connections).toBe(2);
+    expect(client.get().engine).toBe('loading');
+    expect(builds()).toEqual(['a', 'a']);
+    worker.answer(worker.sent[2]!);
+    expect(client.get()).toMatchObject({ engine: 'ready', error: null });
+  });
+
+  it('clears the deadline of an answered request', () => {
+    const { worker, client } = setup();
+    client.setActive(true);
+    worker.answer(worker.sent[0]!);
+    vi.advanceTimersByTime(120_000);
+    expect(client.get().engine).toBe('ready');
+  });
+
+  it('fails cleanly when the worker cannot even be created', async () => {
+    let attempts = 0;
+    const client = createPdfClient({
+      connect: () => {
+        attempts += 1;
+        throw new Error('Worker refused');
+      },
+      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' } }),
+    });
+    client.setActive(true);
+    expect(client.get()).toMatchObject({ engine: 'failed', error: 'Worker refused' });
+    client.setActive(false);
+    client.setActive(true);
+    expect(attempts).toBe(2);
+    // Opened again and failed again: Save is refused, and nothing waits.
+    await expect(client.pdf()).rejects.toThrow('Worker refused');
+    vi.advanceTimersByTime(120_000);
+    expect(attempts).toBe(2);
+  });
+
+  it('rejects a PDF whose request cannot be sent, and fails', async () => {
+    let calls = 0;
+    const client = createPdfClient({
+      connect: () => ({
+        send: () => {
+          calls += 1;
+          if (calls > 1) throw new Error('DataCloneError');
+        },
+        dispose: () => {},
+      }),
+      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' } }),
+    });
+    client.setActive(true);
+    await expect(client.pdf()).rejects.toThrow('DataCloneError');
+    expect(client.get().engine).toBe('failed');
   });
 
   it('stops the worker on dispose; late answers are ignored and waiting PDFs rejected', async () => {

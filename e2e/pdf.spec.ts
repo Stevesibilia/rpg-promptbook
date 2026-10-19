@@ -33,7 +33,7 @@ const review = (page: Page) => page.getByRole('region', { name: 'PDF review' });
 const engineRequests = (page: Page) => {
   const seen: string[] = [];
   page.on('request', (request) => {
-    if (/typst_ts_web_compiler.*\.wasm/.test(request.url())) seen.push(request.url());
+    if (/typst_ts_web_compiler.*\.wasm|pdf\.worker/.test(request.url())) seen.push(request.url());
   });
   return seen;
 };
@@ -57,7 +57,10 @@ test.beforeEach(async ({ page }) => {
 test('editor without PDF', async ({ page }) => {
   const engine = engineRequests(page);
   await open(page, "L'Ancora di Sabaoth");
+  // The editor's first analysis has landed and the page has gone quiet.
   await expect(outlineItem(page, 'S5')).toBeVisible();
+  await expect(page.locator('.status .counts')).toBeVisible();
+  await page.waitForLoadState('networkidle');
   await expect(pane(page)).toHaveCount(0);
   expect(engine).toEqual([]);
 });
@@ -67,7 +70,7 @@ test('follows the cursor', async ({ page }) => {
   await open(page, "L'Ancora di Sabaoth");
   await outlineItem(page, 'S1').click();
   await openPane(page);
-  expect(engine).toHaveLength(1);
+  expect(engine.filter((url) => url.endsWith('.wasm'))).toHaveLength(1);
   const s1 = await panePage(page);
 
   await outlineItem(page, 'S4').click();

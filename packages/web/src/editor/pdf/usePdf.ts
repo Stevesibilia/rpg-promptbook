@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { EditorView } from '@codemirror/view';
-import type { LayoutOptions } from 'promptbook-layout';
+import type { LayoutOptions, Position } from 'promptbook-layout';
 import type { UpdateSource } from '../StatusBar.js';
 import { connectPdfWorker, createPdfClient, type PdfClient, type PdfConnect, type PdfSnapshot } from './client.js';
+import { OffsetTracker } from './offsets.js';
 
 const none = () => () => {};
 const nothing = () => null;
@@ -10,6 +11,8 @@ const nothing = () => null;
 // The page's PDF client, created when a PDF is first opened and kept while
 // the page is (design decision 9). It builds while `active`, from the
 // editor's text and the options as they are when a build is sent.
+// `positions()` gives the shown build's positions with their offsets moved
+// into the text as it is now.
 export function usePdf({
   view,
   updates,
@@ -24,7 +27,7 @@ export function usePdf({
   options: LayoutOptions;
   title: string;
   connect?: PdfConnect;
-}): { client: PdfClient | null; snapshot: PdfSnapshot | null } {
+}): { client: PdfClient | null; snapshot: PdfSnapshot | null; positions(): Position[] } {
   const source = useRef({ view, options, title });
   source.current = { view, options, title };
 
@@ -33,15 +36,22 @@ export function usePdf({
   if (active && !wanted) setWanted(true);
 
   const [client, setClient] = useState<PdfClient | null>(null);
+  const tracker = useRef(new OffsetTracker());
   useEffect(() => {
     if (!wanted) return;
+    // Versions start again with each client.
+    tracker.current = new OffsetTracker();
     const created = createPdfClient({
       connect,
-      read: () => ({
-        text: source.current.view?.state.doc.toString() ?? '',
-        options: source.current.options,
-        project: { title: source.current.title },
-      }),
+      read: (version) => {
+        const doc = source.current.view?.state.doc;
+        tracker.current.read(version, doc?.length ?? 0);
+        return {
+          text: doc?.toString() ?? '',
+          options: source.current.options,
+          project: { title: source.current.title },
+        };
+      },
     });
     setClient(created);
     return () => {
@@ -55,7 +65,9 @@ export function usePdf({
   useEffect(() => {
     if (!client) return;
     return updates((update) => {
-      if (update.docChanged) client.changed();
+      if (!update.docChanged) return;
+      tracker.current.change(update.changes);
+      client.changed();
     });
   }, [client, updates]);
 
@@ -72,5 +84,10 @@ export function usePdf({
   }, [client, options, title]);
 
   const snapshot = useSyncExternalStore(client?.subscribe ?? none, client?.get ?? nothing);
-  return { client, snapshot };
+  const goodVersion = snapshot?.goodVersion ?? null;
+  useEffect(() => {
+    if (goodVersion !== null) tracker.current.shown(goodVersion);
+  }, [goodVersion]);
+  const positions = () => tracker.current.positions(goodVersion, snapshot?.good?.positions ?? []);
+  return { client, snapshot, positions };
 }

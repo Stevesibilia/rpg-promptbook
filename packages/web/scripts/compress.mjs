@@ -4,18 +4,19 @@
 
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { brotliCompress, constants, gzip } from 'node:zlib';
 
 const brotli = promisify(brotliCompress);
 const gz = promisify(gzip);
-const dist = new URL('../dist/', import.meta.url);
+const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const compressible = /\.(wasm|js|css|svg)$/;
 
 const files = (await readdir(dist, { recursive: true })).filter((file) => compressible.test(file));
 await Promise.all(
   files.map(async (file) => {
-    const path = join(dist.pathname, file);
+    const path = join(dist, file);
     const bytes = await readFile(path);
     const [br, gzipped] = await Promise.all([
       brotli(bytes, {
@@ -29,4 +30,4 @@ await Promise.all(
     await Promise.all([writeFile(`${path}.br`, br), writeFile(`${path}.gz`, gzipped)]);
   }),
 );
-console.log(`Compressed ${files.length} files in ${dist.pathname}`);
+console.log(`Compressed ${files.length} files in ${dist}`);

@@ -23,6 +23,7 @@ import { usePdfOptions } from './pdf/options.js';
 import { pdfFileName } from './pdf/pages.js';
 import { PdfPane } from './pdf/PdfPane.js';
 import { PdfReview } from './pdf/PdfReview.js';
+import { NoticeError, POPUPS_BLOCKED } from './pdf/notice.js';
 import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
@@ -71,7 +72,11 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     return () => listeners.current.delete(listener);
   }, []);
 
-  const { client: pdf, snapshot: pdfSnapshot } = usePdf({
+  const {
+    client: pdf,
+    snapshot: pdfSnapshot,
+    positions: pdfPositions,
+  } = usePdf({
     view,
     updates,
     active: checked && ((pane && !focus) || review !== null),
@@ -81,17 +86,16 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const openReview = (page?: number) => {
     const good = pdfSnapshot?.good;
     const head = view?.state.selection.main.head ?? 0;
-    setReview(page ?? (good ? Math.min(pageOf(good.positions, head), good.pages.length) : 1));
+    setReview(page ?? (good ? Math.min(pageOf(pdfPositions(), head), good.pages.length) : 1));
   };
   const closeReview = () => {
     setReview(null);
     view?.focus();
   };
-  // A double-click on a page: the text printed there, in the text the build
-  // read; jumpTo keeps it inside the text as it is now.
+  // A double-click on a page: the text printed there, moved through the edits
+  // made since the build read it.
   const jumpFromPdf = (page: number, y: number) => {
-    const good = pdfSnapshot?.good;
-    const at = good && blockAt(good.positions, page, y);
+    const at = blockAt(pdfPositions(), page, y);
     if (!view || !at) return;
     setReview(null);
     jumpTo(view, at.from, 'center');
@@ -104,16 +108,18 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     link.click();
   };
   // The PDF in a tab of its own, where the browser's viewer prints it. The
-  // tab is opened at the click, before the build, or the browser may block it.
+  // tab is opened at the click, before the build, or the browser may block
+  // it; a blocked or closed tab is never opened again after the build.
   const printPdf = async () => {
     if (!pdf) return;
     const tab = window.open('', '_blank');
+    if (!tab) throw new NoticeError(POPUPS_BLOCKED);
     try {
-      const url = pdfUrl(await pdf.pdf());
-      if (tab && !tab.closed) tab.location.href = url;
-      else window.open(url, '_blank');
+      const bytes = await pdf.pdf();
+      if (tab.closed) throw new NoticeError(POPUPS_BLOCKED);
+      tab.location.href = pdfUrl(bytes);
     } catch (error) {
-      tab?.close();
+      tab.close();
       throw error;
     }
   };
@@ -129,7 +135,20 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     view.focus();
     run(view);
   };
-  const handlers: ShortcutHandlers = {
+  // While the review is open, only Escape, ⌘⇧P, ⌘K and its own keys act;
+  // the editor's other shortcuts are swallowed.
+  const swallowed = () => {};
+  const handlers: ShortcutHandlers = review !== null ? {
+    outline: swallowed,
+    inspector: swallowed,
+    focus: swallowed,
+    syntax: swallowed,
+    nextProblem: swallowed,
+    previousProblem: swallowed,
+    palette: () => setDialog('palette'),
+    pdfReview: closeReview,
+    escape: closeReview,
+  } : {
     outline: () => setOutline((open) => !open),
     inspector: toggleInspector,
     focus: () => setFocus((on) => !on),
@@ -137,10 +156,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     previousProblem: toProblem(previousDiagnostic),
     syntax: () => setDialog('syntax'),
     palette: () => setDialog('palette'),
-    ...(checked ? { pdfReview: () => (review === null ? openReview() : closeReview()) } : {}),
-    // Left alone outside the review and focus mode, so Escape keeps its other
-    // uses.
-    ...(review !== null ? { escape: closeReview } : focus ? { escape: () => setFocus(false) } : {}),
+    ...(checked ? { pdfReview: () => openReview() } : {}),
+    // Left alone outside focus mode, so Escape keeps its other uses.
+    ...(focus ? { escape: () => setFocus(false) } : {}),
   };
   const latest = useRef(handlers);
   latest.current = handlers;
@@ -286,6 +304,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
             view={view}
             updates={updates}
             snapshot={pdfSnapshot}
+            positions={pdfPositions}
             onReview={openReview}
             onClose={() => setPdfOpen(false)}
             onJump={jumpFromPdf}

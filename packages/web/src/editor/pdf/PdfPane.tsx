@@ -1,5 +1,5 @@
 import type { EditorView } from '@codemirror/view';
-import { pageOf } from 'promptbook-layout';
+import { pageOf, type Position } from 'promptbook-layout';
 import { keyLabel, shortcut } from '../cm/keymap.js';
 import { useViewValue } from '../InspectorSection.js';
 import type { UpdateSource } from '../StatusBar.js';
@@ -41,6 +41,7 @@ export function PdfPane({
   view,
   updates,
   snapshot,
+  positions,
   onReview,
   onClose,
   onJump,
@@ -48,6 +49,8 @@ export function PdfPane({
   view: EditorView | null;
   updates: UpdateSource;
   snapshot: PdfSnapshot | null;
+  // The shown build's positions, in the text as it is now.
+  positions(): Position[];
   onReview(page: number): void;
   onClose(): void;
   onJump(page: number, y: number): void;
@@ -55,7 +58,7 @@ export function PdfPane({
   const cursor = useViewValue(view, updates, head, Object.is) ?? 0;
   const good = snapshot?.good ?? null;
   const count = good?.pages.length ?? 0;
-  const number = good ? Math.min(pageOf(good.positions, cursor), count) : 0;
+  const number = good ? Math.min(pageOf(positions(), cursor), count) : 0;
   const page = good?.pages[number - 1];
   const review = shortcut('pdfReview');
 

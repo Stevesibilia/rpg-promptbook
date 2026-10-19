@@ -320,18 +320,31 @@ diagnostics }`. A `pdf` request answers the bytes.
   (`connect-src` refuses them), and marks `@myriaddreamin/*` free of side
   effects so the page's chunk does not pull typst.ts in through `pageOf` and
   `blockAt`.
+- The worker asks the renderer for `data_selection: { body: true, defs: true,
+css: false, js: false }`; the renderer's style sheet is global
+  (`svg { fill: none }`, `.tsel { position: fixed }`), so `pdf.css` gives the
+  pages `fill: none` instead. The WASM URLs come from the packages' exports,
+  `…/wasm?url`.
+- The worker strips the text-selection layer and every inline handler; the
+  page sanitises the SVG again with DOMParser before inserting it (no script,
+  foreignObject or animation elements, no on* attributes, only `#` links),
+  keeps it `inert`, and maps build offsets through the edits made since. A
+  request that gets no answer in 60 s ends the worker; the next open starts a
+  new one.
 
 ### 10. Web: drawing pages
 
 The SVG is inserted once, hidden, in the page (`innerHTML` of a container;
 it carries no script). Each visible page, in the pane, the stage and the
 thumbnails, is an `<svg viewBox="0 <pageTop> <w> <h>">` with a `<use>` of
-the document group. Why: crisp at every zoom, one copy of the glyphs.
+that page's group (`#pb-page-N`, ids added by the worker). Why: crisp at
+every zoom, one copy of the glyphs.
 Measure the review with Sabaoth: if thumbnails make opening the review
 slower than 1 s after a build, draw thumbnails with the renderer's
 `renderCanvas` at a low `pixelPerPt` instead, and say so in the hand-back.
 Rejected: `<img>` of a Blob per page (each Blob holds the whole document);
-pdf.js (a second renderer for what Typst already draws).
+pdf.js (a second renderer for what Typst already draws). The review painted
+all 13 Sabaoth thumbnails 205 ms after ⌘⇧P; no canvas fallback.
 
 ### 11. Web: preview pane
 
@@ -350,13 +363,16 @@ As the mockup (`.pdfpane`, `editor.html:490`):
   (decision 13).
 - Build errors: «The PDF could not be built.» with the first error's message;
   the last good page stays under it, dimmed.
+- The inspector toggle with the pane open closes the pane and shows the
+  inspector.
 
 ### 12. Web: review
 
 Full screen under the top bar, as the mockup (`.review`, `editor.html:517`):
 
 - **Thumbnails** column: one per page, «6 · S1» (page number · label of the
-  last part or scene started on or before that page), the current ones
+  first part or scene that starts on the page, else the last one started
+  before it), the current ones
   outlined, an amber mark on pages with a layout check. Click shows that
   page.
 - **Stage**: tools «← Editor Esc», «Pages 6–7 of 14», zoom − 100% +,
@@ -372,8 +388,12 @@ Full screen under the top bar, as the mockup (`.review`, `editor.html:517`):
   it. Why: a hidden-frame `print()` of a PDF works only in Chrome and needs
   `frame-src blob:` in the policy; this departs from the mockup's direct
   print dialog.
+- Print opens the tab at the click and points it at the PDF once built, so
+  pop-up blockers let it through; when the tab is blocked or closed, the
+  review says «Allow pop-ups for this site to print.»
 - Opened with ⌘⇧P, the pane's «Review», or the palette; Esc or «← Editor»
   closes it and puts focus back in the editor.
+- While the review is open, only Esc, ⌘⇧P, ⌘K and its own keys act.
 
 ### 13. Jump from the PDF
 
@@ -424,6 +444,8 @@ In `packages/server/src/web.ts`:
   thumbnail per page; Letter changes the page shape; Save PDF downloads a
   file starting with `%PDF`; double-click on a scene's page jumps the
   cursor into that scene; Esc returns.
+- The Print test runs in `e2e/pdf-print.spec.ts` with Playwright's
+  `chromium` channel: the default headless shell has no PDF viewer.
 - **Owner preview** on the LAN before the hand-back, compared side by side
   with `~/Downloads/Ancora-di-Sabaoth-A4.pdf`.
 

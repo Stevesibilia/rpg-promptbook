@@ -1,16 +1,18 @@
 import { useLayoutEffect, useRef, type CSSProperties, type MouseEvent } from 'react';
 import { pageId } from './pages.js';
+import { sanitizeSvg } from './sanitize.js';
 import type { SvgPage } from './protocol.js';
 
-// The rendered document, inserted once and hidden (design decision 10): the
-// pages on screen draw from it. It carries no script.
+// The rendered document, inserted once, hidden and inert (design decision
+// 10): the pages on screen draw from it. It is sanitised before it goes in.
 export function PdfSource({ svg }: { svg: string | null }) {
   const host = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     // A failed build keeps the last good document.
-    if (host.current && svg) host.current.innerHTML = svg;
+    const clean = svg ? sanitizeSvg(svg) : null;
+    if (host.current && clean) host.current.replaceChildren(document.adoptNode(clean));
   }, [svg]);
-  return <div className="pdf-source" ref={host} aria-hidden="true" />;
+  return <div className="pdf-source" ref={host} aria-hidden="true" inert />;
 }
 
 // One page of the document, as large as its box: an SVG cut to the page,
