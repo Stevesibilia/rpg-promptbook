@@ -61,6 +61,47 @@ On the Mac, Mod is ⌘; elsewhere it is Ctrl.
 Browsers keep Mod-1 and Mod-2 for switching tabs: there, use the top bar's
 buttons or the palette.
 
+## Claude connector
+
+Promptbook is its own connector for Claude on the web and Claude Desktop. In
+a brainstorm, Claude reads and writes your projects: the prep document one
+section at a time, the to-do list, the inspiration items, research notes and
+the brainstorm log. A new chat about a project starts by reading its
+brainstorm log.
+
+To connect Claude:
+
+1. In claude.ai open **Settings → Connectors → Add custom connector**.
+2. Paste the connector URL, `<PUBLIC_URL>/api/mcp`, for example
+   `https://promptbook.siberio.eu/api/mcp`. Settings → Connected apps shows it
+   with a Copy button.
+3. Sign in to Promptbook the usual way (single sign-on, or your password) and
+   press **Allow** on the page that opens.
+
+The page asks which access to give:
+
+- **Read your projects:** Claude reads everything and changes nothing.
+- **Read and edit your projects:** Claude also creates projects, edits the
+  prep document and adds to-do items, inspiration items, research notes and
+  log entries. It never ticks or deletes anything, and never rewrites the
+  seed.
+
+Settings → Connected apps lists every app you allowed, with its access and
+when it was last used. **Revoke** cuts it off at once; to use it again,
+connect it from claude.ai.
+
+Claude edits one section, scene or sheet at a time, and only the text it has
+read. An edit that adds template errors is refused, and Claude gets the
+problems back.
+
+Before every edit the server saves a snapshot of the document, kept 30 days.
+The Document view then shows a banner: **Compare** opens the change in
+History, and **Undo** puts back what Claude replaced while that part is
+unchanged.
+
+History also keeps the snapshots you save by hand, until you delete them, and
+restores any snapshot. A restore first saves the current text.
+
 ## Development
 
 Development needs Node 26 and a Postgres. Run the server and Vite side by

@@ -71,7 +71,10 @@ network.
   refused; turning it off in the deployment brings back local password
   accounts, the way in when Authentik is down.
 - **Claude's edits:** the MCP server applies changes as Yjs updates to the same
-  document, so they merge with offline edits on reconnect.
+  document, so they merge with offline edits on reconnect. Built 2026-10-19
+  (#4): the server writes through a direct connection to its live Hocuspocus
+  document, so open editors see Claude's text at once and the usual store
+  path saves it.
 
 Works offline in the desktop app: writing, the to-do list, the asset board.
 Queued until online: image and audio uploads. Claude needs a connection anyway.
@@ -184,13 +187,20 @@ sync indicator, sign-in, settings; deleted projects stay in a bin for 30
 days; campaigns get a plain, unchecked skeleton; the desktop app needs the
 server once before it works offline.
 
+Agreed 2026-10-19: the connector,
+[mockups/connector.html](mockups/connector.html): the project rail, the
+Inspiration, Research, Brainstorm log and History views, Compare, the Claude
+edit banner, the inspector's Research section, the Authorize page and
+Settings → Connected apps.
+
 The main use is editing, so the editor takes most of the screen:
 
 - **Top bar:** project breadcrumb, category, status, the sync indicator, panel
   toggles, focus mode, history (snapshots), export, **PDF**, command palette
   (⌘K).
-- **Rail** (left edge, icons): Document, Inspiration, Research, Images and
-  music, Brainstorm log; projects and settings at the bottom.
+- **Rail** (left edge, icons): Projects, Document, Inspiration, Research,
+  Brainstorm log, History; Settings at the bottom. The project entries are
+  off while no project is open. Images and music joins with the asset board.
 - **Outline** (left, collapsible, ⌘1): sections and scenes from the headings,
   with error and warning badges; drag to reorder scenes.
 - **Editor** (centre, ~70 characters wide): Markdown source with live preview.
@@ -206,7 +216,9 @@ The main use is editing, so the editor takes most of the screen:
     and `/` at the start of a line inserts.
   - **Checks:** errors and warnings for the whole document; click to jump.
   - **To-do:** the list with its progress bar.
-  - **Research:** the notes, with "insert a fact".
+  - **Research:** the research notes whose topic shares a word of four
+    letters or more with the scene under the cursor (case and accents
+    ignored), with a link to open each.
   - **Seed:** the original idea, at a glance.
 - **PDF preview:** takes the Inspector's place, beside the editor, and follows
   the cursor's scene. In the desktop app it can also open in its own window,
@@ -282,36 +294,77 @@ earthquake and the legend of Colapesce for L'ancora di Sabaoth.
   topic, a summary, the facts worth using at the table and its sources as
   links, with the date. Notes are stored like the rest of the project, so they
   can be read and edited offline once saved.
-- **Topics:** the app proposes topics from the seed and the inspiration items
-  (names, places, periods, myths); the user picks, edits or adds them.
-- **Engine, first (proposal):** Claude through the MCP connector. In Claude web
-  or Desktop: "research the topics of this project". Claude reads the seed and
-  the topics, searches the web with its own search, and saves one note per
-  topic with sources. No extra API or cost, and it fits the brainstorm flow.
+- **Topics:** the user adds and removes them in the Research view, and Claude
+  adds them through MCP. A topic is open until a note on it exists. Topics
+  proposed by the app from the seed and the inspiration items are for later.
+- **Engine, first (built 2026-10-19, #4):** Claude through the MCP connector.
+  In Claude web or Desktop: "research the topics of this project". Claude
+  reads the seed and the topics, searches the web with its own search, and
+  saves one note per topic with sources. No extra API or cost, and it fits the
+  brainstorm flow.
 - **Engine, later (proposal, optional):** a **Research** button in the app
   that calls a search API (Brave Search, Tavily or Exa) and a model with the
   user's key, and saves the same kind of notes. Keys stored encrypted in the
   database. Online only.
-- **Clip by hand:** paste a URL, the app saves its title and an excerpt as a
-  note to complete.
+- **Clip by hand (later):** paste a URL, the app saves its title and an
+  excerpt as a note to complete. It needs a server fetch with guards against
+  private addresses, so it waits.
 - Research notes are prep: they never go into the table PDF or the `.cbpack`
   unless copied into the prep document.
 
 ### MCP connector
 
 Its own connector on claude.ai, so a brainstorm in Claude web or Desktop saves
-straight into the app. Replaces the Joplin MCP.
+straight into the app. Replaces the Joplin MCP. Built 2026-10-19 (#4); the
+README says how to connect it.
+
+- **Endpoint:** `<PUBLIC_URL>/api/mcp`, the Model Context Protocol over
+  Streamable HTTP, stateless, with JSON answers.
+- **Sign-in:** an OAuth 2.1 authorization server inside the app, ported from
+  gdrarchive: dynamic client registration, client ID metadata documents,
+  PKCE, refresh tokens that rotate. The consent page, `/authorize`, sits
+  behind the app's own sign-in, so the Authentik identity is the one that
+  approves. No new Authentik application and no new secret.
+- **Access:** read, or read and edit, chosen on the consent page. Settings →
+  Connected apps lists the approved apps and revokes them.
+- **Tools:** projects, the outline, the prep document by section, the to-do
+  list, inspiration, research topics and notes, the brainstorm log. Claude
+  can add and edit; it never deletes, never ticks a to-do item, and never
+  rewrites the seed.
+- **Section-scoped edits:** Claude replaces one section, scene or sheet, or
+  adds a scene. The edit carries the hash of the text Claude read, so text
+  the user changed in between is never overwritten. An edit that adds
+  template errors is refused with the new problems; warnings pass.
 
 ### Brainstorm memory
 
 Claude.ai has no API to read conversations, so the app cannot pull them.
 
-1. **Brainstorm log per project, through MCP.** During or after a chat, Claude
-   writes a dated entry: ideas, decisions, rejected ideas and why, open
-   questions. A new chat reads the log first, like gdrarchive's campaign brief.
+1. **Brainstorm log per project, through MCP** (built 2026-10-19, #4).
+   During or after a chat, Claude writes a dated entry: ideas, decisions,
+   rejected ideas and why, open questions. A new chat reads the log first,
+   like gdrarchive's campaign brief. The Brainstorm log view shows the
+   entries, edits them, and turns open questions into to-do items.
 2. **Full transcripts, optional, later.** Import the claude.ai data export
    (Settings → Privacy → Export data, a zip by email), pick conversations,
    attach them to a project, search them.
+
+### Snapshots and history
+
+Built 2026-10-19 (#4). The server keeps snapshots of the prep document in
+Postgres, outside the Yjs document:
+
+- **By hand,** with a name, from the History view; kept until deleted.
+- **Before every Claude edit,** with what Claude replaced; kept 30 days.
+- **Before every restore,** so a restore never loses the current text; kept
+  30 days.
+
+History compares any snapshot with the current text as a unified diff and
+restores it. After a Claude edit the Document view shows a banner with
+Compare and Undo. Undo puts back only the part Claude replaced, while that
+part is unchanged; otherwise History restores the whole document.
+
+The desktop app's local snapshots come with #6.
 
 ### Asset board
 
