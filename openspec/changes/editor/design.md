@@ -186,6 +186,12 @@ Neri`. An unknown type is a plain quote; the checks flag it.
   focus. Without focus every mark is hidden and the front matter folds;
   otherwise the cursor at offset 0 on opening would keep the front matter
   open and the first line's marks shown.
+- Amended at review of brief C: CodeMirror delivers a click's blur after the
+  panel that handled the click has focused the editor (an outline jump, an
+  Insert), and no focus change follows, so the field could stay "not
+  focused" on a focused editor. A small view plugin compares the field with
+  `view.hasFocus` 20 ms after any mismatch and puts it right; the preview
+  rebuilds when the field changes, not on CodeMirror's `focusChanged` flag.
 - Lists, links and images stay as source, in the prose font, with list
   marks kept (they are content).
 - **Tables** (decided by the owner on 2026-10-19, after seeing brief A: the
@@ -344,6 +350,13 @@ second header «Allora…»; the template has no data for them yet.
   complete.
 
 For campaigns `/` offers only `## ` and `### ` headings.
+
+Amended at review of brief C: the menu and the sheet names are one
+completion source with `validFor`, and CodeMirror's own matcher filters it.
+With two sources, the second went pending at every keystroke and CodeMirror
+disabled the open menu, so a quick «/new⏎» typed a line break. The menu
+therefore does not fold accents; the palette still does. A `/` line inside
+a campaign's front matter offers nothing.
 
 ### 10. Syntax sheet and command palette
 
