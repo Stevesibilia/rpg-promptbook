@@ -1,8 +1,8 @@
 ## 1. Image
 
-- [ ] 1.1 `Dockerfile`: base images, `--chown`, cache mounts, `USER`, `HEALTHCHECK`, header comment (design decisions 1 to 3)
-- [ ] 1.2 Build arm64; run with `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges` against `postgres:18-alpine`: migration, health with version, `/`, sign-in, Docker health, uid 65532
-- [ ] 1.3 The `localStorage` warning compared with the `node:26-alpine` image (risks)
+- [x] 1.1 `Dockerfile`: base images, `--chown`, cache mounts, `USER`, `HEALTHCHECK`, header comment (design decisions 1 to 3)
+- [x] 1.2 Build arm64; run with `--read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges` against `postgres:18-alpine`: migration, health with version, `/`, sign-in, Docker health, uid 65532
+- [x] 1.3 The `localStorage` warning compared with the `node:26-alpine` image (risks)
 
 ## 2. Chart and runbook
 
