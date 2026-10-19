@@ -9,7 +9,14 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  // From the provider, for display only; null for a password account.
+  email: string | null;
+  // How this account signs in.
+  signIn: 'oidc' | 'password';
 }
+
+// Which sign-in the server offers, as GET /api/auth/config answers it.
+export type AuthConfig = { signIn: 'oidc'; providerName: string; issuerHost: string } | { signIn: 'password' };
 
 // One row of the project list, as GET /api/projects answers it.
 export interface ProjectRow {
@@ -99,6 +106,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
+  config: () => request<AuthConfig>('GET', '/api/auth/config'),
   me: () => request<{ user: User | null }>('GET', '/api/auth/me'),
   login: (username: string, password: string) =>
     request<{ user: User }>('POST', '/api/auth/login', { username, password }),

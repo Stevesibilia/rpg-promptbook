@@ -15,9 +15,9 @@
 
 ## 3. Web
 
-- [ ] 3.1 `api.ts`, `SignInPage.tsx`, error messages (decision 7)
-- [ ] 3.2 `SignInDialog.tsx` new window, route `/signed-in`, `BroadcastChannel`
-- [ ] 3.3 Settings, Account for single sign-on accounts
+- [x] 3.1 `api.ts`, `SignInPage.tsx`, error messages (decision 7)
+- [x] 3.2 `SignInDialog.tsx` new window, route `/signed-in`, `BroadcastChannel`
+- [x] 3.3 Settings, Account for single sign-on accounts
 - [ ] 3.4 Tests: sign-in page in both modes and each error; the dialog closing on the broadcast; the Account section in both modes
 
 ## 4. Chart, pipeline, preview, docs
