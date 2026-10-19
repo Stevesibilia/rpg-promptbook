@@ -8,6 +8,7 @@
     { "path": "./packages/server" },
     { "path": "./packages/server/test" },
     { "path": "./packages/web" },
-    { "path": "./packages/web/test" }
+    { "path": "./packages/web/test" },
+    { "path": "./e2e" }
   ]
 }
