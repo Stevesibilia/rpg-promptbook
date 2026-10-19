@@ -4,6 +4,9 @@ import { ConfigError, loadConfig } from './config.js';
 import { createDb } from './db.js';
 import { AppError } from './errors.js';
 import { runMigrations } from './migrate.js';
+import { purge } from './projects.js';
+
+const PURGE_INTERVAL_MS = 3_600_000;
 
 async function main() {
   const config = loadConfig();
@@ -16,7 +19,19 @@ async function main() {
   if (admin) console.log(`Created the account "${admin.username}" from PROMPTBOOK_ADMIN_USERNAME.`);
 
   const app = await buildApp({ config, db, logger: true });
+
+  // The bin and old sign-in failures, at start and every hour.
+  const runPurge = () =>
+    purge(db)
+      .then((removed) => {
+        if (removed.projects > 0) app.log.info(removed, 'Purged the bin');
+      })
+      .catch((error: unknown) => app.log.error({ err: error }, 'Purge failed'));
+  await runPurge();
+  const purgeTimer = setInterval(runPurge, PURGE_INTERVAL_MS);
+
   const stop = async () => {
+    clearInterval(purgeTimer);
     await app.close();
     await db.close();
     process.exit(0);

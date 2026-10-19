@@ -244,6 +244,10 @@ may name a campaign in the bin or one that is gone.
 One `Hocuspocus` instance inside the Fastify process, without its own HTTP
 server; `GET /sync` is a `@fastify/websocket` route that hands the socket to
 `hocuspocus.handleConnection`. The document name is the project id.
+With Hocuspocus 4.7.1, `handleConnection` takes the socket, a Fetch `Request`
+built from the upgrade and the context, and the route forwards the socket's
+messages to `handleMessage`, its close to `handleClose` and its pongs to
+`touch` (amended in group 3).
 
 - `onAuthenticate`: reject unless the upgrade's `Origin` equals the
   `PUBLIC_URL` origin, the session cookie resolves to a session, and the
@@ -254,11 +258,16 @@ server; `GET /sync` is a `@fastify/websocket` route that hands the socket to
   disconnect): in one transaction write the state
   (`Y.encodeStateAsUpdate`) and the summary columns from `summarize`, and set
   `edited_at`. On failure, broadcast the stateless message
-  `{"type":"store-failed"}`; on the next success after a failure,
-  `{"type":"stored"}`.
+  `{"type":"store-failed"}`; after every successful store,
+  `{"type":"stored"}` (amended in group 3: decision 9's list refresh needs
+  it).
 - Closing: a helper `closeConnections(predicate)` walks the open documents'
   connections and closes those matching a session hash (sign-out, password
-  change) or a project id (delete).
+  change) or a project id (delete). Sign-out and password change close the
+  whole WebSocket with code 4401, since one socket carries one cookie and the
+  provider then reconnects into an authentication failure; delete first
+  broadcasts `{"type":"deleted"}` on the document, then closes that
+  document's connections.
 
 REST routes that change a document (create, import) build the `Y.Doc` with
 `promptbook-project` and insert the state directly; no route edits an open

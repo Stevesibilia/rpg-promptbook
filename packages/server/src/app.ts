@@ -5,7 +5,10 @@ import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { projectsRoutes } from './routes/projects.js';
 import { settingsRoutes } from './routes/settings.js';
+import { transferRoutes } from './routes/transfer.js';
+import { syncPlugin } from './sync.js';
 import { headersPlugin, webPlugin } from './web.js';
 
 declare module 'fastify' {
@@ -49,9 +52,12 @@ export async function buildApp({ config, db, logger = false }: AppOptions): Prom
 
   await app.register(headersPlugin, { config });
   await app.register(authPlugin, { config, db });
+  await app.register(syncPlugin, { config, db });
   await app.register(healthRoutes, { db });
-  await app.register(authRoutes, { config, db });
+  await app.register(authRoutes, { config, db, sync: app.sync });
   await app.register(settingsRoutes, { db });
+  await app.register(projectsRoutes, { db, sync: app.sync });
+  await app.register(transferRoutes, { db, sync: app.sync });
   await app.register(webPlugin, { config });
   return app;
 }

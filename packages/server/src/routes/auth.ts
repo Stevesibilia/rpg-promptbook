@@ -8,6 +8,7 @@ import { findUserByUsername, setDisplayName, setPassword } from '../accounts/use
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
+import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 
 export const WRONG_CREDENTIALS = 'Wrong username or password.';
@@ -16,7 +17,7 @@ const loginBody = z.object({ username: z.string().max(256), password: z.string()
 const meBody = z.object({ displayName: z.string().trim().min(1, 'is required').max(100) });
 const passwordBody = z.object({ current: z.string().max(4096), next: z.string().max(4096) });
 
-export async function authRoutes(app: FastifyInstance, { config, db }: { config: Config; db: Db }) {
+export async function authRoutes(app: FastifyInstance, { config, db, sync }: { config: Config; db: Db; sync: Sync }) {
   // Every failure answers the same message and spends comparable time, the
   // unknown username included: a faster or different answer for a username
   // with no account would let anyone list the accounts.
@@ -37,6 +38,7 @@ export async function authRoutes(app: FastifyInstance, { config, db }: { config:
   app.post('/api/auth/logout', async (req, reply) => {
     const session = requireSession(req);
     await deleteSession(db, session.tokenHash);
+    sync.closeSessions([session.tokenHash]);
     clearSessionCookie(reply);
     return reply.code(204).send();
   });
@@ -50,7 +52,8 @@ export async function authRoutes(app: FastifyInstance, { config, db }: { config:
     return { user: await setDisplayName(db, session.user.id, displayName) };
   });
 
-  // Ends every other session of the user; the one making the change stays.
+  // Ends every other session of the user and their sync connections; the one
+  // making the change stays.
   app.post('/api/auth/password', async (req, reply) => {
     const session = requireSession(req);
     const { current, next } = parseBody(passwordBody, req.body);
@@ -59,7 +62,7 @@ export async function authRoutes(app: FastifyInstance, { config, db }: { config:
       throw new AppError(400, 'wrong_password', 'The current password is wrong.');
     }
     await setPassword(db, user.id, next);
-    await deleteOtherSessions(db, user.id, session.tokenHash);
+    sync.closeSessions(await deleteOtherSessions(db, user.id, session.tokenHash));
     return reply.code(204).send();
   });
 }

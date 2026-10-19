@@ -11,21 +11,29 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@hocuspocus/provider": "^4.7.1",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
     "esbuild": "^0.28.2",
+    "promptbook-format": "^0.0.0",
     "tsx": "^4.23.15",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "ws": "^8.22.0"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
     "@fastify/helmet": "^13.2.0",
     "@fastify/static": "^10.1.6",
+    "@fastify/websocket": "^11.3.4",
+    "@hocuspocus/server": "^4.7.1",
     "@node-rs/argon2": "^2.2.2",
     "fastify": "^5.12.7",
     "fastify-plugin": "^6.0.1",
+    "fflate": "^0.8.3",
     "pg": "^8.23.1",
     "promptbook-project": "^0.0.0",
+    "yjs": "^13.6.33",
     "zod": "^4.6.7"
   }
 }
