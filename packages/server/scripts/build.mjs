@@ -5,6 +5,25 @@ import { build } from 'esbuild';
 
 const workspace = /^promptbook-/;
 
+// src/fixtures.ts reads the format package's fixtures from disk; in the
+// bundle the same function answers their text, loaded as text by esbuild,
+// since the image has no fixtures folder.
+const fixtures = ['l-ancora-di-sabaoth.converted.md', 'esempio.md'];
+const inlineFixtures = {
+  name: 'inline-fixtures',
+  setup(build) {
+    build.onLoad({ filter: /[\\/]src[\\/]fixtures\.ts$/ }, () => ({
+      contents: [
+        ...fixtures.map((name, i) => `import f${i} from '../../format/fixtures/${name}';`),
+        `const texts = { ${fixtures.map((name, i) => `${JSON.stringify(name)}: f${i}`).join(', ')} };`,
+        'export function fixture(name) { return texts[name]; }',
+      ].join('\n'),
+      loader: 'js',
+      resolveDir: new URL('../src', import.meta.url).pathname,
+    }));
+  },
+};
+
 await build({
   entryPoints: { main: 'src/main.ts', cli: 'src/cli.ts' },
   outdir: 'dist',
@@ -14,7 +33,9 @@ await build({
   target: 'node26',
   sourcemap: true,
   logLevel: 'info',
+  loader: { '.md': 'text' },
   plugins: [
+    inlineFixtures,
     {
       name: 'external-npm',
       setup(build) {

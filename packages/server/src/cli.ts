@@ -6,6 +6,7 @@ import { ConfigError, loadDatabaseUrl } from './config.js';
 import { createDb, type Db } from './db.js';
 import { AppError } from './errors.js';
 import { runMigrations } from './migrate.js';
+import { seedProjects } from './seed.js';
 
 const USAGE = `Usage: cli <command>
 
@@ -13,6 +14,7 @@ const USAGE = `Usage: cli <command>
   user:create <username> [--display-name <name>]
                                               create an account
   user:password <username>                    set an account's password and end its sessions
+  seed <username>                             create the sample projects for an account with none
 
 The password comes from PROMPTBOOK_PASSWORD, or is asked for.`;
 
@@ -68,6 +70,14 @@ export async function runCli(argv: string[], db: Db, io: CliIo): Promise<number>
       await setPassword(db, user.id, await password(io));
       const ended = await deleteOtherSessions(db, user.id, null);
       io.out(`Set the password of "${user.username}" and ended ${ended.length} session(s).`);
+      return 0;
+    }
+    case 'seed': {
+      const [username] = args;
+      if (!username || args.length > 1) break;
+      await runMigrations(db);
+      const count = await seedProjects(db, username);
+      io.out(`Created ${count} sample projects for "${username}".`);
       return 0;
     }
   }
