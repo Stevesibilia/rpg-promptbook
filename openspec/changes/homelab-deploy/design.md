@@ -250,3 +250,37 @@ renewal of `GITLAB_MIRROR_TOKEN` and the deploy token; the known limit below.
 - **Component inputs.** If the pinned component versions do not accept an
   input this plan names, follow gdrarchive's usage and report the difference;
   do not change `homelab/ci-cd`.
+
+## Departures accepted at review
+
+Recorded by the architect after the build (2026-10-19):
+
+- **No TLS to the database, as gdrarchive.** The CNPG `uri` carries no
+  `sslmode`, so `pg` connects in plain text inside the cluster, which CNPG's
+  `host all all all scram-sha-256` rule accepts. gdrarchive does the same.
+  `sslmode=require` alone would mean full verification in
+  `pg-connection-string` 2.14 and fail on the operator's CA;
+  `sslmode=require&uselibpqcompat=true` would work without a code change.
+  This does not meet `kubernetes_cluster/AGENTS.md` ("connects with
+  `sslmode=require`"), which gdrarchive does not meet either: a follow-up for
+  both applications, not this change.
+- **`Config.appVersion` is a string** (`"dev"` when unset) and `healthRoutes`
+  takes the config, rather than an optional field: one default in one place.
+- **`prepare-secrets` does not create the namespace.** It fails with a clear
+  message when the namespace is missing, because `homelab/kubernetes_cluster`
+  owns it; creating it here would fight that repository.
+- **The registry server is the literal `registry.siberio.eu`**, as this
+  design names it.
+- **`PORT` and `SESSION_TTL_HOURS` are set from values**; the pod adds
+  `seccompProfile: RuntimeDefault`; `wait-for-database` uses
+  `postgres:18-alpine`, the server's major.
+- **The chart keeps gdrarchive's `cnpg.restore` values** (`serverName`,
+  `targetTime`, `archiveServerName`) for the runbook's restore, and drops
+  `cnpg.enabled` and `useForApp`: the database is always the CNPG cluster.
+  Jobs are `build`, `prepare-secrets`, `helm-deploy`, `verify`.
+- **`checksum/config` covers the values that feed the environment**; the
+  credentials Secret is written outside Helm, so a rotated password needs
+  `kubectl rollout restart`, as the runbook says.
+- **The mirror passes the token through `GIT_CONFIG_COUNT`/`KEY`/`VALUE`**
+  (`http.extraHeader`, basic auth, user `mirror`), masked, with
+  `persist-credentials: false`.
