@@ -82,8 +82,13 @@ The user SHALL be able to export one project, or every project not in the
 bin, as a zip. Each project SHALL be a folder named after its title with
 `document.md` (the prep document as stored), `todo.md` (a GFM task list with
 notes and due dates), `seed.md` (every seed version, newest first, with its
-date) and `project.json` (id, title, category, status, campaign title,
-system, dates and schema version). Export SHALL lose no text the user wrote.
+date), `inspiration.md` (the sources of inspiration with kind, text, URL,
+why, who and date), `research.md` (the topics with their state, then each
+note with summary, facts and sources), `brainstorm-log.md` (the entries,
+newest first, with their ideas, decisions, rejected ideas and why, and open
+questions) and `project.json` (id, title, category, status, campaign title,
+system, dates and schema version). Snapshots SHALL NOT be exported. Export
+SHALL lose no text the user wrote.
 
 #### Scenario: Round trip of the document
 
@@ -91,3 +96,9 @@ system, dates and schema version). Export SHALL lose no text the user wrote.
   imported again
 - **THEN** the new project's document is byte-identical to the first one's,
   since a second conversion makes no edits
+
+#### Scenario: Research in the export
+
+- **WHEN** a project with the note «Colapesce» and two sources is exported
+- **THEN** its folder's `research.md` holds the note's summary, facts and
+  both sources' titles and URLs

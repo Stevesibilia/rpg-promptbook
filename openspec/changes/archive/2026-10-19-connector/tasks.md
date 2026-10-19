@@ -53,6 +53,6 @@
 
 ## 7. Release (architect)
 
-- [ ] 7.1 Pull request, CI green, merge; tag `v0.4.0`; GitLab pipeline green
-- [ ] 7.2 Live check on promptbook.siberio.eu: `v0.4.0` live, both metadata documents answer with the right issuer and resource, `POST /api/mcp` without a token answers 401 with `resource_metadata`. Connecting claude.ai is left to the owner's sign-in
-- [ ] 7.3 Archive the change; close #4
+- [x] 7.1 Pull request, CI green, merge; tag `v0.4.0`; GitLab pipeline green
+- [x] 7.2 Live check on promptbook.siberio.eu: `v0.4.0` live, both metadata documents answer with the right issuer and resource, `POST /api/mcp` without a token answers 401 with `resource_metadata`, `/authorize` serves, a registration from a claude.ai origin answers 201 (the unused client is swept after 24 hours). Connecting claude.ai is left to the owner's sign-in
+- [x] 7.3 Archive the change; close #4
