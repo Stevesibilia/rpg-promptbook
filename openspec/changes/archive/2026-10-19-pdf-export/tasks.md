@@ -35,6 +35,6 @@
 
 ## 6. Release (architect)
 
-- [ ] 6.1 Pull request, CI green, merge; tag `v0.3.0`; GitLab pipeline green
-- [ ] 6.2 Live check on promptbook.siberio.eu: the engine arrives compressed, a PDF of a real project builds and saves
-- [ ] 6.3 Archive the change; close #20
+- [x] 6.1 Pull request, CI green, merge; tag `v0.3.0`; GitLab pipeline green
+- [x] 6.2 Live check on promptbook.siberio.eu: `v0.3.0` live, the policy carries `'wasm-unsafe-eval'` and no eval, the engine arrives with Brotli (7.7 MB) and a year's cache. A PDF built in the live app needs the owner's sign-in and is left to the owner
+- [x] 6.3 Archive the change; close #20
