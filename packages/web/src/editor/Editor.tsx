@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { indentWithTab } from '@codemirror/commands';
-import { markdown } from '@codemirror/lang-markdown';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
 import { templates } from 'promptbook-format';
@@ -9,8 +8,10 @@ import * as Y from 'yjs';
 import { analysis } from './analysis/field.js';
 import { connectWorker } from './analysis/client.js';
 import { baseKeymap } from './cm/keymap.js';
+import { markdownWithTables } from './cm/language.js';
 import { preview, previewConfigOf } from './cm/preview.js';
 import { problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
+import { slashMenu } from './cm/slash.js';
 import { editorHighlight } from './cm/theme.js';
 
 // The prep document's editor: CodeMirror 6 bound to the document's Y.Text,
@@ -44,11 +45,12 @@ export function Editor({
         extensions: [
           latest.current.extensions,
           keymap.of([...yUndoManagerKeymap, ...baseKeymap, indentWithTab]),
-          markdown(),
+          markdownWithTables(),
           editorHighlight,
           preview(previewConfigOf(templates.avventura, checked)),
           analysis({ checked, connect: connectWorker, onResult: pushDiagnostics }),
           checked ? problems : [],
+          slashMenu(templates.avventura, checked),
           undoBoundary.of(() => undoManager.stopCapturing()),
           highlightActiveLine(),
           EditorView.lineWrapping,

@@ -563,3 +563,153 @@
   font-size: 12px;
   color: var(--primary);
 }
+
+/* The `/` menu and the sheet names (design decision 9) */
+.editor .cm-editor .cm-tooltip-autocomplete {
+  padding: 4px 0;
+}
+.editor .cm-editor .cm-tooltip-autocomplete > ul {
+  font: 13.5px/1.3 var(--font);
+  max-height: 18em;
+  min-width: 260px;
+}
+.editor .cm-editor .cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 12px;
+}
+.editor .cm-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  color: var(--text);
+}
+.editor .cm-editor .cm-tooltip-autocomplete completion-section {
+  display: block;
+  padding: 6px 12px 2px;
+  border: 0;
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.editor .cm-editor .cm-completionDetail {
+  margin-left: auto;
+  font: 11.5px var(--mono);
+  font-style: normal;
+  color: var(--faint);
+}
+.editor .cm-editor .cm-completionMatchedText {
+  text-decoration: none;
+  color: var(--primary);
+}
+
+/* The ⌘K hint opens the palette. */
+button.kbd {
+  background: none;
+  cursor: pointer;
+}
+button.kbd:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+/* Command palette (design decision 10) */
+.palette {
+  width: min(600px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.palette input {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: 16px var(--font);
+  outline: none;
+}
+.palette ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: min(420px, 60vh);
+  overflow: auto;
+}
+.palette li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+  font: 14px var(--font);
+  cursor: pointer;
+}
+.palette li[aria-selected='true'] {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.palette li .lb {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette li.none {
+  color: var(--faint);
+  cursor: default;
+}
+
+/* Syntax sheet (design decision 10) */
+.syntax-sheet .syntax-note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--amber);
+  background: var(--doc);
+  font-size: 13.5px;
+}
+.syntax-sheet h4 {
+  margin: 18px 0 6px;
+  font: 600 11px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.syntax-sheet section:first-of-type h4 {
+  margin-top: 0;
+}
+.syntax-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.syntax-sheet td {
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.syntax-sheet td.sx {
+  width: 42%;
+}
+.syntax-sheet code {
+  font: 12.5px var(--mono);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.syntax-sheet td.rq {
+  width: 7em;
+  color: var(--faint);
+}
+.syntax-sheet td.rq.required {
+  color: var(--primary);
+}
+.syntax-sheet td.rq.recommended {
+  color: var(--amber);
+}
+.syntax-sheet td.nt {
+  color: var(--muted);
+}

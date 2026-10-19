@@ -28,10 +28,10 @@
 
 ## 5. Insert menu, syntax sheet and palette
 
-- [ ] 5.1 `/` menu and sheet completion (decision 9)
-- [ ] 5.2 `syntax.ts` and `SyntaxSheet.tsx` (decision 10)
-- [ ] 5.3 `palette.ts` and `CommandPalette.tsx` (decision 10)
-- [ ] 5.4 Tests: `syntax.ts` covers every field, section and callout; `palette.ts` filtering with accents; menu entries for a scene, a section and the scenes section
+- [x] 5.1 `/` menu and sheet completion (decision 9)
+- [x] 5.2 `syntax.ts` and `SyntaxSheet.tsx` (decision 10)
+- [x] 5.3 `palette.ts` and `CommandPalette.tsx` (decision 10)
+- [x] 5.4 Tests: `syntax.ts` covers every field, section and callout; `palette.ts` filtering with accents; menu entries for a scene, a section and the scenes section
 
 ## 5b. Tables
 
