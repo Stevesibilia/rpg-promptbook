@@ -19,6 +19,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     trustProxyHops: 0,
     admin: null,
     webDist: null,
+    appVersion: 'dev',
     ...overrides,
   };
 }

@@ -169,7 +169,7 @@ describe('requests are protected by default', () => {
     expect(answers).toEqual(api.filter((r) => !PUBLIC_ROUTES.has(r)).map((r) => `${r} 401`));
     expect([...PUBLIC_ROUTES].sort()).toEqual(['GET /api/auth/me', 'GET /api/health', 'POST /api/auth/login']);
     for (const route of PUBLIC_ROUTES) expect(app.routeList.has(route)).toBe(true);
-    expect((await app.inject({ url: '/api/health' })).json()).toEqual({ ok: true });
+    expect((await app.inject({ url: '/api/health' })).json()).toEqual({ ok: true, version: 'dev' });
     expect((await app.inject({ url: '/api/auth/me' })).json()).toEqual({ user: null });
     expect((await app.inject({ url: '/api/no-such-route' })).statusCode).toBe(401);
   });

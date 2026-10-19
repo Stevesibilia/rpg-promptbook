@@ -13,6 +13,7 @@ describe('configuration', () => {
       trustProxyHops: 0,
       admin: null,
       webDist: null,
+      appVersion: 'dev',
     });
   });
 
@@ -27,6 +28,7 @@ describe('configuration', () => {
         PROMPTBOOK_ADMIN_USERNAME: 'steve',
         PROMPTBOOK_ADMIN_PASSWORD: '14-characters!',
         WEB_DIST: '/srv/web',
+        APP_VERSION: 'v0.1.0',
       }),
     ).toEqual({
       databaseUrl: base.DATABASE_URL,
@@ -36,6 +38,7 @@ describe('configuration', () => {
       trustProxyHops: 1,
       admin: { username: 'steve', password: '14-characters!' },
       webDist: '/srv/web',
+      appVersion: 'v0.1.0',
     });
   });
 

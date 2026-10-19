@@ -5,8 +5,8 @@
 
 ## 1. Version in the health check
 
-- [ ] 1.1 `APP_VERSION` in `packages/server/src/config.ts`; `healthRoutes` reports `version`, `"dev"` when unset (decision 4)
-- [ ] 1.2 Tests: 200 with the version, 503 with the version, `"dev"` without `APP_VERSION`
+- [x] 1.1 `APP_VERSION` in `packages/server/src/config.ts`; `healthRoutes` reports `version`, `"dev"` when unset (decision 4)
+- [x] 1.2 Tests: 200 with the version, 503 with the version, `"dev"` without `APP_VERSION`
 
 ## 2. Helm chart
 
