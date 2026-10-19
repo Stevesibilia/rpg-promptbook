@@ -6,5 +6,6 @@
 !packages/format/
 !packages/project/
 !packages/server/
+!packages/web/
 **/node_modules
 **/dist

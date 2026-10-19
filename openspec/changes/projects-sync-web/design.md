@@ -352,7 +352,8 @@ and bundle the server with esbuild, then a runtime stage with production
 dependencies, `dist/`, `migrations/` and the web build at `WEB_DIST`. Root
 `compose.yaml`: `postgres:18-alpine` with a named volume and a health check,
 and `app` on `${PROMPTBOOK_PORT:-8090}:3000`, `PUBLIC_URL`
-`http://localhost:${PROMPTBOOK_PORT:-8090}`, the admin variables from a
+`http://localhost:${PROMPTBOOK_PORT:-8090}` unless `.env` sets `PUBLIC_URL` to
+reach the stack from the LAN (amended in group 4), the admin variables from a
 `.env` file (`.env.example` committed, `.env` ignored).
 
 `seed <username>` creates, for that user, the projects of the mockup: the

@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # The local stack's image (design decision 10): the server bundled with
-# esbuild, the npm packages it needs at run time, the migrations and, once the
-# web client exists, its build. Targets linux/arm64 and linux/amd64 on musl;
-# @node-rs/argon2 ships a prebuilt binary for both.
+# esbuild, the npm packages it needs at run time, the migrations and the web
+# client's build, which the server serves from WEB_DIST. Targets linux/arm64
+# and linux/amd64 on musl; @node-rs/argon2 ships a prebuilt binary for both.
 
 # Every dependency, for the builds.
 FROM node:26-alpine AS deps
@@ -12,7 +12,7 @@ COPY package.json package-lock.json ./
 COPY packages/format/package.json packages/format/
 COPY packages/project/package.json packages/project/
 COPY packages/server/package.json packages/server/
-# Group 4: COPY packages/web/package.json packages/web/
+COPY packages/web/package.json packages/web/
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 FROM deps AS build
@@ -20,15 +20,8 @@ COPY tsconfig.base.json ./
 COPY packages/format packages/format
 COPY packages/project packages/project
 COPY packages/server packages/server
-RUN npm run build -w promptbook-server
-
-# ---- Group 4 adds the web build here --------------------------------------
-# COPY packages/web packages/web
-# RUN npm run build -w promptbook-web
-# and in the runtime stage:
-# COPY --from=build /app/packages/web/dist /app/web
-# ENV WEB_DIST=/app/web
-# ---------------------------------------------------------------------------
+COPY packages/web packages/web
+RUN npm run build -w promptbook-server && npm run build -w promptbook-web
 
 # The server's npm dependencies without the dev ones. The workspace packages
 # are inlined in the bundle, but their npm dependencies (yjs, yaml, unified,
@@ -39,7 +32,7 @@ COPY package.json package-lock.json ./
 COPY packages/format/package.json packages/format/
 COPY packages/project/package.json packages/project/
 COPY packages/server/package.json packages/server/
-# Group 4: COPY packages/web/package.json packages/web/
+COPY packages/web/package.json packages/web/
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev -w promptbook-server --no-audit --no-fund
 
 FROM node:26-alpine AS runtime
@@ -49,6 +42,8 @@ COPY --from=prod-deps /app/node_modules node_modules
 COPY packages/server/package.json packages/server/
 COPY packages/server/migrations packages/server/migrations
 COPY --from=build /app/packages/server/dist packages/server/dist
+COPY --from=build /app/packages/web/dist /app/web
+ENV WEB_DIST=/app/web
 WORKDIR /app/packages/server
 USER node
 EXPOSE 3000
