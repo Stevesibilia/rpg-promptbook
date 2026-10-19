@@ -13,18 +13,33 @@ export const HANDSHAKE_TTL_SECONDS = 600;
 
 const SCOPE = 'openid profile email';
 
+// Sign-ins in flight at most. /start is public and every request adds a row
+// that lives HANDSHAKE_TTL_SECONDS; behind the proxy every client may share
+// one address, so the cap is global rather than per address.
+export const MAX_PENDING_SIGN_INS = 500;
+// The cap's warning goes to the log once a minute at most.
+const CAP_WARNING_INTERVAL_MS = 60_000;
+
+// Tries at a free username when an account made elsewhere takes it between
+// the search and the insert.
+const USERNAME_ATTEMPTS = 5;
+
 // Why a sign-in did not finish, as the sign-in page names it:
 // `cancelled` covers a handshake that is unknown, expired, already used or
 // started in another browser, and the provider's access_denied.
 export type SignInFailure = 'cancelled' | 'unreachable' | 'failed';
 
 export class SignInError extends Error {
+  // False when this failure was already logged recently.
+  readonly log: boolean;
+
   constructor(
     readonly reason: SignInFailure,
     message: string,
-    options?: ErrorOptions,
+    options?: ErrorOptions & { log?: boolean },
   ) {
     super(message, options);
+    this.log = options?.log ?? true;
   }
 }
 
@@ -69,6 +84,7 @@ export function createOidcProvider(
   // Discovered at the first use and kept; a failure is not kept, so the next
   // sign-in tries again.
   let configuration: Promise<client.Configuration> | null = null;
+  let capWarnedAt = -Infinity;
   const discover = (): Promise<client.Configuration> => {
     configuration ??= client
       .discovery(new URL(oidc.issuer), oidc.clientId, oidc.clientSecret, undefined, options)
@@ -86,11 +102,28 @@ export function createOidcProvider(
       const nonce = client.randomNonce();
       const codeVerifier = client.randomPKCECodeVerifier();
       const browserSecret = randomBytes(32).toString('base64url');
-      await db.query(
+      // The count and the insert in one statement, so a burst overshoots the
+      // cap by its concurrency at most.
+      const inserted = await db.query(
         `insert into oidc_logins (state, browser_hash, nonce, code_verifier, return_to, expires_at)
-         values ($1, $2, $3, $4, $5, now() + make_interval(secs => $6))`,
-        [state, hashToken(browserSecret), nonce, codeVerifier, safeReturnTo(returnTo), HANDSHAKE_TTL_SECONDS],
+         select $1, $2, $3, $4, $5, now() + make_interval(secs => $6)
+         where (select count(*) from oidc_logins where expires_at > now()) < $7
+         returning state`,
+        [
+          state,
+          hashToken(browserSecret),
+          nonce,
+          codeVerifier,
+          safeReturnTo(returnTo),
+          HANDSHAKE_TTL_SECONDS,
+          MAX_PENDING_SIGN_INS,
+        ],
       );
+      if (inserted.length === 0) {
+        const log = Date.now() - capWarnedAt >= CAP_WARNING_INTERVAL_MS;
+        if (log) capWarnedAt = Date.now();
+        throw new SignInError('unreachable', `${MAX_PENDING_SIGN_INS} sign-ins already in flight`, { log });
+      }
       const url = client.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
         scope: SCOPE,
@@ -203,15 +236,28 @@ export async function findOrCreateOidcUser(tx: Queryable, claims: OidcClaims): P
   // username get different suffixes rather than a unique violation.
   await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-oidc-new-account', 0))");
   const base = usernameFor(claims.preferred_username);
-  let username = base;
-  for (let n = 2; await tx.queryOne('select 1 from users where lower(username) = lower($1)', [username]); n++) {
-    username = `${base.slice(0, 63 - String(n).length)}-${n}`;
+  for (let attempt = 1; ; attempt++) {
+    let username = base;
+    for (let n = 2; await tx.queryOne('select 1 from users where lower(username) = lower($1)', [username]); n++) {
+      username = `${base.slice(0, 63 - String(n).length)}-${n}`;
+    }
+    const displayName = (text(claims.name) ?? text(claims.preferred_username) ?? username).slice(0, 100);
+    // A password account (user:create) takes no lock, so it can take the
+    // name between the search and here: the savepoint keeps the transaction
+    // usable for another search.
+    await tx.query('savepoint oidc_new_account');
+    try {
+      const row = await tx.queryOne<UserRow>(
+        `insert into users (username, display_name, oidc_issuer, oidc_subject, email)
+         values ($1, $2, $3, $4, $5) returning *`,
+        [username, displayName, claims.iss, claims.sub, email],
+      );
+      await tx.query('release savepoint oidc_new_account');
+      return toUser(row!);
+    } catch (error) {
+      const taken = (error as { code?: string; constraint?: string }).constraint === 'users_username_key';
+      if (!taken || attempt >= USERNAME_ATTEMPTS) throw error;
+      await tx.query('rollback to savepoint oidc_new_account');
+    }
   }
-  const displayName = (text(claims.name) ?? text(claims.preferred_username) ?? username).slice(0, 100);
-  const row = await tx.queryOne<UserRow>(
-    `insert into users (username, display_name, oidc_issuer, oidc_subject, email)
-     values ($1, $2, $3, $4, $5) returning *`,
-    [username, displayName, claims.iss, claims.sub, email],
-  );
-  return toUser(row!);
 }

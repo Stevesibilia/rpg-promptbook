@@ -137,12 +137,18 @@ function oidcConfig(values: z.output<typeof schema>, publicOrigin: string): Oidc
     const set = OIDC_REQUIRED.filter((name) => !missing.includes(name));
     throw new ConfigError(`Invalid configuration:\n  ${missing.join(' and ')} must be set with ${set.join(' and ')}`);
   }
+  // The callback route and the handshake cookie exist only there.
+  const callback = `${publicOrigin}/api/auth/oidc/callback`;
+  const redirectUri = values.OIDC_REDIRECT_URI ?? callback;
+  if (new URL(redirectUri).href !== callback) {
+    throw new ConfigError(`Invalid configuration:\n  OIDC_REDIRECT_URI must be ${callback}, PUBLIC_URL's origin`);
+  }
   return {
     issuer: values.OIDC_ISSUER!,
     clientId: values.OIDC_CLIENT_ID!,
     clientSecret: values.OIDC_CLIENT_SECRET!,
     providerName: values.OIDC_PROVIDER_NAME ?? 'single sign-on',
-    redirectUri: values.OIDC_REDIRECT_URI ?? `${publicOrigin}/api/auth/oidc/callback`,
+    redirectUri,
   };
 }
 

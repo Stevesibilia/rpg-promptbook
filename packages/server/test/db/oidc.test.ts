@@ -4,7 +4,17 @@ import type { AddressInfo } from 'node:net';
 import { allowInsecureRequests } from 'openid-client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PUBLIC_ROUTES } from '../../src/accounts/auth.js';
-import { findOrCreateOidcUser, safeReturnTo, usernameFor } from '../../src/accounts/oidc.js';
+import {
+  createOidcProvider,
+  findOrCreateOidcUser,
+  MAX_PENDING_SIGN_INS,
+  safeReturnTo,
+  SignInError,
+  usernameFor,
+} from '../../src/accounts/oidc.js';
+import { createUser } from '../../src/accounts/users.js';
+import { runCli } from '../../src/cli.js';
+import type { Queryable } from '../../src/db.js';
 import { hashToken } from '../../src/accounts/sessions.js';
 import type { OidcConfig } from '../../src/config.js';
 import { db, ORIGIN, PASSWORD, sessionCookie, signedIn, signIn, startApp, steve } from './helpers.js';
@@ -92,10 +102,51 @@ describe('single sign-on: start', () => {
     expect(JSON.stringify(rows)).not.toContain(browser);
   });
 
-  it('marks the handshake cookie Secure behind a trusted HTTPS proxy', async () => {
+  it('names the handshake cookie __Host- behind a trusted HTTPS proxy, and reads only that name there', async () => {
     const app = await ssoApp({}, { trustProxyHops: 1 });
-    const { cookie } = await begin(app, '/', { 'x-forwarded-proto': 'https' });
-    expect(cookie!.secure).toBe(true);
+    const https = { 'x-forwarded-proto': 'https' };
+    const start = await app.inject({ url: '/api/auth/oidc/start?return_to=/settings', headers: https });
+    expect(start.cookies.find((c) => c.name === 'pb_oidc')).toBeUndefined();
+    const cookie = start.cookies.find((c) => c.name === '__Host-pb_oidc')!;
+    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', secure: true, path: '/', maxAge: 600 });
+    expect(cookie.domain).toBeUndefined();
+    const back = new URL(issuer.approve(String(start.headers.location), ANNA));
+    const url = back.pathname + back.search;
+
+    // The plain name, as a sibling subdomain could set it, is not read.
+    const planted = await app.inject({ url, headers: { ...https, cookie: `pb_oidc=${cookie.value}` } });
+    expect(planted.headers.location).toBe('/?sign_in=cancelled');
+    const response = await app.inject({ url, headers: { ...https, cookie: `__Host-pb_oidc=${cookie.value}` } });
+    expect(response.headers.location).toBe('/settings');
+    expect(response.cookies.find((c) => c.name === '__Host-pb_oidc')).toMatchObject({ value: '', path: '/', secure: true });
+    expect(sessionCookie(response)).not.toBeNull();
+  });
+
+  it('caps the sign-ins in flight, and warns about it once a minute', async () => {
+    await db.query(
+      `insert into oidc_logins (state, browser_hash, nonce, code_verifier, return_to, expires_at)
+       select 's' || n, 'h', 'n', 'v', '/', now() + interval '10 minutes' from generate_series(1, $1) n`,
+      [MAX_PENDING_SIGN_INS - 1],
+    );
+    // Expired rows do not count.
+    await db.query(
+      `insert into oidc_logins (state, browser_hash, nonce, code_verifier, return_to, expires_at)
+       values ('old', 'h', 'n', 'v', '/', now() - interval '1 second')`,
+    );
+    const app = await ssoApp();
+    await begin(app);
+    const refused = await app.inject({ url: '/api/auth/oidc/start' });
+    expect(refused.headers.location).toBe('/?sign_in=unreachable');
+    expect(refused.cookies.find((c) => c.name === 'pb_oidc')).toBeUndefined();
+    expect(await count('select 1 from oidc_logins where expires_at > now()')).toBe(MAX_PENDING_SIGN_INS);
+
+    const provider = createOidcProvider(db, oidcConfig(), insecure.oidcDiscoveryOptions);
+    const errors: unknown[] = [];
+    for (let i = 0; i < 2; i++) errors.push(await provider.start('/').catch((error: unknown) => error));
+    expect(errors.map((e) => [(e as SignInError).reason, (e as SignInError).log])).toEqual([
+      ['unreachable', true],
+      ['unreachable', false],
+    ]);
   });
 
   it('keeps a return path only when it stays on this site', async () => {
@@ -234,6 +285,31 @@ describe('single sign-on: callback', () => {
       'racer-2',
       'racer-3',
       'racer-4',
+    ]);
+  });
+
+  it('looks again when a password account takes the free username before the insert', async () => {
+    // Creates `racer` from another connection right before the first insert,
+    // as user:create could.
+    let interfered = false;
+    const user = await db.withTransaction((tx) => {
+      const racing: Queryable = {
+        query: async <T>(sql: string, params?: unknown[]): Promise<T[]> => {
+          if (!interfered && sql.includes('insert into users')) {
+            interfered = true;
+            await createUser(db, { username: 'racer', password: PASSWORD });
+          }
+          return tx.query<T>(sql, params);
+        },
+        queryOne: async <T>(sql: string, params?: unknown[]) => (await racing.query<T>(sql, params))[0] ?? null,
+      };
+      return findOrCreateOidcUser(racing, { iss: issuer.issuer, sub: 'late', preferred_username: 'racer' });
+    });
+    expect(interfered).toBe(true);
+    expect(user).toMatchObject({ username: 'racer-2', signIn: 'oidc' });
+    expect((await db.query<{ username: string }>('select username from users order by username')).map((r) => r.username)).toEqual([
+      'racer',
+      'racer-2',
     ]);
   });
 
@@ -419,6 +495,20 @@ describe('single sign-on: the rest of the API', () => {
     expect((await signIn(app, 'anna', PASSWORD)).statusCode).toBe(401);
     const token = await signedIn(app);
     expect((await me(app, token)).user).toMatchObject({ username: 'steve', email: null, signIn: 'password' });
+  });
+
+  it('lets user:password give a single sign-on account a password for when single sign-on is off', async () => {
+    const sso = await ssoApp();
+    const { user } = await me(sso, sessionCookie(await signInAs(sso, ANNA))!);
+    const io = { env: { PROMPTBOOK_PASSWORD: PASSWORD }, out: () => {}, askPassword: async () => '' };
+    expect(await runCli(['user:password', 'anna'], db, io)).toBe(0);
+
+    const off = await startApp();
+    const token = await signedIn(off, 'anna');
+    expect((await me(off, token)).user.id).toBe(user.id);
+    const refused = await signIn(sso, 'anna');
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json().error).toBe('password_sign_in_off');
   });
 
   it('keeps every route but the public ones behind a session', async () => {

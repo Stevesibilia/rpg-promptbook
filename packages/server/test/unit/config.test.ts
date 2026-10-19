@@ -78,10 +78,26 @@ describe('configuration', () => {
         loadConfig({
           ...base,
           ...oidc,
+          PUBLIC_URL: 'https://promptbook.example/app',
           OIDC_PROVIDER_NAME: 'Authentik',
           OIDC_REDIRECT_URI: 'https://promptbook.example/api/auth/oidc/callback',
         }).oidc,
       ).toMatchObject({ providerName: 'Authentik', redirectUri: 'https://promptbook.example/api/auth/oidc/callback' });
+    });
+
+    it('wants the redirect URI to be the callback route at PUBLIC_URL', () => {
+      for (const uri of [
+        'https://localhost:8090/api/auth/oidc/callback',
+        'http://localhost:8091/api/auth/oidc/callback',
+        'http://promptbook.example/api/auth/oidc/callback',
+        'http://localhost:8090/api/auth/oidc/callback/',
+        'http://localhost:8090/callback',
+        'http://localhost:8090/api/auth/oidc/callback?next=/',
+      ]) {
+        expect(() => loadConfig({ ...base, ...oidc, OIDC_REDIRECT_URI: uri })).toThrow(
+          /OIDC_REDIRECT_URI must be http:\/\/localhost:8090\/api\/auth\/oidc\/callback/,
+        );
+      }
     });
 
     it('names the variables missing from a partial setup', () => {

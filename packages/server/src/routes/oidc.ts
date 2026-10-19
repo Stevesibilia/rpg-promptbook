@@ -9,9 +9,14 @@ import type { Db } from '../db.js';
 // The browser half of a handshake: a random secret whose SHA-256 the
 // handshake row keeps. SameSite=Lax, because the provider sends the browser
 // back by a cross-site top-level GET, which Strict would leave without it.
-// Scoped to these routes, and cleared at the callback whatever the outcome.
-export const OIDC_COOKIE = 'pb_oidc';
-const OIDC_PATH = '/api/auth/oidc';
+// Cleared at the callback whatever the outcome. Over https it is a __Host-
+// cookie (Secure, Path=/, no Domain), which a sibling subdomain cannot plant;
+// over plain http, in development, it is scoped to these routes instead.
+export function handshakeCookie(req: FastifyRequest) {
+  return req.protocol === 'https'
+    ? { name: '__Host-pb_oidc', path: '/', secure: true }
+    : { name: 'pb_oidc', path: '/api/auth/oidc', secure: false };
+}
 
 export async function oidcRoutes(
   app: FastifyInstance,
@@ -27,13 +32,8 @@ export async function oidcRoutes(
   app.get('/api/auth/oidc/start', async (req, reply) => {
     try {
       const { url, browserSecret } = await provider.start(safeReturnTo((req.query as { return_to?: unknown }).return_to));
-      reply.setCookie(OIDC_COOKIE, browserSecret, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: req.protocol === 'https',
-        path: OIDC_PATH,
-        maxAge: HANDSHAKE_TTL_SECONDS,
-      });
+      const { name, path, secure } = handshakeCookie(req);
+      reply.setCookie(name, browserSecret, { httpOnly: true, sameSite: 'lax', secure, path, maxAge: HANDSHAKE_TTL_SECONDS });
       return reply.redirect(url.href, 302);
     } catch (error) {
       return failed(req, reply, error);
@@ -43,8 +43,9 @@ export async function oidcRoutes(
   // Fastify's request lines are info and carry the URL, whose query holds
   // the provider's one-time code: this route logs warnings only.
   app.get('/api/auth/oidc/callback', { logLevel: 'warn' }, async (req, reply) => {
-    const browserSecret = req.cookies[OIDC_COOKIE];
-    reply.clearCookie(OIDC_COOKIE, { path: OIDC_PATH });
+    const { name, path, secure } = handshakeCookie(req);
+    const browserSecret = req.cookies[name];
+    reply.clearCookie(name, { path, secure, httpOnly: true, sameSite: 'lax' });
     try {
       const query = new URL(req.url, 'http://callback').search;
       const { user, returnTo } = await provider.finish(query, browserSecret);
@@ -66,6 +67,7 @@ function failed(req: FastifyRequest, reply: FastifyReply, error: unknown) {
     req.log.error({ err: error }, 'Single sign-on failed');
     return reply.redirect('/?sign_in=failed', 302);
   }
+  if (!error.log) return reply.redirect(`/?sign_in=${error.reason}`, 302);
   const cause = error.cause instanceof Error ? error.cause : null;
   req.log.warn(
     {
