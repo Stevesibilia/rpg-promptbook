@@ -10,6 +10,8 @@ export {
 } from './engine.js';
 export {
   defaultLayoutOptions,
+  sheetLabel,
+  toLayoutInput,
   type LayoutBlock,
   type LayoutBox,
   type LayoutField,

@@ -7,11 +7,11 @@
 
 ## 2. Template (brief A)
 
-- [ ] 2.1 `input.ts`: `toLayoutInput` (decision 2)
-- [ ] 2.2 `typst/avventura.typ`: every part of `impagina.py`'s `costruisci` with `stile.css`'s look, tabs, footer, cover, sheet page references, `pos` calls, options (decisions 3, 5, 6)
-- [ ] 2.3 Tests: Sabaoth as decision 16 lists; `toLayoutInput` unit tests
-- [ ] 2.4 Write the Sabaoth PDF to a scratch path, look at it page by page against `~/Downloads/Ancora-di-Sabaoth-A4.pdf`, and list the differences in the hand-back
-- [ ] 2.5 Checks (`npm run typecheck`, `npm test -w promptbook-layout`, `npm test`) and hand-back of brief A
+- [x] 2.1 `input.ts`: `toLayoutInput` (decision 2)
+- [x] 2.2 `typst/avventura.typ`: every part of `impagina.py`'s `costruisci` with `stile.css`'s look, tabs, footer, cover, sheet page references, `pos` calls, options (decisions 3, 5, 6)
+- [x] 2.3 Tests: Sabaoth as decision 16 lists; `toLayoutInput` unit tests
+- [x] 2.4 Write the Sabaoth PDF to a scratch path, look at it page by page against `~/Downloads/Ancora-di-Sabaoth-A4.pdf`, and list the differences in the hand-back
+- [x] 2.5 Checks (`npm run typecheck`, `npm test -w promptbook-layout`, `npm test`) and hand-back of brief A
 
 ## 3. Web: worker and pane (brief B)
 

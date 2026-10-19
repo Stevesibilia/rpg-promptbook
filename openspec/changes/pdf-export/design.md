@@ -25,7 +25,7 @@ A throwaway prototype in Node with the packages this plan pins, loading the
 browser compiler's WASM (`typst-ts-web-compiler`), not the native one:
 
 - `createTypstCompiler()`, `init({ getModule: () => wasmBytes, beforeBuild:
-  [disableDefaultFontAssets(), loadFonts([...ttfBytes])] })`: 30 ms. Typst
+[disableDefaultFontAssets(), loadFonts([...ttfBytes])] })`: 30 ms. Typst
   reports `0.15.0`.
 - `compile({ mainFilePath, format: 1 })` gives a PDF. **`format` takes the
   enum value** (`CompileFormatEnum.pdf` = 1, `vector` = 0); the string
@@ -39,9 +39,12 @@ browser compiler's WASM (`typst-ts-web-compiler`), not the native one:
 
   ```ts
   await compiler.runWithWorld({ mainFilePath, inputs }, async (world) => {
-    await world.compile({ diagnostics: 'full' });
-    const positions = await world.query({ selector: '<pb-pos>', field: 'value' });
-    const vector = world.vector({ diagnostics: 'full' });
+    await world.compile({ diagnostics: "full" });
+    const positions = await world.query({
+      selector: "<pb-pos>",
+      field: "value",
+    });
+    const vector = world.vector({ diagnostics: "full" });
   });
   ```
 
@@ -49,9 +52,10 @@ browser compiler's WASM (`typst-ts-web-compiler`), not the native one:
   `#let pos(v) = context [#metadata((..v, page: here().page(), y: here().position().y.pt()))<pb-pos>]`.
   A query that reads `metadata` from inside a metadata element did not
   converge; the labelled form above did.
+
 - `createTypstRenderer()` turns the vector artifact into one SVG of the
   whole document: pages stacked as `<g class="typst-page"
-  transform="translate(0, y)" data-page-width data-page-height>`. The
+transform="translate(0, y)" data-page-width data-page-height>`. The
   `window` option does not crop to one page. The default output contains a
   `<script>` whose `&` breaks XML, so it does not load as an `<img>`;
   inline, or with the script removed, it renders correctly in Chrome.
@@ -112,7 +116,8 @@ desktop app and the plugin could not reuse it).
 
 `toLayoutInput(model, options, project)` returns plain JSON written to the
 shadow file `/input.json`; the template reads it with `json("/input.json")`.
-It carries:
+`project` is `{ title }`, the project's name, used when the front matter has
+no `titolo`. It carries:
 
 - `options` (decision 6), `title`, `subtitle`, and the footer fields:
   `author` (from `autore`, names joined with «, »), `copyright`,
@@ -175,14 +180,14 @@ export interface EngineAssets {
 }
 export async function createEngine(assets: EngineAssets): Promise<Engine>;
 interface Engine {
-  build(input: LayoutInput): Promise<BuildResult>;   // vector + positions + pages
+  build(input: LayoutInput): Promise<BuildResult>; // vector + positions + pages
   pdf(input: LayoutInput): Promise<Uint8Array>;
 }
 interface BuildResult {
   vector: Uint8Array;
   pages: { width: number; height: number }[];
   positions: Position[];
-  diagnostics: { severity: 'error' | 'warning'; message: string }[];
+  diagnostics: { severity: "error" | "warning"; message: string }[];
 }
 ```
 
@@ -222,10 +227,10 @@ link for an SPDX id.
 
 ```ts
 interface LayoutOptions {
-  paper: 'a4' | 'us-letter';
-  inkSaver: boolean;      // tints become white; text, rules and borders stay
-  pregenerated: boolean;  // false leaves out the Pregenerati part
-  template: 'avventura@1';
+  paper: "a4" | "us-letter";
+  inkSaver: boolean; // tints become white; text, rules and borders stay
+  pregenerated: boolean; // false leaves out the Pregenerati part
+  template: "avventura@1";
 }
 ```
 
@@ -240,12 +245,12 @@ device preference). The template select shows the one template, disabled.
 
 ```ts
 interface Position {
-  kind: 'part' | 'scene' | 'block' | 'scene-end';
-  id?: string;      // "S3" for scenes, the part name for parts
-  label?: string;   // what a thumbnail shows: "Cover", "S3", "Schede"…
-  from: number;     // source offset
-  page: number;     // 1-based
-  y: number;        // pt from the top of the page
+  kind: "part" | "scene" | "block" | "scene-end";
+  id?: string; // "S3" for scenes, the part name for parts
+  label?: string; // what a thumbnail shows: "Cover", "S3", "Schede"…
+  from: number; // source offset
+  page: number; // 1-based
+  y: number; // pt from the top of the page
 }
 ```
 
@@ -282,8 +287,8 @@ project page is open:
 - Request `{ version, text, options, project }`: parses with
   `parseAdventure` and `templates.avventura`, builds, renders the vector to
   one SVG with `data_selection: { body: true, defs: true, css: true, js:
-  false }`, and answers `{ version, svg, pages, positions, checks,
-  diagnostics }`. A `pdf` request answers the bytes.
+false }`, and answers `{ version, svg, pages, positions, checks,
+diagnostics }`. A `pdf` request answers the bytes.
 - `src/editor/pdf/client.ts`: like `analysis/client.ts`, a 400 ms debounce
   and one request in flight; it sends only while the pane or the review is
   open. First open shows «Loading the PDF engine…» until the engine is
@@ -376,8 +381,9 @@ In `packages/server/src/web.ts`:
 ### 16. Tests
 
 - **Layout, Node** (`packages/layout/test`, vitest, the browser WASM as in
-  the prototype): Sabaoth (`packages/format/fixtures/l-ancora-di-sabaoth.md`
-  with `autore`, `copyright` and `licenza` added in the test) builds with no
+  the prototype): Sabaoth
+  (`packages/format/fixtures/l-ancora-di-sabaoth.converted.md` with `autore`,
+  `copyright` and `licenza` added in the test) builds with no
   error diagnostics; every scene's first position starts a page; the page
   count is between 12 and 18; two builds give byte-identical PDFs; the PDF
   starts with `%PDF`; the Letter option changes the page size; ink saver
