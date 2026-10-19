@@ -37,10 +37,10 @@
 - [x] 5.3 Research view: topics, notes list, note detail with Edit, Delete, New note, «mentioned in»
 - [x] 5.4 Brainstorm log view: entries, New entry, Edit, Delete, open questions to the to-do list
 - [x] 5.5 History view and Compare with `diff` 9.0.0 pinned; `history/diff.ts` (decisions 6, 15)
-- [ ] 5.6 Claude edit banner; `snapshot` stateless event in `sync/state.ts` and `sync/registry.ts` (decision 13)
-- [ ] 5.7 Inspector Research section and `research/match.ts`; Seed links to Inspiration (decision 14)
-- [ ] 5.8 Unit tests: `wordsOf`, `notesFor`, diff rows and counts, banner dismissal
-- [ ] 5.9 Checks and hand-back of brief C
+- [x] 5.6 Claude edit banner; `snapshot` stateless event in `sync/state.ts` and `sync/registry.ts` (decision 13)
+- [x] 5.7 Inspector Research section and `research/match.ts`; Seed links to Inspiration (decision 14)
+- [x] 5.8 Unit tests: `wordsOf`, `notesFor`, diff rows and counts, banner dismissal
+- [x] 5.9 Checks and hand-back of brief C
 
 ## 6. Connect, e2e and docs (brief D)
 

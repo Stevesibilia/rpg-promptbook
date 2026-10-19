@@ -6,6 +6,7 @@ import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
+import { ClaudeBanner } from '../claude/ClaudeBanner.js';
 import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
@@ -216,6 +217,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       wideRight={pane}
       crumbs={<ProjectCrumbs meta={meta} />}
       topExtra={<ProjectMetaControls doc={doc} meta={meta} />}
+      banner={<ClaudeBanner projectId={meta.id} />}
       topEnd={
         <div className="top-tools">
           <HistoryButton projectId={meta.id} />
