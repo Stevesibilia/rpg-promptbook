@@ -43,7 +43,7 @@
 ## 5. End to end, docs and hand-back
 
 - [x] 5.1 Playwright in `e2e/` against the compose stack (decision 11), one test per scenario named there
-- [ ] 5.2 CI job `e2e`
+- [x] 5.2 CI job `e2e`
 - [ ] 5.3 `README.md`: how to run the local stack, the seed, development mode, tests
 - [ ] 5.4 Preview for the owner: stack up from the working tree with the seed, the URL, the username and password, and the pages to look at; wait for the owner's word before the last commit of the group
 - [ ] 5.5 Checks: `npm run typecheck`, `npm test` with Postgres, Playwright, Prettier on changed Markdown; literal results in the hand-back
