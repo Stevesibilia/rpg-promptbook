@@ -113,8 +113,9 @@ status, campaignId, system, seed?, todo: string[], document }`.
 - `skeletonDocument(category, { title, system, campaignTitle, author,
 copyright, licence })`: adventure and one-shot from
   `templates.avventura` (front matter keys in the template's order, then
-  every section of the template in order with an empty body, `### S1. ` under
-  the scenes section, the appendix); campaign from the fixed skeleton in the
+  every section of the template in order with an empty body,
+  `### S1. Prima scena` under the scenes section (the format needs a name
+  after the id), the appendix); campaign from the fixed skeleton in the
   spec. `formato` is `avventura` or `one-shot`.
 - `defaultSettings`: the to-do templates and empty defaults from the spec.
 - `summarize(doc, { campaigns }) → Summary`: the fields of the projects row
@@ -122,8 +123,10 @@ copyright, licence })`: adventure and one-shot from
   the document after the front matter.
 - `prepareImport(note, { fileName, campaigns })` → `{ title, category | null,
 campaignId | null, text, report, isAdventureNote, imageRefs }`, using
-  `convertNote`. Image references: Markdown image links and `<img src>` whose
-  target is a relative path.
+  `convertNote`. An adventure note has front matter in the original, a
+  converted front matter key other than `titolo`, or a `### S<n>.` heading.
+  Image references: Markdown image links and `<img src>` whose target is a
+  relative path.
 - `exportProject(doc, { campaignTitle }) → Record<string, string>` with
   `document.md`, `todo.md`, `seed.md`, `project.json`. Folder name: the title
   with `/\\:*?"<>|` replaced by `-`, made unique within one zip with ` (2)`.

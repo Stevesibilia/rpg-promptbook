@@ -73,10 +73,11 @@ A new project SHALL start with a copy of its category's to-do template from
 the user's settings, and with a skeleton prep document for its category:
 adventures and one-shots from the `avventura@1` template (front matter with
 the title, system, format, campaign when set, author, copyright and licence
-from the settings; the template's sections; one empty scene `### S1.`; the
-images and music appendix), campaigns from a fixed plain skeleton (front
-matter, then `## Premessa`, `## Fronti`, `## PNG ricorrenti`, `## Fili aperti`,
-`## Sessioni`). Editing a template SHALL NOT change existing projects.
+from the settings; the template's sections; one scene `### S1. Prima scena`
+with empty fields; the images and music appendix), campaigns from a fixed
+plain skeleton (front matter, then `## Premessa`, `## Fronti`,
+`## PNG ricorrenti`, `## Fili aperti`, `## Sessioni`). Editing a template
+SHALL NOT change existing projects.
 
 #### Scenario: New adventure in a campaign
 

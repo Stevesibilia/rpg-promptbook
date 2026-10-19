@@ -27,9 +27,10 @@ Each note SHALL be converted with the format package's `convertNote` by the
 server when it is stored; the web client SHALL run the same conversion to
 preview it. The dialog SHALL show the converter's report per note:
 the changes made and what still needs the user. A note SHALL count as an
-adventure note when the converted text has front matter or at least one scene
-heading `### S<n>.`. Nothing in a note SHALL be dropped: what the converter
-cannot place stays in the text.
+adventure note when the original note has front matter, when the converted
+front matter holds a key other than `titolo`, or when the converted text has
+at least one scene heading `### S<n>.`. Nothing in a note SHALL be dropped:
+what the converter cannot place stays in the text.
 
 #### Scenario: Report
 

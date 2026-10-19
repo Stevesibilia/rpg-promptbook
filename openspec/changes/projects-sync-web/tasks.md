@@ -1,11 +1,11 @@
 ## 1. Project package
 
-- [ ] 1.1 `packages/project` (`promptbook-project`, private, exports `./src/index.ts`), `tsconfig.json` and a test project referenced from the root `tsconfig.json`; dependencies `yjs`, `fractional-indexing`, `promptbook-format`
-- [ ] 1.2 Document shape (design decision 2) with `createProjectDoc`, the readers and the writers of decision 3
-- [ ] 1.3 `skeletonDocument` for the three categories and `defaultSettings`
-- [ ] 1.4 `summarize`, including the fallbacks for invalid status and campaign
-- [ ] 1.5 `prepareImport` (title, category, campaign, adventure-note rule, image references) and `exportProject`
-- [ ] 1.6 Tests: concurrent edits on two docs (tick versus add, rename versus move, two fields of one item); skeleton of an adventure in a campaign parses with no `meta.`, `section.` or `scene.id.` errors; summary of the Sabaoth fixture; import of Sabaoth and of a shopping list; export then re-import is byte-identical for an imported note
+- [x] 1.1 `packages/project` (`promptbook-project`, private, exports `./src/index.ts`), `tsconfig.json` and a test project referenced from the root `tsconfig.json`; dependencies `yjs`, `fractional-indexing`, `promptbook-format`
+- [x] 1.2 Document shape (design decision 2) with `createProjectDoc`, the readers and the writers of decision 3
+- [x] 1.3 `skeletonDocument` for the three categories and `defaultSettings`
+- [x] 1.4 `summarize`, including the fallbacks for invalid status and campaign
+- [x] 1.5 `prepareImport` (title, category, campaign, adventure-note rule, image references) and `exportProject`
+- [x] 1.6 Tests: concurrent edits on two docs (tick versus add, rename versus move, two fields of one item); skeleton of an adventure in a campaign parses with no `meta.`, `section.` or `scene.id.` errors; summary of the Sabaoth fixture; import of Sabaoth and of a shopping list; export then re-import is byte-identical for an imported note
 
 ## 2. Server foundation and accounts
 
