@@ -40,7 +40,7 @@ that its app works offline.
 | Research      | **Decided:** a way to research the web about the topics of the inspiration (see below).                                                                                                                                                                                                                                                                              |
 | Name          | **Decided:** RPG Promptbook; Promptbook inside the app. A promptbook is the stage manager's master copy of the script, with every cue. Repo `Stevesibilia/rpg-promptbook` (public), local folder `~/Homelab/rpg-promptbook`. The `rpg-` prefix sets it apart from webgptorg/promptbook, an AI tool that also owns the npm scope `@promptbook`: never use that scope. |
 | Repo          | **Decided:** public GitHub repo, for the Electron builds and updates (see Stack).                                                                                                                                                                                                                                                                                    |
-| Stack         | **Decided:** PostgreSQL; local accounts plus OIDC, like gdrarchive and cronista. The rest is proposed under Stack.                                                                                                                                                                                                                                                   |
+| Stack         | **Decided:** PostgreSQL; sign-in through OIDC (Authentik on the homelab), local password accounts only with it off. The rest is proposed under Stack.                                                                                                                                                                                                                |
 
 ## Architecture (proposal)
 
@@ -63,7 +63,13 @@ network.
     Capacitor. Not planned.
 - **Server:** Fastify (like gdrarchive) plus Hocuspocus, the Node sync server
   for Yjs, persisting to Postgres. Images and audio in object storage.
-- **Auth:** local accounts plus OIDC, like gdrarchive and cronista.
+- **Auth:** single sign-on through OpenID Connect, Authentik on the homelab,
+  like gdrarchive and cronista (decided 2026-10-19, #17). The account is the
+  provider's identity, keyed by issuer and subject and created at its first
+  sign-in. **No linking:** an identity never attaches to an existing local
+  account, by email or by username. While single sign-on is on, passwords are
+  refused; turning it off in the deployment brings back local password
+  accounts, the way in when Authentik is down.
 - **Claude's edits:** the MCP server applies changes as Yjs updates to the same
   document, so they merge with offline edits on reconnect.
 
@@ -124,7 +130,8 @@ text and Sabaoth gets no threat box.
 
 ### Stack
 
-**Decided:** PostgreSQL; local accounts plus OIDC, like gdrarchive and cronista.
+**Decided:** PostgreSQL; sign-in through OIDC, with local password accounts
+only while it is off (see Auth above).
 The rest is proposed, reusing what gdrarchive and CueBard already solved:
 
 - **Repo:** a TypeScript monorepo with npm workspaces, like gdrarchive:
@@ -137,7 +144,7 @@ The rest is proposed, reusing what gdrarchive and CueBard already solved:
 - **Server:** Node, Fastify 5, plain `pg` with SQL migrations, as in
   gdrarchive. Hocuspocus for Yjs sync, saving to Postgres. The MCP server with
   the same SDK as gdrarchive's connector. Auth code ported from gdrarchive
-  (argon2 local passwords, `openid-client`). Images and audio as files named by
+  (argon2 local passwords, `openid-client` 6 with PKCE). Images and audio as files named by
   their hash on a persistent volume, behind an interface so an S3-compatible
   store can replace it. One container, deployed on the homelab like
   gdrarchive.

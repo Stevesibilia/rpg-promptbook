@@ -18,16 +18,16 @@
 - [x] 3.1 `api.ts`, `SignInPage.tsx`, error messages (decision 7)
 - [x] 3.2 `SignInDialog.tsx` new window, route `/signed-in`, `BroadcastChannel`
 - [x] 3.3 Settings, Account for single sign-on accounts
-- [ ] 3.4 Tests: sign-in page in both modes and each error; the dialog closing on the broadcast; the Account section in both modes
+- [x] 3.4 Tests: sign-in page in both modes and each error; the dialog closing on the broadcast; the Account section in both modes
 
 ## 4. Chart, pipeline, preview, docs
 
-- [ ] 4.1 Chart values and deployment (decision 8); `helm lint` and `helm template` with both values files, and a render with both modes on that fails
-- [ ] 4.2 `.gitlab-ci.yml` `prepare-secrets`
-- [ ] 4.3 e2e: the suite still passes in password mode; one test of the sign-in page in oidc mode against the in-process issuer if it fits the stack, else say so
-- [ ] 4.4 Preview for the owner: the compose stack with a local test issuer, reachable on the LAN; URL and steps in a status note; wait for the owner's go
-- [ ] 4.5 `docs/deploy-homelab.md` (single sign-on, turning it off, `user:delete`), `docs/design.md` (auth line, "no linking"); Prettier on them
-- [ ] 4.6 Checks and hand-back of brief B
+- [x] 4.1 Chart values and deployment (decision 8); `helm lint` and `helm template` with both values files, and a render with both modes on that fails
+- [x] 4.2 `.gitlab-ci.yml` `prepare-secrets`
+- [x] 4.3 e2e: the suite still passes in password mode; one test of the sign-in page in oidc mode against the in-process issuer if it fits the stack, else say so
+- [x] 4.4 Preview for the owner: the compose stack with a local test issuer, reachable on the LAN; URL and steps in a status note; wait for the owner's go
+- [x] 4.5 `docs/deploy-homelab.md` (single sign-on, turning it off, `user:delete`), `docs/design.md` (auth line, "no linking"); Prettier on them
+- [x] 4.6 Checks and hand-back of brief B
 
 ## 5. Cluster and release (architect)
 

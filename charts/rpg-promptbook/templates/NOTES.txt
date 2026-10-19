@@ -10,8 +10,16 @@ Reach it at:
   then open http://localhost:8080
 {{- end }}
 
+{{- if .Values.app.oidc.enabled }}
+Sign-in goes through {{ .Values.app.oidc.providerName }} ({{ .Values.app.oidc.issuer }}), with the client
+from the Secret {{ .Values.app.oidc.secret }}. The first sign-in of an identity creates its account.
+{{- else }}
+Sign-in uses passwords.
+{{- end }}
+{{- if .Values.app.admin.enabled }}
 The first account is created from the keys admin-username and admin-password
 of the Secret {{ .Values.app.credentialsSecret }}, only while the database has none.
+{{- end }}
 
 Database: the CloudNativePG cluster {{ include "rpg-promptbook.cnpgClusterName" . }}.
 {{- if .Values.cnpg.backup.enabled }}

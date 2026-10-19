@@ -49,8 +49,9 @@ variables:
 # Runs before the deploy so the Secrets the chart refers to are already there.
 # Credentials go into the cluster directly rather than through `helm --set`,
 # which would leave them in the release Helm stores. Rotating one is a change
-# to a CI/CD variable and a re-run, then a `kubectl rollout restart` for the
-# admin credentials (docs/deploy-homelab.md).
+# to a CI/CD variable and a re-run (docs/deploy-homelab.md). The single
+# sign-on client's Secret is not this pipeline's: the cluster's Terraform
+# writes it, and this job only checks that it is there.
 prepare-secrets:
   stage: secrets
   image: $OPS_IMAGE
@@ -60,7 +61,7 @@ prepare-secrets:
   script:
     - |
       missing=""
-      for var in PB_REGISTRY_USER PB_REGISTRY_PASSWORD PB_ADMIN_USERNAME PB_ADMIN_PASSWORD; do
+      for var in PB_REGISTRY_USER PB_REGISTRY_PASSWORD; do
         eval "value=\${$var:-}"
         [ -n "$value" ] || missing="$missing $var"
       done
@@ -74,6 +75,8 @@ prepare-secrets:
     # the backup Secret cnpg-backup-s3 written into it. Creating it here would
     # fight that repository.
     - kubectl get namespace "$KUBE_NAMESPACE" >/dev/null 2>&1 || { echo "Namespace $KUBE_NAMESPACE does not exist. Apply the kubernetes_cluster change that creates it first."; exit 1; }
+    # Without it the pod would wait in CreateContainerConfigError.
+    - kubectl -n "$KUBE_NAMESPACE" get secret rpg-promptbook-oidc >/dev/null 2>&1 || { echo "Secret rpg-promptbook-oidc does not exist. Apply the kubernetes_cluster change that writes it first."; exit 1; }
 
     # Built from a project deploy token, not $CI_REGISTRY_PASSWORD: that one is
     # scoped to the running job and expires with it, so a pod restarting an
@@ -84,14 +87,6 @@ prepare-secrets:
         --docker-server=registry.siberio.eu \
         --docker-username="$PB_REGISTRY_USER" \
         --docker-password="$PB_REGISTRY_PASSWORD" \
-        --dry-run=client -o yaml | kubectl apply -f -
-
-    # The first account, created only while the database has none.
-    - |
-      kubectl create secret generic rpg-promptbook-credentials \
-        --namespace "$KUBE_NAMESPACE" \
-        --from-literal=admin-username="$PB_ADMIN_USERNAME" \
-        --from-literal=admin-password="$PB_ADMIN_PASSWORD" \
         --dry-run=client -o yaml | kubectl apply -f -
 
 # `helm-deploy` comes from the helmdeploy component included above. It runs on

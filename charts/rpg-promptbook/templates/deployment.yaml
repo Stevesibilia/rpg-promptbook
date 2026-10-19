@@ -1,4 +1,8 @@
 {{- $secret := include "rpg-promptbook.databaseSecretName" . }}
+{{- $oidc := .Values.app.oidc }}
+{{- if and $oidc.enabled .Values.app.admin.enabled }}
+{{- fail "app.oidc.enabled and app.admin.enabled cannot both be true: the server refuses a password account beside single sign-on. Set app.admin.enabled=false." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,9 +27,10 @@ spec:
         {{- include "rpg-promptbook.selectorLabels" . | nindent 8 }}
       annotations:
         # Roll the pod when a value that feeds its environment changes. The
-        # credentials Secret is written outside Helm, so a rotated password
-        # needs `kubectl rollout restart` (docs/deploy-homelab.md).
-        checksum/config: {{ dict "publicUrl" .Values.app.publicUrl "trustProxyHops" .Values.app.trustProxyHops "sessionTtlHours" .Values.app.sessionTtlHours "credentialsSecret" .Values.app.credentialsSecret | toJson | sha256sum }}
+        # credentials and OIDC Secrets are written outside Helm, so a rotated
+        # password or client secret needs `kubectl rollout restart`
+        # (docs/deploy-homelab.md).
+        checksum/config: {{ dict "publicUrl" .Values.app.publicUrl "trustProxyHops" .Values.app.trustProxyHops "sessionTtlHours" .Values.app.sessionTtlHours "credentialsSecret" .Values.app.credentialsSecret "admin" .Values.app.admin "oidc" $oidc | toJson | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -102,6 +107,7 @@ spec:
             # tag of the image above, so it cannot name another build.
             - name: APP_VERSION
               value: {{ include "rpg-promptbook.tag" . | quote }}
+            {{- if .Values.app.admin.enabled }}
             - name: PROMPTBOOK_ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -114,6 +120,25 @@ spec:
                   name: {{ .Values.app.credentialsSecret }}
                   key: admin-password
                   optional: false
+            {{- end }}
+            {{- if $oidc.enabled }}
+            - name: OIDC_ISSUER
+              value: {{ required "app.oidc.issuer is required while app.oidc.enabled" $oidc.issuer | quote }}
+            - name: OIDC_PROVIDER_NAME
+              value: {{ $oidc.providerName | quote }}
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $oidc.secret }}
+                  key: client-id
+                  optional: false
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $oidc.secret }}
+                  key: client-secret
+                  optional: false
+            {{- end }}
           # Starting includes the migrations, which can take a while on a
           # release that changes the schema.
           startupProbe:
