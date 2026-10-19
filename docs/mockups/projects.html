@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook: projects mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Same tokens as editor.html (gdrarchive's Emerald look). */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+.app { display: grid; height: 100vh; grid-template-rows: 44px auto 1fr 26px; grid-template-columns: 48px 1fr var(--right, 340px); }
+.app.no-sel { --right: 0px; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); position: relative; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+.crumbs b { color: var(--text); font-weight: 600; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.sync.busy i { background: var(--info); animation: pulse 1s ease-in-out infinite; }
+.sync.local i { background: var(--amber); } .sync.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.sync.fail i { background: var(--danger); } .sync.fail { color: var(--danger); border-color: var(--danger); font-weight: 600; }
+.sync.out i { background: var(--faint); } .sync.out { color: var(--text); border-color: var(--amber); }
+@keyframes pulse { 50% { opacity: .3; } }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.danger { color: var(--danger); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); color: var(--text); }
+
+/* Sync popover */
+.pop { display: none; position: absolute; top: 40px; right: 70px; width: 330px; z-index: 30; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.4); padding: 12px 14px; }
+.pop.on { display: block; }
+.pop h4 { margin: 0 0 2px; font: 600 15px var(--font); display: flex; gap: 8px; align-items: center; }
+.pop h4 i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.pop .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+.kv { display: grid; grid-template-columns: 96px 1fr; gap: 4px 10px; font-size: 12.5px; margin-bottom: 10px; }
+.kv dt { color: var(--faint); } .kv dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pend { list-style: none; margin: 0 0 10px; padding: 0; font-size: 12.5px; border-top: 1px solid var(--border); }
+.pend li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.pend li span:last-child { color: var(--amber); }
+.pop .acts { display: flex; gap: 8px; }
+
+/* Alert banner: a failed local save is loud */
+.alert { grid-column: 1 / -1; display: none; align-items: center; gap: 10px; padding: 8px 14px; background: color-mix(in srgb, var(--danger) 16%, var(--surface)); border-bottom: 1px solid var(--danger); color: var(--text); }
+.alert.on { display: flex; } .alert b { color: var(--danger); }
+.alert.warn { background: color-mix(in srgb, var(--amber) 13%, var(--surface)); border-color: var(--amber); } .alert.warn b { color: var(--amber); }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 3 / 5; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail button.dis { opacity: .35; cursor: default; }
+.rail .bottom { margin-top: auto; }
+.rail .last { margin-bottom: 8px; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9;
+  background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+
+/* Center */
+.center { grid-column: 2; grid-row: 3; overflow: auto; min-width: 0; }
+.view { display: none; } .view.on { display: block; }
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 80px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.search { position: relative; } .search input { padding-left: 30px; width: 230px; } .search .ic { position: absolute; left: 8px; top: 8px; width: 15px; height: 15px; color: var(--faint); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { padding: 5px 11px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.seg button .n { color: var(--faint); font-size: 11px; margin-left: 4px; }
+.fchip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.fchip.on { color: var(--text); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.fchip .dot { width: 7px; height: 7px; border-radius: 50%; }
+.tog { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.tog input { accent-color: var(--primary); }
+.sortsel { font-size: 13px; padding: 4px 8px; }
+
+/* Project table */
+.tbl { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.tr { display: grid; grid-template-columns: minmax(0, 1fr) 104px 116px 150px 110px 34px; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.tr:last-child { border-bottom: 0; }
+.tr:hover { background: var(--hover); }
+.tr.sel { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 3px 0 0 var(--primary); }
+.tr.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); cursor: default; padding-top: 7px; padding-bottom: 7px; }
+.tr.th:hover { background: var(--surface-2); }
+.tr.child .ti { padding-left: 22px; position: relative; }
+.tr.child .ti::before { content: ''; position: absolute; left: 7px; top: -2px; bottom: 50%; width: 9px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.ti b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ti .meta { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); justify-self: start; }
+.st { font-size: 12px; display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+.st i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.st.prog { color: var(--amber); } .st.prog i { background: var(--amber); }
+.st.done { color: var(--primary); } .st.done i { background: var(--primary); }
+.prog-cell { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--muted); }
+.mini-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.mini-bar i { display: block; height: 100%; background: var(--primary); }
+.when { font-size: 12px; color: var(--faint); }
+.dev { display: grid; place-items: center; color: var(--faint); }
+.dev .ic { width: 15px; height: 15px; }
+.dev.up { color: var(--amber); }
+.dev.dl { color: var(--info); }
+.empty { padding: 36px; text-align: center; color: var(--faint); }
+
+/* Right: project panel */
+.right { grid-column: 3; grid-row: 3; background: var(--surface); border-left: 1px solid var(--border); overflow: auto; min-width: 0; }
+.app.no-sel .right { display: none; }
+.rp-h { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
+.rp-h h2 { font: 700 21px/1.15 var(--display); letter-spacing: .02em; margin: 0 0 6px; }
+.rp-h .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rp-h select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.rp-h .open { margin-top: 12px; display: flex; gap: 8px; }
+.rp-h .open .tb.primary { flex: 1; justify-content: center; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.acc .body { padding: 0 14px 12px; }
+.seed { font: italic 15px/1.45 var(--prose); color: var(--muted); border-left: 3px solid var(--amber); padding-left: 10px; margin: 0; }
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.todo li .grip { color: var(--faint); opacity: 0; cursor: grab; font-size: 11px; margin-top: 2px; }
+.todo li:hover .grip { opacity: 1; }
+.todo input { accent-color: var(--primary); margin-top: 3px; padding: 0; }
+.todo li.done span.t { color: var(--faint); text-decoration: line-through; }
+.todo .due { margin-left: auto; font-size: 11px; color: var(--amber); white-space: nowrap; }
+.todo .nt { display: block; font-size: 12px; color: var(--faint); }
+.bar { height: 4px; border-radius: 2px; background: var(--border); margin: 2px 0 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); transition: width .2s; }
+.add { color: var(--faint); font-size: 13px; padding: 4px 0; }
+.add:hover { color: var(--primary); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fact { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+.fact b { display: block; font: 600 17px var(--display); } .fact span { font-size: 12px; color: var(--faint); }
+.fact .e { color: var(--danger); } .fact .w { color: var(--amber); }
+.links { display: flex; flex-direction: column; gap: 2px; }
+.links .tb { justify-content: flex-start; padding-left: 4px; }
+.ondev { font-size: 12px; color: var(--faint); display: flex; gap: 6px; align-items: center; padding: 10px 14px; }
+.ondev .ic { width: 14px; height: 14px; color: var(--primary); }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); }
+.status .r { margin-left: auto; }
+.status .a { color: var(--amber); }
+
+/* Modals */
+.scrim { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(5,10,8,.62); align-items: flex-start; justify-content: center; padding-top: 6vh; }
+.scrim.on { display: flex; }
+.modal { width: min(880px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 16px 18px; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); }
+.modal .mf .note { margin-right: auto; color: var(--faint); font-size: 12.5px; }
+.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.catc { text-align: left; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }
+.catc:hover { border-color: var(--faint); }
+.catc.on { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+.catc b { display: block; font: 700 18px var(--display); letter-spacing: .02em; margin-bottom: 2px; }
+.catc span { font-size: 12.5px; color: var(--muted); }
+.np { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+.field.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.preview { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.preview h5 { margin: 0 0 6px; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); display: flex; justify-content: space-between; }
+.preview h5 a { color: var(--primary); text-transform: none; letter-spacing: 0; font-weight: 500; cursor: pointer; }
+.skel { font: 12.5px/1.6 var(--mono); color: var(--muted); margin: 0 0 12px; white-space: pre-wrap; }
+.skel .k { color: var(--info); } .skel .h { color: var(--text); }
+.tlist { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.tlist li { padding: 2px 0; color: var(--muted); } .tlist li::before { content: '☐ '; color: var(--faint); }
+.drop { border: 2px dashed var(--border); border-radius: 8px; padding: 26px; text-align: center; color: var(--muted); margin-bottom: 14px; }
+.drop b { color: var(--text); } .drop .or { color: var(--faint); font-size: 12.5px; margin: 6px 0; }
+.drop .tb { margin: 0 3px; }
+.imp { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.imp .ir { display: grid; grid-template-columns: 22px minmax(0,1fr) 126px 176px 130px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.imp .ir.hd { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+.imp .ir input[type=checkbox] { accent-color: var(--primary); }
+.imp select { font-size: 12.5px; padding: 3px 6px; }
+.imp .fn { font: 11.5px var(--mono); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep { font-size: 12px; text-align: left; }
+.rep .ok { color: var(--primary); } .rep .need { color: var(--amber); }
+.repd { grid-column: 2 / -1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; display: none; }
+.repd.on { display: block; }
+.repd ul { margin: 0; padding-left: 18px; } .repd li { margin: 2px 0; color: var(--muted); }
+.repd li.n { color: var(--amber); }
+.repd h6 { margin: 6px 0 2px; font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+textarea.paste { width: 100%; height: 150px; font: 12.5px/1.5 var(--mono); }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.tabs button { padding: 7px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--text); border-color: var(--primary); }
+.confirm { width: 460px; }
+
+/* Full-screen pages: sign in, first sync */
+.full { display: none; position: fixed; inset: 0; z-index: 35; background: var(--bg); place-items: center; padding: 16px; }
+.full.on { display: grid; }
+.auth { width: min(400px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 22px; }
+.auth .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.auth .brand .logo { width: 40px; height: 40px; border-radius: 9px; background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); font-size: 22px; }
+.auth .brand b { font: 700 24px var(--display); letter-spacing: .02em; display: block; line-height: 1; }
+.auth .brand span { font-size: 12px; color: var(--faint); }
+.auth .tb.primary, .auth .tb.line { width: 100%; justify-content: center; padding: 8px 10px; }
+.or-line { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; margin: 14px 0; }
+.or-line::before, .or-line::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+.auth .foot { margin-top: 16px; font-size: 12px; color: var(--faint); text-align: center; }
+.auth .wait { display: none; text-align: center; padding: 6px 0 2px; color: var(--muted); }
+.auth.waiting .wait { display: block; } .auth.waiting .go { display: none; }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--primary); animation: rot 1s linear infinite; margin: 0 auto 8px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.err { display: none; color: var(--danger); font-size: 12.5px; margin: -4px 0 10px; }
+.auth.bad .err { display: block; }
+.dlist { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.dlist li { display: grid; grid-template-columns: 1fr 70px 18px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.dlist li span:nth-child(2) { font: 11.5px var(--mono); color: var(--faint); text-align: right; }
+.dlist .okc { color: var(--primary); } .dlist .now { color: var(--info); }
+
+/* Settings */
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set section { display: none; } .set section.on { display: block; }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.tpl { list-style: none; margin: 0 0 6px; padding: 0; }
+.tpl li { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.tpl li .grip { color: var(--faint); cursor: grab; }
+.tpl li .t { flex: 1; }
+.tpl li .x { color: var(--faint); opacity: 0; } .tpl li:hover .x { opacity: 1; }
+.tpl li .x:hover { color: var(--danger); }
+
+/* Notes for the reviewer */
+.legend { position: fixed; left: 54px; bottom: 34px; z-index: 50; width: 268px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px rgba(0,0,0,.4); max-height: calc(100vh - 80px); overflow: auto; }
+.legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
+.legend ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); } .legend li { margin: 3px 0; }
+.legend .lrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.legend .lrow button { font-size: 11.5px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.legend .lrow button.on { border-color: var(--primary); color: var(--primary); }
+.legend .lab { font: 600 10.5px var(--font); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.legend.min ul, .legend.min .lrow, .legend.min .lab { display: none; }
+.tag2b { font: 600 9.5px var(--font); padding: 0 4px; border-radius: 3px; background: var(--info); color: #08121f; vertical-align: 1px; }
+body.web .desk-only { display: none !important; }
+body.desk .web-only { display: none !important; }
+
+@media (max-width: 1100px) {
+  .tr { grid-template-columns: minmax(0, 1fr) 104px 140px 34px; }
+  .tr .c-cat, .tr .c-when { display: none; }
+  .np { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="desk">
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><b>Projects</b></div>
+    <div class="spacer"></div>
+    <button class="sync" id="sync" title="Sync status: click for details"><i></i><span>Synced</span></button>
+    <span class="kbd" title="Command palette">⌘K</span>
+    <button class="avatar" id="who" title="Signed in as Stefano">S</button>
+
+    <div class="pop" id="pop">
+      <h4><i id="popDot"></i><span id="popTitle">Synced</span></h4>
+      <div class="sub" id="popSub">Every change is on the server.</div>
+      <dl class="kv">
+        <dt>Server</dt><dd>promptbook.home.arpa</dd>
+        <dt>Account</dt><dd>Stefano · local account</dd>
+        <dt>Last sync</dt><dd id="popLast">12:41, a minute ago</dd>
+        <dt class="desk-only">On this device</dt><dd class="desk-only">8 projects · 4.2 MB</dd>
+      </dl>
+      <ul class="pend" id="popPend"></ul>
+      <div class="acts">
+        <button class="tb line" id="popSync">Sync now</button>
+        <button class="tb line desk-only" title="Open the data folder in Finder">Show data folder</button>
+        <span class="spacer"></span>
+        <button class="tb" id="popOut">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="alert" id="alert">
+    <svg class="ic" viewBox="0 0 24 24" style="color:var(--danger)"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>
+    <span id="alertText"><b>Not saved.</b> The last 3 changes could not be written to disk (disk full). Free some space; Promptbook keeps them in memory and retries.</span>
+    <span class="spacer"></span>
+    <button class="tb line" id="alertBtn">Retry now</button>
+  </div>
+
+  <nav class="rail">
+    <button class="on" data-tip="Projects"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+    <button class="dis" data-tip="Document (open a project first)"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+    <button class="dis" data-tip="Inspiration"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+    <button class="dis" data-tip="Research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+    <button class="dis" data-tip="Images and music"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/></svg></button>
+    <button class="dis" data-tip="Brainstorm log"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+    <button class="bottom last" id="railSet" data-tip="Settings and templates"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+
+  <main class="center">
+    <!-- PROJECTS -->
+    <section class="view on" id="v-projects">
+      <div class="pane">
+        <div class="head">
+          <h1>Projects</h1>
+          <p class="lead" id="count">8 projects</p>
+          <span class="spacer"></span>
+          <button class="tb line" id="bImport"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>Import Markdown</button>
+          <button class="tb primary" id="bNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New project</button>
+        </div>
+
+        <div class="filters">
+          <div class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg><input id="q" placeholder="Search titles and seeds"></div>
+          <div class="seg" id="segCat">
+            <button class="on" data-cat="">All<span class="n">8</span></button>
+            <button data-cat="Campaign">Campaigns<span class="n">3</span></button>
+            <button data-cat="Adventure">Adventures<span class="n">3</span></button>
+            <button data-cat="One-shot">One-shots<span class="n">2</span></button>
+          </div>
+          <span class="fchip on" data-st="draft"><span class="dot" style="background:var(--faint)"></span>Draft</span>
+          <span class="fchip on" data-st="prog"><span class="dot" style="background:var(--amber)"></span>In progress</span>
+          <span class="fchip" data-st="done"><span class="dot" style="background:var(--primary)"></span>Complete</span>
+          <span class="spacer"></span>
+          <label class="tog"><input type="checkbox" id="group" checked> Group by campaign</label>
+          <select class="sortsel" aria-label="Sort"><option>Last edited</option><option>Title</option><option>Next due date</option><option>To-do left</option></select>
+        </div>
+
+        <div class="tbl" id="tbl"></div>
+        <p class="hint" style="color:var(--faint);font-size:12px;margin-top:8px">Complete projects are hidden by the status filter. Double-click a row, or press Enter, to open it in the editor.</p>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="v-settings">
+      <div class="pane">
+        <div class="head"><h1>Settings</h1></div>
+        <div class="set">
+          <nav id="setNav">
+            <button class="on" data-s="tpl">To-do templates</button>
+            <button data-s="doc">Document templates</button>
+            <button data-s="def">Author and licence</button>
+            <button data-s="acc">Account</button>
+            <button data-s="sync">Sync and storage</button>
+            <button data-s="look">Appearance</button>
+          </nav>
+          <div>
+            <section class="on" data-s="tpl">
+              <h2>To-do templates</h2>
+              <p class="lead">A new project starts with a copy of its category's list. Editing a template never changes existing projects.</p>
+              <div class="tabs" id="tplTabs"><button>Campaign</button><button class="on">Adventure</button><button>One-shot</button></div>
+              <div class="card">
+                <ul class="tpl" id="tplList"></ul>
+                <button class="add">+ Add an item</button>
+              </div>
+            </section>
+            <section data-s="doc">
+              <h2>Document templates</h2>
+              <p class="lead">The skeleton a new project's prep document starts from.</p>
+              <div class="card"><b>Adventure and one-shot</b> · <span style="color:var(--muted)">avventura@1, checked by the format package: front matter, the fixed sections, one empty scene <code>### S1.</code>, the appendix.</span></div>
+              <div class="card"><b>Campaign</b> · <span style="color:var(--muted)">no checked template yet. Plain Markdown with headings: Premessa, Fronti, PNG ricorrenti, Fili aperti, Sessioni. Not validated.</span></div>
+            </section>
+            <section data-s="def">
+              <h2>Author and licence</h2>
+              <p class="lead">Copied into a new project's front matter (<code>autore</code>, <code>copyright</code>, <code>licenza</code>), where each project can change them.</p>
+              <div class="card" style="max-width:520px">
+                <div class="field"><label>Author</label><input value="Stefano Sibilia"></div>
+                <div class="field"><label>Copyright</label><input value="© 2026 Stefano Sibilia"></div>
+                <div class="field"><label>Licence</label><input value="CC-BY-NC-SA-4.0"><span class="hint">An SPDX id, or free text.</span></div>
+                <div class="field"><label>Default system</label><input placeholder="e.g. Kulthos"><span class="hint">Pre-fills <code>sistema</code>; leave empty to choose each time.</span></div>
+              </div>
+            </section>
+            <section data-s="acc">
+              <h2>Account</h2>
+              <p class="lead">One game master per server. Players have no accounts.</p>
+              <div class="card" style="max-width:520px">
+                <div class="field"><label>Display name</label><input value="Stefano"></div>
+                <div class="field"><label>Username</label><input value="steve" disabled></div>
+                <button class="tb line">Change password…</button>
+              </div>
+              <div class="card" style="max-width:520px">
+                <b>Single sign-on</b> <span class="tag2b">2b</span>
+                <p style="color:var(--muted);margin:4px 0 10px">Linked to the homelab's identity provider: sign in with either.</p>
+                <button class="tb line">Unlink</button>
+              </div>
+              <div class="card desk-only" style="max-width:520px">
+                <b>This device</b>
+                <p style="color:var(--muted);margin:4px 0 10px">Signed in on this Mac since 18 Oct. Signing out keeps the projects on disk until you choose to remove them.</p>
+                <button class="tb line">Sign out</button> <button class="tb danger">Sign out and remove local data…</button>
+              </div>
+            </section>
+            <section data-s="sync">
+              <h2>Sync and storage</h2>
+              <p class="lead desk-only">Projects live on this device and sync with the server when online.</p>
+              <p class="lead web-only">In the browser projects live on the server; nothing is kept for offline use.</p>
+              <div class="card" style="max-width:560px">
+                <div class="field"><label>Server</label><input value="https://promptbook.home.arpa"></div>
+                <div class="field desk-only"><label>Data folder</label><input value="~/Library/Application Support/Promptbook" readonly></div>
+                <div class="field desk-only"><label>Local snapshots</label><select><option>Every hour while editing, keep 7 days</option><option>Every 15 minutes, keep 2 days</option><option>Off</option></select></div>
+              </div>
+              <div class="card" style="max-width:560px">
+                <b>Export everything</b>
+                <p style="color:var(--muted);margin:4px 0 10px">One folder per project: the document as <code>.md</code>, the to-do list, seed and research as Markdown, assets beside them.</p>
+                <button class="tb line">Export all projects…</button>
+              </div>
+            </section>
+            <section data-s="look">
+              <h2>Appearance</h2>
+              <div class="card" style="max-width:520px">
+                <div class="field"><label>Theme</label><div class="seg" id="themeSeg"><button class="on" data-t="dark">Dark</button><button data-t="light">Light</button><button data-t="auto">System</button></div></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="right" id="right"></aside>
+
+  <footer class="status">
+    <span id="sbCount">8 projects</span>
+    <span class="desk-only">All on this device</span>
+    <span class="r" id="sbSync">Synced 12:41 · promptbook.home.arpa</span>
+  </footer>
+</div>
+
+<!-- NEW PROJECT -->
+<div class="scrim" id="mNew">
+  <div class="modal">
+    <div class="mh"><h3>New project</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb">
+      <div class="cats" id="cats">
+        <button class="catc" data-c="Campaign"><b>Campaign</b><span>A long story across many sessions. Holds adventures and one-shots.</span></button>
+        <button class="catc on" data-c="Adventure"><b>Adventure</b><span>A few sessions, scenes and threats. Stands alone or inside a campaign.</span></button>
+        <button class="catc" data-c="One-shot"><b>One-shot</b><span>One evening. Same template as an adventure.</span></button>
+      </div>
+      <div class="np">
+        <div>
+          <div class="field"><label>Title</label><input id="npTitle" value="Il ballo dei Lorenzetti"><span class="hint">Becomes <code>titolo</code> in the front matter.</span></div>
+          <div class="field" id="npCampField"><label>Campaign</label>
+            <select><option>Stand-alone</option><option selected>Blacksad - Il Continentale</option><option>Cronaca del Gabbiano</option></select>
+          </div>
+          <div class="field row2">
+            <div class="field" style="margin:0"><label>System</label><input value="Not The End" list="systems"></div>
+            <div class="field" style="margin:0"><label>Status</label><select><option selected>Draft</option><option>In progress</option></select></div>
+          </div>
+          <datalist id="systems"><option>Kulthos</option><option>Not The End</option><option>Historia</option><option>Vileborn</option></datalist>
+          <div class="field"><label>Seed <span style="font-weight:400;color:var(--faint)">(optional)</span></label><textarea rows="3" style="font:15px/1.45 var(--prose)">Un ballo in maschera a Veridian dove il Continentale vende un ritratto rubato. I personaggi sono invitati come camerieri.</textarea><span class="hint">The first idea, kept as written. Later changes become dated versions.</span></div>
+        </div>
+        <div class="preview">
+          <h5>Starts with <a data-goset="doc">Document templates</a></h5>
+          <pre class="skel" id="skel"></pre>
+          <h5>To-do list <span id="tplCount" style="text-transform:none;letter-spacing:0;font-weight:500">9 items</span> <a data-goset="tpl">Edit templates</a></h5>
+          <ul class="tlist" id="tplPrev"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="mf"><span class="note">Author and licence from Settings: Stefano Sibilia · CC-BY-NC-SA-4.0</span><button class="tb line" data-close>Cancel</button><button class="tb primary" data-close>Create and open</button></div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="scrim" id="mImp">
+  <div class="modal" style="width:min(960px, calc(100vw - 32px))">
+    <div class="mh"><h3>Import Markdown</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb">
+      <div class="tabs" id="impTabs"><button class="on" data-t="files">Files or folder</button><button data-t="paste">Paste</button></div>
+      <div id="impFiles">
+        <div class="drop">
+          <b>Drop a .md file or a folder here</b>
+          <div class="or">Joplin and Obsidian exports work: images next to the notes come along.</div>
+          <button class="tb line">Choose files…</button><button class="tb line">Choose a folder…</button>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px"><b>Kulthos/</b><span style="color:var(--faint);font-size:12.5px">4 notes found · each note becomes one project, converted to the adventure format</span></div>
+        <div class="imp" id="impList"></div>
+      </div>
+      <div id="impPaste" style="display:none">
+        <div class="field"><label>Markdown</label><textarea class="paste">**Titolo:** Il pozzo di Ganzirri
+**Sistema:** Kulthos · **Formato:** one-shot · **Durata:** 3 ore
+
+## A colpo d'occhio
+…</textarea><span class="hint">Pasted text goes through the same converter. It becomes a new project; to paste into an existing one, use the editor.</span></div>
+        <div class="field row2"><div class="field" style="margin:0"><label>Category</label><select><option>One-shot</option><option>Adventure</option><option>Campaign</option></select></div><div class="field" style="margin:0"><label>Campaign</label><select><option>Stand-alone</option></select></div></div>
+      </div>
+    </div>
+    <div class="mf"><span class="note">Nothing is dropped: what the converter cannot place stays in the text and shows up as a check in the editor.</span><button class="tb line" data-close>Cancel</button><button class="tb primary" data-close id="impGo">Import 3 projects</button></div>
+  </div>
+</div>
+
+<!-- DELETE -->
+<div class="scrim" id="mDel">
+  <div class="modal confirm">
+    <div class="mh"><h3>Delete project?</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb"><p style="margin:0 0 8px"><b id="delName">L'Ancora di Sabaoth</b> goes to the bin on the server and on every device. It can be restored for 30 days.</p><p style="margin:0;color:var(--muted)">Export it first if you want a copy outside Promptbook.</p></div>
+    <div class="mf"><button class="tb line" data-close>Cancel</button><button class="tb primary" style="background:var(--danger);color:#fff" data-close>Move to bin</button></div>
+  </div>
+</div>
+
+<!-- SIGN IN -->
+<div class="full" id="fLogin">
+  <div class="auth" id="auth">
+    <div class="brand"><div class="logo">P</div><div><b>Promptbook</b><span>RPG Promptbook</span></div></div>
+
+    <div class="web-only">
+      <div class="field"><label>Username</label><input value="steve"></div>
+      <div class="field"><label>Password</label><input type="password" value="hunter2hunter2"></div>
+      <div class="err">Wrong username or password.</div>
+      <button class="tb primary" id="loginGo">Sign in</button>
+      <div class="or-line">or</div>
+      <button class="tb line" id="ssoGo">Continue with single sign-on <span class="tag2b">2b</span></button>
+      <div class="foot">promptbook.home.arpa · no sign-up: the game master's account is created on the server.</div>
+    </div>
+
+    <div class="desk-only">
+      <div class="go">
+        <div class="field"><label>Server</label><input value="https://promptbook.home.arpa"><span class="hint">Needed once. After the first sync Promptbook works offline with no time limit.</span></div>
+        <button class="tb primary" id="browserGo"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>Sign in with your browser</button>
+        <div class="foot">Opens the server's sign-in page (password or single sign-on) in your default browser, then comes back here.</div>
+      </div>
+      <div class="wait">
+        <div class="spin"></div>
+        Waiting for the browser…<br><span style="font-size:12px;color:var(--faint)">Finish signing in there. The page will send you back.</span>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center"><button class="tb line" id="browserAgain">Open again</button><button class="tb" id="browserCancel">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIRST SYNC -->
+<div class="full" id="fFirst">
+  <div class="auth" style="width:min(460px,100%)">
+    <div class="brand"><div class="logo">P</div><div><b>Downloading your projects</b><span>First sync on this Mac · 4.2 MB</span></div></div>
+    <div class="bar" style="height:6px"><i id="dlBar" style="width:58%"></i></div>
+    <ul class="dlist">
+      <li><span>L'Ancora di Sabaoth</span><span>1.4 MB</span><span class="okc">✓</span></li>
+      <li><span>Blacksad - Il Continentale</span><span>0.6 MB</span><span class="okc">✓</span></li>
+      <li><span>Il ballo dei Lorenzetti</span><span>0.3 MB</span><span class="okc">✓</span></li>
+      <li><span>Le ali di Ca' Malamocco</span><span>0.8 MB</span><span class="now">↓</span></li>
+      <li><span>Cronaca del Gabbiano</span><span>0.5 MB</span><span></span></li>
+      <li><span>Apocrypha</span><span>0.4 MB</span><span></span></li>
+      <li><span>Il pozzo di Ganzirri</span><span>0.2 MB</span><span></span></li>
+    </ul>
+    <div style="display:flex;gap:8px;margin-top:16px"><span class="spacer" style="flex:1"></span><button class="tb line" id="firstDone">Start with what is downloaded</button></div>
+    <div class="foot" style="margin-top:12px;font-size:12px;color:var(--faint)">Downloaded projects open at once; the rest keep coming in the background.</div>
+  </div>
+</div>
+
+<div class="legend" id="legend">
+  <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
+  <div class="lab">Shell</div>
+  <div class="lrow" id="shell"><button class="on" data-sh="desk">Desktop app</button><button data-sh="web">Browser</button></div>
+  <div class="lab">Screen</div>
+  <div class="lrow" id="screens"><button data-sc="login">Sign in</button><button data-sc="first" class="desk-only">First sync</button><button data-sc="projects" class="on">Projects</button><button data-sc="settings">Settings</button></div>
+  <div class="lab">Sync state</div>
+  <div class="lrow" id="syncStates"></div>
+  <ul>
+    <li><b>Category</b> tabs and <b>status</b> chips filter the list; complete projects start hidden. Adventures and one-shots sit under their campaign.</li>
+    <li>Each row shows the <b>to-do progress</b>. Click a row: the panel on the right holds status, seed, the to-do list (tick it here), checks and actions.</li>
+    <li><b>New project</b>: pick a category; the preview shows the skeleton document and the to-do list it starts with.</li>
+    <li><b>Import Markdown</b>: each note becomes a project; category and campaign come from the note's header when it has them. Expand a report to see what the converter changed.</li>
+    <li>The <b>sync pill</b> opens details. Desktop has five states; the browser has no "on this device".</li>
+    <li>Items marked <span class="tag2b">2b</span> come with the desktop app (second change); the rest ships first, in the browser.</li>
+  </ul>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const app = $('#app');
+
+const projects = [
+  { id: 'bl', t: 'Blacksad - Il Continentale', cat: 'Campaign', st: 'prog', sys: 'Not The End', meta: 'Not The End · 2 sessions played', todo: [['Fronti e minacce', 1], ['PNG ricorrenti', 1], ['Mappa di Veridian', 0], ['Fili aperti dopo la sessione 2', 0], ['Rileggere le note', 1]], when: '2 h ago', dev: 'ok',
+    seed: 'Veridian anni ’50: i personaggi sono gli ultimi che possono testimoniare contro il Continentale. Ognuno ha un motivo per tacere.' },
+  { id: 'lo', t: 'Il ballo dei Lorenzetti', cat: 'Adventure', st: 'draft', parent: 'bl', sys: 'Not The End', meta: 'Not The End · 3 scenes', todo: [['Scrivere le scene', 0], ['Schede dei PNG', 0], ['Prompt Midjourney', 0], ['Immagini scelte', 0], ['Prompt Suno', 0], ['Brani scelti', 0], ['PDF per il tavolo', 0], ['Export CueBard', 0], ['Rilettura', 0]], when: '20 min ago', dev: 'up',
+    seed: 'Un ballo in maschera a Veridian dove il Continentale vende un ritratto rubato. I personaggi sono invitati come camerieri.' },
+  { id: 'sp', t: 'Pioggia su Kenmore Street', cat: 'Adventure', st: 'done', parent: 'bl', sys: 'Not The End', meta: 'Not The End · 5 scenes · played 7 Aug', todo: [['Scrivere le scene', 1], ['Schede dei PNG', 1], ['PDF per il tavolo', 1], ['Rilettura', 1]], when: '9 Aug', dev: 'ok', seed: 'Un pugile scompare la notte prima dell’incontro.' },
+  { id: 'cg', t: 'Cronaca del Gabbiano', cat: 'Campaign', st: 'prog', sys: 'Historia', meta: 'Historia · 2 sessions played', todo: [['Fronti e minacce', 1], ['PNG ricorrenti', 0], ['Mappa della laguna', 0]], when: 'yesterday', dev: 'ok',
+    seed: 'Giovani forestieri nella Venezia del Cinquecento, raccontati da Zenone Malamocco, che mente quando gli conviene.' },
+  { id: 'ca', t: 'Le ali di Ca’ Malamocco', cat: 'Adventure', st: 'prog', parent: 'cg', sys: 'Historia', meta: 'Historia · 6 scenes · 1 warning', todo: [['Scrivere le scene', 1], ['Schede dei PNG', 1], ['Prompt Midjourney', 1], ['Immagini scelte', 0], ['Prompt Suno', 1], ['Brani scelti', 0], ['PDF per il tavolo', 0], ['Export CueBard', 0], ['Rilettura', 0]], when: 'yesterday', dev: 'ok',
+    seed: 'Una macchina volante di Leonardo, mai costruita, viene rubata dal palazzo di famiglia di Zenone.' },
+  { id: 'sa', t: 'L’Ancora di Sabaoth', cat: 'One-shot', st: 'prog', sys: 'Kulthos', meta: 'Kulthos · 5 scenes · 1 error, 3 warnings', todo: [['Scrivere le scene', 1], ['Schede dei PNG', 1], ['Prompt Midjourney', 1], ['Immagini scelte', 1], ['Prompt Suno', 1], ['Brani scelti', 0], ['PDF per il tavolo', 0, '24 Oct'], ['Export CueBard', 0, '24 Oct'], ['Rilettura', 0]], when: 'today 12:40', dev: 'ok',
+    seed: 'Messina, 28 dicembre 1908. Il terremoto non è un caso: qualcuno ha tirato l’ancora che teneva ferma la città. Colapesce non regge più la colonna.' },
+  { id: 'ga', t: 'Il pozzo di Ganzirri', cat: 'One-shot', st: 'draft', sys: 'Kulthos', meta: 'Kulthos · imported from Joplin · 2 checks to look at', todo: [['Scrivere le scene', 0], ['Schede dei PNG', 0], ['PDF per il tavolo', 0], ['Rilettura', 0]], when: '3 days ago', dev: 'ok',
+    seed: 'Un pozzo che restituisce gli annegati, ma sempre un giorno troppo presto.' },
+  { id: 'ap', t: 'Apocrypha', cat: 'Campaign', st: 'done', sys: 'Vileborn', meta: 'Vileborn · 9 sessions played', todo: [['Epilogo', 1]], when: 'Jan', dev: 'ok', seed: 'Prima campagna di Vileborn.' },
+];
+const stLabel = { draft: 'Draft', prog: 'In progress', done: 'Complete' };
+let sel = 'sa', cat = '', sts = new Set(['draft', 'prog']), grouped = true, q = '';
+
+const devIcon = d => d === 'up'
+  ? '<span class="dev up desk-only" title="2 changes waiting to sync"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19V7M7 12l5-5 5 5"/></svg></span>'
+  : '<span class="dev desk-only" title="On this device, synced"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>';
+const done = p => p.todo.filter(x => x[1]).length;
+function row(p, child, dim) {
+  const n = done(p), tot = p.todo.length;
+  return `<div class="tr${child ? ' child' : ''}${p.id === sel ? ' sel' : ''}" data-id="${p.id}"${dim ? ' style="opacity:.55" title="Shown because it holds matching projects"' : ''}>
+    <div class="ti"><b>${p.t}</b><div class="meta">${p.meta}</div></div>
+    <span class="cat c-cat">${p.cat}</span>
+    <span class="st ${p.st}"><i></i>${stLabel[p.st]}</span>
+    <span class="prog-cell"><span class="mini-bar"><i style="width:${tot ? n / tot * 100 : 0}%"></i></span>${n}/${tot}</span>
+    <span class="when c-when">${p.when}</span>${devIcon(p.dev)}</div>`;
+}
+function render() {
+  const match = p => (!cat || p.cat === cat) && sts.has(p.st) && (!q || (p.t + p.seed).toLowerCase().includes(q));
+  let html = `<div class="tr th"><span>Title</span><span class="c-cat">Category</span><span>Status</span><span>To-do</span><span class="c-when">Edited</span><span></span></div>`;
+  let shown = 0;
+  if (grouped) {
+    projects.filter(p => !p.parent).forEach(p => {
+      const kids = projects.filter(k => k.parent === p.id && match(k));
+      const self = match(p);
+      if (self) { html += row(p); shown++; }
+      else if (kids.length) html += row(p, false, true);
+      kids.forEach(k => { html += row(k, true); shown++; });
+    });
+  } else projects.filter(match).forEach(p => { html += row(p); shown++; });
+  if (!shown) html += `<div class="empty">No project matches these filters.</div>`;
+  $('#tbl').innerHTML = html;
+  $('#count').textContent = `${shown} of ${projects.length} projects`;
+  $$('#tbl .tr[data-id]').forEach(r => {
+    r.onclick = () => { sel = r.dataset.id; app.classList.remove('no-sel'); render(); panel(); };
+    r.ondblclick = () => location.href = 'editor.html';
+  });
+}
+function panel() {
+  const p = projects.find(x => x.id === sel); if (!p) return;
+  const n = done(p), tot = p.todo.length;
+  const parent = p.parent ? projects.find(x => x.id === p.parent).t : 'Stand-alone';
+  const checks = p.id === 'sa' ? [1, 3] : p.id === 'ca' ? [0, 1] : p.id === 'ga' ? [0, 2] : [0, 0];
+  $('#right').innerHTML = `
+    <div class="rp-h">
+      <h2>${p.t}</h2>
+      <div class="row">
+        <span class="cat">${p.cat}</span>
+        <select aria-label="Status">${Object.entries(stLabel).map(([k, v]) => `<option value="${k}"${k === p.st ? ' selected' : ''}>${v}</option>`).join('')}</select>
+        <span style="font-size:12px;color:var(--faint)">${p.sys}</span>
+      </div>
+      ${p.cat !== 'Campaign' ? `<div class="row" style="margin-top:8px;font-size:12.5px;color:var(--muted)">In <select aria-label="Campaign"><option>${parent}</option><option>Stand-alone</option></select></div>` : ''}
+      <div class="open"><button class="tb primary" onclick="location.href='editor.html'">Open</button><button class="tb line" title="More">⋯</button></div>
+    </div>
+    <details class="acc" open><summary>Seed</summary><div class="body"><p class="seed">${p.seed}</p></div></details>
+    <details class="acc" open><summary>To-do <span class="cnt" id="tdc">${n}/${tot}</span></summary><div class="body">
+      <div class="bar"><i id="tdb" style="width:${tot ? n / tot * 100 : 0}%"></i></div>
+      <ul class="todo">${p.todo.map((t, i) => `<li class="${t[1] ? 'done' : ''}"><span class="grip">⠿</span><input type="checkbox" data-i="${i}"${t[1] ? ' checked' : ''}><span class="t">${t[0]}${i === 6 && p.id === 'sa' ? '<span class="nt">Print two copies, one for Marco</span>' : ''}</span>${t[2] ? `<span class="due">${t[2]}</span>` : ''}</li>`).join('')}</ul>
+      <button class="add">+ Add an item</button>
+    </div></details>
+    ${p.cat !== 'Campaign' ? `<details class="acc" open><summary>Document</summary><div class="body"><div class="facts">
+      <div class="fact"><b>${p.id === 'sa' ? '5' : p.id === 'ca' ? '6' : p.id === 'lo' ? '3' : '4'}</b><span>scenes</span></div>
+      <div class="fact"><b>${p.id === 'sa' ? '7,820' : '3,140'}</b><span>words</span></div>
+      <div class="fact"><b class="${checks[0] ? 'e' : ''}">${checks[0]}</b><span>errors</span></div>
+      <div class="fact"><b class="${checks[1] ? 'w' : ''}">${checks[1]}</b><span>warnings</span></div>
+    </div></div></details>` : ''}
+    <details class="acc"><summary>Actions</summary><div class="body links">
+      <button class="tb">Export as a Markdown folder…</button>
+      <button class="tb">Duplicate</button>
+      <button class="tb danger" id="bDel">Delete…</button>
+    </div></details>
+    <div class="ondev desk-only"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>${p.dev === 'up' ? 'On this device · 2 changes waiting' : 'On this device · synced 12:41'} <span class="tag2b">2b</span></div>`;
+  $$('#right .todo input').forEach(cb => cb.onchange = () => {
+    p.todo[cb.dataset.i][1] = cb.checked ? 1 : 0;
+    cb.closest('li').classList.toggle('done', cb.checked);
+    const n2 = done(p); $('#tdc').textContent = `${n2}/${tot}`; $('#tdb').style.width = `${n2 / tot * 100}%`;
+    render();
+  });
+  $('#bDel').onclick = () => { $('#delName').textContent = p.t; $('#mDel').classList.add('on'); };
+}
+
+/* Filters */
+$$('#segCat button').forEach(b => b.onclick = () => { cat = b.dataset.cat; $$('#segCat button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+$$('.fchip').forEach(c => c.onclick = () => { const s = c.dataset.st; sts.has(s) ? sts.delete(s) : sts.add(s); c.classList.toggle('on'); render(); });
+$('#group').onchange = e => { grouped = e.target.checked; render(); };
+$('#q').oninput = e => { q = e.target.value.toLowerCase(); render(); };
+
+/* Modals */
+const open = id => $(id).classList.add('on');
+$('#bNew').onclick = () => open('#mNew');
+$('#bImport').onclick = () => open('#mImp');
+$$('[data-close]').forEach(b => b.onclick = () => b.closest('.scrim').classList.remove('on'));
+$$('.scrim').forEach(s => s.onclick = e => { if (e.target === s) s.classList.remove('on'); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { $$('.scrim').forEach(s => s.classList.remove('on')); $('#pop').classList.remove('on'); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') { e.preventDefault(); open('#mNew'); }
+});
+
+const tpls = {
+  Campaign: ['Fronti e minacce', 'PNG ricorrenti', 'Mappa', 'Fili aperti dopo ogni sessione', 'Rileggere le note prima di giocare'],
+  Adventure: ['Scrivere le scene', 'Schede dei PNG', 'Prompt Midjourney', 'Immagini scelte', 'Prompt Suno', 'Brani scelti', 'PDF per il tavolo', 'Export CueBard', 'Rilettura'],
+};
+tpls['One-shot'] = tpls.Adventure;
+const skels = {
+  Campaign: `<span class="k">---</span>\n<span class="k">titolo:</span> Il ballo dei Lorenzetti\n<span class="k">sistema:</span> Not The End\n<span class="k">autore:</span> Stefano Sibilia\n<span class="k">---</span>\n<span class="h">## Premessa</span>\n<span class="h">## Fronti</span>\n<span class="h">## PNG ricorrenti</span>\n<span class="h">## Fili aperti</span>\n<span class="h">## Sessioni</span>`,
+  Adventure: `<span class="k">---</span>\n<span class="k">titolo:</span> Il ballo dei Lorenzetti\n<span class="k">sistema:</span> Not The End\n<span class="k">formato:</span> avventura\n<span class="k">campagna:</span> Blacksad - Il Continentale\n<span class="k">autore:</span> Stefano Sibilia\n<span class="k">licenza:</span> CC-BY-NC-SA-4.0\n<span class="k">---</span>\n<span class="h">## A colpo d'occhio</span>\n<span class="h">## Inizio forte</span>\n<span class="h">## Scene</span>\n<span class="h">### S1. </span>\n<span class="h">## PNG</span> · <span class="h">## Schede</span>\n<span class="h">## Appendice: immagini e musica</span>`,
+};
+skels['One-shot'] = skels.Adventure.replace('avventura', 'one-shot').replace(/<span class="k">campagna:<\/span>.*\n/, '');
+function newCat(c) {
+  $$('#cats .catc').forEach(x => x.classList.toggle('on', x.dataset.c === c));
+  $('#npCampField').style.display = c === 'Campaign' ? 'none' : '';
+  $('#skel').innerHTML = skels[c];
+  $('#tplPrev').innerHTML = tpls[c].map(t => `<li>${t}</li>`).join('');
+  $('#tplCount').textContent = `${tpls[c].length} items`;
+}
+$$('#cats .catc').forEach(b => b.onclick = () => newCat(b.dataset.c));
+newCat('Adventure');
+
+/* Import */
+const imports = [
+  { fn: 'L’isola di Colapesce.md', t: 'L’isola di Colapesce', cat: 'One-shot', camp: 'Stand-alone', fixed: 14, need: 0, from: 'formato: one-shot' },
+  { fn: 'Il pozzo di Ganzirri (2).md', t: 'Il pozzo di Ganzirri', cat: 'One-shot', camp: 'Stand-alone', fixed: 11, need: 2, dup: true },
+  { fn: 'Le ali di Ca Malamocco, appunti.md', t: 'Le ali di Ca’ Malamocco, appunti', cat: 'Adventure', camp: 'Cronaca del Gabbiano', fixed: 6, need: 3, from: 'campagna: Cronaca del Gabbiano' },
+  { fn: 'lista spesa.md', t: 'lista spesa', cat: '', camp: 'Stand-alone', fixed: 0, need: 0, skip: true },
+];
+$('#impList').innerHTML = `<div class="ir hd"><span></span><span>Project</span><span>Category</span><span>Campaign</span><span>Converter</span></div>` +
+  imports.map((m, i) => `<div class="ir"><input type="checkbox"${m.skip ? '' : ' checked'}>
+    <div><b>${m.t}</b><div class="fn">${m.fn}${m.dup ? ' · <span style="color:var(--amber)">a project with this title exists: imported as a new one</span>' : ''}${m.skip ? ' · not an adventure note' : ''}</div></div>
+    <select>${['', 'Campaign', 'Adventure', 'One-shot'].map(c => `<option${c === m.cat ? ' selected' : ''}>${c || 'Choose…'}</option>`).join('')}</select>
+    <select><option>${m.camp}</option><option>Stand-alone</option><option>Blacksad - Il Continentale</option></select>
+    <button class="rep" data-r="${i}">${m.skip ? '<span style="color:var(--faint)">skipped</span>' : `<span class="ok">${m.fixed} changes</span>${m.need ? ` · <span class="need">${m.need} for you</span>` : ''} ▾`}</button>
+    <div class="repd" id="rep${i}"><h6>Changed</h6><ul>
+      <li>Header lines moved to front matter (titolo, sistema, formato, durata)</li>
+      <li>First quote in S1 to S${m.fixed > 10 ? 5 : 3} became <code>[!leggi]</code></li>
+      <li>Threat lines split into Grado, Natura, Ferite</li>
+      <li>Template comments removed</li></ul>
+      ${m.need ? `<h6>Needs you</h6><ul><li class="n">S5: unknown field «Se il tempo stringe»</li><li class="n">S3: second quote became <code>[!documento]</code> with no title</li>${m.need > 2 ? '<li class="n">«→ Schede: Il Vetraio» points to no sheet</li>' : ''}</ul>` : ''}
+      ${m.from ? `<h6>From the note</h6><ul><li>${m.from}</li></ul>` : ''}</div>
+  </div>`).join('');
+$$('#impList .rep').forEach(b => b.onclick = () => $('#rep' + b.dataset.r).classList.toggle('on'));
+$$('#impTabs button').forEach(b => b.onclick = () => {
+  $$('#impTabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('#impFiles').style.display = b.dataset.t === 'files' ? '' : 'none';
+  $('#impPaste').style.display = b.dataset.t === 'paste' ? '' : 'none';
+  $('#impGo').textContent = b.dataset.t === 'files' ? 'Import 3 projects' : 'Import as a project';
+});
+
+/* Sync */
+const syncStates = {
+  desk: [
+    ['', 'Synced', 'Every change is on the server.', []],
+    ['busy', 'Syncing…', 'Sending 2 changes, receiving 1.', [['Il ballo dei Lorenzetti', '↑ 2'], ['Le ali di Ca’ Malamocco', '↓ 1']]],
+    ['local', 'On this device only', 'Offline since 10:05. Everything is saved here and goes to the server when you are back online.', [['Il ballo dei Lorenzetti', '14 changes'], ['L’Ancora di Sabaoth', '3 changes']]],
+    ['fail', 'Not saved', 'The last changes could not be written to disk. They are kept in memory and retried.', [['L’Ancora di Sabaoth', '3 changes in memory']]],
+    ['out', 'Sign in to sync', 'The session ended. You can keep working: changes stay on this device until you sign in.', [['Il ballo dei Lorenzetti', '2 changes']]],
+  ],
+  web: [
+    ['', 'Synced', 'Every change is on the server.', []],
+    ['busy', 'Syncing…', 'Sending 2 changes.', [['Il ballo dei Lorenzetti', '↑ 2']]],
+    ['local', 'Reconnecting…', 'The connection dropped. 3 changes are only in this tab: keep it open until they are sent.', [['Il ballo dei Lorenzetti', '3 changes in this tab']]],
+    ['fail', 'Not saved', 'The server refused the last changes. Copy your text before closing the tab.', [['Il ballo dei Lorenzetti', '3 changes']]],
+    ['out', 'Sign in to sync', 'The session ended. Sign in again in this tab: unsent changes are kept until then.', [['Il ballo dei Lorenzetti', '2 changes']]],
+  ],
+};
+const dotColor = { '': 'var(--primary)', busy: 'var(--info)', local: 'var(--amber)', fail: 'var(--danger)', out: 'var(--faint)' };
+let shell = 'desk', si = 0;
+function setSync(i) {
+  si = i; const [cls, label, sub, pend] = syncStates[shell][i];
+  $('#sync').className = 'sync ' + cls; $('#sync span').textContent = label;
+  $('#popTitle').textContent = label; $('#popSub').textContent = sub; $('#popDot').style.background = dotColor[cls];
+  $('#popPend').innerHTML = pend.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
+  $('#popPend').style.display = pend.length ? '' : 'none';
+  $('#popSync').textContent = cls === 'out' ? 'Sign in…' : cls === 'fail' ? 'Retry' : 'Sync now';
+  $('#sbSync').innerHTML = { '': 'Synced 12:41 · promptbook.home.arpa', busy: 'Syncing…', local: shell === 'desk' ? '<span class="a">Offline · 17 changes on this device</span>' : '<span class="a">Reconnecting · 3 changes in this tab</span>', fail: '<span style="color:var(--danger)">Not saved</span>', out: '<span class="a">Signed out · sync paused</span>' }[cls];
+  const al = $('#alert');
+  al.classList.toggle('on', cls === 'fail' || cls === 'out');
+  al.classList.toggle('warn', cls === 'out');
+  if (cls === 'fail') { $('#alertText').innerHTML = shell === 'desk' ? '<b>Not saved.</b> The last 3 changes could not be written to disk (disk full). Free some space; Promptbook keeps them in memory and retries.' : '<b>Not saved.</b> The server refused the last 3 changes. Copy your text before closing this tab.'; $('#alertBtn').textContent = 'Retry now'; }
+  if (cls === 'out') { $('#alertText').innerHTML = '<b>Signed out.</b> Your session on promptbook.home.arpa ended. ' + (shell === 'desk' ? 'Keep working: changes stay on this device until you sign in.' : 'Sign in again to send your changes.'); $('#alertBtn').textContent = 'Sign in…'; }
+  $$('#syncStates button').forEach((b, j) => b.classList.toggle('on', j === i));
+}
+function syncButtons() {
+  $('#syncStates').innerHTML = syncStates[shell].map(s => `<button>${s[1].replace('…', '')}</button>`).join('');
+  $$('#syncStates button').forEach((b, j) => b.onclick = () => setSync(j));
+  setSync(Math.min(si, syncStates[shell].length - 1));
+}
+$('#sync').onclick = e => { e.stopPropagation(); $('#pop').classList.toggle('on'); };
+$('#who').onclick = e => { e.stopPropagation(); $('#pop').classList.toggle('on'); };
+$('#pop').onclick = e => e.stopPropagation();
+document.addEventListener('click', () => $('#pop').classList.remove('on'));
+$('#popOut').onclick = () => screen('login');
+$('#alertBtn').onclick = () => { if (syncStates[shell][si][0] === 'out') screen('login'); else setSync(0); };
+
+/* Shell and screens */
+$$('#shell button').forEach(b => b.onclick = () => {
+  shell = b.dataset.sh; document.body.className = shell;
+  $$('#shell button').forEach(x => x.classList.toggle('on', x === b));
+  syncButtons(); panel();
+  if (shell === 'web' && $('#fFirst').classList.contains('on')) screen('projects');
+});
+function screen(s) {
+  $('#fLogin').classList.toggle('on', s === 'login');
+  $('#fFirst').classList.toggle('on', s === 'first');
+  const inApp = s === 'projects' || s === 'settings';
+  if (inApp) {
+    $('#v-projects').classList.toggle('on', s === 'projects');
+    $('#v-settings').classList.toggle('on', s === 'settings');
+    app.classList.toggle('no-sel', s === 'settings');
+    $$('.rail button').forEach(b => b.classList.remove('on'));
+    (s === 'settings' ? $('#railSet') : $('.rail button')).classList.add('on');
+  }
+  $('#auth').classList.remove('waiting', 'bad');
+  $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === s));
+}
+$$('#screens button').forEach(b => b.onclick = () => screen(b.dataset.sc));
+$('.rail button').onclick = () => screen('projects');
+$('#railSet').onclick = () => screen('settings');
+$('#loginGo').onclick = () => { if (!$('#auth').dataset.tried) { $('#auth').dataset.tried = 1; $('#auth').classList.add('bad'); } else screen('projects'); };
+$('#ssoGo').onclick = () => screen('projects');
+$('#browserGo').onclick = () => { $('#auth').classList.add('waiting'); setTimeout(() => { if ($('#auth').classList.contains('waiting')) screen('first'); }, 2200); };
+$('#browserCancel').onclick = () => $('#auth').classList.remove('waiting');
+$('#firstDone').onclick = () => screen('projects');
+$$('[data-goset]').forEach(a => a.onclick = () => { a.closest('.scrim').classList.remove('on'); screen('settings'); setSec(a.dataset.goset); });
+
+/* Settings */
+function setSec(s) {
+  $$('#setNav button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  $$('.set section').forEach(x => x.classList.toggle('on', x.dataset.s === s));
+}
+$$('#setNav button').forEach(b => b.onclick = () => setSec(b.dataset.s));
+function tplRender(c) {
+  $('#tplList').innerHTML = tpls[c].map(t => `<li><span class="grip">⠿</span><span class="t" contenteditable>${t}</span><button class="x" title="Remove">✕</button></li>`).join('');
+}
+$$('#tplTabs button').forEach(b => b.onclick = () => { $$('#tplTabs button').forEach(x => x.classList.toggle('on', x === b)); tplRender(b.textContent); });
+tplRender('Adventure');
+$$('#themeSeg button').forEach(b => b.onclick = () => {
+  $$('#themeSeg button').forEach(x => x.classList.toggle('on', x === b));
+  document.documentElement.dataset.theme = b.dataset.t === 'light' ? 'light' : 'dark';
+});
+
+$('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
+
+render(); panel(); syncButtons();
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+/* The Emerald tokens of docs/mockups/projects.html and editor.html. Dark by
+   default; [data-theme="light"] on <html> switches to light. */
+
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/spectral/400.css';
+@import '@fontsource/spectral/400-italic.css';
+@import '@fontsource/spectral/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  --bg: #131917;
+  --surface: #1a221f;
+  --surface-2: #202a26;
+  --hover: #232d29;
+  --border: #33403a;
+  --text: #e7ece9;
+  --muted: #97a49d;
+  --faint: #6b7972;
+  --primary: #1fb98a;
+  --primary-hover: #2fcb9b;
+  --on-primary: #08150f;
+  --amber: #f5a623;
+  --danger: #ff5a6a;
+  --info: #6aa8ff;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #eef1ef;
+  --surface: #ffffff;
+  --surface-2: #f6f8f7;
+  --hover: #eaefec;
+  --border: #d3dbd7;
+  --text: #17201c;
+  --muted: #5b6862;
+  --faint: #8b9690;
+  --primary: #0f8f69;
+  --primary-hover: #0c7a59;
+  --on-primary: #ffffff;
+  --amber: #b9740a;
+  --danger: #d42a3c;
+  --info: #2f6fd1;
+  color-scheme: light;
+}

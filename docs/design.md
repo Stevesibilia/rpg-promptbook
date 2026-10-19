@@ -169,6 +169,14 @@ Every UI gets a mockup agreed with the user before it is specified or built.
 Agreed 2026-10-18: editor-first layout, markers shown only on the line being
 edited, PDF preview beside the editor plus a full-screen review, Emerald look.
 
+Agreed 2026-10-19: the projects screen,
+[mockups/projects.html](mockups/projects.html): list with category and
+status filters and to-do progress, project panel, new project from a
+category template, Markdown import (one note, one project, never merged),
+sync indicator, sign-in, settings; deleted projects stay in a bin for 30
+days; campaigns get a plain, unchecked skeleton; the desktop app needs the
+server once before it works offline.
+
 The main use is editing, so the editor takes most of the screen:
 
 - **Top bar:** project breadcrumb, category, status, the sync indicator, panel

@@ -1,0 +1,23 @@
+{
+  "name": "promptbook-project",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Yjs document of an RPG Promptbook project, its templates, import and export.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "fractional-indexing": "^4.0.0",
+    "promptbook-format": "^0.0.0",
+    "yaml": "^2.9.1",
+    "yjs": "^13.6.33"
+  }
+}

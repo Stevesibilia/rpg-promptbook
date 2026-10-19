@@ -1,0 +1,39 @@
+# The local stack: Postgres and the app. Copy .env.example to .env first, then
+#   docker compose up -d --build
+#   docker compose exec app node dist/cli.js seed <username>
+# and open http://localhost:8090 (or PROMPTBOOK_PORT), or PUBLIC_URL when .env
+# sets one.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: promptbook
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptbook}
+      POSTGRES_DB: promptbook
+    volumes:
+      # Postgres 18 keeps its data under a versioned directory in here.
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "promptbook", "-d", "promptbook"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PROMPTBOOK_PORT:-8090}:3000"
+    environment:
+      DATABASE_URL: postgres://promptbook:${POSTGRES_PASSWORD:-promptbook}@postgres:5432/promptbook
+      # Writes and sync are accepted only from this origin.
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${PROMPTBOOK_PORT:-8090}}
+      # Create the first account on a database with none.
+      PROMPTBOOK_ADMIN_USERNAME: ${PROMPTBOOK_ADMIN_USERNAME:-}
+      PROMPTBOOK_ADMIN_PASSWORD: ${PROMPTBOOK_ADMIN_PASSWORD:-}
+
+volumes:
+  postgres:

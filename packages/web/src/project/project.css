@@ -1,0 +1,51 @@
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.top-meta select {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.later {
+  font-size: 12px;
+  color: var(--faint);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.editor {
+  max-width: calc(70ch + 64px);
+  margin: 0 auto;
+  padding: 24px 32px 120px;
+}
+.editor .cm-editor {
+  background: transparent;
+  color: var(--text);
+  font: 17px/1.6 var(--prose);
+}
+.editor .cm-editor.cm-focused {
+  outline: none;
+}
+.editor .cm-scroller {
+  font-family: var(--prose);
+  line-height: 1.6;
+}
+.editor .cm-content {
+  caret-color: var(--primary);
+}
+.editor .cm-cursor {
+  border-left-color: var(--primary);
+}
+.editor .cm-placeholder {
+  color: var(--faint);
+}
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--primary) 25%, transparent) !important;
+}
