@@ -7,6 +7,7 @@ import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { mcpRoutes } from './routes/mcp.js';
 import { oauthRoutes } from './routes/oauth.js';
 import { oidcRoutes } from './routes/oidc.js';
 import { projectsRoutes } from './routes/projects.js';
@@ -78,6 +79,7 @@ export async function buildApp({ config, db, logger = false, oidcDiscoveryOption
   await app.register(transferRoutes, { db, sync: app.sync });
   await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(oauthRoutes, { config, db });
+  await app.register(mcpRoutes, { config, db, sync: app.sync });
   await app.register(webPlugin, { config });
   return app;
 }

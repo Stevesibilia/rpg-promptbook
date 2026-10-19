@@ -301,6 +301,10 @@ hash). `replace_section(projectId, target, markdown, hash)`:
 2. Check `markdown`: at most 100 000 characters; it must start with a heading
    of the target's level, and for a scene the same id (`### S3. …`);
    trailing blank lines are dropped. Otherwise `invalid_markdown`.
+   After building the new text, `findTarget` on it must find the same target
+   at exactly the written span (heading kept, no new heading of the same or a
+   higher level inside); otherwise `invalid_markdown`. This is what lets
+   `after_hash` be computed on the span undo hashes.
 3. Build the new text in memory. For an adventure or a one-shot, parse old
    and new; when the new text has more errors, refuse `more_errors` with the
    counts and the new text's problems inside the replaced span (code,

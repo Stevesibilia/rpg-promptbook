@@ -203,9 +203,9 @@ document so open editors see it at once.
 
 #### Scenario: Edit adding an error refused
 
-- **WHEN** Claude replaces S3 with text that drops its scene id
+- **WHEN** Claude replaces S3 with text that has no read-aloud callout
 - **THEN** the call fails with `more_errors`, lists the new problem, and the
-  document and the snapshots are unchanged
+  document is unchanged
 
 #### Scenario: Edit seen live
 

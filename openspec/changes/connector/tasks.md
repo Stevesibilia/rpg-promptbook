@@ -24,11 +24,11 @@
 
 ## 4. MCP endpoint and tools (brief B)
 
-- [ ] 4.1 `@modelcontextprotocol/server` and `@modelcontextprotocol/node` pinned at `2.0.0` (check `npm view` first; `hono` for the peer); `routes/mcp.ts` and `src/mcp/server.ts`: host check, bearer, 401 challenge, 405, hijack, JSON mode (decision 10)
-- [ ] 4.2 `src/mcp/tools.ts` and `errors.ts`: the 17 tools with schemas, descriptions, annotations, scope check, error shape (decision 11)
-- [ ] 4.3 `replace_section` and `add_scene`: hash, heading rule, parse before and after, snapshot, recheck, apply (decision 5)
-- [ ] 4.4 Db tests: endpoint guards, each tool, scope refusals, another user's project, hash mismatch, error-increase refusal, warnings allowed, campaign, snapshot before the write and removed on a moved text, a live client receiving the edit
-- [ ] 4.5 Checks and hand-back of brief B
+- [x] 4.1 `@modelcontextprotocol/server` and `@modelcontextprotocol/node` pinned at `2.0.0` (check `npm view` first; `hono` for the peer); `routes/mcp.ts` and `src/mcp/server.ts`: host check, bearer, 401 challenge, 405, hijack, JSON mode (decision 10)
+- [x] 4.2 `src/mcp/tools.ts` and `errors.ts`: the 17 tools with schemas, descriptions, annotations, scope check, error shape (decision 11)
+- [x] 4.3 `replace_section` and `add_scene`: hash, heading rule, parse before and after, snapshot, recheck, apply (decision 5)
+- [x] 4.4 Db tests: endpoint guards, each tool, scope refusals, another user's project, hash mismatch, error-increase refusal, warnings allowed, campaign, snapshot before the write and removed on a moved text, a live client receiving the edit
+- [x] 4.5 Checks and hand-back of brief B
 
 ## 5. Web views (brief C)
 
