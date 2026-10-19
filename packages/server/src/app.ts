@@ -1,10 +1,12 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { DiscoveryRequestOptions } from 'openid-client';
 import { authPlugin } from './accounts/auth.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { oidcRoutes } from './routes/oidc.js';
 import { projectsRoutes } from './routes/projects.js';
 import { settingsRoutes } from './routes/settings.js';
 import { transferRoutes } from './routes/transfer.js';
@@ -23,9 +25,11 @@ export interface AppOptions {
   config: Config;
   db: Db;
   logger?: boolean;
+  // Only for the tests' plain-http issuer; the server never sets it.
+  oidcDiscoveryOptions?: DiscoveryRequestOptions;
 }
 
-export async function buildApp({ config, db, logger = false }: AppOptions): Promise<FastifyInstance> {
+export async function buildApp({ config, db, logger = false, oidcDiscoveryOptions }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
     // Trust X-Forwarded-* from that many proxies in front, none by default.
@@ -55,6 +59,9 @@ export async function buildApp({ config, db, logger = false }: AppOptions): Prom
   await app.register(syncPlugin, { config, db });
   await app.register(healthRoutes, { db, config });
   await app.register(authRoutes, { config, db, sync: app.sync });
+  if (config.oidc) {
+    await app.register(oidcRoutes, { config, db, oidc: config.oidc, discoveryOptions: oidcDiscoveryOptions });
+  }
   await app.register(settingsRoutes, { db });
   await app.register(projectsRoutes, { db, sync: app.sync });
   await app.register(transferRoutes, { db, sync: app.sync });

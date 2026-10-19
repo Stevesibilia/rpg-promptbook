@@ -18,7 +18,14 @@ export const SESSION_COOKIE = 'pb_session';
 // API routes reachable without a session, as `METHOD path`. An allowlist
 // rather than a marker on protected routes: a route added later and
 // forgotten is protected, which is the direction the mistake should fall in.
-export const PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'GET /api/auth/me', 'GET /api/health']);
+export const PUBLIC_ROUTES = new Set([
+  'POST /api/auth/login',
+  'GET /api/auth/me',
+  'GET /api/auth/config',
+  'GET /api/auth/oidc/start',
+  'GET /api/auth/oidc/callback',
+  'GET /api/health',
+]);
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

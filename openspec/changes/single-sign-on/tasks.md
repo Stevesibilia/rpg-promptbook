@@ -7,11 +7,11 @@
 
 ## 2. Server: sign-in
 
-- [ ] 2.1 `accounts/oidc.ts` and `routes/oidc.ts`: start, callback, browser binding, errors (decisions 1 and 4)
-- [ ] 2.2 `findOrCreateOidcUser` (decision 5)
-- [ ] 2.3 `GET /api/auth/config`, `me` additions, `PUBLIC_ROUTES`, 403 `password_sign_in_off`
-- [ ] 2.4 Tests against an in-process issuer: first sign-in, returning sign-in with changed email and username, username suffix, wrong browser, replayed and expired state, `access_denied`, provider down, bad signature and nonce, `return_to` filtering, password routes refused, config answers
-- [ ] 2.5 Hand-back of brief A
+- [x] 2.1 `accounts/oidc.ts` and `routes/oidc.ts`: start, callback, browser binding, errors (decisions 1 and 4)
+- [x] 2.2 `findOrCreateOidcUser` (decision 5)
+- [x] 2.3 `GET /api/auth/config`, `me` additions, `PUBLIC_ROUTES`, 403 `password_sign_in_off`
+- [x] 2.4 Tests against an in-process issuer: first sign-in, returning sign-in with changed email and username, username suffix, wrong browser, replayed and expired state, `access_denied`, provider down, bad signature and nonce, `return_to` filtering, password routes refused, config answers
+- [x] 2.5 Hand-back of brief A
 
 ## 3. Web
 

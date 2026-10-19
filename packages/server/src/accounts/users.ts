@@ -6,17 +6,29 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  // From the provider, for display only; null for a password account.
+  email: string | null;
+  // How this account signs in.
+  signIn: 'oidc' | 'password';
 }
 
-interface UserRow {
+export interface UserRow {
   id: string;
   username: string;
   display_name: string;
   // Null for a single sign-on account.
   password_hash: string | null;
+  oidc_issuer: string | null;
+  email: string | null;
 }
 
-const toUser = (row: UserRow): User => ({ id: row.id, username: row.username, displayName: row.display_name });
+export const toUser = (row: Omit<UserRow, 'password_hash'>): User => ({
+  id: row.id,
+  username: row.username,
+  displayName: row.display_name,
+  email: row.email,
+  signIn: row.oidc_issuer === null ? 'password' : 'oidc',
+});
 
 // Letters, digits, dot, dash and underscore; compared without case.
 const USERNAME = /^[\p{L}\p{N}._-]{1,64}$/u;

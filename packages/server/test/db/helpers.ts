@@ -1,6 +1,6 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { createUser, type User } from '../../src/accounts/users.js';
-import { buildApp } from '../../src/app.js';
+import { buildApp, type AppOptions } from '../../src/app.js';
 import type { Config } from '../../src/config.js';
 import { createDb } from '../../src/db.js';
 import { testDatabaseUrl } from './guard.js';
@@ -27,8 +27,11 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
 
 const open: FastifyInstance[] = [];
 
-export async function startApp(overrides: Partial<Config> = {}): Promise<FastifyInstance> {
-  const app = await buildApp({ config: testConfig(overrides), db });
+export async function startApp(
+  overrides: Partial<Config> = {},
+  options: Pick<AppOptions, 'oidcDiscoveryOptions'> = {},
+): Promise<FastifyInstance> {
+  const app = await buildApp({ config: testConfig(overrides), db, ...options });
   open.push(app);
   return app;
 }
