@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import type { EditorView, ViewUpdate } from '@codemirror/view';
 import { templates } from 'promptbook-format';
 import { countWords } from 'promptbook-project';
 import { analysisField } from './analysis/field.js';
 import { frontMatterOf } from './cm/preview.js';
+import { currentItem } from './outline.js';
 
 export type UpdateSource = (listener: (update: ViewUpdate) => void) => () => void;
 
@@ -18,45 +18,13 @@ interface Snapshot {
   warnings: number;
 }
 
-// Where the cursor is: the scene or section from the latest analysis, or for
-// a campaign the last ## or ### heading before it.
-function placeAt(state: EditorState, pos: number): string {
-  const value = state.field(analysisField, false);
-  if (!value?.checked) {
-    let heading = '';
-    for (let node = syntaxTree(state).topNode.firstChild; node && node.from <= pos; node = node.nextSibling) {
-      if (node.name === 'ATXHeading2' || node.name === 'ATXHeading3') {
-        heading = state
-          .sliceDoc(node.from, node.to)
-          .replace(/^#+\s*/, '')
-          .replace(/\s+#+\s*$/, '');
-      }
-    }
-    return heading;
-  }
-  const model = value.result?.model;
-  if (!model) return '';
-  // An item ends where the next one starts; the last one also holds the end.
-  const end = state.doc.length;
-  const inside = (kind: string) =>
-    value.places.find((p) => p.kind === kind && p.from <= pos && (pos < p.to || (pos === p.to && p.to === end)));
-  const scene = inside('scene');
-  if (scene) {
-    const { id, title } = model.scenes[scene.index]!;
-    return id ? `${id} · ${title}` : title;
-  }
-  if (inside('meta')) return 'Front matter';
-  const section = inside('section');
-  return section ? (model.sections[section.index]!.name ?? model.sections[section.index]!.heading) : '';
-}
-
 function snapshotOf(state: EditorState): Snapshot {
   const head = state.selection.main.head;
   const line = state.doc.lineAt(head);
   const value = state.field(analysisField, false);
   const problems = value?.result?.problems ?? [];
   return {
-    place: placeAt(state, head),
+    place: currentItem(state, head)?.place ?? '',
     line: line.number,
     column: head - line.from + 1,
     checked: !!value?.checked,

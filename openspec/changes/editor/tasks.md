@@ -15,10 +15,10 @@
 
 ## 3. Outline and moving scenes
 
-- [ ] 3.1 `outline.ts`: tree, badges, current item; campaign headings tree (decisions 2 and 6)
-- [ ] 3.2 `Outline.tsx`: click to jump, current item, drag handle, Alt+↑ and Alt+↓ on a focused scene
-- [ ] 3.3 `moveScene.ts` (decision 7), applied as one transaction from a fresh parse
-- [ ] 3.4 Tests: outline of Sabaoth with its badges; `moveScene` round trip byte-identical, reparse with the same scenes and no new problems, last scene before the next section
+- [x] 3.1 `outline.ts`: tree, badges, current item; campaign headings tree (decisions 2 and 6)
+- [x] 3.2 `Outline.tsx`: click to jump, current item, drag handle, Alt+↑ and Alt+↓ on a focused scene
+- [x] 3.3 `moveScene.ts` (decision 7), applied as one transaction from a fresh parse
+- [x] 3.4 Tests: outline of Sabaoth with its badges; `moveScene` round trip byte-identical, reparse with the same scenes and no new problems, last scene before the next section
 
 ## 4. Inspector and inserts
 

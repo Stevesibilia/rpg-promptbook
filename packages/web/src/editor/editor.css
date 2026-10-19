@@ -344,6 +344,30 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ol li {
+  box-shadow:
+    inset 0 2px 0 transparent,
+    inset 0 -2px 0 transparent;
+}
+.ol li.drop-before {
+  box-shadow: inset 0 2px 0 var(--primary);
+}
+.ol li.drop-after {
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+.ol li:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.ol li .grip {
+  flex: none;
+  width: 10px;
+  text-align: center;
+  user-select: none;
+}
+.ol li .grip:empty {
+  visibility: hidden;
+}
 .ol .grp {
   padding: 10px 8px 4px;
   color: var(--faint);

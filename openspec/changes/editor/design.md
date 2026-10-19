@@ -120,6 +120,8 @@ the adventure template would show only false errors.
   result: when the field is stale it calls `parseAdventure` synchronously on
   `state.doc.toString()` first. One parse on a click is acceptable; one per
   keystroke is not.
+- After a move or an insert the client asks the worker at once instead of
+  after 250 ms, so the outline and This scene catch up in one parse.
 - Diagnostics are pushed with `@codemirror/lint`'s `setDiagnostics` only for
   a fresh result; between results the lint state maps the existing
   diagnostics through the edits, so they do not jump or vanish while typing.
@@ -224,7 +226,11 @@ badges and no moves.
 
 ### 7. Moving scenes
 
-`moveScene(text, model, sceneId, targetIndex)` returns the changes that move
+`moveScene(text, model, sceneIndex, targetIndex)`, with the scene's index in a
+fresh model (ids can be missing or duplicated); the UI tracks the dragged or
+focused scene by its heading position, mapped through every change, remote
+ones included, and resolves it in the fresh parse at drop time; if no scene
+heading is there any more, nothing moves. It returns the changes that move
 one scene among the scenes of the `scenes` section:
 
 - A scene's block runs from the start of its heading line to the start of
@@ -284,7 +290,10 @@ heading line when none does. Every insert keeps one blank line between
 blocks, never two, and places the cursor where the user types next. Strings
 come from the template (labels, callout types and labels, the reactions
 table's first header, the references marker, the scene id prefix), not from
-literals in the web package.
+literals in the web package. Two exceptions, named constants side by side in
+`inserts.ts`: the read-aloud slot (after the field labelled «Da non perdere
+qui», checked against `sceneFields` by a test) and the reactions table's
+second header «Allora…»; the template has no data for them yet.
 
 ### 9. The `/` menu and sheet completion
 

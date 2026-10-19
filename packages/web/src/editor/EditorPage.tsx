@@ -12,6 +12,7 @@ import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
 import { Editor } from './Editor.js';
+import { OutlinePanel } from './OutlinePanel.js';
 import { INSPECTOR_KEY, OUTLINE_KEY, usePanel, useShortcuts } from './panels.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
 import './editor.css';
@@ -130,15 +131,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
           </span>
         </div>
       }
-      left={
-        outline ? (
-          <nav className="outline" aria-label="Outline">
-            <div className="panel-h">
-              Outline <span className="kbd">{keyLabel(shortcut('outline').keys)}</span>
-            </div>
-          </nav>
-        ) : undefined
-      }
+      left={outline ? <OutlinePanel view={view} updates={updates} /> : undefined}
       right={inspector ? <div className="inspector" aria-label="Inspector" /> : undefined}
       status={<StatusBar view={view} updates={updates} onProblems={() => setInspector(true)} />}
     >

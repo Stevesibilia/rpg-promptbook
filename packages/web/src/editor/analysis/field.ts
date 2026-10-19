@@ -42,6 +42,10 @@ export interface Analysis {
 
 export const setAnalysis = StateEffect.define<{ doc: Text; result: ParseResult; changes: ChangeDesc }>();
 
+// Added to a write (a move, an insert) to have its text parsed now rather
+// than after the typing delay, so the panels catch up at once.
+export const analyseNow = StateEffect.define<null>();
+
 function placesOf({ model }: ParseResult): Place[] {
   const places: Place[] = [];
   const { range } = model.meta;
@@ -64,11 +68,12 @@ function placesOf({ model }: ParseResult): Place[] {
 }
 
 // Typing at a heading's first character belongs to that heading; typing at
-// an item's end belongs to the next one.
+// an item's end belongs to it too, so the cursor stays in its place while the
+// next result is computed. Items never touch: blank lines are between them.
 const mapPlace = (place: Place, changes: ChangeDesc): Place => ({
   ...place,
   from: changes.mapPos(place.from, -1),
-  to: changes.mapPos(place.to, -1),
+  to: changes.mapPos(place.to, 1),
   head: changes.mapPos(place.head, -1),
 });
 
@@ -165,7 +170,9 @@ function driver(connect: Connect, onResult: OnResult) {
       update(update: ViewUpdate) {
         if (!update.docChanged) return;
         if (sent) sent.changes = sent.changes.compose(update.changes);
-        client.changed();
+        const now = update.transactions.some((tr) => tr.effects.some((e) => e.is(analyseNow)));
+        if (now) client.flush();
+        else client.changed();
       },
       destroy() {
         sent = null;
