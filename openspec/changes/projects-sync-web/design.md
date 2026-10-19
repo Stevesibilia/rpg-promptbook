@@ -341,6 +341,24 @@ also computes the pill's state:
 - Syncing: connected with unsynced changes.
 - Synced: otherwise. Worst state wins across providers.
 
+Amended in group 4:
+
+- The providers share one `HocuspocusProviderWebsocket`. A provider whose
+  last view closes is kept for 2 s, and never closed while the socket is down
+  or while it holds unsent changes, because with `@hocuspocus/provider` 4.7.1
+  a closing provider's Close message waits in the socket queue behind a new
+  provider's first messages for the same document and ends that session.
+- Every refusal reaches the client as `permission-denied`, so on an
+  authentication failure the client asks `GET /api/auth/me`: no user means
+  Sign in to sync, a user means the project is gone (in the bin or not found).
+- The Not saved banner has no Retry button, since the server already retries
+  a failed store every 5 seconds and nothing in the browser can make it store
+  again.
+- The panel's scenes, words, errors and warnings come from the server's
+  summary of the last store, not from parsing the document in the browser.
+- The seed in the panel is editable: saving a changed text adds a dated
+  version with `addSeedVersion`.
+
 Development: Vite on its own port with a proxy for `/api` and `/sync`
 (`ws: true`) to the server on 3000, and `PUBLIC_URL` set to Vite's origin so
 the Origin checks pass.
