@@ -22,10 +22,10 @@
 
 ## 4. Web: review, shortcuts, server (brief B)
 
-- [ ] 4.1 Review screen: thumbnails, stage, checks, options, Save PDF, Print (decision 12)
-- [ ] 4.2 Jump from the PDF (decision 13); `pdfReview` shortcut and palette commands (decision 14)
-- [ ] 4.3 Server: content security policy, pre-compressed files, cache headers, `.wasm` type (decision 15); a server test for the headers
-- [ ] 4.4 `e2e/pdf.spec.ts` (decision 16); the whole e2e suite passes
+- [x] 4.1 Review screen: thumbnails, stage, checks, options, Save PDF, Print (decision 12)
+- [x] 4.2 Jump from the PDF (decision 13); `pdfReview` shortcut and palette commands (decision 14)
+- [x] 4.3 Server: content security policy, pre-compressed files, cache headers, `.wasm` type (decision 15); a server test for the headers
+- [x] 4.4 `e2e/pdf.spec.ts` (decision 16); the whole e2e suite passes
 
 ## 5. Preview and docs (brief B)
 

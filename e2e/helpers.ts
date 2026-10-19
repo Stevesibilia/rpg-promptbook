@@ -1,7 +1,17 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import { baseURL, password, username } from './stack.js';
 
+// E2E_CPU_THROTTLE=3 runs the pages that sign in on a CPU three times
+// slower, through Chrome's DevTools protocol, to bring out timing races.
+async function throttle(page: Page): Promise<void> {
+  const rate = Number(process.env.E2E_CPU_THROTTLE ?? 1);
+  if (rate <= 1) return;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Emulation.setCPUThrottlingRate', { rate });
+}
+
 export async function signIn(page: Page, path = '/'): Promise<void> {
+  await throttle(page);
   await page.goto(path);
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(password);

@@ -1,4 +1,4 @@
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import helmet from '@fastify/helmet';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -17,6 +17,9 @@ async function headers(app: FastifyInstance, { config }: { config: Config }) {
         // 'self' covers same-origin WebSockets in current browsers; the
         // explicit ws: or wss: origin covers the ones that predate CSP 3.
         connectSrc: ["'self'", syncOrigin],
+        // The PDF engine is WebAssembly, which the browser compiles only with
+        // 'wasm-unsafe-eval'; it allows no JavaScript eval.
+        scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
         upgradeInsecureRequests: https ? [] : null,
       },
@@ -26,13 +29,22 @@ async function headers(app: FastifyInstance, { config }: { config: Config }) {
   });
 }
 
+// Hashed names under /assets never change, so browsers keep them for a year;
+// everything else, index.html first, is checked again on every use.
+const cacheControl = (file: string) =>
+  file.startsWith(`assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache';
+
 // The web build, with a fallback to its index.html for the app's own routes,
-// and JSON 404s under /api. Registered last.
+// and JSON 404s under /api. Registered last. The build carries Brotli and
+// gzip copies of its larger files, sent to browsers that accept them.
 async function web(app: FastifyInstance, { config }: { config: Config }) {
   if (config.webDist) {
+    const root = isAbsolute(config.webDist) ? config.webDist : resolve(config.webDist);
     await app.register(fastifyStatic, {
-      root: isAbsolute(config.webDist) ? config.webDist : resolve(config.webDist),
+      root,
       prefix: '/',
+      preCompressed: true,
+      setHeaders: (reply, path) => reply.header('cache-control', cacheControl(relative(root, path))),
     });
   }
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
-import { blockAt } from 'promptbook-layout';
+import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { StatusSelect } from '../projects/controls.js';
@@ -20,7 +20,9 @@ import { OutlinePanel } from './OutlinePanel.js';
 import { resolveItem, type PaletteAction } from './palette.js';
 import { INSPECTOR_KEY, OUTLINE_KEY, PDF_KEY, usePanel, useShortcuts } from './panels.js';
 import { usePdfOptions } from './pdf/options.js';
+import { pdfFileName } from './pdf/pages.js';
 import { PdfPane } from './pdf/PdfPane.js';
+import { PdfReview } from './pdf/PdfReview.js';
 import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
@@ -31,9 +33,17 @@ import './pdf/pdf.css';
 
 const label = (id: Parameters<typeof shortcut>[0]) => `${shortcut(id).label} (${keyLabel(shortcut(id).keys)})`;
 
+// The PDF's bytes as a URL of this page, let go once the browser had time to
+// use it.
+function pdfUrl(bytes: Uint8Array): string {
+  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }));
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return url;
+}
+
 // The live project page (design decisions 1 and 11): the top bar with its
 // toggles, the outline, the editor, the inspector or the PDF preview, and the
-// status bar.
+// status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
   const { projects } = useProjects();
@@ -48,7 +58,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const [dialog, setDialog] = useState<'palette' | 'syntax' | null>(null);
   const navigate = useNavigate();
   const [pdfOpen, setPdfOpen] = usePanel(PDF_KEY, false);
-  const [pdfOptions] = usePdfOptions(meta.id);
+  // The page the review opened on, while it is open.
+  const [review, setReview] = useState<number | null>(null);
+  const [pdfOptions, setPdfOptions] = usePdfOptions(meta.id);
   // The pane takes the inspector's place for adventures and one-shots.
   const pane = checked && pdfOpen;
 
@@ -59,20 +71,51 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     return () => listeners.current.delete(listener);
   }, []);
 
-  const { snapshot: pdfSnapshot } = usePdf({
+  const { client: pdf, snapshot: pdfSnapshot } = usePdf({
     view,
     updates,
-    active: checked && pane && !focus,
+    active: checked && ((pane && !focus) || review !== null),
     options: pdfOptions,
     title: meta.title,
   });
+  const openReview = (page?: number) => {
+    const good = pdfSnapshot?.good;
+    const head = view?.state.selection.main.head ?? 0;
+    setReview(page ?? (good ? Math.min(pageOf(good.positions, head), good.pages.length) : 1));
+  };
+  const closeReview = () => {
+    setReview(null);
+    view?.focus();
+  };
   // A double-click on a page: the text printed there, in the text the build
   // read; jumpTo keeps it inside the text as it is now.
   const jumpFromPdf = (page: number, y: number) => {
     const good = pdfSnapshot?.good;
     const at = good && blockAt(good.positions, page, y);
     if (!view || !at) return;
+    setReview(null);
     jumpTo(view, at.from, 'center');
+  };
+  const savePdf = async () => {
+    if (!pdf) return;
+    const link = document.createElement('a');
+    link.href = pdfUrl(await pdf.pdf());
+    link.download = pdfFileName(meta.title);
+    link.click();
+  };
+  // The PDF in a tab of its own, where the browser's viewer prints it. The
+  // tab is opened at the click, before the build, or the browser may block it.
+  const printPdf = async () => {
+    if (!pdf) return;
+    const tab = window.open('', '_blank');
+    try {
+      const url = pdfUrl(await pdf.pdf());
+      if (tab && !tab.closed) tab.location.href = url;
+      else window.open(url, '_blank');
+    } catch (error) {
+      tab?.close();
+      throw error;
+    }
   };
   const toggleInspector = () => {
     if (pane) {
@@ -94,8 +137,10 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     previousProblem: toProblem(previousDiagnostic),
     syntax: () => setDialog('syntax'),
     palette: () => setDialog('palette'),
-    // Left alone outside focus mode, so Escape keeps its other uses.
-    ...(focus ? { escape: () => setFocus(false) } : {}),
+    ...(checked ? { pdfReview: () => (review === null ? openReview() : closeReview()) } : {}),
+    // Left alone outside the review and focus mode, so Escape keeps its other
+    // uses.
+    ...(review !== null ? { escape: closeReview } : focus ? { escape: () => setFocus(false) } : {}),
   };
   const latest = useRef(handlers);
   latest.current = handlers;
@@ -122,6 +167,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         return;
       case 'status':
         setStatus(doc, action.status);
+        return;
+      case 'pdf':
+        setPdfOpen((open) => !open);
         return;
       case 'projects':
         navigate('/');
@@ -238,7 +286,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
             view={view}
             updates={updates}
             snapshot={pdfSnapshot}
-            onReview={() => {}}
+            onReview={openReview}
             onClose={() => setPdfOpen(false)}
             onJump={jumpFromPdf}
           />
@@ -258,6 +306,18 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     >
       <Editor doc={doc} checked={checked} extensions={extensions} onView={setView} />
       {pdfSnapshot && <PdfSource svg={pdfSnapshot.good?.svg ?? null} />}
+      {review !== null && (
+        <PdfReview
+          snapshot={pdfSnapshot}
+          initialPage={review}
+          options={pdfOptions}
+          setOptions={setPdfOptions}
+          onClose={closeReview}
+          onJump={jumpFromPdf}
+          onSave={savePdf}
+          onPrint={printPdf}
+        />
+      )}
       {dialog === 'syntax' && <SyntaxSheet checked={checked} onClose={closeDialog} />}
       {dialog === 'palette' && (
         <CommandPalette view={view} updates={updates} checked={checked} onRun={runPalette} onClose={closeDialog} />

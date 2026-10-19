@@ -23,7 +23,7 @@ describe('the palette filter', () => {
 
   it('lists the commands first, each with its shortcut, then every outline item', () => {
     const entries = paletteEntries(outlineOf(analysed(sabaoth).state), { checked: true });
-    expect(entries.slice(0, 11).map((e) => `${e.label}${e.keys ? ` [${e.keys}]` : ''}`)).toEqual([
+    expect(entries.slice(0, 13).map((e) => `${e.label}${e.keys ? ` [${e.keys}]` : ''}`)).toEqual([
       'Toggle outline [Mod-1]',
       'Toggle inspector [Mod-2]',
       'Focus mode [Mod-.]',
@@ -33,15 +33,19 @@ describe('the palette filter', () => {
       'Set status: Complete',
       'Next problem [F8]',
       'Previous problem [Shift-F8]',
+      'PDF preview',
+      'Review PDF [Mod-Shift-p]',
       'Back to projects',
       'Go to Front matter',
     ]);
     expect(entries.filter((e) => e.action.kind === 'go')).toHaveLength(outlineOf(analysed(sabaoth).state).length);
   });
 
-  it('leaves out the problems for a campaign', () => {
+  it('leaves out the problems and the PDF for a campaign', () => {
     const entries = paletteEntries(outlineOf(campaign('## Uno\n\n### Due\n')), { checked: false });
     expect(entries.map((e) => e.label)).not.toContain('Next problem');
+    expect(entries.map((e) => e.label)).not.toContain('PDF preview');
+    expect(entries.map((e) => e.label)).not.toContain('Review PDF');
     expect(entries.slice(-2).map((e) => e.label)).toEqual(['Go to Uno', 'Go to Due']);
   });
 
