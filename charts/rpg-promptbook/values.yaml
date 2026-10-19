@@ -34,8 +34,8 @@ waitForDatabase:
   # -- Hold the server back until the database accepts connections, so the
   # migrations at start do not crash-loop while it comes up.
   image:
-    repository: postgres
-    tag: "18-alpine"
+    repository: registry.access.redhat.com/hi/postgresql
+    tag: "18"
     pullPolicy: IfNotPresent
   timeoutSeconds: 300
 

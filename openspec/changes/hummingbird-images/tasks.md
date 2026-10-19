@@ -6,10 +6,10 @@
 
 ## 2. Chart and runbook
 
-- [ ] 2.1 `deployment.yaml` user and group, `values.yaml` wait-for-database image, `Chart.yaml` 0.1.1 (decision 4)
-- [ ] 2.2 `hi/postgresql:18` init script run as uid 65532 with `--read-only` against the test database
-- [ ] 2.3 `docs/deploy-homelab.md`: where the base images come from; Prettier on it
-- [ ] 2.4 Checks: `helm lint` and `helm template` with both values files, `docker compose build`, `openspec validate hummingbird-images --strict`; push; hand back
+- [x] 2.1 `deployment.yaml` user and group, `values.yaml` wait-for-database image, `Chart.yaml` 0.1.1 (decision 4)
+- [x] 2.2 `hi/postgresql:18` init script run as uid 65532 with `--read-only` against the test database
+- [x] 2.3 `docs/deploy-homelab.md`: where the base images come from; Prettier on it
+- [x] 2.4 Checks: `helm lint` and `helm template` with both values files, `docker compose build`, `openspec validate hummingbird-images --strict`; push; hand back
 
 ## 3. Release (architect)
 
