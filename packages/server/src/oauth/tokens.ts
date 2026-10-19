@@ -91,19 +91,39 @@ interface CodeRow {
   client_id: string;
 }
 
-// Spends a code, or refuses. Found and deleted in one statement, before any
+// Spends a code, or refuses. Marked spent in one statement, before any
 // check: a code is good for one redemption whether or not it succeeds, and
-// two requests with one code cannot both find the row (the second DELETE
-// waits on the first's lock, then finds nothing).
+// of two requests with one code the second waits on the first's lock, then
+// finds it spent. A spent code presented again is a replay (RFC 6749
+// section 4.1.2): someone else may hold it, so the grant it was issued under
+// is revoked, and every token issued from it with it.
 export async function redeemCode(db: Queryable, input: CodeRedemption): Promise<{ grantId: string; scope: OAuthScope }> {
+  const codeHash = hashToken(input.code);
   const row = await db.queryOne<CodeRow>(
-    `delete from oauth_codes oc
-     using oauth_grants g, oauth_clients c
-     where oc.code_hash = $1 and g.id = oc.grant_id and c.id = g.client_id
+    `update oauth_codes oc set spent_at = now()
+     from oauth_grants g, oauth_clients c
+     where oc.code_hash = $1 and oc.spent_at is null and g.id = oc.grant_id and c.id = g.client_id
      returning oc.grant_id, oc.redirect_uri, oc.code_challenge, oc.resource, oc.expires_at, g.scope, c.client_id`,
-    [hashToken(input.code)],
+    [codeHash],
   );
-  if (!row) throw new TokenError('invalid_grant', 'That authorization code is not valid.');
+  if (!row) {
+    // As for refresh tokens, only a replay by the client the code was
+    // issued to revokes: another client cannot end someone's approval.
+    const spent = await db.queryOne<{ grant_id: string }>(
+      `select oc.grant_id from oauth_codes oc
+       join oauth_grants g on g.id = oc.grant_id join oauth_clients c on c.id = g.client_id
+       where oc.code_hash = $1 and oc.spent_at is not null and c.client_id = $2`,
+      [codeHash, input.clientId],
+    );
+    if (spent) {
+      await deleteGrant(db, spent.grant_id);
+      throw new TokenError(
+        'invalid_grant',
+        'That authorization code had already been used. The approval has been revoked; authorize the client again.',
+      );
+    }
+    throw new TokenError('invalid_grant', 'That authorization code is not valid.');
+  }
   if (row.expires_at.getTime() <= Date.now()) {
     throw new TokenError('invalid_grant', 'That authorization code has expired.');
   }
@@ -207,12 +227,13 @@ export async function rotateRefreshToken(
     [hashToken(input.refreshToken)],
   );
   if (!row) throw new TokenError('invalid_grant', 'That refresh token is not valid.');
-  if (row.rotated_at) return revokeForReuse(db, row.grant_id);
   // A public client has no secret: the client_id is what stops another
-  // client spending a leaked refresh token (RFC 6749 section 3.2.1).
+  // client spending a leaked refresh token (RFC 6749 section 3.2.1). Checked
+  // before reuse, so another client cannot revoke a grant by replaying one.
   if (row.client_id !== input.clientId) {
     throw new TokenError('invalid_grant', 'That refresh token was issued to a different client.');
   }
+  if (row.rotated_at) return revokeForReuse(db, row.grant_id);
   if (row.expires_at.getTime() <= Date.now()) {
     await db.query('delete from oauth_tokens where id = $1', [row.id]);
     throw new TokenError('invalid_grant', 'That refresh token has expired.');

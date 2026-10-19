@@ -4,7 +4,7 @@ import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
 import { openLiveDocument } from '../live.js';
 import type { ProjectRow } from '../projects.js';
-import { insertSnapshot, snapshotThenWrite, textHash } from '../snapshots.js';
+import { insertSnapshot, pruneClaudeSnapshots, snapshotThenWrite, textHash } from '../snapshots.js';
 import type { Sync } from '../sync.js';
 import { ToolRefusal } from './errors.js';
 
@@ -79,9 +79,28 @@ export function locate(text: string, category: Category, name: string): Target {
   );
 }
 
-// Trailing blank lines dropped: a span never has them, so the separator
-// after the target stays as it was.
-const withoutTrailingBlankLines = (markdown: string) => markdown.replace(/(?:\r?\n[ \t]*)+$/, '').replace(/[ \t]+$/, '');
+const isSpace = (char: string | undefined) => char === ' ' || char === '\t' || char === '\r' || char === '\n';
+
+// Trailing blank lines and spaces dropped: a span never has them, so the
+// separator after the target stays as it was. Scans, never a regex: one
+// anchored at the end is quadratic on a long run of spaces.
+function withoutTrailingBlanks(markdown: string): string {
+  let end = markdown.length;
+  while (end > 0 && isSpace(markdown[end - 1])) end--;
+  return markdown.slice(0, end);
+}
+
+// Leading blank lines dropped; the spaces that indent the first line kept.
+function withoutLeadingBlankLines(markdown: string): string {
+  let start = 0;
+  for (let i = 0; i < markdown.length && isSpace(markdown[i]); i++) {
+    if (markdown[i] === '\n') start = i + 1;
+  }
+  return markdown.slice(start);
+}
+
+// A heading line is short; a longer one is refused before any regex sees it.
+export const HEADING_LINE_MAX = 300;
 
 const HEADING = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 
@@ -92,7 +111,12 @@ function invalidMarkdown(message: string): ToolRefusal {
 // The new text must open with a heading of the target's level, and for a
 // scene with the same id.
 function checkHeading(markdown: string, target: Target): void {
-  const heading = HEADING.exec(markdown.split('\n', 1)[0]!.replace(/\r$/, ''));
+  const newline = markdown.indexOf('\n');
+  const line = (newline === -1 ? markdown : markdown.slice(0, newline)).replace(/\r$/, '');
+  if (line.length > HEADING_LINE_MAX) {
+    throw invalidMarkdown(`The heading line is longer than ${HEADING_LINE_MAX} characters.`);
+  }
+  const heading = HEADING.exec(line);
   if (!heading || heading[1]!.length !== target.level) {
     throw invalidMarkdown(
       `The markdown must start with the target's heading, a level ${target.level} heading (${'#'.repeat(target.level)} …).`,
@@ -193,6 +217,7 @@ async function apply(
           grantId,
         }),
     });
+    await pruneClaudeSnapshots(db, project.id);
     return { ...planned.result, snapshotId: stored.id };
   } finally {
     await live.close();
@@ -209,7 +234,7 @@ export function replaceSection(
   grantId: string,
   input: { target: string; markdown: string; hash: string },
 ): Promise<EditResult> {
-  const markdown = withoutTrailingBlankLines(input.markdown);
+  const markdown = withoutTrailingBlanks(input.markdown);
   return apply(db, sync, project, userId, grantId, 'replace_section', (text) => {
     const target = locate(text, project.category, input.target);
     const before = text.slice(target.from, target.to);
@@ -250,7 +275,7 @@ export function addScene(
   if (project.category === 'campaign') {
     throw new AppError(400, 'not_an_adventure', 'A campaign has no scenes; add_scene works on adventures and one-shots.');
   }
-  const body = withoutTrailingBlankLines(input.markdown).replace(/^(?:[ \t]*\r?\n)+/, '');
+  const body = withoutLeadingBlankLines(withoutTrailingBlanks(input.markdown));
   const title = input.title.trim();
   return apply(db, sync, project, userId, grantId, 'add_scene', (text) => {
     const { model } = parseAdventure(text, { template: templates.avventura });

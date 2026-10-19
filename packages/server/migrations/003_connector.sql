@@ -32,7 +32,9 @@ create table oauth_grants (
 create index oauth_grants_user_id_idx on oauth_grants (user_id);
 create index oauth_grants_client_id_idx on oauth_grants (client_id);
 
--- Codes and tokens are stored as the SHA-256 hex of their value only.
+-- Codes and tokens are stored as the SHA-256 hex of their value only. A
+-- code is spent, not deleted, when redeemed: the row stays until it expires,
+-- so a replay finds the grant it was issued under and revokes it.
 create table oauth_codes (
   id uuid primary key default gen_random_uuid(),
   grant_id uuid not null references oauth_grants on delete cascade,
@@ -41,6 +43,7 @@ create table oauth_codes (
   code_challenge text not null,
   resource text not null,
   expires_at timestamptz not null,
+  spent_at timestamptz,
   created_at timestamptz not null default now()
 );
 create index oauth_codes_grant_id_idx on oauth_codes (grant_id);

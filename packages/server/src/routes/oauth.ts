@@ -95,6 +95,7 @@ const registrationBody = z.object({
   client_name: z.string().trim().min(1, 'is required').max(200),
   redirect_uris: z.array(z.string().min(1).max(2048)).min(1, 'needs at least one redirect URI').max(20),
   client_uri: z.string().max(2048).optional(),
+  // Accepted and not kept: nothing shows a logo.
   logo_uri: z.string().max(2048).optional(),
   token_endpoint_auth_method: z.string().max(100).optional(),
   grant_types: z.array(z.string().max(100)).max(10).optional(),
@@ -111,7 +112,9 @@ interface ValidatedRequest {
 // The consent page's view of a request.
 export interface ConsentRequest {
   client_name: string;
-  client_uri: string | null;
+  // The host of the client's own address, as text: the page never makes the
+  // client's URL a link.
+  client_host: string | null;
   redirect_host: string;
   loopback_only: boolean;
   requested_scopes: OAuthScope[];
@@ -223,7 +226,6 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
           clientName: body.client_name,
           redirectUris: body.redirect_uris,
           clientUri: body.client_uri,
-          logoUri: body.logo_uri,
           tokenEndpointAuthMethod: body.token_endpoint_auth_method,
         },
         req.ip,
@@ -237,7 +239,6 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
           client_name: client.clientName,
           redirect_uris: client.redirectUris,
           client_uri: client.clientUri ?? undefined,
-          logo_uri: client.logoUri ?? undefined,
           token_endpoint_auth_method: 'none',
           grant_types: ['authorization_code', 'refresh_token'],
           response_types: ['code'],
@@ -255,7 +256,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     const validated = await validateRequest(req.query);
     return {
       client_name: validated.client.clientName,
-      client_uri: validated.client.clientUri,
+      client_host: validated.client.clientUri ? new URL(validated.client.clientUri).host : null,
       redirect_host: new URL(validated.query.redirect_uri).host,
       loopback_only: isLoopbackOnlyClient(validated.client),
       requested_scopes: validated.requestedScopes,

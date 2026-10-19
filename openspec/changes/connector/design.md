@@ -305,6 +305,8 @@ hash). `replace_section(projectId, target, markdown, hash)`:
    at exactly the written span (heading kept, no new heading of the same or a
    higher level inside); otherwise `invalid_markdown`. This is what lets
    `after_hash` be computed on the span undo hashes.
+   Trailing blanks are trimmed with a linear scan; a heading line longer than
+   300 characters is `invalid_markdown`.
 3. Build the new text in memory. For an adventure or a one-shot, parse old
    and new; when the new text has more errors, refuse `more_errors` with the
    counts and the new text's problems inside the replaced span (code,
@@ -439,7 +441,7 @@ at)` under an advisory lock as `accounts/throttle.ts` does; 429 past it.
   `read`, unknown `invalid_scope`), a known or resolvable client, a
   registered redirect URI.
 - **Tokens.** `prefix + base64url(32 random bytes)`: `pb_ac_` code (10
-  minutes, single use, spent by one `DELETE … RETURNING`), `pb_at_` access
+  minutes, single use, spent by one `UPDATE … RETURNING`), `pb_at_` access
   (1 hour), `pb_rt_` refresh (30 days, rotated on every use; a rotated token
   presented again deletes the whole grant). Stored only as SHA-256 hex
   (`hashToken`, `accounts/sessions.ts`). `POST /api/oauth/token`
@@ -457,11 +459,23 @@ client_name, client_uri, logo_uri, redirect_uris jsonb,
 metadata_expires_at, created_at)`, `oauth_grants (id, user_id → users
 cascade, client_id → oauth_clients cascade, scope read|read_write,
 created_at, last_used_at)`, `oauth_codes (id, grant_id cascade, code_hash
-unique, redirect_uri, code_challenge, resource, expires_at, created_at)`,
+unique, redirect_uri, code_challenge, resource, expires_at, spent_at,
+created_at)`,
   `oauth_tokens (id, grant_id cascade, kind access|refresh, token_hash
 unique, resource, expires_at, rotated_at, created_at)`, with gdrarchive's
   indexes. Users have no disabled flag here: a deleted user's grants go with
   the cascade.
+- A replayed authorization code revokes the grant it was issued under. A
+  rotated refresh token is treated as reuse only when it comes from the same
+  client; otherwise `invalid_grant`. Registrations are counted per address, per
+  /64 for IPv6, and refused while more than 1000 registered clients have no
+  grant; expired metadata document clients without a grant are swept.
+  `client_uri` is kept only when https (http for loopback) and shown as its
+  host; `logo_uri` is not stored. The address guard also refuses 2002::/16,
+  2001::/32, ::ffff:0:0/96 and 64:ff9b:1::/48.
+- A redeemed code is marked `spent_at` in the redeeming statement instead of
+  being deleted, and stays until it expires, so a replay finds its grant; as for
+  refresh tokens, only a replay by the client the code was issued to revokes.
 
 Code layout: `src/oauth/config.ts`, `clients.ts`, `tokens.ts`, `grants.ts`,
 `routes/oauth.ts`. Ported, not imported: gdrarchive is another repository
@@ -485,7 +499,7 @@ passwords the page signs in in place. No new Authentik application, no new
 secret.
 
 Consent API, session only and under the same-origin rule: `GET
-/api/oauth/authorize?…` answers `{ client_name, client_uri, redirect_host,
+/api/oauth/authorize?…` answers `{ client_name, client_host, redirect_host,
 loopback_only, requested_scopes }` or the validation error;
 `POST /api/oauth/authorize` (JSON: the same parameters plus
 `granted_scope`, which must be within the request) creates the grant and the
@@ -505,6 +519,10 @@ warning. `logo_uri` is never shown. An invalid request shows «Cannot
 connect» with the error and no redirect. The mockup's "Claude is connected"
 and "Access denied" screens are replaced by the redirect to the client,
 which shows its own result.
+
+The consent page shows the redirect host in bold and labels the client name
+«unverified», unless the client id is an https metadata document URL, in which
+case it shows that URL's host as the source of the name.
 
 Connected apps (`/settings/apps`, a new Settings section after Account):
 `GET /api/auth/grants` (own grants, newest first: `id, client_name,
@@ -613,6 +631,11 @@ the server's `instructions`. Input schemas are zod 4 objects with the limits
 of decision 2; unknown keys are refused and named. Creating a project from
 Claude moves `createProject` out of `routes/projects.ts:57-86` into
 `projects.ts`, shared by the route and the tool.
+
+A grant may make 120 write calls per 10 minutes (`rate_limited` with
+`retry_after`); a project keeps at most 200 Claude snapshots, the oldest
+removed first. `add_scene`'s description lists the scene fields the template
+requires.
 
 Why: the list the architect agreed, plus `add_scene` (decision 5). Rejected:
 a generic `apply_patch` or `write_document` (a full rewrite is what the

@@ -6,7 +6,9 @@ import { createUser, type User } from '../../src/accounts/users.js';
 import { buildApp } from '../../src/app.js';
 import type { Db } from '../../src/db.js';
 import { withLiveDocument, setDocumentText } from '../../src/live.js';
-import { check } from '../../src/mcp/edits.js';
+import { check, HEADING_LINE_MAX } from '../../src/mcp/edits.js';
+import { WriteQuota } from '../../src/mcp/quota.js';
+import { CLAUDE_SNAPSHOTS_MAX } from '../../src/snapshots.js';
 import { TOOL_NAMES } from '../../src/mcp/tools.js';
 import { textHash } from '../../src/snapshots.js';
 import { db, ORIGIN, PASSWORD, signedIn, startApp, steve, testConfig } from './helpers.js';
@@ -537,7 +539,97 @@ describe('replace_section', () => {
   });
 });
 
+describe('inputs built to be slow', () => {
+  it('trims a long run of spaces and refuses a long heading line in linear time', async () => {
+    const s = await setup();
+    const { hash } = (await s.call('read_document', { projectId: s.id, target: 'S1' })).value;
+    const spaces = ' '.repeat(99_000);
+    const cases: [string, string][] = [
+      [`x${spaces}y`, 'invalid_markdown'],
+      [`### S1. ${spaces}y`, 'invalid_markdown'],
+      [`### S1. A\n\nTesto.${spaces}`, 'more_errors'],
+      [`### S1. A\n\nTesto.${'\n '.repeat(45_000)}`, 'more_errors'],
+    ];
+    for (const [markdown, code] of cases) {
+      const started = performance.now();
+      const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown, hash });
+      expect(performance.now() - started, code).toBeLessThan(2000);
+      expect(outcome.error?.code).toBe(code);
+    }
+    const long = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown: `### S1. ${'a'.repeat(HEADING_LINE_MAX)}`, hash });
+    expect(long.error?.code).toBe('invalid_markdown');
+    expect(long.error?.message).toContain(`${HEADING_LINE_MAX} characters`);
+    const started = performance.now();
+    await s.call('add_scene', { projectId: s.id, title: 'X', markdown: `\n${' '.repeat(50_000)}\n${spaces}` });
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(await storedText(s.id)).toBe(ADVENTURE);
+  });
+});
+
+describe('limits on writes', () => {
+  it('lets a grant make 120 writes per 10 minutes, then answers rate_limited with retry_after', async () => {
+    const s = await setup();
+    for (let i = 0; i < 120; i++) {
+      const outcome = await s.call('add_research_topic', { projectId: s.id, names: [`Tema ${i}`] });
+      expect(outcome.isError, `write ${i}`).toBe(false);
+    }
+    const refused = await s.call('add_todo', { projectId: s.id, items: ['Una in più'] });
+    expect(refused.error).toMatchObject({ code: 'rate_limited' });
+    expect(refused.error!.retry_after).toBeGreaterThan(0);
+    expect(refused.error!.retry_after).toBeLessThanOrEqual(600);
+    expect(readTodo(await storedDoc(s.id)).some((t) => t.text === 'Una in più')).toBe(false);
+    // Reads go on.
+    expect((await s.call('list_todo', { projectId: s.id })).isError).toBe(false);
+  });
+
+  it('counts each grant on its own and frees writes as the window slides', () => {
+    let now = 0;
+    const quota = new WriteQuota(3, 1000, () => now);
+    expect([quota.take('a'), quota.take('a'), quota.take('a')]).toEqual([null, null, null]);
+    expect(quota.take('a')).toBe(1);
+    expect(quota.take('b')).toBeNull();
+    now = 1001;
+    expect(quota.take('a')).toBeNull();
+  });
+
+  it('keeps at most 200 Claude snapshots per project, removing the oldest', async () => {
+    const s = await setup();
+    await db.query(
+      `insert into snapshots (project_id, kind, label, text, words, created_at)
+       select $1, 'claude', 'old ' || n, 'x', 1, now() - make_interval(mins => 1000 - n)
+       from generate_series(1, $2) as n`,
+      [s.id, CLAUDE_SNAPSHOTS_MAX],
+    );
+    await db.query(`insert into snapshots (project_id, kind, label, text, words) values ($1, 'user', 'mine', 'x', 1)`, [s.id]);
+    const { hash } = (await s.call('read_document', { projectId: s.id, target: 'S1' })).value;
+    const outcome = await s.call('replace_section', {
+      projectId: s.id,
+      target: 'S1',
+      markdown: scene('S1', 'La casa che crolla', 'La casa crolla.', 'casa Faraci, mezzanotte.'),
+      hash,
+    });
+    expect(outcome.isError).toBe(false);
+    const claude = await db.query<{ label: string }>(
+      `select label from snapshots where project_id = $1 and kind = 'claude' order by created_at`,
+      [s.id],
+    );
+    expect(claude).toHaveLength(CLAUDE_SNAPSHOTS_MAX);
+    expect(claude[0]!.label).toBe('old 2');
+    expect(claude.at(-1)!.label).toBe('S1 · La casa che crolla');
+    expect(await db.query(`select id from snapshots where kind = 'user'`)).toHaveLength(1);
+  });
+});
+
 describe('add_scene', () => {
+  it('says in its description what a scene needs, from the template', async () => {
+    const s = await setup();
+    const description = (await mcpListTools(s.app, s.tokens.access_token)).find((t) => t.name === 'add_scene')!.description!;
+    for (const part of ['[!leggi]', '**Luogo e momento:**', '**In gioco:**', '**Da non perdere qui**', '**Cosa succede da sé**', '**Se deragliano:**', '«Se i PG»']) {
+      expect(description).toContain(part);
+    }
+    expect(description).toContain('Recommended (a warning when missing): **Indizi qui**');
+  });
+
   it('adds the next scene at the end of «Scene», and its undo removes it', async () => {
     const s = await setup();
     const body = FULL_BODY;

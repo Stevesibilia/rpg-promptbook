@@ -4,6 +4,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Db } from '../db.js';
 import type { OAuthScope } from '../oauth/config.js';
 import type { Sync } from '../sync.js';
+import type { WriteQuota } from './quota.js';
 import { INSTRUCTIONS, registerTools } from './tools.js';
 
 // The MCP server, built fresh for every request (connector design decision
@@ -36,6 +37,8 @@ export interface McpDeps {
   sync: Sync;
   log: FastifyBaseLogger;
   version: string;
+  // Shared by every request: the write calls each grant made lately.
+  quota: WriteQuota;
 }
 
 // JSON responses: every exchange is one request and one result, so no SSE.

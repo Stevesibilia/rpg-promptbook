@@ -143,6 +143,22 @@ export async function insertSnapshot(db: Queryable, s: NewSnapshot): Promise<Sna
   return { ...toRow(row!), text: s.text };
 }
 
+// The most Claude snapshots a project keeps, besides the 30 days: a busy
+// client cannot fill the table with full copies of the document.
+export const CLAUDE_SNAPSHOTS_MAX = 200;
+
+// Removes the oldest Claude snapshots of a project beyond the cap.
+export async function pruneClaudeSnapshots(db: Queryable, projectId: string): Promise<number> {
+  const rows = await db.query(
+    `delete from snapshots where id in (
+       select id from snapshots where project_id = $1 and kind = 'claude'
+       order by created_at desc, id desc offset $2)
+     returning id`,
+    [projectId, CLAUDE_SNAPSHOTS_MAX],
+  );
+  return rows.length;
+}
+
 const removeSnapshot = (db: Queryable, id: string) => db.query('delete from snapshots where id = $1', [id]);
 
 // Only the user's own snapshots can be deleted.

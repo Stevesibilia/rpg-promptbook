@@ -19,6 +19,8 @@ export interface ToolError {
       field?: string;
       // The scope that would have been accepted.
       scope_required?: string;
+      // Seconds to wait before the next write, for rate_limited.
+      retry_after?: number;
       // What the model needs to correct the call: the valid targets, the
       // problems an edit would add.
       details?: unknown;
@@ -36,6 +38,17 @@ export class ToolRefusal extends AppError {
     readonly field?: string,
   ) {
     super(status, code, message);
+  }
+}
+
+// Too many writes from one grant.
+export class RateLimited extends AppError {
+  constructor(readonly retryAfter: number) {
+    super(
+      429,
+      'rate_limited',
+      `Too many changes from this connection: wait ${retryAfter} seconds before the next one.`,
+    );
   }
 }
 
@@ -61,6 +74,9 @@ export function toToolError(thrown: unknown, log: FastifyBaseLogger, tool: strin
         'This connection was approved to read your projects only. Reconnect it in Claude and choose Read and edit your projects to make changes.',
         { scope_required: 'read_write' },
       );
+    }
+    if (thrown instanceof RateLimited) {
+      return toolError(thrown.code, thrown.message, { retry_after: thrown.retryAfter });
     }
     if (thrown.status >= 500) {
       log.error({ err: thrown, code: thrown.code, tool }, thrown.message);

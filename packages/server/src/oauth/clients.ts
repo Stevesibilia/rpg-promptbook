@@ -28,6 +28,9 @@ const UNUSED_CLIENT_HOURS = 24;
 // the limit bounds how many rows an unauthenticated caller can create.
 const REGISTRATIONS_PER_WINDOW = 30;
 export const REGISTRATION_WINDOW_MINUTES = 15;
+// Registered clients nobody approved, across every address: past this,
+// registration waits for the sweep, so the table cannot grow without bound.
+const UNAPPROVED_CLIENTS_MAX = 1000;
 
 export type OAuthClientKind = 'registered' | 'metadata_document';
 
@@ -37,8 +40,8 @@ export interface OAuthClient {
   clientId: string;
   kind: OAuthClientKind;
   clientName: string;
+  // https, or http on a loopback host; never shown as a link.
   clientUri: string | null;
-  logoUri: string | null;
   redirectUris: string[];
 }
 
@@ -48,7 +51,6 @@ interface ClientRow {
   kind: OAuthClientKind;
   client_name: string;
   client_uri: string | null;
-  logo_uri: string | null;
   redirect_uris: unknown;
 }
 
@@ -58,13 +60,12 @@ const toClient = (row: ClientRow): OAuthClient => ({
   kind: row.kind,
   clientName: row.client_name,
   clientUri: row.client_uri,
-  logoUri: row.logo_uri,
   redirectUris: Array.isArray(row.redirect_uris)
     ? row.redirect_uris.filter((u): u is string => typeof u === 'string')
     : [],
 });
 
-const COLUMNS = 'id, client_id, kind, client_name, client_uri, logo_uri, redirect_uris';
+const COLUMNS = 'id, client_id, kind, client_name, client_uri, redirect_uris';
 
 // Redirect URIs.
 
@@ -116,6 +117,14 @@ export function validateRedirectUri(client: OAuthClient, uri: string): boolean {
       candidate.hash === presented.hash
     );
   });
+}
+
+// A client's own address as the client states it, kept only when it is one
+// this server would send a browser to: https, or http on a loopback host.
+// Anything else is dropped rather than stored. No logo is kept at all:
+// nothing shows one.
+export function safeClientUri(value: unknown): string | null {
+  return typeof value === 'string' && value.length <= 2048 && isAcceptableRedirectUri(value) ? value : null;
 }
 
 // True when the client can only ever send the user to their own machine,
@@ -194,9 +203,14 @@ function ipv6IsPublic(address: string): boolean {
   // IPv4-mapped (::ffff:0:0/96), IPv4-compatible (::/96) and NAT64
   // (64:ff9b::/96) addresses reach an IPv4 destination: judge that one.
   const mapped = leading.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff;
+  // IPv4-translated (::ffff:0:0:0/96): never a destination to connect to.
+  if (groups.slice(0, 4).every((group) => group === 0) && groups[4] === 0xffff && groups[5] === 0) return false;
   const nat64 = groups[0] === 0x64 && groups[1] === 0xff9b && groups.slice(2, 6).every((group) => group === 0);
   if (mapped || nat64 || allZero) return ipv4IsPublic(embeddedIpv4(groups));
   const first = groups[0]!;
+  if (first === 0x2002) return false; // 6to4
+  if (first === 0x2001 && groups[1] === 0) return false; // Teredo
+  if (first === 0x64 && groups[1] === 0xff9b && groups[2] === 1) return false; // local-use NAT64
   if ((first & 0xfe00) === 0xfc00) return false; // unique local
   if ((first & 0xffc0) === 0xfe80) return false; // link-local
   if ((first & 0xff00) === 0xff00) return false; // multicast
@@ -385,20 +399,18 @@ async function upsertMetadataDocumentClient(db: Queryable, clientId: string): Pr
   if (!uris.every(isAcceptableRedirectUri)) {
     throw invalidClient('its metadata document declares a redirect URI that is neither loopback nor https');
   }
-  const optionalUri = (value: unknown) => (typeof value === 'string' ? value.slice(0, 2048) : null);
   const row = await db.queryOne<ClientRow>(
-    `insert into oauth_clients (client_id, kind, client_name, client_uri, logo_uri, redirect_uris, metadata_expires_at)
-     values ($1, 'metadata_document', $2, $3, $4, $5::jsonb, $6)
+    `insert into oauth_clients (client_id, kind, client_name, client_uri, redirect_uris, metadata_expires_at)
+     values ($1, 'metadata_document', $2, $3, $4::jsonb, $5)
      on conflict (client_id) do update
-       set client_name = excluded.client_name, client_uri = excluded.client_uri, logo_uri = excluded.logo_uri,
+       set client_name = excluded.client_name, client_uri = excluded.client_uri,
            redirect_uris = excluded.redirect_uris, metadata_expires_at = excluded.metadata_expires_at
        where oauth_clients.kind = 'metadata_document'
      returning ${COLUMNS}`,
     [
       clientId,
       name.slice(0, 200),
-      optionalUri(document.client_uri),
-      optionalUri(document.logo_uri),
+      safeClientUri(document.client_uri),
       JSON.stringify(uris),
       new Date(Date.now() + fetched.cacheMs),
     ],
@@ -422,7 +434,6 @@ export interface Registration {
   clientName: string;
   redirectUris: string[];
   clientUri?: string | undefined;
-  logoUri?: string | undefined;
   tokenEndpointAuthMethod?: string | undefined;
 }
 
@@ -443,51 +454,65 @@ export async function registerClient(db: Db, registration: Registration, ip: str
       `${invalid} is neither a loopback address nor an https URL, and cannot be registered.`,
     );
   }
-  await reserveRegistration(db, ip);
   await sweepUnusedClients(db);
+  await reserveRegistration(db, registrationKey(ip));
   const row = await db.queryOne<ClientRow>(
-    `insert into oauth_clients (client_id, kind, client_name, client_uri, logo_uri, redirect_uris)
-     values ($1, 'registered', $2, $3, $4, $5::jsonb)
+    `insert into oauth_clients (client_id, kind, client_name, client_uri, redirect_uris)
+     values ($1, 'registered', $2, $3, $4::jsonb)
      returning ${COLUMNS}`,
-    [
-      randomUUID(),
-      registration.clientName,
-      registration.clientUri ?? null,
-      registration.logoUri ?? null,
-      JSON.stringify(registration.redirectUris),
-    ],
+    [randomUUID(), registration.clientName, safeClientUri(registration.clientUri), JSON.stringify(registration.redirectUris)],
   );
   return toClient(row!);
 }
 
-// Counts the registration against its address, under a lock per address as
-// accounts/throttle.ts does, so a burst cannot all read the count before any
-// of them is recorded.
-async function reserveRegistration(db: Db, ip: string): Promise<void> {
+// What registrations are counted against: the address, or for IPv6 its /64,
+// which one machine usually holds whole. An IPv4 address written as IPv6 is
+// the IPv4 address.
+export function registrationKey(ip: string): string {
+  if (isIPv4(ip)) return ip;
+  const groups = isIPv6(ip) ? ipv6Groups(ip) : null;
+  if (!groups) return ip;
+  if (groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) return embeddedIpv4(groups);
+  return `${groups.slice(0, 4).map((group) => group.toString(16)).join(':')}::/64`;
+}
+
+const tooMany = (message: string) => new AppError(429, 'too_many_registrations', message);
+
+// Counts the registration against its address, under one lock for every
+// registration, so a burst cannot all read the counts before any of them is
+// recorded; and refuses while too many registered clients wait unapproved.
+async function reserveRegistration(db: Db, key: string): Promise<void> {
   await db.withTransaction(async (tx) => {
-    await tx.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [`promptbook-oauth-register|${ip}`]);
+    await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-oauth-register', 0))");
+    const unapproved = await tx.queryOne<{ n: string }>(
+      `select count(*) as n from oauth_clients c
+       where c.kind = 'registered' and not exists (select 1 from oauth_grants g where g.client_id = c.id)`,
+    );
+    if (Number(unapproved?.n) >= UNAPPROVED_CLIENTS_MAX) {
+      throw tooMany('Too many clients are waiting for approval on this server: try again later.');
+    }
     const count = await tx.queryOne<{ n: string }>(
       `select count(*) as n from oauth_registrations
        where ip = $1::inet and at > now() - make_interval(mins => $2)`,
-      [ip, REGISTRATION_WINDOW_MINUTES],
+      [key, REGISTRATION_WINDOW_MINUTES],
     );
     if (Number(count?.n) >= REGISTRATIONS_PER_WINDOW) {
-      throw new AppError(
-        429,
-        'too_many_registrations',
+      throw tooMany(
         `Too many client registrations from this address: wait ${REGISTRATION_WINDOW_MINUTES} minutes and try again.`,
       );
     }
-    await tx.query('insert into oauth_registrations (ip) values ($1::inet)', [ip]);
+    await tx.query('insert into oauth_registrations (ip) values ($1::inet)', [key]);
   });
 }
 
-// Registered clients nobody approved within a day. A metadata document
-// client is a cache, refetched on its own terms, and stays.
+// Registered clients nobody approved within a day, and metadata document
+// clients whose cached document has expired and that nobody approved (a
+// later request fetches the document again).
 export async function sweepUnusedClients(db: Queryable): Promise<number> {
   const rows = await db.query(
     `delete from oauth_clients c
-     where c.kind = 'registered' and c.created_at < now() - make_interval(hours => $1)
+     where ((c.kind = 'registered' and c.created_at < now() - make_interval(hours => $1))
+            or (c.kind = 'metadata_document' and c.metadata_expires_at < now()))
        and not exists (select 1 from oauth_grants g where g.client_id = c.id)
      returning c.id`,
     [UNUSED_CLIENT_HOURS],
@@ -501,4 +526,5 @@ export const clientLimits = {
   MAX_CACHE_MS,
   UNUSED_CLIENT_HOURS,
   REGISTRATIONS_PER_WINDOW,
+  UNAPPROVED_CLIENTS_MAX,
 };

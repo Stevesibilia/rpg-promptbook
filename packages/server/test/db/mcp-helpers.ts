@@ -92,7 +92,7 @@ export async function mcpListTools(app: FastifyInstance, token: string, era: 'mo
 
 export interface ToolOutcome {
   isError: boolean;
-  error?: { code: string; message: string; field?: string; scope_required?: string; details?: any } | undefined;
+  error?: { code: string; message: string; field?: string; scope_required?: string; retry_after?: number; details?: any } | undefined;
   value?: any;
   text: string;
   rpcError?: { code: number; message: string };

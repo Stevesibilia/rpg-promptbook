@@ -25,6 +25,7 @@ import {
   isLoopbackOnlyClient,
   isMetadataDocumentId,
   isPublicAddress,
+  registrationKey,
   validateRedirectUri,
   type OAuthClient,
 } from '../../src/oauth/clients.js';
@@ -226,6 +227,14 @@ describe('what a browser-based client may reach cross-origin', () => {
     expect(response.headers['access-control-allow-credentials']).toBeUndefined();
   });
 
+  it('lets a browser read the 401 challenge of the MCP endpoint', async () => {
+    const app = await startApp();
+    const response = await app.inject({ method: 'POST', url: '/api/mcp', headers: { origin: 'https://claude.ai' }, payload: {} });
+    expect(response.statusCode).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBe('https://claude.ai');
+    expect(response.headers['access-control-expose-headers']).toBe('WWW-Authenticate');
+  });
+
   it('answers a metadata read from any origin', async () => {
     const app = await startApp();
     const response = await app.inject({
@@ -272,7 +281,6 @@ describe('redirect URIs', () => {
     kind: 'registered',
     clientName: 'x',
     clientUri: null,
-    logoUri: null,
     redirectUris,
   });
 
@@ -322,6 +330,12 @@ describe('which addresses the server connects to', () => {
     ['::ffff:7f00:1', false],
     ['::ffff:8.8.8.8', true],
     ['64:ff9b::a00:5', false],
+    ['64:ff9b:1::808:808', false],
+    ['2002:c0a8:101::1', false],
+    ['2002:808:808::1', false],
+    ['2001:0:4136:e378:8000:63bf:3fff:fdd2', false],
+    ['2001:4860:4860::8888', true],
+    ['::ffff:0:808:808', false],
     ['::10.0.0.5', false],
     ['client.example', false],
   ])('%s is public: %s', (address, ok) => {
@@ -470,6 +484,91 @@ describe('registration', () => {
     ]);
   });
 
+  it('keeps a client_uri only when https or loopback, never a logo, and shows the consent page only its host', async () => {
+    await steve();
+    const app = await startApp();
+    const session = await signedIn(app);
+    const kept: (string | null)[] = [];
+    for (const uri of ['https://claude.ai/about', 'http://127.0.0.1:8080/', 'javascript:alert(1)', 'http://client.example/', 'data:text/html,x']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/oauth/register',
+        payload: { client_name: 'C', redirect_uris: [REDIRECT], client_uri: uri, logo_uri: 'https://claude.ai/logo.png' },
+      });
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).not.toHaveProperty('logo_uri');
+      kept.push(response.json().client_uri ?? null);
+    }
+    expect(kept).toEqual(['https://claude.ai/about', 'http://127.0.0.1:8080/', null, null, null]);
+    expect(await db.query(`select id from oauth_clients where logo_uri is not null`)).toEqual([]);
+    const clientId = await registerClient(app, { client_uri: 'https://claude.ai/about' });
+    const consent = await app.inject({
+      url: `/api/oauth/authorize?${new URLSearchParams(authorizeParams(clientId, pkce().challenge))}`,
+      headers: cookie(session),
+    });
+    expect(consent.json().client_host).toBe('claude.ai');
+    expect(consent.body).not.toContain('https://claude.ai/about');
+  });
+
+  it('counts IPv6 registrations per /64, and an IPv4 address written as IPv6 as itself', async () => {
+    const app = await startApp();
+    for (let i = 0; i < 30; i++) await registerClient(app, {}, `2001:db8:1:2::${(i + 1).toString(16)}`);
+    const sameNetwork = await app.inject({
+      method: 'POST',
+      url: '/api/oauth/register',
+      payload: { client_name: 'Claude', redirect_uris: [REDIRECT] },
+      remoteAddress: '2001:db8:1:2:ffff:ffff:ffff:ffff',
+    });
+    expect(sameNetwork.statusCode).toBe(429);
+    await registerClient(app, {}, '2001:db8:1:3::1');
+    expect(registrationKey('::ffff:203.0.113.5')).toBe('203.0.113.5');
+    expect(registrationKey('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+  });
+
+  it('refuses every registration while 1000 registered clients wait unapproved', async () => {
+    const app = await startApp();
+    await db.query(
+      `insert into oauth_clients (client_id, kind, client_name, redirect_uris)
+       select gen_random_uuid()::text, 'registered', 'Waiting', '["https://client.example/callback"]'::jsonb
+       from generate_series(1, $1)`,
+      [clientLimits.UNAPPROVED_CLIENTS_MAX],
+    );
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/oauth/register',
+      payload: { client_name: 'Claude', redirect_uris: [REDIRECT] },
+      remoteAddress: '198.51.100.20',
+    });
+    expect(response.statusCode).toBe(429);
+    expect(response.json().error).toBe('too_many_registrations');
+    expect(await db.query('select id from oauth_registrations')).toEqual([]);
+    // Once a day has passed, the sweep makes room again.
+    await db.query(`update oauth_clients set created_at = now() - interval '25 hours'`);
+    await registerClient(app, {}, '198.51.100.20');
+  });
+
+  it('sweeps expired metadata document clients nobody approved, and keeps approved or live ones', async () => {
+    const user = await steve();
+    const app = await startApp();
+    const insert = (clientId: string, expires: string) =>
+      db.query(
+        `insert into oauth_clients (client_id, kind, client_name, redirect_uris, metadata_expires_at)
+         values ($1, 'metadata_document', 'Doc', '[]'::jsonb, now() + $2::interval)`,
+        [clientId, expires],
+      );
+    await insert('https://a.example/c.json', '-1 minute');
+    await insert('https://b.example/c.json', '-1 minute');
+    await insert('https://c.example/c.json', '1 hour');
+    await db.query(
+      `insert into oauth_grants (user_id, client_id, scope)
+       select $1, id, 'read' from oauth_clients where client_id = 'https://b.example/c.json'`,
+      [user.id],
+    );
+    await registerClient(app);
+    const left = await db.query<{ client_id: string }>(`select client_id from oauth_clients where kind = 'metadata_document' order by client_id`);
+    expect(left.map((r) => r.client_id)).toEqual(['https://b.example/c.json', 'https://c.example/c.json']);
+  });
+
   it.each([
     ['a client secret method', { token_endpoint_auth_method: 'client_secret_basic' }, 'invalid_client_metadata'],
     ['a plain http redirect', { redirect_uris: ['http://client.example/cb'] }, 'invalid_redirect_uri'],
@@ -574,7 +673,7 @@ describe('the consent API', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       client_name: 'Claude',
-      client_uri: null,
+      client_host: null,
       redirect_host: 'client.example',
       loopback_only: false,
       requested_scopes: ['read', 'read_write'],
@@ -762,7 +861,9 @@ describe('the token endpoint', () => {
       { kind: 'access', token_hash: hashToken(body.access_token), resource: RESOURCE },
       { kind: 'refresh', token_hash: hashToken(body.refresh_token), resource: RESOURCE },
     ]);
-    expect(await db.query('select id from oauth_codes')).toEqual([]);
+    const codes = await db.query<{ spent_at: Date | null }>('select spent_at from oauth_codes');
+    expect(codes).toHaveLength(1);
+    expect(codes[0]!.spent_at).not.toBeNull();
   });
 
   it('spends a code once, even when the first redemption failed', async () => {
@@ -773,12 +874,35 @@ describe('the token endpoint', () => {
     expect(again.json().error).toBe('invalid_grant');
   });
 
-  it('refuses a code exchanged a second time', async () => {
+  it('refuses a code exchanged a second time, and revokes the grant it was issued under', async () => {
     const { app, fields } = await codeFor();
-    expect((await exchange(app, fields)).statusCode).toBe(200);
+    const first = await exchange(app, fields);
+    expect(first.statusCode).toBe(200);
+    const { access_token: access, refresh_token: refresh } = first.json();
+    expect(await verifyAccessToken(db, access, RESOURCE)).not.toBeNull();
     const second = await exchange(app, fields);
     expect(second.statusCode).toBe(400);
-    expect(second.json()).toEqual({ error: 'invalid_grant', error_description: 'That authorization code is not valid.' });
+    expect(second.json().error).toBe('invalid_grant');
+    expect(second.json().error_description).toContain('already been used');
+    expect(await verifyAccessToken(db, access, RESOURCE)).toBeNull();
+    expect(await db.query('select id from oauth_grants')).toEqual([]);
+    const refreshed = await exchange(app, { grant_type: 'refresh_token', refresh_token: refresh, client_id: fields.client_id });
+    expect(refreshed.json().error).toBe('invalid_grant');
+  });
+
+  it('leaves the grant alone when another client replays a spent code', async () => {
+    const { app, fields } = await codeFor();
+    expect((await exchange(app, fields)).statusCode).toBe(200);
+    const other = await exchange(app, { ...fields, client_id: '00000000-0000-4000-8000-000000000000' });
+    expect(other.json()).toEqual({ error: 'invalid_grant', error_description: 'That authorization code is not valid.' });
+    expect(await db.query('select id from oauth_grants')).toHaveLength(1);
+  });
+
+  it('answers a code that never existed as not valid, and revokes nothing', async () => {
+    const { app, fields } = await codeFor();
+    const response = await exchange(app, { ...fields, code: 'pb_ac_never-issued' });
+    expect(response.json()).toEqual({ error: 'invalid_grant', error_description: 'That authorization code is not valid.' });
+    expect(await db.query('select id from oauth_grants')).toHaveLength(1);
   });
 
   it.each([
@@ -945,6 +1069,18 @@ describe('refresh', () => {
     expect(await db.query('select id from oauth_grants')).toHaveLength(1);
   });
 
+  it('refuses a rotated token presented by another client, and leaves the grant alone', async () => {
+    const { tokens, refresh } = await connected();
+    const next = (await refresh()).json();
+    const response = await refresh(tokens.refresh_token, { client_id: '00000000-0000-4000-8000-000000000000' });
+    expect(response.json()).toEqual({
+      error: 'invalid_grant',
+      error_description: 'That refresh token was issued to a different client.',
+    });
+    expect(await db.query('select id from oauth_grants')).toHaveLength(1);
+    expect(await verifyAccessToken(db, next.access_token, RESOURCE)).not.toBeNull();
+  });
+
   it('refuses one presented for another resource', async () => {
     const { refresh } = await connected();
     expect((await refresh(undefined, { resource: 'https://other.example/api/mcp' })).json().error).toBe('invalid_grant');
@@ -970,7 +1106,7 @@ describe('refresh', () => {
     expect(await db.query('select id from oauth_grants')).toEqual([]);
   });
 
-  it('refuses a code another redemption spent first', async () => {
+  it('refuses a code another redemption spent first, and revokes the grant as a replay', async () => {
     await steve();
     const app = await startApp();
     const session = await signedIn(app);
@@ -978,11 +1114,12 @@ describe('refresh', () => {
     const { verifier, challenge } = pkce();
     const code = await approve(app, session, authorizeParams(clientId, challenge), 'read');
     const row = await db.queryOne<{ id: string }>('select id from oauth_codes');
-    const holder = await holdRow('delete from oauth_codes where id = $1', [row!.id]);
+    const holder = await holdRow('update oauth_codes set spent_at = now() where id = $1', [row!.id]);
     const outcome = await raceBehind(holder, () =>
       redeemCode(db, { code, clientId, redirectUri: REDIRECT, resource: RESOURCE, codeVerifier: verifier }),
     );
     expectInvalidGrant(outcome.error);
+    expect(await db.query('select id from oauth_grants')).toEqual([]);
   });
 
   it('answers invalid_grant when the grant is deleted while the pair is being issued', async () => {
@@ -1067,9 +1204,12 @@ describe('revocation and verification', () => {
     const clientId = await registerClient(app);
     await approve(app, session, authorizeParams(clientId, pkce().challenge), 'read');
     expect(await sweepExpired(db)).toEqual({ codes: 0, tokens: 0 });
+    // The spent code and the unspent one alike go once expired.
+    expect(await db.query('select id from oauth_codes')).toHaveLength(2);
     await db.query(`update oauth_codes set expires_at = now() - interval '1 second'`);
     await db.query(`update oauth_tokens set expires_at = now() - interval '1 second' where kind = 'access'`);
-    expect(await purge(db)).toMatchObject({ oauthCodes: 1, oauthTokens: 1 });
+    expect(await purge(db)).toMatchObject({ oauthCodes: 2, oauthTokens: 1 });
+    expect(await db.query('select id from oauth_codes')).toEqual([]);
     expect(await db.query<{ kind: string }>('select kind from oauth_tokens')).toEqual([{ kind: 'refresh' }]);
   });
 });

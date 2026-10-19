@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
+import { templates } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
@@ -29,7 +30,7 @@ import { AppError } from '../errors.js';
 import { withLiveDocument } from '../live.js';
 import { createProject, getProject, listProjects, loadProjectDoc, type ProjectRow } from '../projects.js';
 import { textHash } from '../snapshots.js';
-import { INSUFFICIENT_SCOPE, toToolError } from './errors.js';
+import { INSUFFICIENT_SCOPE, RateLimited, toToolError } from './errors.js';
 import { addScene, check, locate, MARKDOWN_MAX, replaceSection } from './edits.js';
 import type { McpCaller, McpDeps } from './server.js';
 
@@ -67,6 +68,22 @@ export const INSTRUCTIONS = [
   'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
 ].join('\n');
 
+// What a scene needs so that adding it adds no error, read from the
+// template: a scene missing any of it is refused with more_errors.
+const template = templates.avventura;
+const fieldText = (f: (typeof template.sceneFields)[number]) =>
+  f.form === 'inline' ? `**${f.label}:** …` : `**${f.label}** followed by a list`;
+const SCENE_REQUIRED = [
+  ...template.callouts
+    .filter((c) => (c.allowedIn as readonly string[]).includes('scene') && c.perPlace.min > 0)
+    .map((c) => `a > [!${c.type}] box`),
+  ...template.sceneFields.filter((f) => f.requirement === 'required').map(fieldText),
+  ...(template.tables.reactions.requirement === 'required'
+    ? [`a table whose first header is «${template.tables.reactions.firstHeader}»`]
+    : []),
+];
+const SCENE_RECOMMENDED = template.sceneFields.filter((f) => f.requirement === 'recommended').map(fieldText);
+
 // Ids of projects and items: anything else simply finds nothing.
 const id = z.string().trim().min(1).max(64);
 const projectId = id.describe('The project’s id, from list_projects.');
@@ -86,7 +103,7 @@ interface Hints {
   destructive?: boolean;
 }
 
-export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log }: McpDeps): void {
+export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log, quota }: McpDeps): void {
   // Every tool runs through here: the scope check, one envelope for the
   // answer, one translation of failures.
   const tool = <Shape extends z.ZodRawShape>(
@@ -111,7 +128,11 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       },
       (async (args: unknown) => {
         try {
-          if (!hints.readOnly && caller.scope !== 'read_write') throw INSUFFICIENT_SCOPE();
+          if (!hints.readOnly) {
+            if (caller.scope !== 'read_write') throw INSUFFICIENT_SCOPE();
+            const wait = quota.take(caller.grantId);
+            if (wait !== null) throw new RateLimited(wait);
+          }
           const result = await run(args as never);
           return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
         } catch (thrown) {
@@ -315,7 +336,10 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'add_scene',
-    'Add a scene at the end of the «Scene» section of an adventure or a one-shot, with the next id (S1, S2…). Send the title and the scene’s body without its heading; the template’s field names stay in Italian. An addition that adds errors is refused with the problems. A snapshot is kept first, and the user can undo it.',
+    'Add a scene at the end of the «Scene» section of an adventure or a one-shot, with the next id (S1, S2…). Send the title and the scene’s body without its heading; the template’s field names stay in Italian. ' +
+      `The body needs, or the scene is refused with the problems: ${SCENE_REQUIRED.join('; ')}. ` +
+      (SCENE_RECOMMENDED.length ? `Recommended (a warning when missing): ${SCENE_RECOMMENDED.join('; ')}. ` : '') +
+      'A snapshot is kept first, and the user can undo it.',
     { title: 'Add a scene', readOnly: false, idempotent: false },
     {
       projectId,

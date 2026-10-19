@@ -62,7 +62,7 @@ export async function buildApp({ config, db, logger = false, oidcDiscoveryOption
   // Before the auth hook, so a preflight to the connector's routes is
   // answered before anything asks for a session. Any origin, no credentials,
   // on those routes only; no CORS headers anywhere else.
-  const anonymous: FastifyCorsOptions = { origin: true, credentials: false };
+  const anonymous: FastifyCorsOptions = { origin: true, credentials: false, exposedHeaders: ['WWW-Authenticate'] };
   await app.register(cors, {
     delegator: (req: FastifyRequest, done: (error: Error | null, options?: FastifyCorsOptions) => void) =>
       done(null, isPermissiveCorsPath(req.url.split('?')[0]!) ? anonymous : { origin: false }),
