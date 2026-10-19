@@ -123,6 +123,14 @@ the adventure template would show only false errors.
 - Diagnostics are pushed with `@codemirror/lint`'s `setDiagnostics` only for
   a fresh result; between results the lint state maps the existing
   diagnostics through the edits, so they do not jump or vanish while typing.
+- Amended at review of brief A: `vite.config.ts` aliases
+  `decode-named-character-reference` to its plain build. Vite resolved the
+  package's `browser` build, which calls `document.createElement`, and the
+  worker has no `document`. Cost: about 29 kB on the main chunk (gzip 13 kB).
+  A worker-only resolution would not work in Vite dev.
+- Amended at review of brief A: `useProjectDoc` keeps the id next to the
+  document, so the render right after a project switch never hands out the
+  previous project's `Y.Doc` under the new id.
 
 Rejected: `linter()` with a synchronous source on the main thread (a 60 ms
 parse after every pause drops frames on the Sabaoth document); parsing on
@@ -156,6 +164,16 @@ Neri`. An unknown type is a plain quote; the checks flag it.
   its first four key lines, and a «▸ N more keys» widget; a click on the
   widget, or the cursor entering the front matter, shows every line. With
   four keys or fewer nothing is folded.
+  Amended at review of brief A: the front matter is found from the text
+  (first line `---`, closed by `---` or `...`, as in the format package),
+  because `lang-markdown` has no front matter node and reads the closing
+  fence as a setext heading; headings are therefore styled by line class,
+  not by the highlight style. The fold is a block widget, and its click puts
+  the cursor on the first hidden key, which unfolds it by the rule above.
+- Amended at review of brief A: lines are active only while the editor has
+  focus. Without focus every mark is hidden and the front matter folds;
+  otherwise the cursor at offset 0 on opening would keep the front matter
+  open and the first line's marks shown.
 - Lists, tables, links and images stay as source, in the prose font, with
   list marks kept (they are content).
 - Prose in Spectral 17 px, about 70 characters wide, as today; `lang="it"`
