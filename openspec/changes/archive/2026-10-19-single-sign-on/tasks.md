@@ -31,7 +31,7 @@
 
 ## 5. Cluster and release (architect)
 
-- [ ] 5.1 MR: group `Promptbook`; applied; the owner joins it
-- [ ] 5.2 MR: Authentik application and Secret; applied
-- [ ] 5.3 Pull request, CI green, merge; tag `v0.2.0`; GitLab pipeline green
-- [ ] 5.4 `user:delete steve`; the owner's first sign-in; a password sign-in refused; archive; close #17
+- [x] 5.1 MR: group `Promptbook`; applied; the owner joins it
+- [x] 5.2 MR: Authentik application and Secret; applied
+- [x] 5.3 Pull request, CI green, merge; tag `v0.2.0`; GitLab pipeline green
+- [x] 5.4 `user:delete steve`; the owner's first sign-in; a password sign-in refused; archive; close #17
