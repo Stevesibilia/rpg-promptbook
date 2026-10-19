@@ -4,6 +4,8 @@
     { "path": "./packages/format" },
     { "path": "./packages/format/test" },
     { "path": "./packages/project" },
-    { "path": "./packages/project/test" }
+    { "path": "./packages/project/test" },
+    { "path": "./packages/server" },
+    { "path": "./packages/server/test" }
   ]
 }

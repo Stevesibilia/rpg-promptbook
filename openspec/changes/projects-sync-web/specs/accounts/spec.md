@@ -46,8 +46,10 @@ SHALL delete the session.
 
 Every API route SHALL require a valid session except sign-in, the account
 check used by the sign-in page, and the health check. Every request that
-changes state SHALL be refused when its `Origin` (or, without it, its
-`Referer`) is not the configured public URL's origin.
+changes state SHALL be refused when it carries an `Origin` header, or
+without one a `Referer` header, whose origin is not the configured public
+URL's origin; a request with neither header SHALL pass this check, since
+browsers send `Origin` on every cross-site write.
 
 #### Scenario: Cross-site form
 

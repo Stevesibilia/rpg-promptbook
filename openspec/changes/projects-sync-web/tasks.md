@@ -9,12 +9,12 @@
 
 ## 2. Server foundation and accounts
 
-- [ ] 2.1 `packages/server` (`promptbook-server`): Fastify app factory, zod configuration (decision 4), `tsx` dev script, esbuild bundle script producing `dist/main.js` and `dist/cli.js`
-- [ ] 2.2 `pg` pool and helpers, migration runner, `001_init.sql` as in decision 5
-- [ ] 2.3 Accounts (decision 8): password hashing, sessions, `pb_session` cookie, protected-by-default hook with a public list, Origin check, sign-in throttle, admin from the environment at start
-- [ ] 2.4 Routes `/api/auth/*`, `/api/settings`, `/api/health`; static web build with SPA fallback and JSON 404 under `/api`; `@fastify/helmet` with a CSP allowing same-origin WebSocket
-- [ ] 2.5 Command line: `migrate`, `user:create`, `user:password`
-- [ ] 2.6 Database tests (`TEST_DATABASE_URL`, `_test` guard): every scenario of the `accounts` spec, settings round trip, admin variables ignored once an account exists
+- [x] 2.1 `packages/server` (`promptbook-server`): Fastify app factory, zod configuration (decision 4), `tsx` dev script, esbuild bundle script producing `dist/main.js` and `dist/cli.js`
+- [x] 2.2 `pg` pool and helpers, migration runner, `001_init.sql` as in decision 5
+- [x] 2.3 Accounts (decision 8): password hashing, sessions, `pb_session` cookie, protected-by-default hook with a public list, Origin check, sign-in throttle, admin from the environment at start
+- [x] 2.4 Routes `/api/auth/*`, `/api/settings`, `/api/health`; static web build with SPA fallback and JSON 404 under `/api`; `@fastify/helmet` with a CSP allowing same-origin WebSocket
+- [x] 2.5 Command line: `migrate`, `user:create`, `user:password`
+- [x] 2.6 Database tests (`TEST_DATABASE_URL`, `_test` guard): every scenario of the `accounts` spec, settings round trip, admin variables ignored once an account exists
 - [ ] 2.7 CI: `postgres:18-alpine` service and `TEST_DATABASE_URL` in the `check` job; `npm test` runs the server's database tests
 
 ## 3. Sync and projects API
