@@ -1,0 +1,10 @@
+# Only what the image builds from; everything else stays out of the context.
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!packages/format/
+!packages/project/
+!packages/server/
+**/node_modules
+**/dist

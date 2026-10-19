@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db.js';
 
-// Public. Answers 503 while the database cannot be reached.
+// Public. Answers 503 while the database cannot be reached. Logged only on
+// warnings: the container health check calls it every few seconds.
 export async function healthRoutes(app: FastifyInstance, { db }: { db: Db }) {
-  app.get('/api/health', async (_req, reply) => {
+  app.get('/api/health', { logLevel: 'warn' }, async (_req, reply) => {
     try {
       await db.query('select 1');
       return { ok: true };

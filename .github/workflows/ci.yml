@@ -32,6 +32,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # The server's esbuild bundle, as the image builds it.
+      - run: npm run build -w promptbook-server
       - run: npm test
         env:
           # The server's database tests recreate this database on every run.
