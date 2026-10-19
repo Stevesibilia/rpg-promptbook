@@ -219,6 +219,14 @@ interface BuildResult {
   call trace) are dropped.
 - Two builds give byte-identical PDFs and positions; the vector artifact is
   not byte-identical, so the tests do not compare it.
+- typst.ts 0.8.0-rc3 evaluates strings while it initialises (`new Function`
+  in `loadFonts` and five placeholders in the compiler's wasm-bindgen
+  builder), which a policy without 'unsafe-eval' refuses. The engine loads
+  fonts with its own loader and, only while `init` runs, answers those five
+  exact sources with plain closures; any other string still reaches the real
+  constructor. A test runs the engine with string evaluation refused.
+  Rejected: 'unsafe-eval' for the worker's script (that realm holds the
+  session) or the site.
 
 ### 5. Footer, cover, licence
 
@@ -420,6 +428,9 @@ In `packages/server/src/web.ts`:
 - **typst.ts is a release candidate.** Pinned exactly. If an API in
   Context behaves differently in the browser than in Node, report it with
   the error; do not upgrade or downgrade without asking.
+  The engine's init answers typst.ts's string evaluations by their exact
+  source; an upgrade that changes them fails the no-eval test, which must
+  pass before anything else.
 - **First load is 7.6 MB** with Brotli (10.9 MB gzip). Only when a PDF is
   opened; cached after. If the deployed host does not get the `.br` file
   (a proxy stripping `Accept-Encoding`), report the size measured in the

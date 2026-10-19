@@ -35,12 +35,64 @@ const input = ({ paper = 'a4', ...extra }: Record<string, unknown> = {}) =>
 
 let engine: Engine;
 
+const assets = async () => ({
+  compilerWasm: compilerWasm(),
+  fonts: await Promise.all(fontUrls.map(async (url) => new Uint8Array(await readFile(fileURLToPath(url))))),
+  files: [{ path: '/avventura.typ', bytes: new TextEncoder().encode(TEMPLATE) }],
+});
+
 beforeAll(async () => {
-  const fonts = await Promise.all(fontUrls.map(async (url) => new Uint8Array(await readFile(fileURLToPath(url)))));
-  engine = await createEngine({
-    compilerWasm: compilerWasm(),
-    fonts,
-    files: [{ path: '/avventura.typ', bytes: new TextEncoder().encode(TEMPLATE) }],
+  engine = await createEngine(await assets());
+});
+
+describe('createEngine', () => {
+  // The web server's content security policy refuses `new Function` and eval
+  // in the browser's PDF worker.
+  it('evaluates no JavaScript from strings', async () => {
+    const original = globalThis.Function;
+    const refuse = () => {
+      throw new EvalError('Evaluating a string as JavaScript is refused');
+    };
+    globalThis.Function = new Proxy(original, { apply: refuse, construct: refuse });
+    try {
+      const created = await createEngine(await assets());
+      expect((await created.build(input())).diagnostics).toEqual([]);
+      expect((await created.pdf(input())).length).toBeGreaterThan(0);
+    } finally {
+      globalThis.Function = original;
+    }
+  });
+
+  it('puts the real Function back, also when the init fails', async () => {
+    const original = globalThis.Function;
+    await createEngine(await assets());
+    expect(globalThis.Function).toBe(original);
+    // The compiler's bytes cannot be read: its init throws.
+    const broken = Object.defineProperty(await assets(), 'compilerWasm', {
+      get() {
+        throw new Error('unreadable');
+      },
+    });
+    await expect(createEngine(broken)).rejects.toThrow('unreadable');
+    expect(globalThis.Function).toBe(original);
+  });
+
+  it('answers the placeholders without the real Function', async () => {
+    const seen: unknown[][] = [];
+    const original = globalThis.Function;
+    globalThis.Function = new Proxy(original, {
+      construct(target, args: unknown[], newTarget) {
+        seen.push(args);
+        return Reflect.construct(target, args, newTarget);
+      },
+    });
+    try {
+      await createEngine(await assets());
+    } finally {
+      globalThis.Function = original;
+    }
+    // The five placeholders never reach it.
+    expect(seen).toEqual([]);
   });
 });
 

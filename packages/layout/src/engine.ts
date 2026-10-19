@@ -2,7 +2,7 @@
 // cmarker. The same code runs in a browser worker and in Node; the caller
 // hands it the bytes (see assets.ts).
 
-import { createTypstCompiler, initOptions, type TypstCompiler } from '@myriaddreamin/typst.ts';
+import { createTypstCompiler, type BeforeBuildFn, type TypstCompiler } from '@myriaddreamin/typst.ts';
 import type { LayoutInput } from './input.js';
 import { sortPositions, type Position } from './positions.js';
 
@@ -74,6 +74,60 @@ function thrown(error: unknown): Diagnostic[] {
 
 const hasError = (diagnostics: Diagnostic[]) => diagnostics.some((d) => d.severity === 'error');
 
+// String evaluation. typst.ts 0.8.0-rc3 evaluates strings while it
+// initialises, which a content security policy without 'unsafe-eval' refuses
+// in the browser (design decision 4). A bump of typst.ts must run the engine
+// test that refuses string evaluation before anything else: these answers
+// match its sources exactly, and a changed source fails loudly.
+
+// Hands the fonts to the compiler. typst.ts's own loadFonts, and
+// disableDefaultFontAssets which calls it, build a `new Function` on every
+// call. The two markers are what the compiler's init looks for: fonts are
+// taken care of, and its default ones are not to be fetched from a CDN.
+function loadFonts(fonts: Uint8Array[]): BeforeBuildFn {
+  const loader = async (_: unknown, { builder }: { builder: { add_raw_font(font: Uint8Array): Promise<void> } }) => {
+    for (const font of fonts) await builder.add_raw_font(font);
+  };
+  return Object.assign(loader, { _preloadRemoteFontOptions: { assets: false }, _kind: 'fontLoader' });
+}
+
+// The compiler's builder (Rust, through wasm-bindgen) makes five placeholder
+// functions with `new Function(...parameters, body)` when it is created.
+// Keyed by their parameters and body, as JSON.
+const placeholder = (parameters: string[], body: string) => JSON.stringify([...parameters, body]);
+const PLACEHOLDERS = new Map<string, (...args: never[]) => unknown>([
+  [placeholder([], 'return 0'), () => 0],
+  [placeholder([], 'return true'), () => true],
+  [placeholder(['path'], 'return path'), (path: string) => path],
+  ...[
+    'Dummy AccessModel, please initialize compiler with withAccessModel()',
+    'Dummy Registry, please initialize compiler with withPackageRegistry()',
+  ].map((message): [string, () => never] => [
+    placeholder([], `throw new Error('${message}')`),
+    () => {
+      throw new Error(message);
+    },
+  ]),
+]);
+
+// Runs `task` (the compiler's init) with those five sources answered by plain
+// closures; any other string still reaches the real constructor. The real
+// one is back in place afterwards, whether the task worked or not.
+async function withoutEval<T>(task: () => Promise<T>): Promise<T> {
+  const original = globalThis.Function;
+  const known = (args: unknown[]) => PLACEHOLDERS.get(JSON.stringify(args));
+  // A minifier may write `new Function(…)` as `Function(…)`: both are caught.
+  globalThis.Function = new Proxy(original, {
+    construct: (target, args: unknown[], newTarget) => known(args) ?? Reflect.construct(target, args, newTarget),
+    apply: (target, self, args: unknown[]) => known(args) ?? Reflect.apply(target, self, args),
+  });
+  try {
+    return await task();
+  } finally {
+    globalThis.Function = original;
+  }
+}
+
 interface PageMark {
   page: number;
   width: number;
@@ -82,11 +136,12 @@ interface PageMark {
 
 export async function createEngine(assets: EngineAssets): Promise<Engine> {
   const compiler: TypstCompiler = createTypstCompiler();
-  await compiler.init({
-    getModule: () => assets.compilerWasm,
-    // Without disableDefaultFontAssets the compiler fetches fonts from a CDN.
-    beforeBuild: [initOptions.disableDefaultFontAssets(), initOptions.loadFonts(assets.fonts)],
-  });
+  await withoutEval(() =>
+    compiler.init({
+      getModule: () => assets.compilerWasm,
+      beforeBuild: [loadFonts(assets.fonts)],
+    }),
+  );
   for (const file of assets.files) compiler.mapShadow(file.path, file.bytes);
 
   // One build at a time: they share the compiler and its /input.json.
