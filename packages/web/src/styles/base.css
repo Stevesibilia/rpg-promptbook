@@ -1,0 +1,241 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 var(--font);
+  overflow: hidden;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+a {
+  color: var(--primary);
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 9px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+code {
+  font: 0.92em var(--mono);
+}
+.spacer {
+  flex: 1;
+}
+
+/* Buttons, as the mockup's .tb */
+.tb {
+  padding: 5px 9px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.tb:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.tb.line {
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.tb.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+.tb.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  color: var(--on-primary);
+}
+.tb.danger {
+  color: var(--danger);
+}
+.tb.danger-fill {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+.tb svg,
+.ic {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Form fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.field label,
+.field .label {
+  font: 600 12px var(--font);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.field .hint {
+  font-size: 12px;
+  color: var(--faint);
+}
+.field.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.field.row2 > .field {
+  margin: 0;
+}
+.err {
+  color: var(--danger);
+  font-size: 12.5px;
+  margin: -4px 0 10px;
+}
+.ok-note {
+  color: var(--primary);
+  font-size: 12.5px;
+}
+
+/* Segmented buttons and tabs */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.seg button {
+  padding: 5px 11px;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  font-size: 13px;
+}
+.seg button:last-child {
+  border-right: 0;
+}
+.seg button.on {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--text);
+}
+.seg button .n {
+  color: var(--faint);
+  font-size: 11px;
+  margin-left: 4px;
+}
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.tabs button {
+  padding: 7px 12px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tabs button.on {
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+/* Small pieces shared by the list and the panel */
+.cat {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  justify-self: start;
+  white-space: nowrap;
+}
+.st {
+  font-size: 12px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+}
+.st i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.st.in-progress {
+  color: var(--amber);
+}
+.st.in-progress i {
+  background: var(--amber);
+}
+.st.complete {
+  color: var(--primary);
+}
+.st.complete i {
+  background: var(--primary);
+}
+.bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 2px 0 10px;
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.loading {
+  padding: 36px;
+  text-align: center;
+  color: var(--faint);
+}

@@ -1,0 +1,357 @@
+.app {
+  display: grid;
+  height: 100vh;
+  grid-template-rows: 44px auto 1fr 26px;
+  grid-template-columns: 48px 1fr var(--right, 340px);
+}
+.app.no-sel {
+  --right: 0px;
+}
+
+/* Top bar */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  min-width: 0;
+}
+.topbar .logo {
+  width: 48px;
+  display: grid;
+  place-items: center;
+  font: 700 18px var(--display);
+  color: var(--primary);
+  text-decoration: none;
+  flex: none;
+}
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+.crumbs b {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--text);
+}
+.sync-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sync i,
+.pop h4 i.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: inline-block;
+}
+.sync.busy i,
+.pop .dot.busy {
+  background: var(--info);
+}
+.sync.busy i {
+  animation: pulse 1s ease-in-out infinite;
+}
+.sync.local i,
+.pop .dot.local {
+  background: var(--amber);
+}
+.sync.local {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+}
+.sync.fail i,
+.pop .dot.fail {
+  background: var(--danger);
+}
+.sync.fail {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+.sync.out i,
+.pop .dot.out {
+  background: var(--faint);
+}
+.sync.out {
+  color: var(--text);
+  border-color: var(--amber);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 30%, var(--surface-2));
+  display: grid;
+  place-items: center;
+  font: 600 12px var(--font);
+  color: var(--text);
+}
+
+/* Sync panel */
+.pop {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  width: 330px;
+  z-index: 30;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  padding: 12px 14px;
+}
+.pop h4 {
+  margin: 0 0 2px;
+  font: 600 15px var(--font);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pop .sub {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 4px 10px;
+  font-size: 12.5px;
+  margin: 0 0 10px;
+}
+.kv dt {
+  color: var(--faint);
+}
+.kv dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pend {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 12.5px;
+  border-top: 1px solid var(--border);
+}
+.pend li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pend li span:last-child {
+  color: var(--amber);
+  white-space: nowrap;
+}
+.pop .acts {
+  display: flex;
+  gap: 8px;
+}
+
+/* Banner */
+.alert {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+  border-bottom: 1px solid var(--danger);
+  color: var(--text);
+}
+.alert b {
+  color: var(--danger);
+}
+.alert.warn {
+  background: color-mix(in srgb, var(--amber) 13%, var(--surface));
+  border-color: var(--amber);
+}
+.alert.warn b {
+  color: var(--amber);
+}
+.ic.danger {
+  color: var(--danger);
+}
+.ic.amber {
+  color: var(--amber);
+}
+
+/* Rail */
+.rail {
+  grid-column: 1;
+  grid-row: 3 / 5;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+  gap: 2px;
+}
+.rail button {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  position: relative;
+}
+.rail button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.rail button:disabled {
+  opacity: 1;
+}
+.rail button.on {
+  color: var(--primary);
+  background: var(--hover);
+}
+.rail button.on::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.rail button.dis {
+  opacity: 0.35;
+  cursor: default;
+}
+.rail .bottom {
+  margin-top: auto;
+}
+.rail .last {
+  margin-bottom: 8px;
+}
+.rail svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rail button[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 44px;
+  white-space: nowrap;
+  z-index: 9;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Centre and right */
+.center {
+  grid-column: 2;
+  grid-row: 3;
+  overflow: auto;
+  min-width: 0;
+}
+.right {
+  grid-column: 3;
+  grid-row: 3;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow: auto;
+  min-width: 0;
+}
+.pane {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+}
+.head {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.head h1 {
+  font: 700 28px var(--display);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+.head .lead {
+  color: var(--muted);
+  margin: 0 0 4px 6px;
+}
+
+/* Status bar */
+.status {
+  grid-column: 2 / -1;
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--faint);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.status .r {
+  margin-left: auto;
+}
+.status .a {
+  color: var(--amber);
+}
+.status .d {
+  color: var(--danger);
+}
+
+.dialog-lead {
+  margin: 0 0 14px;
+  color: var(--muted);
+}

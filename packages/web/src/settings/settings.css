@@ -1,0 +1,105 @@
+.set {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 24px;
+}
+.set nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.set nav button {
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+.set nav button.on {
+  background: var(--hover);
+  color: var(--text);
+}
+.set h2 {
+  font: 700 21px var(--display);
+  letter-spacing: 0.02em;
+  margin: 0 0 4px;
+}
+.set .lead {
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.set .muted,
+.muted {
+  color: var(--muted);
+}
+.card.narrow {
+  max-width: 520px;
+}
+.card.wide-card {
+  max-width: 560px;
+}
+.tpl {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.tpl li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tpl li .grip {
+  color: var(--faint);
+  cursor: grab;
+  user-select: none;
+}
+.tpl li .t {
+  flex: 1;
+  background: transparent;
+  border-color: transparent;
+  padding: 3px 6px;
+}
+.tpl li .t:hover {
+  border-color: var(--border);
+}
+.tpl li .t:focus {
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
+.tpl li .x {
+  color: var(--faint);
+  opacity: 0;
+}
+.tpl li:hover .x,
+.tpl li .x:focus-visible {
+  opacity: 1;
+}
+.tpl li .x:hover {
+  color: var(--danger);
+}
+.tpl-add input {
+  width: 100%;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+  padding: 4px 6px;
+  margin-top: 4px;
+}
+.tpl-add input::placeholder {
+  color: var(--faint);
+}
+.tpl-add input:focus {
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
+.row-acts {
+  display: flex;
+  gap: 8px;
+}
+.saved {
+  color: var(--primary);
+}
+.err-inline {
+  color: var(--danger);
+}

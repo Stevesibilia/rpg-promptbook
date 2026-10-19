@@ -1,0 +1,53 @@
+.full {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.auth {
+  width: min(400px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 28px 22px;
+}
+.auth .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.auth .brand .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-2));
+  display: grid;
+  place-items: center;
+  font: 700 22px var(--display);
+  color: var(--primary);
+}
+.auth .brand b {
+  font: 700 24px var(--display);
+  letter-spacing: 0.02em;
+  display: block;
+  line-height: 1;
+}
+.auth .brand span {
+  font-size: 12px;
+  color: var(--faint);
+}
+.tb.wide {
+  width: 100%;
+  justify-content: center;
+  padding: 8px 10px;
+}
+.auth .foot {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--faint);
+  text-align: center;
+}

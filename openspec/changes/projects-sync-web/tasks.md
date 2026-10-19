@@ -29,16 +29,16 @@
 
 ## 4. Web client
 
-- [ ] 4.1 `packages/web` (`promptbook-web`): Vite, React, React Router, fonts, tokens from the mockup, `api.ts`, dev proxy for `/api` and `/sync`
-- [ ] 4.2 Shell: top bar, rail, status bar, theme; sign-in page and the sign-in dialog used by the banner
-- [ ] 4.3 Provider registry and the sync pill, panel and banner (decision 9)
-- [ ] 4.4 Projects list with search, tabs, chips, grouping, sort, remembered filters, bin link and bin view
-- [ ] 4.5 Project panel bound to the Yjs document: title, status, campaign, seed, to-do (tick, add, rename, drag, note, due date, delete), document facts, export, delete with confirmation
-- [ ] 4.6 New project dialog with the live preview
-- [ ] 4.7 Import dialog: files, folder and drop, paste, per-note rows with the report, import button count
-- [ ] 4.8 Settings page, all six sections
-- [ ] 4.9 Project page with the plain CodeMirror editor bound to `document`
-- [ ] 4.10 Component tests where logic lives (sync state reduction, list filtering and grouping)
+- [x] 4.1 `packages/web` (`promptbook-web`): Vite, React, React Router, fonts, tokens from the mockup, `api.ts`, dev proxy for `/api` and `/sync`
+- [x] 4.2 Shell: top bar, rail, status bar, theme; sign-in page and the sign-in dialog used by the banner
+- [x] 4.3 Provider registry and the sync pill, panel and banner (decision 9)
+- [x] 4.4 Projects list with search, tabs, chips, grouping, sort, remembered filters, bin link and bin view
+- [x] 4.5 Project panel bound to the Yjs document: title, status, campaign, seed, to-do (tick, add, rename, drag, note, due date, delete), document facts, export, delete with confirmation
+- [x] 4.6 New project dialog with the live preview
+- [x] 4.7 Import dialog: files, folder and drop, paste, per-note rows with the report, import button count
+- [x] 4.8 Settings page, all six sections
+- [x] 4.9 Project page with the plain CodeMirror editor bound to `document`
+- [x] 4.10 Component tests where logic lives (sync state reduction, list filtering and grouping)
 
 ## 5. End to end, docs and hand-back
 
