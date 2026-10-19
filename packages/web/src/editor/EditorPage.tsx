@@ -1,14 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
-import { StatusSelect } from '../projects/controls.js';
-import { categoryLabels } from '../projects/list.js';
-import { useProjects } from '../projects/useProjects.js';
+import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
@@ -47,8 +45,6 @@ function pdfUrl(bytes: Uint8Array): string {
 // status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
-  const { projects } = useProjects();
-  const campaign = meta.campaignId ? projects?.find((p) => p.id === meta.campaignId) : undefined;
   const checked = meta.category !== 'campaign';
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
@@ -215,29 +211,14 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   return (
     <Shell
       rail="document"
+      project={meta.id}
       focus={focus}
       wideRight={pane}
-      crumbs={
-        <>
-          <Link to="/">Projects</Link>
-          {campaign && (
-            <>
-              {' › '}
-              <Link to={`/?p=${campaign.id}`}>{campaign.title}</Link>
-            </>
-          )}
-          {' › '}
-          <b>{meta.title}</b>
-        </>
-      }
-      topExtra={
-        <div className="top-meta hide-in-focus">
-          <span className="cat">{categoryLabels[meta.category]}</span>
-          <StatusSelect doc={doc} status={meta.status} />
-        </div>
-      }
+      crumbs={<ProjectCrumbs meta={meta} />}
+      topExtra={<ProjectMetaControls doc={doc} meta={meta} />}
       topEnd={
         <div className="top-tools">
+          <HistoryButton projectId={meta.id} />
           <button
             className={`tb hide-in-focus${outline ? ' on' : ''}`}
             title={label('outline')}

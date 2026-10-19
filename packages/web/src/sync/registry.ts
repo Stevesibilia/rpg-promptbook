@@ -41,6 +41,7 @@ class SyncRegistry {
   private entries = new Map<string, Entry>();
   private listeners = new Set<Listener>();
   private storedListeners = new Set<(id: string) => void>();
+  private snapshotListeners = new Set<(id: string) => void>();
   private snapshot: SyncSnapshot = { state: 'synced', providers: [], lastSync: null, sessionEnded: false };
   private lastSync: Date | null = null;
   private sessionEnded = false;
@@ -118,6 +119,7 @@ class SyncRegistry {
             for (const listener of this.storedListeners) listener(id);
           }
           if (event === 'deleted') created.status = 'gone';
+          if (event === 'snapshot') for (const listener of this.snapshotListeners) listener(id);
           this.changed();
         },
       }),
@@ -201,6 +203,13 @@ class SyncRegistry {
   onStored(listener: (id: string) => void): () => void {
     this.storedListeners.add(listener);
     return () => this.storedListeners.delete(listener);
+  }
+
+  // Called when the server made a snapshot of a project's document: saved by
+  // the user, before Claude's edit, or before a restore or an undo.
+  onSnapshot(listener: (id: string) => void): () => void {
+    this.snapshotListeners.add(listener);
+    return () => this.snapshotListeners.delete(listener);
   }
 
   getSnapshot = (): SyncSnapshot => this.snapshot;

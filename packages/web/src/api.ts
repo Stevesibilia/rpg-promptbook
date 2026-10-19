@@ -62,6 +62,27 @@ export interface ImportResult {
   imagesNotImported: number;
 }
 
+export type SnapshotKind = 'claude' | 'user' | 'restore';
+
+// A snapshot of the prep document, as GET /api/projects/:id/snapshots lists it.
+export interface SnapshotRow {
+  id: string;
+  kind: SnapshotKind;
+  // user: the name; claude: the target and its title; restore: what was
+  // restored, as «<label> · <ISO date>».
+  label: string;
+  tool: string | null;
+  target: string | null;
+  words: number;
+  createdAt: string;
+  // Null for the user's own.
+  expiresAt: string | null;
+}
+
+export interface Snapshot extends SnapshotRow {
+  text: string;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -123,7 +144,28 @@ export const api = {
   restoreProject: (id: string) =>
     request<{ project: ProjectRow }>('POST', `/api/projects/${encodeURIComponent(id)}/restore`),
   importNotes: (notes: ImportNote[]) => request<{ results: ImportResult[] }>('POST', '/api/import', { notes }),
+
+  snapshots: (projectId: string, query: { kind?: SnapshotKind; limit?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (query.kind) params.set('kind', query.kind);
+    if (query.limit) params.set('limit', String(query.limit));
+    const search = params.size ? `?${params}` : '';
+    return request<{ snapshots: SnapshotRow[] }>('GET', `${snapshotsPath(projectId)}${search}`);
+  },
+  snapshot: (projectId: string, id: string) =>
+    request<{ snapshot: Snapshot }>('GET', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}`),
+  createSnapshot: (projectId: string, label: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', snapshotsPath(projectId), { label }),
+  // Both answer the restore snapshot of the text they replaced.
+  restoreSnapshot: (projectId: string, id: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}/restore`),
+  undoClaudeEdit: (projectId: string, id: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}/undo`),
+  deleteSnapshot: (projectId: string, id: string) =>
+    request<void>('DELETE', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}`),
 };
+
+const snapshotsPath = (projectId: string) => `/api/projects/${encodeURIComponent(projectId)}/snapshots`;
 
 export const exportUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/export`;
 export const exportAllUrl = '/api/export';

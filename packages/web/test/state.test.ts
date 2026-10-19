@@ -71,6 +71,7 @@ describe('readStateless', () => {
     expect(readStateless('{"type":"store-failed"}')).toBe('store-failed');
     expect(readStateless('{"type":"stored"}')).toBe('stored');
     expect(readStateless('{"type":"deleted"}')).toBe('deleted');
+    expect(readStateless('{"type":"snapshot","id":"a","kind":"claude"}')).toBe('snapshot');
     expect(readStateless('{"type":"other"}')).toBeNull();
     expect(readStateless('nonsense')).toBeNull();
   });

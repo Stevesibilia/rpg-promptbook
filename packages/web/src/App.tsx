@@ -116,7 +116,7 @@ export function App() {
         <Route path="/settings/:section?" element={<SettingsPage />} />
         <Route path={SIGNED_IN_PATH} element={<SignedInPage />} />
         <Route
-          path="/projects/:id"
+          path="/projects/:id/:view?"
           element={
             <Suspense fallback={null}>
               <ProjectPage />

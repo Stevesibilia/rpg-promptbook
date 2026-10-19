@@ -661,6 +661,12 @@ writers on the open document. The seed is edited in the Inspiration view
 `/settings/apps` is Connected apps; `/authorize` is outside the shell, a page
 of its own.
 
+A note made or edited by hand refuses an empty topic and a topic another note
+has («A note on «X» exists already.», with Open it); a new note is a draft in
+the browser until Done. The Inspiration add row shows an Address field for
+Link and Image link (http or https only); the first field is then an optional
+title, the address standing in when it is empty.
+
 Why: the mockup's rail and views. Rejected: the mockup's Projects button at
 the rail's bottom (the projects screen spec placed it first; nothing gains
 from moving it).
