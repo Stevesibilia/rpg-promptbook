@@ -1,0 +1,50 @@
+# Values for the homelab cluster. Public configuration, meant to be read in
+# the repository. Credentials never appear: the pipeline puts them in the
+# Secrets named here, and the only thing it sets on the command line is
+# image.tag, the release being deployed.
+
+# The image is built linux/amd64 only (the dockerbuild component builds one
+# platform), and a pod landing on an arm64 node fails with an exec format
+# error, which reads as a crash loop rather than a placement problem.
+nodeSelector:
+  kubernetes.io/arch: amd64
+
+image:
+  repository: registry.siberio.eu/utilities/rpg-promptbook
+
+# Written into the namespace by the pipeline's prepare-secrets job, from a
+# project deploy token.
+imagePullSecrets:
+  - name: rpg-promptbook-registry
+
+app:
+  publicUrl: https://promptbook.siberio.eu
+  # Traefik is the only proxy.
+  trustProxyHops: 1
+  credentialsSecret: rpg-promptbook-credentials
+
+ingress:
+  enabled: true
+  # The class has to match, or the Ingress is simply not picked up: the host
+  # answers 404 from Traefik's default backend and no certificate is asked for.
+  className: traefik-ingress
+  annotations:
+    # DNS-01 through Cloudflare, as the other apps on this cluster.
+    cert-manager.io/cluster-issuer: le-cloudflare-dns
+    # No websocket annotation: Traefik upgrades /sync by itself.
+  hosts:
+    - host: promptbook.siberio.eu
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: rpg-promptbook-tls
+      hosts:
+        - promptbook.siberio.eu
+
+# The cluster rpg-promptbook-db archives to the bucket cnpg-rpg-promptbook on
+# Silo. 02:15 UTC is 03:15 or 04:15 in Rome, a slot no other cluster uses.
+cnpg:
+  backup:
+    bucket: cnpg-rpg-promptbook
+    schedule: "0 15 2 * * *"

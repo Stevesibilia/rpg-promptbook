@@ -44,6 +44,7 @@ const schema = databaseSchema.extend({
   PROMPTBOOK_ADMIN_USERNAME: optional,
   PROMPTBOOK_ADMIN_PASSWORD: optional,
   WEB_DIST: optional,
+  APP_VERSION: optional,
 });
 
 export interface Config {
@@ -56,6 +57,9 @@ export interface Config {
   admin: { username: string; password: string } | null;
   // Where the web build is; unset in development, where Vite serves it.
   webDist: string | null;
+  // The release this server runs, reported by the health check; "dev" when
+  // unset.
+  appVersion: string;
 }
 
 export class ConfigError extends Error {}
@@ -86,6 +90,7 @@ export function loadConfig(env: Env = process.env): Config {
     trustProxyHops: values.TRUST_PROXY_HOPS,
     admin: username !== undefined && password !== undefined ? { username, password } : null,
     webDist: values.WEB_DIST ?? null,
+    appVersion: values.APP_VERSION ?? 'dev',
   };
 }
 

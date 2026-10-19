@@ -1,0 +1,21 @@
+{{ .Chart.Name }} {{ include "rpg-promptbook.tag" . }} is installed as {{ .Release.Name }}.
+
+Reach it at:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  {{ if $.Values.ingress.tls }}https{{ else }}http{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "rpg-promptbook.fullname" . }} 8080:{{ .Values.service.port }}
+  then open http://localhost:8080
+{{- end }}
+
+The first account is created from the keys admin-username and admin-password
+of the Secret {{ .Values.app.credentialsSecret }}, only while the database has none.
+
+Database: the CloudNativePG cluster {{ include "rpg-promptbook.cnpgClusterName" . }}.
+{{- if .Values.cnpg.backup.enabled }}
+It archives its WAL continuously and takes a base backup at "{{ .Values.cnpg.backup.schedule }}" (UTC) to s3:{{ .Values.cnpg.backup.bucket }}/, kept {{ .Values.cnpg.backup.retention }}.
+{{- else }}
+Backups are off.
+{{- end }}

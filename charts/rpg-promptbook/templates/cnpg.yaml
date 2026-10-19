@@ -1,0 +1,158 @@
+{{- /*
+The database as a CloudNativePG cluster, backed up continuously to the homelab
+object store, and a PodMonitor for the homelab's shared alerts. Modelled on
+gdrarchive's chart.
+
+The operator, the `postgresql` ClusterImageCatalog, the bucket and the
+`cnpg-backup-s3` Secret come from the homelab kubernetes_cluster repository.
+
+The Cluster and the ObjectStore carry helm.sh/resource-policy: keep: the
+operator deletes a cluster's volume with the cluster, so without it a
+`helm uninstall` or a release rename would delete the archive.
+*/ -}}
+{{- $name := include "rpg-promptbook.cnpgClusterName" . }}
+{{- $plugin := "barman-cloud.cloudnative-pg.io" }}
+{{- $restore := .Values.cnpg.restore }}
+{{- $archiveServerName := $restore.archiveServerName | default $name }}
+{{- if and $restore.serverName (eq $restore.serverName $archiveServerName) }}
+{{- fail (printf "cnpg.restore.serverName is %q, the folder the cluster also archives to. Set cnpg.restore.archiveServerName to a new folder: the operator refuses to archive into one that already holds WAL." $restore.serverName) }}
+{{- end }}
+{{- if and $restore.serverName (not .Values.cnpg.backup.enabled) }}
+{{- fail "cnpg.restore.serverName needs cnpg.backup.enabled: the cluster restores from its ObjectStore." }}
+{{- end }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "rpg-promptbook.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  instances: 1
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: {{ .Values.cnpg.imageCatalog.name }}
+    major: {{ .Values.cnpg.imageCatalog.major }}
+  storage:
+    storageClass: {{ .Values.cnpg.storage.storageClass | quote }}
+    size: {{ .Values.cnpg.storage.size | quote }}
+  bootstrap:
+    {{- if $restore.serverName }}
+    # Created from its own backups. Only acts when the cluster
+    # is created; on an existing cluster the operator ignores the bootstrap.
+    recovery:
+      source: origin
+      database: {{ .Values.cnpg.database | quote }}
+      owner: {{ .Values.cnpg.owner | quote }}
+      {{- with $restore.targetTime }}
+      recoveryTarget:
+        targetTime: {{ . | quote }}
+      {{- end }}
+    {{- else }}
+    initdb:
+      database: {{ .Values.cnpg.database | quote }}
+      owner: {{ .Values.cnpg.owner | quote }}
+    {{- end }}
+  {{- if $restore.serverName }}
+  externalClusters:
+    - name: origin
+      plugin:
+        name: {{ $plugin }}
+        parameters:
+          barmanObjectName: {{ $name }}-backup
+          serverName: {{ $restore.serverName | quote }}
+  {{- end }}
+  {{- if .Values.cnpg.backup.enabled }}
+  plugins:
+    - name: {{ $plugin }}
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: {{ $name }}-backup
+        serverName: {{ $archiveServerName | quote }}
+  {{- end }}
+  # The amd64 servers when they are up. Unlike the application images, the
+  # PostgreSQL image is multi-arch, so the cluster can fall back to arm nodes.
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values: ["amd64"]
+  resources:
+    {{- toYaml .Values.cnpg.resources | nindent 4 }}
+{{- if .Values.cnpg.backup.enabled }}
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ $name }}-backup
+  labels:
+    {{- include "rpg-promptbook.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  retentionPolicy: {{ .Values.cnpg.backup.retention | quote }}
+  configuration:
+    destinationPath: {{ printf "s3://%s/" .Values.cnpg.backup.bucket | quote }}
+    endpointURL: {{ .Values.cnpg.backup.endpointURL | quote }}
+    s3Credentials:
+      accessKeyId:
+        name: {{ .Values.cnpg.backup.credentialsSecret }}
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: {{ .Values.cnpg.backup.credentialsSecret }}
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ $name }}-daily
+  labels:
+    {{- include "rpg-promptbook.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  # Six fields, seconds first, in UTC.
+  schedule: {{ .Values.cnpg.backup.schedule | quote }}
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: {{ $name }}
+  method: plugin
+  pluginConfiguration:
+    name: {{ $plugin }}
+{{- end }}
+{{- if .Values.cnpg.podMonitor.enabled }}
+---
+# The `cluster` label is what the homelab's shared CloudNativePG alerts group by.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "rpg-promptbook.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+    {{- with .Values.cnpg.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: {{ $name }}
+      cnpg.io/podRole: instance
+  podMetricsEndpoints:
+    - port: metrics
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+          targetLabel: cluster
+{{- end }}

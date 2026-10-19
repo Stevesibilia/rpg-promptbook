@@ -6,7 +6,8 @@ Midjourney and Suno prompts come out of it, the downloaded images and tracks
 land in their scene, and the PDF for the table and the CueBard project are
 built from it.
 
-Status: the server and the web client run locally. The desktop app comes
+Status: the server and the web client run locally and on the homelab
+(see [docs/deploy-homelab.md](docs/deploy-homelab.md)). The desktop app comes
 later. See [docs/design.md](docs/design.md).
 
 The name comes from theatre: the promptbook is the stage manager's master copy

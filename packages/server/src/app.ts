@@ -53,7 +53,7 @@ export async function buildApp({ config, db, logger = false }: AppOptions): Prom
   await app.register(headersPlugin, { config });
   await app.register(authPlugin, { config, db });
   await app.register(syncPlugin, { config, db });
-  await app.register(healthRoutes, { db });
+  await app.register(healthRoutes, { db, config });
   await app.register(authRoutes, { config, db, sync: app.sync });
   await app.register(settingsRoutes, { db });
   await app.register(projectsRoutes, { db, sync: app.sync });
