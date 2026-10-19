@@ -24,8 +24,8 @@
 
 ## 4. Runbook and hand-back
 
-- [ ] 4.1 `docs/deploy-homelab.md` (decision 8) and the link in `README.md`; Prettier on the Markdown files touched
-- [ ] 4.2 Checks: typecheck, server tests, `helm lint`, `helm template`, `glab ci lint`, `actionlint`, `openspec validate homelab-deploy --strict`; push; hand back with the results as printed and the `sslmode` answer
+- [x] 4.1 `docs/deploy-homelab.md` (decision 8) and the link in `README.md`; Prettier on the Markdown files touched
+- [x] 4.2 Checks: typecheck, server tests, `helm lint`, `helm template`, `glab ci lint`, `actionlint`, `openspec validate homelab-deploy --strict`; push; hand back with the results as printed and the `sslmode` answer
 
 ## 5. Release (architect)
 
