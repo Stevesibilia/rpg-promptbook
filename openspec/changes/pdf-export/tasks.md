@@ -29,9 +29,9 @@
 
 ## 5. Preview and docs (brief B)
 
-- [ ] 5.1 Owner preview: the compose stack reachable on the LAN; URL and steps in a status note; wait for the owner's go
-- [ ] 5.2 `docs/design.md`: PDF built in the browser too, typst.ts version, Print opens a tab, images and versions later; Prettier on the files touched
-- [ ] 5.3 Checks and hand-back of brief B
+- [x] 5.1 Screenshots of the pane and the review for the architect's review (the owner chose to finish unattended on 2026-10-19)
+- [x] 5.2 `docs/design.md`: PDF built in the browser too, typst.ts version, Print opens a tab, images and versions later; Prettier on the files touched
+- [x] 5.3 Checks and hand-back of brief B
 
 ## 6. Release (architect)
 
