@@ -1,0 +1,64 @@
+name: Mirror
+
+# Pushes main and each release tag to the GitLab project whose pipeline builds
+# and deploys the release (docs/deploy-homelab.md). GitLab Community Edition
+# cannot pull from GitHub, so GitHub pushes. A manual run pushes main only: it
+# tests the token and the route without cutting a release.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One push at a time, and a running one is never cancelled half way.
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+env:
+  GITLAB_URL: https://gitlab.siberio.eu/utilities/rpg-promptbook.git
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A release is a tag on a commit of main. Anything else stops here and
+      # nothing reaches GitLab.
+      - name: Check the tag is on main
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! git merge-base --is-ancestor "refs/tags/$TAG" origin/main; then
+            echo "::error::Tag $TAG is not on main. Tag a commit that main contains."
+            exit 1
+          fi
+
+      # The token travels in git's environment configuration, so it is neither
+      # on a command line nor in the repository's config.
+      - name: Push main and the tag to GitLab
+        env:
+          GITLAB_MIRROR_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          if [ -z "$GITLAB_MIRROR_TOKEN" ]; then
+            echo "::error::The secret GITLAB_MIRROR_TOKEN is not set."
+            exit 1
+          fi
+          auth=$(printf 'mirror:%s' "$GITLAB_MIRROR_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.extraHeader
+          export GIT_CONFIG_VALUE_0="Authorization: Basic $auth"
+          git push "$GITLAB_URL" refs/remotes/origin/main:refs/heads/main
+          if [ -n "$TAG" ]; then
+            git push "$GITLAB_URL" "refs/tags/$TAG:refs/tags/$TAG"
+          fi

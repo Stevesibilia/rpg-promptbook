@@ -1,0 +1,140 @@
+# Builds the image on a release tag, then installs the chart on the homelab
+# cluster through the utilities group's GitLab agent, and checks the live site.
+#
+# The code, the reviews and the tests live on GitHub. A workflow there mirrors
+# main and each v* tag to this project (.github/workflows/mirror.yml), so the
+# only pipeline here is the tag's. See docs/deploy-homelab.md.
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+include:
+  - component: $CI_SERVER_FQDN/homelab/ci-cd/components/dockerbuild/docker-build@0.9.0
+    inputs:
+      jobname: build
+      app_name: $CI_PROJECT_PATH
+      dockerfile: ./Dockerfile
+      platform: linux/amd64
+  - component: $CI_SERVER_FQDN/homelab/ci-cd/components/helmdeploy/helmdeploy@0.3.0
+    inputs:
+      jobname: helm-deploy
+      namespace: rpg-promptbook
+      release_name: rpg-promptbook
+      chart_path: charts/rpg-promptbook
+      values_file: charts/rpg-promptbook/values-homelab.yaml
+      # The component's default reads GITLAB_AGENT_* / GROUP_GITLAB_AGENT_*,
+      # while the group sets DEVELOP_GITLAB_AGENT_*. Passed explicitly so the
+      # context resolves instead of coming out as ":".
+      context: $DEVELOP_GITLAB_AGENT_PROJECT:$DEVELOP_GITLAB_AGENT_ID
+
+stages:
+  - build
+  - secrets
+  - deploy
+  - verify
+
+variables:
+  KUBE_NAMESPACE: rpg-promptbook
+  HELM_RELEASE: rpg-promptbook
+  # The same image the helmdeploy component runs, so every job that talks to
+  # the cluster carries the same kubectl and helm.
+  OPS_IMAGE: ghcr.io/stevesibilia/siberio-ops:0.7.1
+  KUBE_CONTEXT: $DEVELOP_GITLAB_AGENT_PROJECT:$DEVELOP_GITLAB_AGENT_ID
+  PUBLIC_URL: https://promptbook.siberio.eu
+
+# The image comes from the docker-build component included above, as
+# registry.siberio.eu/utilities/rpg-promptbook:<tag>.
+
+# Runs before the deploy so the Secrets the chart refers to are already there.
+# Credentials go into the cluster directly rather than through `helm --set`,
+# which would leave them in the release Helm stores. Rotating one is a change
+# to a CI/CD variable and a re-run, then a `kubectl rollout restart` for the
+# admin credentials (docs/deploy-homelab.md).
+prepare-secrets:
+  stage: secrets
+  image: $OPS_IMAGE
+  needs: []
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - |
+      missing=""
+      for var in PB_REGISTRY_USER PB_REGISTRY_PASSWORD PB_ADMIN_USERNAME PB_ADMIN_PASSWORD; do
+        eval "value=\${$var:-}"
+        [ -n "$value" ] || missing="$missing $var"
+      done
+      if [ -n "$missing" ]; then
+        echo "Missing CI/CD variable(s):$missing"
+        echo "If they are set and marked protected, protect the tag pattern too (Settings > Repository > Protected tags)."
+        exit 1
+      fi
+    - kubectl config use-context "$KUBE_CONTEXT"
+    # The namespace belongs to the homelab kubernetes_cluster repository, with
+    # the backup Secret cnpg-backup-s3 written into it. Creating it here would
+    # fight that repository.
+    - kubectl get namespace "$KUBE_NAMESPACE" >/dev/null 2>&1 || { echo "Namespace $KUBE_NAMESPACE does not exist. Apply the kubernetes_cluster change that creates it first."; exit 1; }
+
+    # Built from a project deploy token, not $CI_REGISTRY_PASSWORD: that one is
+    # scoped to the running job and expires with it, so a pod restarting an
+    # hour later would sit in ImagePullBackOff.
+    - |
+      kubectl create secret docker-registry rpg-promptbook-registry \
+        --namespace "$KUBE_NAMESPACE" \
+        --docker-server=registry.siberio.eu \
+        --docker-username="$PB_REGISTRY_USER" \
+        --docker-password="$PB_REGISTRY_PASSWORD" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    # The first account, created only while the database has none.
+    - |
+      kubectl create secret generic rpg-promptbook-credentials \
+        --namespace "$KUBE_NAMESPACE" \
+        --from-literal=admin-username="$PB_ADMIN_USERNAME" \
+        --from-literal=admin-password="$PB_ADMIN_PASSWORD" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+# `helm-deploy` comes from the helmdeploy component included above. It runs on
+# tags, installs charts/rpg-promptbook with the homelab values, and sets
+# image.tag to the tag being released.
+helm-deploy:
+  needs:
+    - build
+    - prepare-secrets
+  environment:
+    name: homelab
+    url: https://promptbook.siberio.eu
+
+verify:
+  stage: verify
+  image: $OPS_IMAGE
+  needs: [helm-deploy]
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - kubectl config use-context "$KUBE_CONTEXT"
+    # The live site reports the tag this pipeline released. A failure means
+    # another build is answering (a rollout that did not finish, an image that
+    # did not change), which a 200 alone cannot show. Retried for two minutes:
+    # the certificate and the route can take a moment on a first deploy.
+    - |
+      live=""
+      for attempt in $(seq 1 24); do
+        if curl -fsS "$PUBLIC_URL/api/health" | jq -e --arg tag "$CI_COMMIT_TAG" '.ok == true and .version == $tag' >/dev/null; then
+          live=1
+          break
+        fi
+        echo "attempt $attempt: $PUBLIC_URL does not report $CI_COMMIT_TAG yet"
+        sleep 5
+      done
+      if [ -z "$live" ]; then
+        echo "$PUBLIC_URL did not report $CI_COMMIT_TAG within two minutes. It answered:"
+        curl -sS "$PUBLIC_URL/api/health" || true
+        exit 1
+      fi
+      echo "$PUBLIC_URL reports $CI_COMMIT_TAG"
+    # The database is the CloudNativePG cluster, and its scheduled backup is
+    # what the homelab's backup alerts watch. A release that lost either would
+    # otherwise go unnoticed until an alert a day later.
+    - kubectl -n "$KUBE_NAMESPACE" wait --for=condition=Ready "cluster/$HELM_RELEASE-db" --timeout=300s >/dev/null || { echo "database cluster $HELM_RELEASE-db is not ready"; exit 1; }
+    - kubectl -n "$KUBE_NAMESPACE" get scheduledbackup "$HELM_RELEASE-db-daily" >/dev/null || { echo "scheduled backup $HELM_RELEASE-db-daily is missing"; exit 1; }

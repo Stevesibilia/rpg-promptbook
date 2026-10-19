@@ -18,9 +18,9 @@
 
 ## 3. Pipelines
 
-- [ ] 3.1 `.github/workflows/mirror.yml` (decision 1)
-- [ ] 3.2 `.gitlab-ci.yml` (decision 2); `glab ci lint` against `utilities/rpg-promptbook` passes
-- [ ] 3.3 `actionlint` (or `docker run rhysd/actionlint`) passes on both workflows
+- [x] 3.1 `.github/workflows/mirror.yml` (decision 1)
+- [x] 3.2 `.gitlab-ci.yml` (decision 2); `glab ci lint` against `utilities/rpg-promptbook` passes
+- [x] 3.3 `actionlint` (or `docker run rhysd/actionlint`) passes on both workflows
 
 ## 4. Runbook and hand-back
 
