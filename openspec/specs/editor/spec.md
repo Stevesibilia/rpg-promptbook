@@ -11,11 +11,12 @@ The project page's editor: live preview, problems and fixes, outline, inspector,
 Opening a project SHALL show the editor of
 [docs/mockups/editor.html](../../../docs/mockups/editor.html)'s Document
 view: the top bar with breadcrumbs, category, status menu, outline and
-inspector toggles, focus mode, the ⌘K hint and the sync pill; the outline on
-the left; the prep document in a CodeMirror 6 Markdown editor bound to the
-project's Yjs text, in Spectral, about 70 characters wide; the inspector on
-the right; the status bar. The rail SHALL keep Projects, Document and
-Settings only. The page SHALL NOT show History, export or PDF controls.
+inspector toggles, focus mode, the PDF button for adventures and one-shots,
+the ⌘K hint and the sync pill; the outline on the left; the prep document
+in a CodeMirror 6 Markdown editor bound to the project's Yjs text, in
+Spectral, about 70 characters wide; the inspector or the PDF preview on the
+right; the status bar. The rail SHALL keep Projects, Document and Settings
+only. The page SHALL NOT show History or export controls.
 
 #### Scenario: Edit in two tabs
 
@@ -158,8 +159,9 @@ id prefixes, each with its requirement.
 ⌘K and the top bar's hint SHALL open a palette that filters, case and accent
 insensitive, the outline's items and the commands: toggle outline, toggle
 inspector, focus mode, syntax sheet, set status, next and previous problem,
-back to projects. Arrows SHALL move, Enter SHALL run, Escape SHALL close.
-Each command SHALL show its shortcut.
+PDF preview and review PDF (adventures and one-shots), back to projects.
+Arrows SHALL move, Enter SHALL run, Escape SHALL close. Each command SHALL
+show its shortcut.
 
 #### Scenario: Go to a scene by name
 
