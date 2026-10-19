@@ -40,7 +40,7 @@
 
 ## 6. End to end, preview and hand-back
 
-- [ ] 6.1 `e2e/editor.spec.ts`: one test per scenario of the `editor` spec, against the compose stack and its seed; `projects.spec.ts` still passes
-- [ ] 6.2 README: the editor's shortcuts in one short table
-- [ ] 6.3 Preview for the owner: stack up from the working tree with the seed, reachable from the LAN (`PUBLIC_URL` and the relay), the URL, username and password and the pages to look at; wait for the owner's word before the last commit
-- [ ] 6.4 Checks: `npm run typecheck`, `npm test` with Postgres, Playwright, Prettier on changed Markdown; a measured number for main-thread tasks while typing in Sabaoth; literal results in the hand-back
+- [x] 6.1 `e2e/editor.spec.ts`: one test per scenario of the `editor` spec, against the compose stack and its seed; `projects.spec.ts` still passes
+- [x] 6.2 README: the editor's shortcuts in one short table
+- [x] 6.3 Preview for the owner: stack up from the working tree with the seed, reachable from the LAN (`PUBLIC_URL` and the relay), the URL, username and password and the pages to look at; wait for the owner's word before the last commit
+- [x] 6.4 Checks: `npm run typecheck`, `npm test` with Postgres, Playwright, Prettier on changed Markdown; a measured number for main-thread tasks while typing in Sabaoth; literal results in the hand-back

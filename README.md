@@ -41,6 +41,25 @@ relay from the LAN address to `127.0.0.1`.
 
 `docker compose down` stops the stack and keeps the data; `down -v` removes it.
 
+## Editor shortcuts
+
+On the Mac, Mod is ⌘; elsewhere it is Ctrl.
+
+| Keys          | Action                                   |
+| ------------- | ---------------------------------------- |
+| Mod-1         | Toggle the outline                       |
+| Mod-2         | Toggle the inspector                     |
+| Mod-.         | Focus mode                               |
+| Mod-/         | Syntax sheet                             |
+| Mod-K         | Command palette                          |
+| F8 / Shift-F8 | Next / previous problem                  |
+| Alt-↑ / Alt-↓ | Move the scene focused in the outline    |
+| `/`           | Insert menu, typed alone at a line start |
+| Escape        | Close a dialog, leave focus mode         |
+
+Browsers keep Mod-1 and Mod-2 for switching tabs: there, use the top bar's
+buttons or the palette.
+
 ## Development
 
 Development needs Node 26 and a Postgres. Run the server and Vite side by
