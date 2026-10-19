@@ -89,6 +89,9 @@ describe('the / menu', () => {
   it('offers headings only in a campaign', () => {
     const state = campaign('## Uno\n\n/\n');
     expect(slashEntries(state, 8, template).map((e) => e.detail)).toEqual(['##', '###']);
+    const fm = campaign('---\ntitolo: Uno\n/\n---\n\n/\n');
+    expect(slashEntries(fm, 16, template)).toEqual([]);
+    expect(slashEntries(fm, 22, template)).toHaveLength(2);
   });
 });
 

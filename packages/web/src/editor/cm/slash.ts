@@ -12,6 +12,7 @@ import type { CalloutDefinition, Model, Place, Template } from 'promptbook-forma
 import { analysisField, writableResult } from '../analysis/field.js';
 import { insertText, nextSceneNumber, placeInsert, sceneAt, type Insert } from '../inserts.js';
 import { currentItem } from '../outline.js';
+import { frontMatterOf } from './preview.js';
 import { write } from '../writes.js';
 
 // The `/` insert menu and the sheet names' completion (design decision 9).
@@ -55,7 +56,10 @@ const calloutSyntax = (c: CalloutDefinition) => `> [!${c.meta ? `${c.type}|${c.m
 // section. A campaign gets the two headings.
 export function slashEntries(state: EditorState, pos: number, template: Template): SlashEntry[] {
   const value = state.field(analysisField, false);
-  if (!value?.checked) return headings;
+  if (!value?.checked) {
+    const fm = frontMatterOf(state.doc);
+    return fm && pos <= fm.to ? [] : headings;
+  }
   const model = value.result?.model;
   const item = model ? currentItem(state, pos) : null;
   if (!model || !item) return [];
