@@ -30,8 +30,9 @@ username. After signing in the user SHALL land on the page they asked for.
 
 The projects page SHALL list the user's projects with title, a meta line
 (system and, for adventures and one-shots, scene count and error and warning
-counts), category, status, to-do progress as a bar and `done/total`, time of
-the last edit, and a count in the heading («6 of 8 projects»). It SHALL
+counts when not zero), category, status, to-do progress as a bar and
+`done/total`, time of the last edit, and a count in the heading («6 of 8
+projects»). It SHALL
 offer: a search over titles and seeds; category tabs All, Campaigns,
 Adventures, One-shots with counts; status chips Draft, In progress, Complete,
 with Complete off at first; Group by campaign, on at first, which lists

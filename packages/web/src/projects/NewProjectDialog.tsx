@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { categories, skeletonDocument, type Category, type Settings, type Status } from 'promptbook-project';
 import { api, ApiError, type ProjectRow } from '../api.js';
@@ -47,14 +47,19 @@ function highlight(skeleton: string): ReactNode[] {
 
 export function NewProjectDialog({
   projects,
+  projectsReady,
   onClose,
   onCreated,
 }: {
   projects: readonly ProjectRow[];
+  // False while the list is loading or failed: the campaigns are not known.
+  projectsReady: boolean;
   onClose(): void;
   onCreated(project: ProjectRow): void;
 }) {
   const [settings, setSettings] = useState<Settings | null>(null);
+  // Set at once, unlike busy, so a repeated Enter cannot create twice.
+  const creating = useRef(false);
   const [category, setCategory] = useState<Category>('adventure');
   const [title, setTitle] = useState('');
   const [campaignId, setCampaignId] = useState('');
@@ -95,7 +100,9 @@ export function NewProjectDialog({
   );
 
   async function create() {
+    if (creating.current || busy || !settings) return;
     if (!title.trim()) return setError('Give the project a title.');
+    creating.current = true;
     setBusy(true);
     setError('');
     try {
@@ -110,6 +117,7 @@ export function NewProjectDialog({
       onCreated(project);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Creating the project failed.');
+      creating.current = false;
       setBusy(false);
     }
   }
@@ -166,7 +174,12 @@ export function NewProjectDialog({
           {category !== 'campaign' && (
             <div className="field">
               <label htmlFor="np-campaign">Campaign</label>
-              <select id="np-campaign" value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
+              <select
+                id="np-campaign"
+                value={campaignId}
+                disabled={!projectsReady}
+                onChange={(e) => setCampaignId(e.target.value)}
+              >
                 <option value="">Stand-alone</option>
                 {campaigns.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -174,6 +187,7 @@ export function NewProjectDialog({
                   </option>
                 ))}
               </select>
+              {!projectsReady && <span className="hint">The campaigns appear once the project list has loaded.</span>}
             </div>
           )}
           <div className="field row2">

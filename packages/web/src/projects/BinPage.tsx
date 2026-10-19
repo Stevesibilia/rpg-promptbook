@@ -11,14 +11,24 @@ import './projects.css';
 export function BinPage() {
   const { projects, error, refresh } = useProjects({ bin: true });
   const [failure, setFailure] = useState('');
+  // Projects whose restore request is on its way.
+  const [restoring, setRestoring] = useState<ReadonlySet<string>>(new Set());
 
   async function restore(id: string) {
+    if (restoring.has(id)) return;
+    setRestoring((ids) => new Set(ids).add(id));
     try {
       await api.restoreProject(id);
       setFailure('');
       await refresh();
     } catch (e) {
       setFailure(e instanceof ApiError ? e.message : 'Restoring failed.');
+    } finally {
+      setRestoring((ids) => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -57,8 +67,8 @@ export function BinPage() {
               </div>
               <span className="cat">{categoryLabels[p.category]}</span>
               <span className="when">{p.deletedAt ? purgeDate(p.deletedAt) : ''}</span>
-              <button className="tb line" onClick={() => void restore(p.id)}>
-                Restore
+              <button className="tb line" onClick={() => void restore(p.id)} disabled={restoring.has(p.id)}>
+                {restoring.has(p.id) ? 'Restoring…' : 'Restore'}
               </button>
             </div>
           ))}

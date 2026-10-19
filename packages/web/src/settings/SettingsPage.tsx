@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { categories, type Category, type Settings } from 'promptbook-project';
 import { api, ApiError, exportAllUrl } from '../api.js';
@@ -6,6 +6,7 @@ import { useAuth } from '../auth/context.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
+import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
 import './settings.css';
 
 const sections = [
@@ -22,37 +23,30 @@ export function SettingsPage() {
   const params = useParams();
   const navigate = useNavigate();
   const section: Section = sections.some((s) => s.key === params.section) ? (params.section as Section) : 'todo';
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [state, setState] = useState<{ saving: boolean; error: string; saved: boolean }>({
-    saving: false,
-    error: '',
-    saved: false,
-  });
+  const [state, setState] = useState<SaverState | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const saver = useRef<SettingsSaver | null>(null);
 
   useEffect(() => {
     api
       .settings()
-      .then(setSettings)
-      .catch((e) => setState((s) => ({ ...s, error: e instanceof ApiError ? e.message : 'Loading failed.' })));
+      .then((loaded) => {
+        saver.current = createSettingsSaver(loaded, api.saveSettings, setState, (e) =>
+          e instanceof ApiError ? e.message : 'Saving failed.',
+        );
+        setState(saver.current.state());
+      })
+      .catch((e) => setLoadError(e instanceof ApiError ? e.message : 'Loading failed.'));
   }, []);
 
-  // The server takes the whole object; what it answers is what is stored.
-  async function save(next: Settings) {
-    setSettings(next);
-    setState({ saving: true, error: '', saved: false });
-    try {
-      setSettings(await api.saveSettings(next));
-      setState({ saving: false, error: '', saved: true });
-    } catch (e) {
-      setState({ saving: false, error: e instanceof ApiError ? e.message : 'Saving failed.', saved: false });
-    }
-  }
+  const settings = state?.settings ?? null;
+  const save = (next: Settings) => saver.current?.save(next);
 
-  const saveNote = state.error ? (
+  const saveNote = state?.error ? (
     <span className="err-inline">{state.error}</span>
-  ) : state.saving ? (
+  ) : state?.saving ? (
     <span className="saved">Saving…</span>
-  ) : state.saved ? (
+  ) : state?.saved ? (
     <span className="saved">Saved</span>
   ) : null;
 
@@ -75,14 +69,20 @@ export function SettingsPage() {
             ))}
           </nav>
           <div>
-            {section === 'todo' && settings && <TodoTemplates settings={settings} onSave={save} />}
+            {section === 'todo' && settings && (
+              // Its inputs are keyed by their text, so a restored list redraws.
+              <TodoTemplates settings={settings} onSave={save} />
+            )}
             {section === 'documents' && <DocumentTemplates />}
-            {section === 'author' && settings && <AuthorDefaults settings={settings} onSave={save} />}
+            {section === 'author' && settings && (
+              // Keyed, so the fields show the restored values after a failure.
+              <AuthorDefaults key={state?.revision} settings={settings} onSave={save} />
+            )}
             {section === 'account' && <Account />}
             {section === 'sync' && <SyncStorage />}
             {section === 'appearance' && <Appearance />}
             {!settings && (section === 'todo' || section === 'author') && (
-              <p className="loading">{state.error || 'Loading…'}</p>
+              <p className="loading">{loadError || 'Loading…'}</p>
             )}
           </div>
         </div>

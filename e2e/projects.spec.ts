@@ -50,8 +50,13 @@ test('create an adventure in a campaign and open it', async ({ page }) => {
   await dialog.getByRole('radio', { name: /Adventure/ }).click();
   await dialog.getByLabel('Campaign').selectOption({ label: 'Blacksad - Il Continentale' });
 
-  await dialog.getByRole('button', { name: 'Create and open' }).click();
+  // Enter held down repeats; the project is still created once.
+  await dialog.getByLabel('Title').focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
   await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
+  const { projects } = (await (await page.request.get('/api/projects')).json()) as { projects: { title: string }[] };
+  expect(projects.filter((p) => p.title === title)).toHaveLength(1);
   await expect(page.locator('.crumbs')).toContainText(`Blacksad - Il Continentale › ${title}`);
   await expect(page.locator('.cm-content')).toContainText('formato: avventura');
 

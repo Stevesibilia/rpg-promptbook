@@ -606,9 +606,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.imp .dup {
+.imp .dup,
+p.dup {
   color: var(--amber);
   font-size: 12px;
+}
+p.dup {
+  margin: 0 0 10px;
 }
 .imp b {
   display: block;

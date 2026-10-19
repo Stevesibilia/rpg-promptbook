@@ -85,6 +85,8 @@ export function ProjectsPage() {
   const list = useMemo(() => (projects ? buildList(projects, filters) : null), [projects, filters]);
   const counts = useMemo(() => categoryCounts(projects ?? []), [projects]);
   const campaigns = useMemo(() => (projects ?? []).filter((p) => p.category === 'campaign'), [projects]);
+  // Importing matches campaigns and titles against the list, so it waits for it.
+  const listReady = !!projects && !error;
   const selected = projects?.find((p) => p.id === selectedId) ?? null;
 
   const select = (id: string | null) => setParams(id ? { p: id } : {}, { replace: true });
@@ -124,7 +126,12 @@ export function ProjectsPage() {
             {list ? `${list.shown} of ${plural(list.total, 'project')}` : ''}
           </p>
           <span className="spacer" />
-          <button className="tb line" onClick={() => setDialog('import')}>
+          <button
+            className="tb line"
+            onClick={() => setDialog('import')}
+            disabled={!listReady}
+            title={listReady ? undefined : 'Available once the project list has loaded'}
+          >
             <ImportIcon />
             Import Markdown
           </button>
@@ -222,6 +229,7 @@ export function ProjectsPage() {
       {dialog === 'new' && (
         <NewProjectDialog
           projects={projects ?? []}
+          projectsReady={listReady}
           onClose={() => setDialog(null)}
           onCreated={(project) => open(project.id)}
         />

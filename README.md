@@ -35,6 +35,9 @@ To open the app from other devices on the LAN, set `PUBLIC_URL` in `.env` to
 this machine's LAN address, for example `http://192.168.1.20:8090`, and use
 that address everywhere. The app accepts changes and sync only from that
 origin.
+On macOS with OrbStack, published ports listen on localhost only, so LAN
+access also needs OrbStack's `docker.expose_ports_to_lan` setting or a TCP
+relay from the LAN address to `127.0.0.1`.
 
 `docker compose down` stops the stack and keeps the data; `down -v` removes it.
 

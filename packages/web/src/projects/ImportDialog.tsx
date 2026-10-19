@@ -80,12 +80,15 @@ export function ImportDialog({
   const [busy, setBusy] = useState(false);
   const filesInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
+  const generation = useRef(0);
 
   const campaigns = useMemo(() => projects.filter((p) => p.category === 'campaign'), [projects]);
   const refs: CampaignRef[] = useMemo(() => campaigns.map((c) => ({ id: c.id, title: c.title })), [campaigns]);
   const titles = useMemo(() => new Set(projects.map((p) => p.title.trim().toLocaleLowerCase())), [projects]);
 
   async function addFiles(found: { file: File; path: string }[]) {
+    // A slower earlier drop must not replace a newer one.
+    const mine = ++generation.current;
     const markdown = found.filter((f) => isMarkdown(f.file.name));
     if (!markdown.length) return setError('No .md files there.');
     setError('');
@@ -106,6 +109,7 @@ export function ImportDialog({
         } satisfies Note;
       }),
     );
+    if (mine !== generation.current) return;
     read.sort((a, b) => a.fileName.localeCompare(b.fileName));
     setFolder(folderOf(read.map((n) => n.fileName)));
     setNotes(read);
@@ -137,9 +141,14 @@ export function ImportDialog({
 
   const ticked = notes.filter((n) => n.ticked);
   const blocked = ticked.some((n) => !n.category);
-  const canImport = tab === 'files' ? ticked.length > 0 && !blocked : !!pastePrepared && !!pasteCat;
+  // The preview runs a little behind the typing; importing waits for it, so
+  // what the dialog shows is what is imported.
+  const pasteCurrent = deferredPaste === pasted;
+  const pasteDuplicate = !!pastePrepared && titles.has(pastePrepared.title.trim().toLocaleLowerCase());
+  const canImport = tab === 'files' ? ticked.length > 0 && !blocked : pasteCurrent && !!pastePrepared && !!pasteCat;
 
   async function submit() {
+    if (busy) return;
     let body: ImportNote[];
     if (tab === 'files') {
       body = ticked.map((n) => ({
@@ -150,16 +159,12 @@ export function ImportDialog({
         campaignId: n.category === 'campaign' ? null : n.campaignId || null,
       }));
     } else {
-      if (!pastePrepared || !pasteCat) return;
-      body = [
-        {
-          text: pasted,
-          fileName: 'pasted.md',
-          title: pastePrepared.title,
-          category: pasteCat,
-          campaignId: pasteCamp || null,
-        },
-      ];
+      // Converted again from exactly the text that is sent.
+      const prepared = pasted.trim() ? prepareImport(pasted, { fileName: 'pasted.md', campaigns: refs }) : null;
+      const category = pasteCategory || prepared?.category;
+      if (!prepared || !category) return;
+      const campaignId = category === 'campaign' ? '' : (pasteCampaign ?? prepared.campaignId ?? '');
+      body = [{ text: pasted, fileName: 'pasted.md', title: prepared.title, category, campaignId: campaignId || null }];
     }
     setBusy(true);
     setError('');
@@ -317,6 +322,7 @@ export function ImportDialog({
               />
             </div>
           </div>
+          {pasteDuplicate && <p className="dup">A project with this title exists: this note becomes a new one.</p>}
           {pastePrepared && (
             <div className="repd" style={{ gridColumn: 'auto' }}>
               <ReportDetail prepared={pastePrepared} />
