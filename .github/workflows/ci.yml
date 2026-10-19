@@ -10,6 +10,18 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -21,6 +33,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+        env:
+          # The server's database tests recreate this database on every run.
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/promptbook_test
       - name: Prettier on changed Markdown
         env:
           BASE: ${{ github.event.pull_request.base.sha }}

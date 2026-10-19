@@ -15,7 +15,7 @@
 - [x] 2.4 Routes `/api/auth/*`, `/api/settings`, `/api/health`; static web build with SPA fallback and JSON 404 under `/api`; `@fastify/helmet` with a CSP allowing same-origin WebSocket
 - [x] 2.5 Command line: `migrate`, `user:create`, `user:password`
 - [x] 2.6 Database tests (`TEST_DATABASE_URL`, `_test` guard): every scenario of the `accounts` spec, settings round trip, admin variables ignored once an account exists
-- [ ] 2.7 CI: `postgres:18-alpine` service and `TEST_DATABASE_URL` in the `check` job; `npm test` runs the server's database tests
+- [x] 2.7 CI: `postgres:18-alpine` service and `TEST_DATABASE_URL` in the `check` job; `npm test` runs the server's database tests
 
 ## 3. Sync and projects API
 
