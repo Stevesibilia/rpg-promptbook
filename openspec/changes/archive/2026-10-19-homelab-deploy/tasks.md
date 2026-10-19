@@ -1,7 +1,7 @@
 ## 0. Outside the repository (architect, before the brief)
 
-- [ ] 0.1 GitLab project `utilities/rpg-promptbook`, protected tags `v*`, deploy token, CI variables, mirror token as the GitHub secret `GITLAB_MIRROR_TOKEN` (design decision 7)
-- [ ] 0.2 Merge request on `homelab/kubernetes_cluster` (namespace, DNS record, backup consumer), merged and applied
+- [x] 0.1 GitLab project `utilities/rpg-promptbook`, protected tags `v*`, deploy token, CI variables, mirror token as the GitHub secret `GITLAB_MIRROR_TOKEN` (design decision 7)
+- [x] 0.2 Merge request on `homelab/kubernetes_cluster` (namespace, DNS record, backup consumer), merged and applied
 
 ## 1. Version in the health check
 
@@ -29,7 +29,7 @@
 
 ## 5. Release (architect)
 
-- [ ] 5.1 `workflow_dispatch` run of the mirror: `main` reaches GitLab, no pipeline starts
-- [ ] 5.2 Pull request, CI green, merge; tag `v0.1.0` on `main`; GitHub Release
-- [ ] 5.3 Watch the GitLab pipeline; live check: sign in, create a project, edit in two browsers, a sync socket open past ten minutes, `rpg-promptbook-db` Ready with WAL archiving and a completed first backup
-- [ ] 5.4 Follow-up issue for the shared client address; archive the change; close #9
+- [x] 5.1 `workflow_dispatch` run of the mirror: `main` reaches GitLab, no pipeline starts
+- [x] 5.2 Pull request, CI green, merge; tag `v0.1.0` on `main`; GitHub Release
+- [x] 5.3 Watch the GitLab pipeline; live check: sign in, create a project, edit in two browsers, a sync socket open past ten minutes, `rpg-promptbook-db` Ready with WAL archiving and a completed first backup
+- [x] 5.4 Follow-up issue for the shared client address; archive the change; close #9
