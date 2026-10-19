@@ -1,6 +1,17 @@
-import { summarize, type CampaignRef, type Category, type Status, type Summary } from 'promptbook-project';
+import { randomUUID } from 'node:crypto';
+import {
+  createProjectDoc,
+  skeletonDocument,
+  summarize,
+  type CampaignRef,
+  type Category,
+  type Status,
+  type Summary,
+} from 'promptbook-project';
 import * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
+import { AppError } from './errors.js';
+import { getSettings } from './routes/settings.js';
 
 // The projects table and the stored documents. The document is the source;
 // the row is its summary, written from it on every store (design decision 6).
@@ -145,6 +156,62 @@ export async function insertProject(tx: Queryable, ownerId: string, doc: Y.Doc):
   ]);
 }
 
+// The campaign a new or imported project goes into: one of the user's
+// campaigns not in the bin, and never for a campaign (a campaign is not
+// nested).
+export function campaignFor(
+  category: Category,
+  campaignId: string | null,
+  campaigns: readonly CampaignRef[],
+): CampaignRef | null {
+  if (campaignId === null) return null;
+  const campaign = category === 'campaign' ? undefined : campaigns.find((c) => c.id === campaignId);
+  if (!campaign) throw new AppError(400, 'invalid_campaign', 'campaignId: is not one of your campaigns.');
+  return campaign;
+}
+
+export interface NewProject {
+  category: Category;
+  title: string;
+  campaignId: string | null;
+  // The settings' default system when not given.
+  system?: string | undefined;
+  status?: Status | undefined;
+  seed?: string | undefined;
+}
+
+// A new project from the user's templates: the category's to-do list and the
+// skeleton document with the settings' defaults in its front matter. Shared
+// by the REST route and the connector's create_project.
+export async function createProject(db: Db, ownerId: string, input: NewProject): Promise<ProjectRow> {
+  const settings = await getSettings(db, ownerId);
+  const id = randomUUID();
+  await db.withTransaction(async (tx) => {
+    const campaign = campaignFor(input.category, input.campaignId, await campaignsOf(tx, ownerId));
+    const system = input.system ?? settings.system;
+    const doc = createProjectDoc({
+      id,
+      title: input.title,
+      category: input.category,
+      status: input.status ?? 'draft',
+      campaignId: campaign?.id ?? null,
+      system,
+      seed: input.seed ?? '',
+      todo: settings.todoTemplates[input.category],
+      document: skeletonDocument(input.category, {
+        title: input.title,
+        system,
+        campaignTitle: campaign?.title ?? null,
+        author: settings.author,
+        copyright: settings.copyright,
+        licence: settings.licence,
+      }),
+    });
+    await insertProject(tx, ownerId, doc);
+  });
+  return (await getProject(db, ownerId, id))!;
+}
+
 // Writes a document's state and its summary in one transaction. A project
 // that is gone (purged) is skipped.
 export async function storeProjectDoc(db: Db, projectId: string, doc: Y.Doc): Promise<void> {
@@ -200,16 +267,35 @@ export async function restoreProject(db: Queryable, ownerId: string, id: string)
 }
 
 export const BIN_DAYS = 30;
+// Claude's and restore snapshots are kept that long; the user's until deleted.
+export const SNAPSHOT_DAYS = 30;
 
-// Removes projects in the bin for more than 30 days, with their documents,
-// sign-in failures older than a day and expired single sign-on handshakes.
-// Answers what it removed.
-export async function purge(db: Queryable): Promise<{ projects: number; loginFailures: number; oidcLogins: number }> {
+export interface Purged {
+  projects: number;
+  loginFailures: number;
+  oidcLogins: number;
+  snapshots: number;
+}
+
+// Removes projects in the bin for more than 30 days, with their documents
+// and snapshots, sign-in failures older than a day, expired single sign-on
+// handshakes, and Claude and restore snapshots older than 30 days. Answers
+// what it removed.
+export async function purge(db: Queryable): Promise<Purged> {
   const projects = await db.query(
     `delete from projects where deleted_at < now() - make_interval(days => $1) returning id`,
     [BIN_DAYS],
   );
   const failures = await db.query(`delete from login_failures where at < now() - interval '1 day' returning id`);
   const logins = await db.query('delete from oidc_logins where expires_at < now() returning state');
-  return { projects: projects.length, loginFailures: failures.length, oidcLogins: logins.length };
+  const snapshots = await db.query(
+    `delete from snapshots where kind <> 'user' and created_at < now() - make_interval(days => $1) returning id`,
+    [SNAPSHOT_DAYS],
+  );
+  return {
+    projects: projects.length,
+    loginFailures: failures.length,
+    oidcLogins: logins.length,
+    snapshots: snapshots.length,
+  };
 }

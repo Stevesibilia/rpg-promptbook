@@ -21,6 +21,7 @@ describe('command line', () => {
     expect((await db.query<{ name: string }>('select name from _migrations')).map((r) => r.name)).toEqual([
       '001_init.sql',
       '002_oidc.sql',
+      '003_connector.sql',
     ]);
     expect(await runMigrations(db)).toEqual([]);
   });

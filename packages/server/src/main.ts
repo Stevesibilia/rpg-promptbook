@@ -20,12 +20,12 @@ async function main() {
 
   const app = await buildApp({ config, db, logger: true });
 
-  // The bin, old sign-in failures and expired handshakes, at start and every
-  // hour.
+  // The bin, old sign-in failures, expired handshakes and expired snapshots,
+  // at start and every hour.
   const runPurge = () =>
     purge(db)
       .then((removed) => {
-        if (removed.projects > 0) app.log.info(removed, 'Purged the bin');
+        if (removed.projects > 0 || removed.snapshots > 0) app.log.info(removed, 'Purged the bin and old snapshots');
       })
       .catch((error: unknown) => app.log.error({ err: error }, 'Purge failed'));
   await runPurge();

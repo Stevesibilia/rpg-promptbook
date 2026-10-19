@@ -180,7 +180,7 @@ describe('the bin', () => {
        values ('old', 'h', 'n', 'v', '/', now() - interval '1 second'), ('live', 'h', 'n', 'v', '/', now() + interval '10 minutes')`,
     );
 
-    expect(await purge(db)).toEqual({ projects: 1, loginFailures: 1, oidcLogins: 1 });
+    expect(await purge(db)).toEqual({ projects: 1, loginFailures: 1, oidcLogins: 1, snapshots: 0 });
     expect(await db.query('select state from oidc_logins')).toEqual([{ state: 'live' }]);
     expect((await list(true)).map((p) => p.id)).toEqual([recent.id]);
     expect(await db.query('select 1 from project_docs where project_id = $1', [old.id])).toEqual([]);

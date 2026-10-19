@@ -9,6 +9,7 @@ import { healthRoutes } from './routes/health.js';
 import { oidcRoutes } from './routes/oidc.js';
 import { projectsRoutes } from './routes/projects.js';
 import { settingsRoutes } from './routes/settings.js';
+import { snapshotsRoutes } from './routes/snapshots.js';
 import { transferRoutes } from './routes/transfer.js';
 import { syncPlugin } from './sync.js';
 import { headersPlugin, webPlugin } from './web.js';
@@ -65,6 +66,7 @@ export async function buildApp({ config, db, logger = false, oidcDiscoveryOption
   await app.register(settingsRoutes, { db });
   await app.register(projectsRoutes, { db, sync: app.sync });
   await app.register(transferRoutes, { db, sync: app.sync });
+  await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(webPlugin, { config });
   return app;
 }

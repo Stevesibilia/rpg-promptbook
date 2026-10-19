@@ -7,12 +7,12 @@
 
 ## 2. Snapshots and the live write path (brief A)
 
-- [ ] 2.1 `migrations/003_connector.sql`: `snapshots`, `oauth_clients`, `oauth_grants`, `oauth_codes`, `oauth_tokens`, `oauth_registrations` (decisions 6, 7); `promptbook-format` moved to `dependencies`
-- [ ] 2.2 `src/live.ts`: `withLiveDocument` over `openDirectConnection`, smallest text edit, the `snapshot` stateless message (decision 4)
-- [ ] 2.3 `src/snapshots.ts` and `routes/snapshots.ts`: list, create, get, restore, undo of a Claude edit (decision 13), delete; `purge` removes expired `claude` and `restore` snapshots (decision 6)
-- [ ] 2.4 `createProject` moved from `routes/projects.ts` into `projects.ts`
-- [ ] 2.5 Db tests: snapshots API, undo (unchanged part reverted with text typed elsewhere kept; changed part 409), restore with a live Hocuspocus client receiving the text and the message, delete rules, bin, purge; `withLiveDocument` with and without an open client
-- [ ] 2.6 Checks (`npm run typecheck`, `npm test`) and hand-back of brief A
+- [x] 2.1 `migrations/003_connector.sql`: `snapshots`, `oauth_clients`, `oauth_grants`, `oauth_codes`, `oauth_tokens`, `oauth_registrations` (decisions 6, 7); `promptbook-format` moved to `dependencies`
+- [x] 2.2 `src/live.ts`: `withLiveDocument` over `openDirectConnection`, smallest text edit, the `snapshot` stateless message (decision 4)
+- [x] 2.3 `src/snapshots.ts` and `routes/snapshots.ts`: list, create, get, restore, undo of a Claude edit (decision 13), delete; `purge` removes expired `claude` and `restore` snapshots (decision 6)
+- [x] 2.4 `createProject` moved from `routes/projects.ts` into `projects.ts`
+- [x] 2.5 Db tests: snapshots API, undo (unchanged part reverted with text typed elsewhere kept; changed part 409), restore with a live Hocuspocus client receiving the text and the message, delete rules, bin, purge; `withLiveDocument` with and without an open client
+- [x] 2.6 Checks (`npm run typecheck`, `npm test`) and hand-back of brief A
 
 ## 3. OAuth authorization server (brief B)
 
