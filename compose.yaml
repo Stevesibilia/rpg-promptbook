@@ -6,7 +6,10 @@
 
 services:
   postgres:
-    image: postgres:18-alpine
+    # Project Hummingbird's PostgreSQL. Its data directory and user differ from
+    # postgres:18-alpine's, so a volume made by that image does not carry over:
+    # run `docker compose down -v` once to start with a fresh one.
+    image: registry.access.redhat.com/hi/postgresql:18
     environment:
       POSTGRES_USER: promptbook
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptbook}
