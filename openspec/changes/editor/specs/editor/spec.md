@@ -25,7 +25,16 @@ selection, and show them on the lines that are. Headings, field labels,
 bold and italic text SHALL be styled; a callout of a type known to the
 template SHALL be drawn as a box with its label and title; the front matter
 SHALL fold to its first four keys and a «▸ N more keys» control while the
-cursor is outside it. The document text SHALL NOT change for display.
+cursor is outside it; a table SHALL be drawn as a table while no selection
+touches its lines, and as source while one does. The document text SHALL
+NOT change for display.
+
+#### Scenario: Table drawn and edited
+
+- **WHEN** the cursor is outside the table of «Mappa delle scene»
+- **THEN** it shows as a table with a header row and no `|` or `---`
+- **AND WHEN** the user clicks one of its cells
+- **THEN** the table shows as source with the cursor in that cell's text
 
 #### Scenario: Marks follow the cursor
 
