@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addInspirationItem,
+  addLogEntry,
+  addQuestionsToTodo,
   addSeedVersion,
+  addTopic,
   createProjectDoc,
   exportFolderName,
   exportProject,
   prepareImport,
   readTodo,
+  saveNote,
   updateTodo,
 } from '../src/index.js';
 import { fixture, project } from './helpers.js';
@@ -106,7 +111,18 @@ describe('exportProject', () => {
     updateTodo(doc, scene!.id, { done: true });
     updateTodo(doc, suno!.id, { due: '2026-10-25', note: 'tre brani\nuno per scena' });
     const files = exportProject(doc, { campaignTitle: gabbiano.title, editedAt: '2026-10-21T10:00:00.000Z' });
-    expect(Object.keys(files)).toEqual(['document.md', 'todo.md', 'seed.md', 'project.json']);
+    expect(Object.keys(files)).toEqual([
+      'document.md',
+      'todo.md',
+      'seed.md',
+      'inspiration.md',
+      'research.md',
+      'brainstorm-log.md',
+      'project.json',
+    ]);
+    expect(files['inspiration.md']).toBe('');
+    expect(files['research.md']).toBe('');
+    expect(files['brainstorm-log.md']).toBe('');
     expect(files['document.md']).toBe('Testo\n');
     expect(files['todo.md']).toBe(
       '- [x] Scrivere le scene\n- [ ] Prompt Suno (due 2026-10-25)\n  tre brani\n  uno per scena\n- [ ] Rilettura\n',
@@ -125,6 +141,114 @@ describe('exportProject', () => {
       createdAt: '2026-10-19T08:00:00.000Z',
       editedAt: '2026-10-21T10:00:00.000Z',
     });
+  });
+
+  it('writes the sources of inspiration, the research and the brainstorm log', () => {
+    const doc = project();
+    addInspirationItem(doc, {
+      kind: 'quote',
+      text: 'Sotto la Sicilia ci sono tre colonne…',
+      why: 'La leggenda di Colapesce',
+      by: 'user',
+      at: '2026-10-19T09:00:00.000Z',
+    });
+    addInspirationItem(doc, {
+      kind: 'link',
+      text: 'Il terremoto del 1908',
+      url: 'https://it.wikipedia.org/wiki/Terremoto_di_Messina_del_1908',
+      why: '',
+      by: 'claude',
+      at: '2026-10-19T10:00:00.000Z',
+    });
+    addTopic(doc, 'Colapesce', '2026-10-19T09:00:00.000Z');
+    addTopic(doc, 'Il dialetto messinese', '2026-10-19T09:01:00.000Z');
+    saveNote(doc, {
+      topic: 'colapesce',
+      summary: 'Il pescatore che regge la Sicilia.',
+      facts: ['Tre colonne', 'Una è incrinata\ndal fuoco'],
+      sources: [
+        { title: 'Calvino, Fiabe italiane', url: 'https://example.org/calvino', accessed: '2026-10-19' },
+        { title: 'Croce', url: 'https://example.org/croce', accessed: '' },
+      ],
+      by: 'claude',
+      at: '2026-10-19T11:00:00.000Z',
+    });
+    const entry = addLogEntry(doc, {
+      title: 'Il finale a Capo Peloro',
+      ideas: ['La terza scossa'],
+      decisions: [],
+      rejected: [{ idea: 'Un drago', why: 'fuori tono' }],
+      questions: ['Chi salva Neri?'],
+      by: 'claude',
+      at: '2026-10-19T12:00:00.000Z',
+    });
+    addQuestionsToTodo(doc, entry.id);
+
+    const files = exportProject(doc, { campaignTitle: null });
+    expect(files['inspiration.md']).toBe(
+      [
+        '## Link · by Claude · 2026-10-19T10:00:00.000Z',
+        '',
+        'Il terremoto del 1908',
+        '',
+        'URL: <https://it.wikipedia.org/wiki/Terremoto_di_Messina_del_1908>',
+        '',
+        '## Quote · by you · 2026-10-19T09:00:00.000Z',
+        '',
+        'Sotto la Sicilia ci sono tre colonne…',
+        '',
+        'Why: La leggenda di Colapesce',
+        '',
+      ].join('\n'),
+    );
+    expect(files['research.md']).toBe(
+      [
+        '# Topics',
+        '',
+        '- Colapesce (noted)',
+        '- Il dialetto messinese (to research)',
+        '',
+        '# colapesce',
+        '',
+        'by Claude · created 2026-10-19T11:00:00.000Z · edited 2026-10-19T11:00:00.000Z',
+        '',
+        'Il pescatore che regge la Sicilia.',
+        '',
+        '## Facts',
+        '',
+        '- Tre colonne',
+        '- Una è incrinata',
+        '  dal fuoco',
+        '',
+        '## Sources',
+        '',
+        '- Calvino, Fiabe italiane <https://example.org/calvino>, accessed 2026-10-19',
+        '- Croce <https://example.org/croce>',
+        '',
+      ].join('\n'),
+    );
+    expect(files['brainstorm-log.md']).toBe(
+      [
+        '# Il finale a Capo Peloro',
+        '',
+        '2026-10-19T12:00:00.000Z · via Claude',
+        '',
+        '## Ideas',
+        '',
+        '- La terza scossa',
+        '',
+        '## Rejected',
+        '',
+        '- Un drago (why: fuori tono)',
+        '',
+        '## Open questions',
+        '',
+        '- Chi salva Neri?',
+        '',
+        'Open questions added to the to-do list.',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('names folders after the title, safely and uniquely', () => {

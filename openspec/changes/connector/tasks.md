@@ -1,9 +1,9 @@
 ## 1. Project document and targets (brief A)
 
-- [ ] 1.1 `packages/project/src/doc.ts` and `model.ts`: `inspiration`, `researchTopics`, `researchNotes`, `brainstorm` with their types, readers, writers, `sameName` and `addQuestionsToTodo`; exported from `index.ts` (design decision 2)
-- [ ] 1.2 `packages/project/src/targets.ts`: `targetsOf`, `findTarget` for adventures, one-shots and campaigns (decision 3)
-- [ ] 1.3 `export.ts`: `inspiration.md`, `research.md`, `brainstorm-log.md` (decision 16)
-- [ ] 1.4 Unit tests: every reader and writer, mistyped values, an older document, targets on Sabaoth and on a campaign skeleton, export files
+- [x] 1.1 `packages/project/src/doc.ts` and `model.ts`: `inspiration`, `researchTopics`, `researchNotes`, `brainstorm` with their types, readers, writers, `sameName` and `addQuestionsToTodo`; exported from `index.ts` (design decision 2)
+- [x] 1.2 `packages/project/src/targets.ts`: `targetsOf`, `findTarget` for adventures, one-shots and campaigns (decision 3)
+- [x] 1.3 `export.ts`: `inspiration.md`, `research.md`, `brainstorm-log.md` (decision 16)
+- [x] 1.4 Unit tests: every reader and writer, mistyped values, an older document, targets on Sabaoth and on a campaign skeleton, export files
 
 ## 2. Snapshots and the live write path (brief A)
 

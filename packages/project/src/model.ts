@@ -52,3 +52,99 @@ export interface CampaignRef {
   id: string;
   title: string;
 }
+
+// Who wrote an item of the inspiration, the research or the brainstorm log.
+export const authors = ['user', 'claude'] as const;
+export type Author = (typeof authors)[number];
+
+export const inspirationKinds = ['link', 'quote', 'image', 'note'] as const;
+export type InspirationKind = (typeof inspirationKinds)[number];
+
+export interface InspirationItem {
+  id: string;
+  kind: InspirationKind;
+  // The title of a link or an image, the quote, or the note.
+  text: string;
+  // http or https for a link or an image, '' for the other kinds.
+  url: string;
+  why: string;
+  by: Author;
+  // ISO date-time.
+  at: string;
+}
+
+export const topicStates = ['open', 'noted'] as const;
+export type TopicState = (typeof topicStates)[number];
+
+export interface ResearchTopic {
+  id: string;
+  name: string;
+  state: TopicState;
+  // ISO date-time.
+  at: string;
+}
+
+export interface Source {
+  title: string;
+  url: string;
+  // YYYY-MM-DD, or '' when not known.
+  accessed: string;
+}
+
+export interface ResearchNote {
+  id: string;
+  topic: string;
+  summary: string;
+  facts: string[];
+  sources: Source[];
+  by: Author;
+  // ISO date-times.
+  at: string;
+  editedAt: string;
+}
+
+export interface Rejected {
+  idea: string;
+  why: string;
+}
+
+export interface LogEntry {
+  id: string;
+  // ISO date-time.
+  at: string;
+  title: string;
+  ideas: string[];
+  decisions: string[];
+  rejected: Rejected[];
+  questions: string[];
+  by: Author;
+  // True once the open questions went to the to-do list.
+  todoAdded: boolean;
+}
+
+// The limits the writers check and the server's tool schemas repeat (design
+// decision 2): characters for texts, items for lists.
+export const LIMITS = {
+  text: 2000,
+  summary: 10_000,
+  name: 200,
+  url: 2048,
+  list: 50,
+  sources: 30,
+} as const;
+
+// The WHATWG URL parser, in browsers, Node and Electron alike; typed here for
+// the same reason as randomId in doc.ts.
+const parseUrl = (value: string): { protocol: string } =>
+  new (globalThis as unknown as { URL: new (value: string) => { protocol: string } }).URL(value);
+
+// An absolute http or https address, the only kind an item may link to.
+export function isWebUrl(value: string): boolean {
+  if (value.length > LIMITS.url) return false;
+  try {
+    const { protocol } = parseUrl(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
