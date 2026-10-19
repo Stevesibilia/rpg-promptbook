@@ -4,6 +4,7 @@ import { categories, type Category, type Settings } from 'promptbook-project';
 import { api, ApiError, exportAllUrl } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
+import { ConnectedApps } from '../connect/ConnectedApps.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
@@ -15,6 +16,7 @@ const sections = [
   { key: 'documents', label: 'Document templates' },
   { key: 'author', label: 'Author and licence' },
   { key: 'account', label: 'Account' },
+  { key: 'apps', label: 'Connected apps' },
   { key: 'sync', label: 'Sync and storage' },
   { key: 'appearance', label: 'Appearance' },
 ] as const;
@@ -80,6 +82,7 @@ export function SettingsPage() {
               <AuthorDefaults key={state?.revision} settings={settings} onSave={save} />
             )}
             {section === 'account' && <Account />}
+            {section === 'apps' && <ConnectedApps />}
             {section === 'sync' && <SyncStorage />}
             {section === 'appearance' && <Appearance />}
             {!settings && (section === 'todo' || section === 'author') && (
