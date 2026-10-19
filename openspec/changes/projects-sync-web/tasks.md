@@ -25,7 +25,7 @@
 - [ ] 3.4 Sign-out and password change close that session's or the other sessions' connections
 - [ ] 3.5 `seed <username>` (decision 10)
 - [ ] 3.6 Tests with two providers: two-client merge, offline edits merged on reconnect, refused without session, refused from a foreign origin, closed on delete and on sign-out, restart keeps edits, summary follows a tick, store failure and recovery messages, another user's project answers 404, purge after 30 days, import and export routes
-- [ ] 3.7 Root `Dockerfile`, `compose.yaml`, `.env.example` (decision 10); `docker compose up -d --build` then `seed` works on a clean volume
+- [ ] 3.7 Root `Dockerfile`, `compose.yaml`, `.env.example` (decision 10); `docker compose up -d --build` then `seed` works on a clean volume; a `npm run build -w promptbook-server` step in the CI `check` job
 
 ## 4. Web client
 

@@ -55,7 +55,10 @@ This change has to run locally for the owner before #3 and #6 exist.
   function that reads or changes it, the skeletons, the default settings, the
   summary, import preparation and export. Pure TypeScript, no Node-only or
   DOM-only imports, exports source like `promptbook-format`. Depends on
-  `yjs`, `promptbook-format`, `fractional-indexing`.
+  `yjs`, `promptbook-format`, `fractional-indexing`, `yaml` (amended at
+  review of groups 1 and 2: the skeleton writes front matter with `yaml`'s
+  stringify so titles with a colon are quoted, and `prepareImport` reads the
+  converted front matter with it).
 - `packages/server` (`promptbook-server`): Fastify, Postgres, Hocuspocus,
   REST API, command line.
 - `packages/web` (`promptbook-web`): React, Vite, React Router.
@@ -99,7 +102,13 @@ parsing. The editor (#3) may add a hint when they differ.
 `category` is set at creation and never changed by the UI. Invalid values
 met while summarising (an unknown status, a `campaignId` that is not a
 campaign of the same user, a campaign with a campaign) are summarised as
-`draft` and stand-alone; the document is not rewritten.
+`draft` and stand-alone; the document is not rewritten. An unknown category
+reads as `adventure` (amended at review of groups 1 and 2); the server never
+writes the `category` column from a summary, only at creation, since the
+category is fixed. A campaign in the bin is not in the `campaigns` passed to
+`summarize`, and the list query also treats a link to a campaign in the bin
+as stand-alone, because the children's summaries are not recomputed when
+their campaign is deleted or restored.
 
 ### 3. `promptbook-project` API
 
@@ -117,7 +126,9 @@ copyright, licence })`: adventure and one-shot from
   `### S1. Prima scena` under the scenes section (the format needs a name
   after the id), the appendix); campaign from the fixed skeleton in the
   spec. `formato` is `avventura` or `one-shot`.
-- `defaultSettings`: the to-do templates and empty defaults from the spec.
+- `defaultSettings()`: the to-do templates and empty defaults from the
+  spec, a fresh object on every call so no caller can change the shared
+  defaults (amended at review of groups 1 and 2).
 - `summarize(doc, { campaigns }) → Summary`: the fields of the projects row
   (decision 6). Words: whitespace-separated tokens containing a letter, in
   the document after the front matter.
