@@ -27,6 +27,13 @@
   --amber: #f5a623;
   --danger: #ff5a6a;
   --info: #6aa8ff;
+  /* The editor's callout boxes: read-aloud, handout, box. */
+  --leggi: rgba(31, 185, 138, 0.1);
+  --leggi-line: #1fb98a;
+  --doc: rgba(245, 166, 35, 0.09);
+  --doc-line: #f5a623;
+  --box: rgba(106, 168, 255, 0.09);
+  --box-line: #6aa8ff;
   --radius: 6px;
   --font: 'Barlow', system-ui, sans-serif;
   --display: 'Barlow Condensed', 'Barlow', sans-serif;
@@ -50,5 +57,8 @@
   --amber: #b9740a;
   --danger: #d42a3c;
   --info: #2f6fd1;
+  --leggi: rgba(15, 143, 105, 0.08);
+  --doc: rgba(185, 116, 10, 0.08);
+  --box: rgba(47, 111, 209, 0.07);
   color-scheme: light;
 }

@@ -6,20 +6,22 @@ export function useSync(): SyncSnapshot {
   return useSyncExternalStore(registry.subscribe, registry.getSnapshot);
 }
 
-// A project's document for as long as the component shows it.
+// A project's document for as long as the component shows it. Right after
+// the id changes, and before the effect opens the new one, the previous
+// project's document is not handed out under the new id.
 export function useProjectDoc(id: string | null): { doc: Y.Doc | null; status: DocStatus } {
-  const [doc, setDoc] = useState<Y.Doc | null>(null);
+  const [open, setOpen] = useState<{ id: string; doc: Y.Doc } | null>(null);
   useSync();
   useEffect(() => {
-    if (!id) return setDoc(null);
+    if (!id) return setOpen(null);
     const entry = registry.open(id);
-    setDoc(entry.doc);
+    setOpen({ id, doc: entry.doc });
     return () => {
-      setDoc(null);
+      setOpen(null);
       registry.release(id);
     };
   }, [id]);
-  return { doc, status: id ? registry.docStatus(id) : 'loading' };
+  return { doc: open && open.id === id ? open.doc : null, status: id ? registry.docStatus(id) : 'loading' };
 }
 
 // A value read from a document, read again after every change to it. `read`

@@ -12,8 +12,9 @@ The web client SHALL follow [docs/mockups/projects.html](../../../docs/mockups/p
 in the browser shell: the Emerald tokens of the mockups (dark by default,
 light available), Barlow, Barlow Condensed, Spectral and IBM Plex Mono served
 by the app itself, the top bar, the rail, the status bar, and the screens
-below. Parts the mockup tags 2b, the ⌘K hint and the rail's Inspiration,
-Research, Images and music and Brainstorm log entries SHALL NOT appear.
+below. Parts the mockup tags 2b and the rail's Inspiration, Research, Images
+and music and Brainstorm log entries SHALL NOT appear. The ⌘K hint SHALL
+appear only on the project page, where the command palette exists.
 
 #### Scenario: Fonts offline from the internet
 
@@ -130,18 +131,3 @@ and Appearance (Dark, Light, System, remembered in the browser).
 - **WHEN** the user adds «Stampare le schede» to the one-shot template and
   reloads the page
 - **THEN** the item is still there
-
-### Requirement: Project page with a plain editor
-
-Opening a project SHALL show its page: the top bar with the campaign and
-title as a breadcrumb, category, status menu and sync pill; and the prep
-document in a plain CodeMirror 6 Markdown editor bound to the document's
-Yjs text, in Spectral, about 70 characters wide, with a line under the top
-bar saying that the full editor comes in a later version. The rail's Projects
-entry SHALL return to the list.
-
-#### Scenario: Edit in two tabs
-
-- **WHEN** the same project page is open in two tabs and the user types in
-  one
-- **THEN** the text appears in the other without a reload
