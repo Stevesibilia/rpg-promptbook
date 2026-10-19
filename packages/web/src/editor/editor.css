@@ -1,0 +1,245 @@
+/* The project page's editor, from docs/mockups/editor.html. */
+
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.top-meta select {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* The editor */
+.editor {
+  max-width: calc(70ch + 80px);
+  margin: 0 auto;
+  padding: 28px 32px 120px 16px;
+}
+.editor .cm-editor {
+  background: transparent;
+  color: var(--text);
+  font: 17px/26px var(--prose);
+}
+.editor .cm-editor.cm-focused {
+  outline: none;
+}
+.editor .cm-scroller {
+  font-family: var(--prose);
+  line-height: 26px;
+}
+.editor .cm-content {
+  caret-color: var(--primary);
+}
+.editor .cm-cursor {
+  border-left-color: var(--primary);
+  border-left-width: 2px;
+}
+.editor .cm-placeholder {
+  color: var(--faint);
+}
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--primary) 25%, transparent) !important;
+}
+.editor .cm-activeLine {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+/* Headings and field labels */
+.editor .cm-line.cm-h1 {
+  font: 700 30px/40px var(--display);
+  letter-spacing: 0.02em;
+  padding-top: 18px;
+}
+.editor .cm-line.cm-h2 {
+  font: 700 24px/34px var(--display);
+  letter-spacing: 0.02em;
+  padding-top: 18px;
+}
+.editor .cm-line.cm-h3 {
+  font: 600 21px/30px var(--prose);
+  padding-top: 14px;
+}
+.editor .cm-line.cm-h4 {
+  font: 600 18px/28px var(--prose);
+  padding-top: 8px;
+}
+.editor .cm-sid {
+  font: 600 14px var(--mono);
+  color: var(--primary);
+}
+.editor .cm-fl,
+.editor .cm-fl * {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Front matter */
+.editor .cm-line.cm-fm {
+  font: 13px/26px var(--mono);
+  color: var(--muted);
+  background: var(--surface);
+  border-left: 3px solid var(--border);
+  padding-left: 10px;
+}
+.editor .cm-line.cm-fm-fence {
+  color: var(--faint);
+}
+.editor .cm-fm-key {
+  color: var(--info);
+}
+.editor .cm-fm-more {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: 13px/26px var(--mono);
+  color: var(--faint);
+  background: var(--surface);
+  border-left: 3px solid var(--border);
+  padding: 0 0 0 16px;
+}
+.editor .cm-fm-more:hover {
+  color: var(--primary);
+}
+
+/* Quotes, and callout boxes */
+.editor .cm-quote {
+  color: var(--muted);
+}
+.editor .cm-callout .cm-quote {
+  color: inherit;
+}
+.editor .cm-line.cm-callout {
+  border-left: 3px solid var(--box-line);
+  background: var(--box);
+  padding-left: 14px;
+  padding-right: 14px;
+  border-radius: 0;
+}
+.editor .cm-line.cm-callout-head {
+  padding-top: 4px;
+  border-top-right-radius: var(--radius);
+}
+.editor .cm-line.cm-callout-end {
+  padding-bottom: 8px;
+  border-bottom-right-radius: var(--radius);
+}
+.editor .cm-line.cm-callout-readAloud {
+  border-left-color: var(--leggi-line);
+  background: var(--leggi);
+}
+.editor .cm-line.cm-callout-readAloud:not(.cm-callout-head) {
+  font-style: italic;
+}
+.editor .cm-line.cm-callout-handout {
+  border-left-color: var(--doc-line);
+  background: var(--doc);
+}
+.editor .cm-line.cm-callout-side {
+  border-left-style: dashed;
+}
+.editor .cm-callout-label {
+  font: 600 12px/24px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--box-line);
+}
+.editor .cm-callout-readAloud .cm-callout-label {
+  color: var(--leggi-line);
+}
+.editor .cm-callout-handout .cm-callout-label {
+  color: var(--doc-line);
+}
+
+/* Problems: a dot in the margin, a wavy underline, the tooltip. */
+.editor .cm-gutters {
+  background: transparent;
+  border: 0;
+}
+.editor .cm-gutter-lint {
+  width: 16px;
+}
+.editor .cm-gutter-lint .cm-gutterElement {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.editor .cm-editor .cm-lint-marker {
+  content: normal !important;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  margin: 9px 0 0 2px;
+  align-self: flex-start;
+}
+.editor .cm-editor .cm-lint-marker-error {
+  background: var(--danger);
+}
+.editor .cm-editor .cm-lintRange {
+  background-image: none !important;
+  text-decoration: underline wavy;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 4px;
+  padding-bottom: 0;
+}
+.editor .cm-editor .cm-lintRange-error {
+  text-decoration-color: var(--danger);
+}
+.editor .cm-editor .cm-lintRange-warning {
+  text-decoration-color: var(--amber);
+}
+.editor .cm-editor .cm-lintRange-active {
+  background-color: color-mix(in srgb, var(--amber) 12%, transparent);
+}
+.editor .cm-editor .cm-tooltip {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+}
+.editor .cm-editor .cm-tooltip-lint {
+  max-width: 380px;
+  padding: 0;
+}
+.editor .cm-editor .cm-diagnostic {
+  font: 13px/1.4 var(--font);
+  padding: 8px 10px;
+  border-left: 0;
+  margin: 0;
+  white-space: normal;
+}
+.editor .cm-editor .cm-diagnosticText {
+  display: block;
+  font-weight: 600;
+}
+.editor .cm-editor .cm-diagnostic-error .cm-diagnosticText {
+  color: var(--danger);
+}
+.editor .cm-editor .cm-diagnostic-warning .cm-diagnosticText {
+  color: var(--amber);
+}
+.editor .cm-editor .cm-diagnosticText[data-stale]::after {
+  content: attr(data-stale);
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.editor .cm-editor .cm-diagnosticAction {
+  display: inline-block;
+  margin: 6px 6px 0 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--primary);
+  font: 12.5px var(--font);
+}
+.editor .cm-editor .cm-diagnosticAction:hover {
+  border-color: var(--primary);
+}

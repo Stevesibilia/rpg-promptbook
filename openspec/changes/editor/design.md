@@ -150,7 +150,7 @@ tree (not from the format model, so it follows every keystroke), only for
   of its lines (`cm-callout`, `cm-callout-<role>`, `cm-callout-side` for
   `column: 'side'`), drawn as the mockup's boxes. Off the active lines its
   first line shows the callout's `label` and title as a widget (for example
-  «Documento · La lettera di Neri») in place of `[!documento] La lettera di
+  «Documento da consegnare · La lettera di Neri») in place of `[!documento] La lettera di
 Neri`. An unknown type is a plain quote; the checks flag it.
 - **Front matter:** with no selection inside it, it shows its fences faint,
   its first four key lines, and a «▸ N more keys» widget; a click on the

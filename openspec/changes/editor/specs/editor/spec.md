@@ -38,7 +38,7 @@ cursor is outside it. The document text SHALL NOT change for display.
 
 - **WHEN** a scene holds `> [!documento] La lettera di Neri` and the cursor
   is elsewhere
-- **THEN** it shows as a box headed «Documento · La lettera di Neri»
+- **THEN** it shows as a box headed «Documento da consegnare · La lettera di Neri»
 
 ### Requirement: Problems in the editor
 

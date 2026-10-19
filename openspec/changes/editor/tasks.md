@@ -1,10 +1,10 @@
 ## 1. Analysis, preview and problems
 
-- [ ] 1.1 Dependencies `@codemirror/lint` and `@codemirror/autocomplete` in `promptbook-web`; `src/editor/` replacing `src/project/Editor.tsx`, `EditorPage.tsx` rendered by `ProjectPage.tsx` (design decision 1); the `.later` notice removed
-- [ ] 1.2 `parse.worker.ts`, its client and the `analysis` state field: 250 ms debounce, one request in flight, fresh and stale results, synchronous parse for writes (decision 3); campaigns not parsed (decision 2)
-- [ ] 1.3 Live preview `ViewPlugin`: active lines, headings, bold and italic, field labels, callout boxes and header widget, front matter fold (decision 4); the hidden ranges built by a function of the state
-- [ ] 1.4 Diagnostics, gutter, themed underline and tooltip, fix actions through `fixes.ts`, F8 and Shift-F8 (decision 5)
-- [ ] 1.5 Tests: preview hidden ranges; `fixes.ts` fresh, stale found again, stale gone; the worker client's ordering with a fake worker
+- [x] 1.1 Dependencies `@codemirror/lint` and `@codemirror/autocomplete` in `promptbook-web`; `src/editor/` replacing `src/project/Editor.tsx`, `EditorPage.tsx` rendered by `ProjectPage.tsx` (design decision 1); the `.later` notice removed
+- [x] 1.2 `parse.worker.ts`, its client and the `analysis` state field: 250 ms debounce, one request in flight, fresh and stale results, synchronous parse for writes (decision 3); campaigns not parsed (decision 2)
+- [x] 1.3 Live preview `ViewPlugin`: active lines, headings, bold and italic, field labels, callout boxes and header widget, front matter fold (decision 4); the hidden ranges built by a function of the state
+- [x] 1.4 Diagnostics, gutter, themed underline and tooltip, fix actions through `fixes.ts`, F8 and Shift-F8 (decision 5)
+- [x] 1.5 Tests: preview hidden ranges; `fixes.ts` fresh, stale found again, stale gone; the worker client's ordering with a fake worker
 
 ## 2. Layout, status bar and focus mode
 
