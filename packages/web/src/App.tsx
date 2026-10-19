@@ -6,6 +6,7 @@ import { AuthContext, type Auth } from './auth/context.js';
 import { SIGNED_IN_PATH, singleFlight } from './auth/oidc.js';
 import { SignedInPage } from './auth/SignedInPage.js';
 import { SignInPage } from './auth/SignInPage.js';
+import { AuthorizePage } from './connect/AuthorizePage.js';
 import { BinPage } from './projects/BinPage.js';
 import { ProjectsPage } from './projects/ProjectsPage.js';
 import { SettingsPage } from './settings/SettingsPage.js';
@@ -115,8 +116,9 @@ export function App() {
         <Route path="/bin" element={<BinPage />} />
         <Route path="/settings/:section?" element={<SettingsPage />} />
         <Route path={SIGNED_IN_PATH} element={<SignedInPage />} />
+        <Route path="/authorize" element={<AuthorizePage />} />
         <Route
-          path="/projects/:id"
+          path="/projects/:id/:view?"
           element={
             <Suspense fallback={null}>
               <ProjectPage />

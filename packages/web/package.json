@@ -27,6 +27,7 @@
     "@myriaddreamin/typst-ts-renderer": "0.8.0-rc3",
     "@myriaddreamin/typst-ts-web-compiler": "0.8.0-rc3",
     "@myriaddreamin/typst.ts": "0.8.0-rc3",
+    "diff": "9.0.0",
     "promptbook-format": "^0.0.0",
     "promptbook-layout": "^0.0.0",
     "promptbook-project": "^0.0.0",

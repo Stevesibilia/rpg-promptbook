@@ -180,7 +180,15 @@ describe('the bin', () => {
        values ('old', 'h', 'n', 'v', '/', now() - interval '1 second'), ('live', 'h', 'n', 'v', '/', now() + interval '10 minutes')`,
     );
 
-    expect(await purge(db)).toEqual({ projects: 1, loginFailures: 1, oidcLogins: 1 });
+    expect(await purge(db)).toEqual({
+      projects: 1,
+      loginFailures: 1,
+      oidcLogins: 1,
+      snapshots: 0,
+      oauthCodes: 0,
+      oauthTokens: 0,
+      oauthRegistrations: 0,
+    });
     expect(await db.query('select state from oidc_logins')).toEqual([{ state: 'live' }]);
     expect((await list(true)).map((p) => p.id)).toEqual([recent.id]);
     expect(await db.query('select 1 from project_docs where project_id = $1', [old.id])).toEqual([]);
@@ -347,8 +355,11 @@ describe('export', () => {
     );
     const files = unzipSync(response.rawPayload);
     expect(Object.keys(files).filter((path) => !path.endsWith('/')).sort()).toEqual([
+      'Pioggia su- Kenmore Street/brainstorm-log.md',
       'Pioggia su- Kenmore Street/document.md',
+      'Pioggia su- Kenmore Street/inspiration.md',
       'Pioggia su- Kenmore Street/project.json',
+      'Pioggia su- Kenmore Street/research.md',
       'Pioggia su- Kenmore Street/seed.md',
       'Pioggia su- Kenmore Street/todo.md',
     ]);

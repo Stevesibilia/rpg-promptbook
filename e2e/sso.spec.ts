@@ -146,3 +146,35 @@ test('with single sign-on off, the password form and the password section stay',
   const config = await page.request.get(`${baseURL}/api/auth/config`);
   expect(await config.json()).toEqual({ signIn: 'password' });
 });
+
+test('signed out, a connector request goes through single sign-on and comes back to its consent page', async ({
+  page,
+}) => {
+  const username = someone('gm');
+  // A request the size of claude.ai's: its callback, a 43-character PKCE
+  // challenge and state, both scopes.
+  const registered = await page.request.post('/api/oauth/register', {
+    data: { client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] },
+  });
+  expect(registered.status()).toBe(201);
+  const { client_id } = (await registered.json()) as { client_id: string };
+  const path = `/authorize?${new URLSearchParams({
+    response_type: 'code',
+    client_id,
+    redirect_uri: 'https://claude.ai/api/mcp/auth_callback',
+    code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+    code_challenge_method: 'S256',
+    state: 'n2sV3m1yQ0ZpYk9sR0pXc2ZtUmJwQ1lQZ3dHb1hTb0E',
+    scope: 'read read_write',
+    resource: `${oidcURL}/api/mcp`,
+  })}`;
+  expect(path.length).toBeLessThan(2048);
+
+  await page.goto(path);
+  await page.getByRole('button', { name: 'Sign in with Authentik' }).click();
+  await atIssuer(page, username);
+  await expect(page.getByRole('heading', { name: 'Claude wants to use your Promptbook' })).toBeVisible();
+  expect(page.url()).toBe(`${oidcURL}${path}`);
+  await expect(page.getByText(`GM ${username} · ${username}`)).toBeVisible();
+  await expect(page.getByText('Signed in through Authentik')).toBeVisible();
+});

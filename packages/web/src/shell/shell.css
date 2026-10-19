@@ -386,3 +386,84 @@
   margin: 0 0 14px;
   color: var(--muted);
 }
+
+/* The banners under the top bar: the shell's alerts, then the page's own. */
+.banners {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+}
+
+/* Claude's edit (connector design decision 13), the mockup's blue strip. */
+.claude-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  background: color-mix(in srgb, var(--info) 12%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--info) 55%, transparent);
+  min-width: 0;
+}
+.claude-banner b {
+  color: var(--info);
+  font-weight: 600;
+}
+.claude-banner b.what {
+  color: var(--text);
+}
+.claude-banner .sep {
+  color: var(--faint);
+}
+.claude-banner .msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.claude-banner .hint-r {
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.claude-banner .warn {
+  color: var(--amber);
+}
+.claude-banner .tb {
+  padding: 3px 8px;
+  font-size: 12.5px;
+}
+.avatar.cl {
+  background: color-mix(in srgb, var(--info) 28%, var(--surface-2));
+}
+.avatar.sm {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  flex: none;
+}
+a.link,
+button.link {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+}
+a.link:hover,
+button.link:hover {
+  text-decoration: underline;
+}
+
+/* The toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  z-index: 45;
+  background: var(--text);
+  color: var(--bg);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  max-width: calc(100vw - 32px);
+}

@@ -43,3 +43,19 @@ export const WarningIcon = icon(
     <path d="M12 10v5M12 18v.5" />
   </>,
 );
+export const InspirationIcon = icon(
+  <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z" />,
+);
+export const LogIcon = icon(<path d="M4 5h16v11H8l-4 4z" />);
+export const HistoryIcon = icon(
+  <>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 2" />
+  </>,
+);
+export const InfoIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v6M12 7.5v.5" />
+  </>,
+);

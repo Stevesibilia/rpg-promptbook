@@ -50,13 +50,15 @@ export function pendingChanges(
     .map((p) => ({ id: p.id, title: p.title, changes: p.unsynced }));
 }
 
-export type StatelessEvent = 'store-failed' | 'stored' | 'deleted' | null;
+export type StatelessEvent = 'store-failed' | 'stored' | 'deleted' | 'snapshot' | null;
 
-// The server's stateless messages: {"type":"store-failed" | "stored" | "deleted"}.
+// The server's stateless messages: {"type":"store-failed" | "stored" |
+// "deleted" | "snapshot"}. A snapshot message also names the snapshot, which
+// the views read again from the API anyway.
 export function readStateless(payload: string): StatelessEvent {
   try {
     const type = (JSON.parse(payload) as { type?: unknown }).type;
-    return type === 'store-failed' || type === 'stored' || type === 'deleted' ? type : null;
+    return type === 'store-failed' || type === 'stored' || type === 'deleted' || type === 'snapshot' ? type : null;
   } catch {
     return null;
   }

@@ -36,3 +36,41 @@ export function shortDate(day: string): string {
 export function purgeDate(deletedAt: string): string {
   return fullDate.format(new Date(new Date(deletedAt).getTime() + 30 * DAY));
 }
+
+// «19 Oct 2026».
+export function longDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : fullDate.format(date);
+}
+
+// «19 Oct 2026 · 21:16», as the brainstorm log dates its entries.
+export function dateAndTime(iso: string, separator = ' · '): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : `${fullDate.format(date)}${separator}${time.format(date)}`;
+}
+
+// «Today 21:14», «Yesterday 09:02», «17 Oct 22:40», «17 Oct 2025 22:40»: when
+// a snapshot was made.
+export function snapshotTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
+  if (days === 0) return `Today ${time.format(date)}`;
+  if (days === 1) return `Yesterday ${time.format(date)}`;
+  const day = date.getFullYear() === now.getFullYear() ? dayMonth.format(date) : fullDate.format(date);
+  return `${day} ${time.format(date)}`;
+}
+
+// «18 Nov», or «18 Nov 2027» in another year.
+export function dayOf(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.getFullYear() === now.getFullYear() ? dayMonth.format(date) : fullDate.format(date);
+}
+
+// A YYYY-MM-DD day as «12 Oct 2026»; '' when it is not one.
+export function longDay(day: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return '';
+  return fullDate.format(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}

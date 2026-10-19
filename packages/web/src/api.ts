@@ -62,6 +62,49 @@ export interface ImportResult {
   imagesNotImported: number;
 }
 
+export type SnapshotKind = 'claude' | 'user' | 'restore';
+
+// A snapshot of the prep document, as GET /api/projects/:id/snapshots lists it.
+export interface SnapshotRow {
+  id: string;
+  kind: SnapshotKind;
+  // user: the name; claude: the target and its title; restore: what was
+  // restored, as «<label> · <ISO date>».
+  label: string;
+  tool: string | null;
+  target: string | null;
+  words: number;
+  createdAt: string;
+  // Null for the user's own.
+  expiresAt: string | null;
+}
+
+export interface Snapshot extends SnapshotRow {
+  text: string;
+}
+
+export type OAuthScope = 'read' | 'read_write';
+
+// An authorization request as the server validated it, for the consent page.
+export interface ConsentRequest {
+  client_name: string;
+  // The host of the client's own address, as text, never a link.
+  client_host: string | null;
+  redirect_host: string;
+  loopback_only: boolean;
+  requested_scopes: OAuthScope[];
+}
+
+// An app the user allowed, as GET /api/auth/grants lists it.
+export interface Grant {
+  id: string;
+  client_name: string;
+  client_uri: string | null;
+  scope: OAuthScope;
+  created_at: string;
+  last_used_at: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -123,7 +166,40 @@ export const api = {
   restoreProject: (id: string) =>
     request<{ project: ProjectRow }>('POST', `/api/projects/${encodeURIComponent(id)}/restore`),
   importNotes: (notes: ImportNote[]) => request<{ results: ImportResult[] }>('POST', '/api/import', { notes }),
+
+  snapshots: (projectId: string, query: { kind?: SnapshotKind; limit?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (query.kind) params.set('kind', query.kind);
+    if (query.limit) params.set('limit', String(query.limit));
+    const search = params.size ? `?${params}` : '';
+    return request<{ snapshots: SnapshotRow[] }>('GET', `${snapshotsPath(projectId)}${search}`);
+  },
+  snapshot: (projectId: string, id: string) =>
+    request<{ snapshot: Snapshot }>('GET', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}`),
+  createSnapshot: (projectId: string, label: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', snapshotsPath(projectId), { label }),
+  // Both answer the restore snapshot of the text they replaced.
+  restoreSnapshot: (projectId: string, id: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}/restore`),
+  undoClaudeEdit: (projectId: string, id: string) =>
+    request<{ snapshot: SnapshotRow }>('POST', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}/undo`),
+  deleteSnapshot: (projectId: string, id: string) =>
+    request<void>('DELETE', `${snapshotsPath(projectId)}/${encodeURIComponent(id)}`),
+
+  // The consent page sends the request's parameters back as it received them;
+  // the server builds the address the browser goes to.
+  consentRequest: (params: URLSearchParams) => request<ConsentRequest>('GET', `/api/oauth/authorize?${params}`),
+  approve: (params: Record<string, string>, grantedScope: OAuthScope) =>
+    request<{ redirect_to: string }>('POST', '/api/oauth/authorize', { ...params, granted_scope: grantedScope }),
+  deny: (params: Record<string, string>) =>
+    request<{ redirect_to: string }>('POST', '/api/oauth/authorize/deny', params),
+  grants: () => request<{ grants: Grant[] }>('GET', '/api/auth/grants'),
+  revokeGrant: (id: string) => request<void>('DELETE', `/api/auth/grants/${encodeURIComponent(id)}`),
+  // The connector's address, as the server names it from PUBLIC_URL.
+  mcpResource: () => request<{ resource: string }>('GET', '/.well-known/oauth-protected-resource'),
 };
+
+const snapshotsPath = (projectId: string) => `/api/projects/${encodeURIComponent(projectId)}/snapshots`;
 
 export const exportUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/export`;
 export const exportAllUrl = '/api/export';

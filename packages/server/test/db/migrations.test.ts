@@ -52,7 +52,7 @@ describe('migrations', () => {
       await hashPassword(PASSWORD),
     ]);
 
-    expect(await runMigrations(old)).toEqual(['002_oidc.sql']);
+    expect(await runMigrations(old)).toEqual(['002_oidc.sql', '003_connector.sql']);
 
     const user = await findUserByUsername(old, 'steve');
     expect(user).toMatchObject({ username: 'steve', displayName: 'Stefano' });

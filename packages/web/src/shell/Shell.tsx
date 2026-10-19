@@ -2,11 +2,30 @@ import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.js';
 import { useSync } from '../sync/hooks.js';
-import { DocumentIcon, ProjectsIcon, SettingsIcon, WarningIcon } from '../ui/icons.js';
+import {
+  DocumentIcon,
+  HistoryIcon,
+  InspirationIcon,
+  LogIcon,
+  ProjectsIcon,
+  SearchIcon,
+  SettingsIcon,
+  WarningIcon,
+} from '../ui/icons.js';
 import { statusBarSync, SyncPill, unsentCount } from './SyncPill.js';
 import './shell.css';
 
-export type RailItem = 'projects' | 'document' | 'settings';
+export type RailItem = 'projects' | 'document' | 'inspiration' | 'research' | 'log' | 'history' | 'settings';
+
+// The rail's entries for the open project (connector design decision 12), with
+// the path under /projects/:id each one opens.
+const projectEntries: { item: RailItem; label: string; path: string; Icon: typeof DocumentIcon }[] = [
+  { item: 'document', label: 'Document', path: '', Icon: DocumentIcon },
+  { item: 'inspiration', label: 'Inspiration', path: '/inspiration', Icon: InspirationIcon },
+  { item: 'research', label: 'Research', path: '/research', Icon: SearchIcon },
+  { item: 'log', label: 'Brainstorm log', path: '/log', Icon: LogIcon },
+  { item: 'history', label: 'History', path: '/history', Icon: HistoryIcon },
+];
 
 // The frame of every signed-in page, as in the mockup: top bar, banner, rail,
 // optional left panel, centre, optional right panel and status bar. Focus
@@ -22,7 +41,8 @@ export function Shell({
   focus = false,
   wideRight = false,
   status,
-  documentLink,
+  project,
+  banner,
   children,
 }: {
   crumbs: ReactNode;
@@ -36,8 +56,10 @@ export function Shell({
   // The right panel at the PDF preview's width.
   wideRight?: boolean;
   status?: ReactNode;
-  // The open project's page, when there is one to go back to.
-  documentLink?: string;
+  // The open project's id: its entries in the rail are enabled.
+  project?: string;
+  // A banner of the page's own under the shell's, such as Claude's edit.
+  banner?: ReactNode;
   children: ReactNode;
 }) {
   const sync = useSync();
@@ -57,7 +79,10 @@ export function Shell({
         {topEnd}
       </header>
 
-      <Banner />
+      <div className="banners">
+        <Banner />
+        {banner}
+      </div>
 
       <nav className="rail" aria-label="Main">
         <button
@@ -68,15 +93,19 @@ export function Shell({
         >
           <ProjectsIcon />
         </button>
-        <button
-          className={rail === 'document' ? 'on' : documentLink ? '' : 'dis'}
-          data-tip={documentLink ? 'Document' : 'Document (open a project first)'}
-          aria-label="Document"
-          disabled={!documentLink && rail !== 'document'}
-          onClick={() => documentLink && navigate(documentLink)}
-        >
-          <DocumentIcon />
-        </button>
+        {projectEntries.map(({ item, label, path, Icon }) => (
+          <button
+            key={item}
+            className={rail === item ? 'on' : project ? '' : 'dis'}
+            data-tip={project ? label : `${label} (open a project first)`}
+            aria-label={label}
+            aria-current={rail === item ? 'page' : undefined}
+            disabled={!project}
+            onClick={() => project && navigate(`/projects/${encodeURIComponent(project)}${path}`)}
+          >
+            <Icon />
+          </button>
+        ))}
         <button
           className={`bottom last${rail === 'settings' ? ' on' : ''}`}
           data-tip="Settings and templates"

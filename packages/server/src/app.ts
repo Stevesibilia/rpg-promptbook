@@ -1,14 +1,18 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import cors, { type FastifyCorsOptions } from '@fastify/cors';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { DiscoveryRequestOptions } from 'openid-client';
-import { authPlugin } from './accounts/auth.js';
+import { authPlugin, isPermissiveCorsPath } from './accounts/auth.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { mcpRoutes } from './routes/mcp.js';
+import { oauthRoutes } from './routes/oauth.js';
 import { oidcRoutes } from './routes/oidc.js';
 import { projectsRoutes } from './routes/projects.js';
 import { settingsRoutes } from './routes/settings.js';
+import { snapshotsRoutes } from './routes/snapshots.js';
 import { transferRoutes } from './routes/transfer.js';
 import { syncPlugin } from './sync.js';
 import { headersPlugin, webPlugin } from './web.js';
@@ -55,6 +59,14 @@ export async function buildApp({ config, db, logger = false, oidcDiscoveryOption
   });
 
   await app.register(headersPlugin, { config });
+  // Before the auth hook, so a preflight to the connector's routes is
+  // answered before anything asks for a session. Any origin, no credentials,
+  // on those routes only; no CORS headers anywhere else.
+  const anonymous: FastifyCorsOptions = { origin: true, credentials: false, exposedHeaders: ['WWW-Authenticate'] };
+  await app.register(cors, {
+    delegator: (req: FastifyRequest, done: (error: Error | null, options?: FastifyCorsOptions) => void) =>
+      done(null, isPermissiveCorsPath(req.url.split('?')[0]!) ? anonymous : { origin: false }),
+  });
   await app.register(authPlugin, { config, db });
   await app.register(syncPlugin, { config, db });
   await app.register(healthRoutes, { db, config });
@@ -65,6 +77,9 @@ export async function buildApp({ config, db, logger = false, oidcDiscoveryOption
   await app.register(settingsRoutes, { db });
   await app.register(projectsRoutes, { db, sync: app.sync });
   await app.register(transferRoutes, { db, sync: app.sync });
+  await app.register(snapshotsRoutes, { db, sync: app.sync });
+  await app.register(oauthRoutes, { config, db });
+  await app.register(mcpRoutes, { config, db, sync: app.sync });
   await app.register(webPlugin, { config });
   return app;
 }

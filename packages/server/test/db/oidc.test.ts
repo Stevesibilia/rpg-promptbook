@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { allowInsecureRequests } from 'openid-client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { PUBLIC_ROUTES } from '../../src/accounts/auth.js';
+import { OAUTH_ROUTES, PUBLIC_ROUTES } from '../../src/accounts/auth.js';
 import {
   createOidcProvider,
   findOrCreateOidcUser,
@@ -511,11 +511,11 @@ describe('single sign-on: the rest of the API', () => {
     expect(refused.json().error).toBe('password_sign_in_off');
   });
 
-  it('keeps every route but the public ones behind a session', async () => {
+  it('keeps every route but the public and the OAuth ones behind a session', async () => {
     const app = await ssoApp();
     const api = [...app.routeList].filter((route) => route.includes(' /api') && !route.startsWith('HEAD '));
     for (const route of PUBLIC_ROUTES) expect(api).toContain(route);
-    for (const route of api.filter((r) => !PUBLIC_ROUTES.has(r))) {
+    for (const route of api.filter((r) => !PUBLIC_ROUTES.has(r) && !OAUTH_ROUTES.has(r))) {
       const [method, url] = route.split(' ') as ['GET', string];
       const response = await app.inject({
         method,

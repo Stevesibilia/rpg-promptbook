@@ -5,10 +5,18 @@ import { categories, createProjectDoc, exportFolderName, exportProject, prepareI
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db } from '../db.js';
-import { campaignsOf, getProject, insertProject, listProjects, loadProjectDoc, type ProjectRow } from '../projects.js';
+import {
+  campaignFor,
+  campaignsOf,
+  getProject,
+  insertProject,
+  listProjects,
+  loadProjectDoc,
+  type ProjectRow,
+} from '../projects.js';
 import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
-import { campaignFor, NOT_FOUND } from './projects.js';
+import { NOT_FOUND } from './projects.js';
 import { getSettings } from './settings.js';
 
 // Markdown import and export (design decision 7).

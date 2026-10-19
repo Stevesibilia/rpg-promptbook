@@ -3,15 +3,16 @@ import type { EditorView } from '@codemirror/view';
 import type * as Y from 'yjs';
 import { TodoList } from '../projects/TodoList.js';
 import { Checks } from './Checks.js';
+import { ResearchSection } from './ResearchSection.js';
 import { SeedView } from './SeedView.js';
 import type { UpdateSource } from './StatusBar.js';
 import { ThisScene } from './ThisScene.js';
 
-export type SectionId = 'scene' | 'checks' | 'todo' | 'seed';
+export type SectionId = 'scene' | 'checks' | 'todo' | 'research' | 'seed';
 export type Sections = Record<SectionId, boolean>;
 
 export const SECTIONS_KEY = 'promptbook.editor.sections';
-const initial: Sections = { scene: true, checks: true, todo: true, seed: false };
+const initial: Sections = { scene: true, checks: true, todo: true, research: false, seed: false };
 
 // The inspector's sections open or closed, remembered in this browser like
 // the panels.
@@ -70,7 +71,8 @@ function TodoSection({ doc, open, onToggle }: { doc: Y.Doc; open: boolean; onTog
   );
 }
 
-// The right panel (design decision 8). A campaign shows To-do and Seed only.
+// The right panel (design decision 8; Research from the connector's decision
+// 14). A campaign shows To-do and Seed only.
 export function Inspector({
   doc,
   projectId,
@@ -97,6 +99,16 @@ export function Inspector({
         </>
       )}
       <TodoSection doc={doc} open={sections.todo} onToggle={(o) => setSection('todo', o)} />
+      {checked && (
+        <ResearchSection
+          doc={doc}
+          projectId={projectId}
+          view={view}
+          updates={updates}
+          open={sections.research}
+          onToggle={(o) => setSection('research', o)}
+        />
+      )}
       <SeedView doc={doc} projectId={projectId} open={sections.seed} onToggle={(o) => setSection('seed', o)} />
     </div>
   );

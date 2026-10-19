@@ -3,7 +3,7 @@ import { baseURL, password, username } from './stack.js';
 
 // E2E_CPU_THROTTLE=3 runs the pages that sign in on a CPU three times
 // slower, through Chrome's DevTools protocol, to bring out timing races.
-async function throttle(page: Page): Promise<void> {
+export async function throttle(page: Page): Promise<void> {
   const rate = Number(process.env.E2E_CPU_THROTTLE ?? 1);
   if (rate <= 1) return;
   const session = await page.context().newCDPSession(page);
