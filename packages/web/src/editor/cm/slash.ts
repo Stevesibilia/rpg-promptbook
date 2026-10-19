@@ -243,7 +243,14 @@ function source(template: Template, checked: boolean): CompletionSource {
 }
 
 // The completion: the `/` menu, and for an adventure or a one-shot the sheet
-// names; a campaign's menu has the headings only.
+// names; a campaign's menu has the headings only. No delays: CodeMirror
+// queries after 100 ms without typing and ignores Enter for 75 ms after the
+// menu opens, so a quick «/new⏎» would type a line break.
 export function slashMenu(template: Template, checked: boolean): Extension {
-  return autocompletion({ override: [source(template, checked)], icons: false });
+  return autocompletion({
+    override: [source(template, checked)],
+    icons: false,
+    activateOnTypingDelay: 0,
+    interactionDelay: 0,
+  });
 }

@@ -199,7 +199,7 @@ test('problem from the list', async ({ page }) => {
 test('new scene from the menu', async ({ page }) => {
   await projectWith(page, sabaoth);
   await outlineItem(page, 'S5').click();
-  // A new line above the heading of S5: in the scenes section, in no scene.
+  // A new line above the heading of S5: the end of scene S4.
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.type('/');
@@ -220,6 +220,12 @@ test('new scene from the menu', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(cursorLine(page)).toHaveText('/');
+
+  // Typed quickly without waiting for the menu, Enter still picks from it.
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('/new', { delay: 50 });
+  await page.keyboard.press('Enter');
+  await expect(cursorLine(page)).toHaveText(/^### S7\.\s*$/);
 });
 
 test('sheet matches the template', async ({ page }) => {
