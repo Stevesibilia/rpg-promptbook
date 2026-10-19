@@ -5,7 +5,7 @@ type: application
 
 # The chart's own version. Bump it for chart changes; appVersion is the
 # fallback image tag when a deploy does not set image.tag.
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.1.0"
 
 home: https://github.com/Stevesibilia/rpg-promptbook

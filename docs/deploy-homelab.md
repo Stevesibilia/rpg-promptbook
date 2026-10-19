@@ -20,6 +20,12 @@ rollback, a restore and the yearly token renewal.
 The chart is `charts/rpg-promptbook`; `values-homelab.yaml` holds the homelab
 settings. The pipeline is `.gitlab-ci.yml`, and only a tag `vX.Y.Z` starts it.
 
+The server image is built on [Project Hummingbird](https://hummingbird-project.io/)
+images from `registry.access.redhat.com/hi`: `hi/nodejs:26-builder` for the
+build stages and `hi/nodejs:26` for the runtime, and `hi/postgresql:18` for the
+pod's `wait-for-database` init container. Every build pulls them from Red Hat's
+registry, which needs no sign-in, and the pod runs as user 65532.
+
 ## One-time setup
 
 Done once, before the first tag.
