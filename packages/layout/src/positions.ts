@@ -24,14 +24,17 @@ export function sortPositions(positions: Position[]): Position[] {
     .map(({ position }) => position);
 }
 
-// The page that prints the text at `offset`: the page of the last position
-// whose source starts at or before it. Page 1 when nothing does.
+// The page that prints the text at `offset`: the page of the position whose
+// source starts nearest at or before it, the first in page order on a tie.
+// A block the template prints on a later page with an earlier source (a
+// side box, a moved part) does not win over the block the offset is in.
+// Page 1 when nothing starts at or before it.
 export function pageOf(positions: Position[], offset: number): number {
-  let page = 1;
+  let found: Position | null = null;
   for (const position of positions) {
-    if (position.from <= offset) page = position.page;
+    if (position.from <= offset && (!found || position.from > found.from)) found = position;
   }
-  return page;
+  return found?.page ?? 1;
 }
 
 // What was printed at `y` points from the top of `page`: the last position on

@@ -158,7 +158,12 @@ printed, as in the skill. Colours, sizes, margins and fonts come from `stile.css
   `--grigio #4a463f`, `--filo #8a857c`.
 - Edge tabs on the right edge, one slot per entry of `tabs`, the current one
   filled; the footer «Title · section» on the left, page number on the right.
-- Task list items print as ☐ and ☑ (cmarker's `scope` override), not `[ ]`.
+- Task list items print as drawn 3 mm boxes, ticked when checked, as
+  `stile.css`'s `.box`: none of the vendored fonts has ☐ or ☑, and there is
+  no fallback font.
+- Markdown tables are styled with a show rule on `table` guarded by a
+  `<pb-table>` label: cmarker builds them with `table.cell`, so a
+  `scope.table` override fails.
 
 Every element the template prints from the input calls `pos(…)` first
 (decision 7). Nothing outside the input is printed: no seed, no inspiration,
@@ -207,13 +212,20 @@ interface BuildResult {
   resolved by the caller (web: `?url` import; Node: `import.meta.resolve`).
 - Build errors are returned in `diagnostics`, never thrown, so the UI can
   show them.
+- `pdf()` throws `LayoutError`, carrying the diagnostics, when the document
+  does not build; `build()` never throws.
+- `pages` comes from `<pb-page>` metadata the template places on every page.
+- Only error and warning diagnostics are kept; the compiler's hints (the
+  call trace) are dropped.
+- Two builds give byte-identical PDFs and positions; the vector artifact is
+  not byte-identical, so the tests do not compare it.
 
 ### 5. Footer, cover, licence
 
 As `docs/design.md` decided on 2026-10-18: every page footer shows «Title ·
 section», then the author, the copyright and the short licence when set,
-then the page number; the cover repeats them in full, with the licence's
-link for an SPDX id.
+then the page number; the cover repeats them, the licence as its short form
+linked to its SPDX page.
 
 - `licenceShort`: a `CC-` SPDX id becomes «CC BY-NC-SA 4.0» (drop `CC-`,
   the last part is the version, the rest keeps its hyphens); any other SPDX
@@ -233,6 +245,9 @@ interface LayoutOptions {
   template: "avventura@1";
 }
 ```
+
+Ink saver also gives tinted boxes a 0.3 mm border, the table header an ink
+rule and the current tab an outline, or the side boxes vanish.
 
 Defaults A4, ink saver off, pregenerated on. The web client keeps them per
 project in `localStorage` (`promptbook.pdf.<projectId>`), read and written
@@ -256,8 +271,8 @@ interface Position {
 
 The template emits one `pos` per part, scene, block and scene end. The
 engine returns them sorted by page then `y`. `pageOf(positions, offset)`
-returns the page of the last position whose `from` is at most `offset`;
-`blockAt(positions, page, y)` returns the last position on that page whose
+returns the page of the position whose `from` is the greatest at or below
+`offset`. `blockAt(positions, page, y)` returns the last position on that page whose
 `y` is at most `y`, else the last one before the page.
 
 ### 8. Layout checks

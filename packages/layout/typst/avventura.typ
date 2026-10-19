@@ -313,14 +313,15 @@
   {
     set text(size: 9pt, fill: grey)
     blocks(cover.meta)
-    // The author, the copyright and the licence in full, on one line.
+    // The author, the copyright and the licence, on one line; an SPDX
+    // licence in its short form, linked to its page.
     let credit(label, value) = [#label-text(label + ":") #value]
     let credits = ()
     if input.author != none { credits.push(credit("Autore", input.author)) }
     if input.copyright != none { credits.push(credit("Copyright", input.copyright)) }
     if input.licence != none {
       let l = input.licence
-      credits.push(credit("Licenza", if l.url != none { [#link(l.url, l.full) (#link(l.url, l.url))] } else { l.full }))
+      credits.push(credit("Licenza", if l.url != none { link(l.url, l.short) } else { l.full }))
     }
     if credits.len() > 0 { par(credits.join(" · ")) }
   }

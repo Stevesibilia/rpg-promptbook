@@ -31,6 +31,24 @@ describe('pageOf', () => {
     expect(pageOf(positions, 10_000)).toBe(3);
   });
 
+  it('follows the nearest source, not the last page printed', () => {
+    const moved = sortPositions([
+      position('scene', 100, 2, 30, 'S1'),
+      position('block', 400, 2, 200),
+      // Printed on page 3, but its source comes before the block at 400.
+      position('block', 300, 3, 40),
+      position('block', 500, 3, 100),
+    ]);
+    expect(pageOf(moved, 420)).toBe(2);
+    expect(pageOf(moved, 350)).toBe(3);
+    expect(pageOf(moved, 520)).toBe(3);
+  });
+
+  it('takes the first in page order when two positions share a source', () => {
+    const twice = sortPositions([position('part', 100, 4, 30), position('block', 100, 5, 30)]);
+    expect(pageOf(twice, 150)).toBe(4);
+  });
+
   it('gives page 1 when nothing comes before the offset', () => {
     expect(pageOf(sortPositions([position('block', 50, 2, 10)]), 10)).toBe(1);
     expect(pageOf([], 10)).toBe(1);
