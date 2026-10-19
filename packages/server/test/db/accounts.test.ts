@@ -41,7 +41,7 @@ describe('local accounts', () => {
     await createUser(db, { username: 'steve', password: 'twelve chars' });
     const user = await findUserByUsername(db, 'steve');
     expect(user!.passwordHash).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
-    expect(await verifyPassword(user!.passwordHash, 'twelve chars')).toBe(true);
+    expect(await verifyPassword(user!.passwordHash!, 'twelve chars')).toBe(true);
   });
 });
 

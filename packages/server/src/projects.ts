@@ -202,12 +202,14 @@ export async function restoreProject(db: Queryable, ownerId: string, id: string)
 export const BIN_DAYS = 30;
 
 // Removes projects in the bin for more than 30 days, with their documents,
-// and sign-in failures older than a day. Answers what it removed.
-export async function purge(db: Queryable): Promise<{ projects: number; loginFailures: number }> {
+// sign-in failures older than a day and expired single sign-on handshakes.
+// Answers what it removed.
+export async function purge(db: Queryable): Promise<{ projects: number; loginFailures: number; oidcLogins: number }> {
   const projects = await db.query(
     `delete from projects where deleted_at < now() - make_interval(days => $1) returning id`,
     [BIN_DAYS],
   );
   const failures = await db.query(`delete from login_failures where at < now() - interval '1 day' returning id`);
-  return { projects: projects.length, loginFailures: failures.length };
+  const logins = await db.query('delete from oidc_logins where expires_at < now() returning state');
+  return { projects: projects.length, loginFailures: failures.length, oidcLogins: logins.length };
 }

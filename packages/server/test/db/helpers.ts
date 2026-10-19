@@ -18,6 +18,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     sessionTtlHours: 720,
     trustProxyHops: 0,
     admin: null,
+    oidc: null,
     webDist: null,
     appVersion: 'dev',
     ...overrides,

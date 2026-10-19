@@ -1,9 +1,9 @@
 ## 1. Server: configuration, schema, command line
 
-- [ ] 1.1 `openid-client` 6.8.8 in `promptbook-server`; `Config.oidc` and its errors (design decision 2)
-- [ ] 1.2 `002_oidc.sql` (decision 3); `purge` deletes expired `oidc_logins`
-- [ ] 1.3 `user:delete` (decision 6)
-- [ ] 1.4 Tests: config combinations; migration on a database holding a password account; `user:delete` with projects in the bin
+- [x] 1.1 `openid-client` 6.8.8 in `promptbook-server`; `Config.oidc` and its errors (design decision 2)
+- [x] 1.2 `002_oidc.sql` (decision 3); `purge` deletes expired `oidc_logins`
+- [x] 1.3 `user:delete` (decision 6)
+- [x] 1.4 Tests: config combinations; migration on a database holding a password account; `user:delete` with projects in the bin
 
 ## 2. Server: sign-in
 

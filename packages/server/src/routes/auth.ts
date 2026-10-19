@@ -25,7 +25,11 @@ export async function authRoutes(app: FastifyInstance, { config, db, sync }: { c
     const { username, password } = parseBody(loginBody, req.body);
     const attempt = await reserveAttempt(db, username, req.ip);
     const user = await findUserByUsername(db, username);
-    const valid = user ? await verifyPassword(user.passwordHash, password) : await burnVerificationTime(password);
+    // A single sign-on account has no password, and fails like an unknown
+    // username.
+    const valid = user?.passwordHash
+      ? await verifyPassword(user.passwordHash, password)
+      : await burnVerificationTime(password);
     if (!user || !valid) throw new AppError(401, 'invalid_credentials', WRONG_CREDENTIALS);
 
     await releaseAttempt(db, attempt);
@@ -58,7 +62,7 @@ export async function authRoutes(app: FastifyInstance, { config, db, sync }: { c
     const session = requireSession(req);
     const { current, next } = parseBody(passwordBody, req.body);
     const user = await findUserByUsername(db, session.user.username);
-    if (!user || !(await verifyPassword(user.passwordHash, current))) {
+    if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, current))) {
       throw new AppError(400, 'wrong_password', 'The current password is wrong.');
     }
     await setPassword(db, user.id, next);

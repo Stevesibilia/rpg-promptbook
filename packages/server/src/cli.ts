@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 import { deleteOtherSessions } from './accounts/sessions.js';
-import { createUser, findUserByUsername, setPassword } from './accounts/users.js';
+import { createUser, deleteUser, findUserByUsername, setPassword } from './accounts/users.js';
 import { ConfigError, loadDatabaseUrl } from './config.js';
 import { createDb, type Db } from './db.js';
 import { AppError } from './errors.js';
@@ -14,6 +14,7 @@ const USAGE = `Usage: cli <command>
   user:create <username> [--display-name <name>]
                                               create an account
   user:password <username>                    set an account's password and end its sessions
+  user:delete <username>                      delete an account with its sessions, settings and projects
   seed <username>                             create the sample projects for an account with none
 
 The password comes from PROMPTBOOK_PASSWORD, or is asked for.`;
@@ -70,6 +71,16 @@ export async function runCli(argv: string[], db: Db, io: CliIo): Promise<number>
       await setPassword(db, user.id, await password(io));
       const ended = await deleteOtherSessions(db, user.id, null);
       io.out(`Set the password of "${user.username}" and ended ${ended.length} session(s).`);
+      return 0;
+    }
+    // Runs in its own process, so a sync connection open in the server ends
+    // at its next reconnect, which finds no session.
+    case 'user:delete': {
+      const [username] = args;
+      if (!username || args.length > 1) break;
+      const deleted = await deleteUser(db, username);
+      if (!deleted) throw new AppError(404, 'not_found', `There is no account "${username}".`);
+      io.out(`Deleted "${deleted.username}": ${deleted.projects} project(s).`);
       return 0;
     }
     case 'seed': {
