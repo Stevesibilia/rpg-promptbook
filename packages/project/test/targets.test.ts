@@ -131,6 +131,64 @@ describe('targetsOf a campaign', () => {
   });
 });
 
+describe('targetsOf, edge cases', () => {
+  it('finds the end of a span over 50,000 blank lines fast', () => {
+    const blanks = '\n  '.repeat(50_000);
+    // Inside a span, then at its end.
+    const campaign = `## Fronti\n${blanks}\nTesto.${blanks}\n## Sessioni\n`;
+    const adventure = `## Orologio\n${blanks}\nPrima scossa.${blanks}\n## Scene\n`;
+    const started = performance.now();
+    const [fronti] = targetsOf(campaign, 'campaign');
+    const [clock] = targetsOf(adventure, 'adventure');
+    expect(performance.now() - started).toBeLessThan(3_000);
+    expect(textOf(campaign, fronti!)).toBe(`## Fronti\n${blanks}\nTesto.`);
+    expect(textOf(adventure, clock!)).toBe(`## Orologio\n${blanks}\nPrima scossa.`);
+  });
+
+  it('keeps the spaces at the end of the last line, and a CRLF document', () => {
+    const text = '## Fronti\r\n\r\nTesto  \r\n\r\n## Sessioni\r\n';
+    const [fronti, sessioni] = targetsOf(text, 'campaign');
+    expect(textOf(text, fronti!)).toBe('## Fronti\r\n\r\nTesto  ');
+    expect(textOf(text, sessioni!)).toBe('## Sessioni');
+  });
+
+  it('reads a first line of --- as front matter only when it is closed', () => {
+    const open = '---\n\n## Fronti\n\nTesto.\n';
+    expect(targetsOf(open, 'campaign').map((t) => t.target)).toEqual(['Fronti']);
+    const closed = '---\ntitolo: x\n...\n## Fronti\n';
+    expect(targetsOf(closed, 'campaign').map((t) => t.target)).toEqual(['Fronti']);
+  });
+
+  it('ends a span at a setext heading, which is not a target', () => {
+    const text = [
+      '## Fronti',
+      '',
+      'Il Circolo.',
+      '',
+      'Le Sessioni',
+      'del Gabbiano',
+      '------------',
+      '',
+      'Prima sessione.',
+      '',
+      '- una voce',
+      '---',
+      '',
+      '### Note',
+      '',
+      'Testo.',
+      '===',
+      '',
+    ].join('\n');
+    const targets = targetsOf(text, 'campaign');
+    expect(targets.map((t) => t.target)).toEqual(['Fronti', 'Note']);
+    expect(textOf(text, targets[0]!)).toBe('## Fronti\n\nIl Circolo.');
+    // A line of - under a list item is a break, not a heading; === under text
+    // is a level 1 heading.
+    expect(textOf(text, targets[1]!)).toBe('### Note');
+  });
+});
+
 describe('findTarget', () => {
   it('finds a scene by id, case insensitive', () => {
     expect(found(sabaoth, 's3').target).toBe('S3');

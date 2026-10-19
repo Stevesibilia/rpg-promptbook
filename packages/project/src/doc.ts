@@ -2,8 +2,10 @@ import { generateKeyBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 import {
   authors,
+  CAPS,
   inspirationKinds,
   isCategory,
+  isIsoDateTime,
   isStatus,
   isWebUrl,
   LIMITS,
@@ -293,11 +295,14 @@ const strings = (value: unknown): string[] =>
 const record = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 
+// A URL that is not http or https reads as none, whoever wrote it.
+const webUrl = (value: unknown): string => (typeof value === 'string' && isWebUrl(value) ? value : '');
+
 const sourcesOf = (value: unknown): Source[] =>
   Array.isArray(value)
     ? value.flatMap((v) => {
         const r = record(v);
-        return r ? [{ title: str(r.title), url: str(r.url), accessed: str(r.accessed) }] : [];
+        return r ? [{ title: str(r.title), url: webUrl(r.url), accessed: str(r.accessed) }] : [];
       })
     : [];
 
@@ -309,28 +314,38 @@ const rejectedOf = (value: unknown): Rejected[] =>
       })
     : [];
 
-// Newest first, or oldest first; ties by id.
+// Newest first, or oldest first, by the instant (dates may carry an offset);
+// ties by id.
 const byDate =
   <T extends { id: string }>(date: (item: T) => string, newest: boolean) =>
   (a: T, b: T): number => {
-    const da = date(a);
-    const db = date(b);
+    const da = Date.parse(date(a));
+    const db = Date.parse(date(b));
     if (da !== db) return (da < db ? -1 : 1) * (newest ? -1 : 1);
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   };
 
-// Another client may have put anything in an array; a map is told by its get,
-// not by instanceof, which a second copy of yjs in a bundle would defeat.
+// Another client may have put anything in an array; a map is told by its get
+// and set, not by instanceof, which a second copy of yjs in a bundle would
+// defeat. A Y.Array or a Y.XmlElement has a get but no set.
 const isItem = (value: unknown): value is Item =>
-  typeof value === 'object' && value !== null && typeof (value as Item).get === 'function';
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as Item).get === 'function' &&
+  typeof (value as Item).set === 'function';
 
-// Items whose id is not a string were not written by a Promptbook client and
-// are left out; every other value falls back to its empty value.
-function readItems<T>(array: Y.Array<Item>, read: (item: Item) => T): T[] {
+// The items a reader shows: maps with a string id and an ISO date, the first
+// `cap` of them in the array. Anything else was not written by a Promptbook
+// client and is left out; every other value falls back to its empty value.
+function validItems(array: Y.Array<Item>, cap: number): Item[] {
   return array
     .toArray()
-    .filter((item) => isItem(item) && typeof item.get('id') === 'string')
-    .map(read);
+    .filter((item) => isItem(item) && typeof item.get('id') === 'string' && isIsoDateTime(item.get('at')))
+    .slice(0, cap);
+}
+
+function readItems<T>(array: Y.Array<Item>, cap: number, read: (item: Item) => T): T[] {
+  return validItems(array, cap).map(read);
 }
 
 function findIn(array: Y.Array<Item>, id: string): { item: Item; index: number } | null {
@@ -392,6 +407,14 @@ function checkSources(sources: readonly Source[]): void {
   });
 }
 
+function checkAt(at: string): void {
+  if (!isIsoDateTime(at)) throw new Error(`at: "${at}" is not an ISO 8601 date-time`);
+}
+
+function checkCap(array: Y.Array<Item>, cap: number, name: string): void {
+  if (validItems(array, Infinity).length >= cap) throw new Error(`${name}: at most ${cap} items`);
+}
+
 function checkRejected(rejected: readonly Rejected[]): void {
   if (rejected.length > LIMITS.list) throw new Error(`rejected: at most ${LIMITS.list} items`);
   rejected.forEach((r, i) => {
@@ -411,7 +434,7 @@ function toInspiration(item: Item): InspirationItem {
     id: str(item.get('id')),
     kind: oneOf(inspirationKinds, item.get('kind'), 'note'),
     text: str(item.get('text')),
-    url: str(item.get('url')),
+    url: webUrl(item.get('url')),
     why: str(item.get('why')),
     by: oneOf(authors, item.get('by'), 'user'),
     at: str(item.get('at')),
@@ -419,7 +442,7 @@ function toInspiration(item: Item): InspirationItem {
 }
 
 export function readInspiration(doc: Y.Doc): InspirationItem[] {
-  return readItems(inspirationOf(doc), toInspiration).sort(byDate((i) => i.at, true));
+  return readItems(inspirationOf(doc), CAPS.inspiration, toInspiration).sort(byDate((i) => i.at, true));
 }
 
 export interface InspirationInput {
@@ -447,7 +470,11 @@ export function addInspirationItem(doc: Y.Doc, input: InspirationInput): Inspira
     by: oneOf(authors, input.by, 'user'),
     at: input.at ?? nowIso(),
   };
-  doc.transact(() => inspirationOf(doc).push([mapOf({ ...item })]));
+  checkAt(item.at);
+  doc.transact(() => {
+    checkCap(inspirationOf(doc), CAPS.inspiration, 'inspiration');
+    inspirationOf(doc).push([mapOf({ ...item })]);
+  });
   return item;
 }
 
@@ -467,15 +494,17 @@ function toTopic(item: Item): ResearchTopic {
 }
 
 export function readTopics(doc: Y.Doc): ResearchTopic[] {
-  return readItems(topicsOf(doc), toTopic).sort(byDate((t) => t.at, false));
+  return readItems(topicsOf(doc), CAPS.topics, toTopic).sort(byDate((t) => t.at, false));
 }
 
 // A new topic to research; null when a topic of the same name is there.
 export function addTopic(doc: Y.Doc, name: string, at: string = nowIso()): ResearchTopic | null {
   checkText('name', name, LIMITS.name, { required: true });
+  checkAt(at);
   let topic: ResearchTopic | null = null;
   doc.transact(() => {
     if (readTopics(doc).some((t) => sameName(t.name, name))) return;
+    checkCap(topicsOf(doc), CAPS.topics, 'researchTopics');
     const added: ResearchTopic = { id: randomId(), name: name.trim(), state: 'open', at };
     topicsOf(doc).push([mapOf({ ...added })]);
     topic = added;
@@ -508,6 +537,8 @@ function noteTopic(doc: Y.Doc, topic: string): void {
 // Research notes, newest edit first.
 
 function toNote(item: Item): ResearchNote {
+  const at = str(item.get('at'));
+  const editedAt = item.get('editedAt');
   return {
     id: str(item.get('id')),
     topic: str(item.get('topic')),
@@ -515,13 +546,15 @@ function toNote(item: Item): ResearchNote {
     facts: strings(item.get('facts')),
     sources: sourcesOf(item.get('sources')),
     by: oneOf(authors, item.get('by'), 'user'),
-    at: str(item.get('at')),
-    editedAt: str(item.get('editedAt')),
+    at,
+    // A note never edited, or edited by a client that wrote no date, reads as
+    // edited when it was made.
+    editedAt: isIsoDateTime(editedAt) ? editedAt : at,
   };
 }
 
 export function readNotes(doc: Y.Doc): ResearchNote[] {
-  return readItems(notesOf(doc), toNote).sort(byDate((n) => n.editedAt, true));
+  return readItems(notesOf(doc), CAPS.notes, toNote).sort(byDate((n) => n.editedAt, true));
 }
 
 export interface NoteInput {
@@ -546,6 +579,7 @@ function checkNote(note: Partial<Omit<NoteInput, 'by' | 'at'>>): void {
 export function saveNote(doc: Y.Doc, input: NoteInput): { note: ResearchNote; created: boolean } {
   checkNote(input);
   const at = input.at ?? nowIso();
+  checkAt(at);
   const by = oneOf(authors, input.by, 'user');
   const fields = { summary: input.summary, facts: [...input.facts], sources: copySources(input.sources), by };
   let result!: { note: ResearchNote; created: boolean };
@@ -556,6 +590,7 @@ export function saveNote(doc: Y.Doc, input: NoteInput): { note: ResearchNote; cr
       patchItem(found.item, { ...fields, editedAt: at });
       result = { note: toNote(found.item), created: false };
     } else {
+      checkCap(notesOf(doc), CAPS.notes, 'researchNotes');
       const item = mapOf({ id: randomId(), topic: input.topic, ...fields, at, editedAt: at });
       notesOf(doc).push([item]);
       result = { note: toNote(item), created: true };
@@ -571,6 +606,7 @@ export type NotePatch = Partial<Pick<ResearchNote, 'topic' | 'summary' | 'facts'
 // note's name is noted.
 export function updateNote(doc: Y.Doc, id: string, patch: NotePatch, at: string = nowIso()): void {
   checkNote(patch);
+  checkAt(at);
   doc.transact(() => {
     const found = findIn(notesOf(doc), id);
     if (!found) throw new Error(`No research note ${id}`);
@@ -606,7 +642,7 @@ function toLogEntry(item: Item): LogEntry {
 }
 
 export function readLog(doc: Y.Doc): LogEntry[] {
-  return readItems(logOf(doc), toLogEntry).sort(byDate((e) => e.at, true));
+  return readItems(logOf(doc), CAPS.brainstorm, toLogEntry).sort(byDate((e) => e.at, true));
 }
 
 export interface LogEntryInput {
@@ -640,7 +676,11 @@ export function addLogEntry(doc: Y.Doc, input: LogEntryInput): LogEntry {
     by: oneOf(authors, input.by, 'user'),
     todoAdded: false,
   };
-  doc.transact(() => logOf(doc).push([mapOf({ ...entry })]));
+  checkAt(entry.at);
+  doc.transact(() => {
+    checkCap(logOf(doc), CAPS.brainstorm, 'brainstorm');
+    logOf(doc).push([mapOf({ ...entry })]);
+  });
   return entry;
 }
 

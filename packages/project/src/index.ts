@@ -50,9 +50,11 @@ export {
 export { imageReferences, prepareImport, type PreparedImport, type PrepareImportOptions } from './import.js';
 export {
   authors,
+  CAPS,
   categories,
   inspirationKinds,
   isCategory,
+  isIsoDateTime,
   isStatus,
   isWebUrl,
   LIMITS,

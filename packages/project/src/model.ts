@@ -133,6 +133,22 @@ export const LIMITS = {
   sources: 30,
 } as const;
 
+// The most items each collection takes; past it a writer refuses and a reader
+// leaves out the items after the first ones.
+export const CAPS = {
+  inspiration: 500,
+  topics: 200,
+  notes: 500,
+  brainstorm: 1000,
+} as const;
+
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+// An ISO 8601 date-time with its offset, as toISOString writes it.
+export function isIsoDateTime(value: unknown): value is string {
+  return typeof value === 'string' && ISO_DATE_TIME.test(value) && !Number.isNaN(Date.parse(value));
+}
+
 // The WHATWG URL parser, in browsers, Node and Electron alike; typed here for
 // the same reason as randomId in doc.ts.
 const parseUrl = (value: string): { protocol: string } =>

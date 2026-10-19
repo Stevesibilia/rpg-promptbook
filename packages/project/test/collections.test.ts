@@ -139,18 +139,58 @@ describe('sources of inspiration', () => {
     expect(readInspiration(doc)).toEqual([]);
   });
 
-  it('reads mistyped values as their fallbacks and leaves out items with no id', () => {
+  it('reads mistyped values as their fallbacks and leaves out items with no id, no date or no map', () => {
     const doc = project();
+    const array = new Y.Array<unknown>();
     doc
       .getArray('inspiration')
       .push([
         map({ id: 'x', kind: 'video', text: 42, by: 'robot', at: '2026-10-19T09:00:00.000Z' }),
-        map({ kind: 'note', text: 'no id' }),
+        map({ kind: 'note', text: 'no id', at: '2026-10-19T09:00:00.000Z' }),
+        map({ id: 'y', kind: 'note', text: 'no date', at: 'ieri' }),
+        map({ id: 'z', kind: 'note', text: 'no date' }),
         'not a map' as unknown as Y.Map<unknown>,
+        array as unknown as Y.Map<unknown>,
+        new Y.XmlElement('p') as unknown as Y.Map<unknown>,
       ]);
+    array.push(['id']);
     expect(readInspiration(doc)).toEqual([
       { id: 'x', kind: 'note', text: '', url: '', why: '', by: 'user', at: '2026-10-19T09:00:00.000Z' },
     ]);
+  });
+
+  it('reads a URL that is not http or https as none', () => {
+    const doc = project();
+    doc
+      .getArray('inspiration')
+      .push([
+        map({ id: 'a', kind: 'link', text: 'A', url: 'javascript:alert(1)', at: '2026-10-19T09:00:00.000Z' }),
+        map({ id: 'b', kind: 'link', text: 'B', url: 'https://example.org', at: '2026-10-19T09:00:00.000Z' }),
+      ]);
+    expect(readInspiration(doc).map((i) => i.url)).toEqual(['', 'https://example.org']);
+  });
+
+  it('refuses a date that is not ISO 8601', () => {
+    const doc = project();
+    expect(() => addInspirationItem(doc, quote({ at: '19/10/2026' }))).toThrow('at: "19/10/2026" is not an ISO 8601');
+    expect(readInspiration(doc)).toEqual([]);
+  });
+
+  it('sorts by the instant, whatever the offset', () => {
+    const doc = project();
+    const utc = addInspirationItem(doc, quote({ at: '2026-10-19T09:30:00.000Z' }));
+    const rome = addInspirationItem(doc, quote({ at: '2026-10-19T11:00:00+02:00' }));
+    expect(readInspiration(doc).map((i) => i.id)).toEqual([utc.id, rome.id]);
+  });
+
+  it('takes at most 500 items, and reads only the first 500', () => {
+    const doc = project();
+    for (let i = 0; i < 500; i++) addInspirationItem(doc, quote({ text: `n. ${i}`, at: '2026-10-19T09:00:00.000Z' }));
+    expect(() => addInspirationItem(doc, quote())).toThrow('inspiration: at most 500 items');
+    doc.getArray('inspiration').push([map({ id: 'extra', kind: 'note', text: 'x', at: '2026-10-19T09:00:00.000Z' })]);
+    const items = readInspiration(doc);
+    expect(items).toHaveLength(500);
+    expect(items.some((i) => i.id === 'extra')).toBe(false);
   });
 });
 
@@ -166,6 +206,15 @@ describe('research topics', () => {
     ]);
     expect(() => addTopic(doc, ' ')).toThrow('name: is required');
     expect(() => addTopic(doc, 'a'.repeat(201))).toThrow('name: at most 200');
+    expect(() => addTopic(doc, 'Messina', 'oggi')).toThrow('at: "oggi"');
+  });
+
+  it('takes at most 200 topics', () => {
+    const doc = project();
+    for (let i = 0; i < 200; i++) addTopic(doc, `Tema ${i}`, '2026-10-19T09:00:00.000Z');
+    expect(() => addTopic(doc, 'Uno di troppo')).toThrow('researchTopics: at most 200 items');
+    // A name already there is still not an error.
+    expect(addTopic(doc, 'tema 3')).toBeNull();
   });
 
   it('switches state and removes a topic, leaving its notes', () => {
@@ -184,7 +233,7 @@ describe('research topics', () => {
 
   it('reads an unknown state as open', () => {
     const doc = project();
-    doc.getArray('researchTopics').push([map({ id: 't', name: 'X', state: 'done', at: '' })]);
+    doc.getArray('researchTopics').push([map({ id: 't', name: 'X', state: 'done', at: '2026-10-19T09:00:00.000Z' })]);
     expect(readTopics(doc)[0]!.state).toBe('open');
   });
 });
@@ -294,6 +343,30 @@ describe('research notes', () => {
     expect(() => updateNote(doc, readNotes(doc)[0]!.id, { sources: [{ ...source, url: 'x' }] })).toThrow();
   });
 
+  it('reads a source URL that is not http or https as none', () => {
+    const doc = project();
+    doc
+      .getArray('researchNotes')
+      .push([
+        map({
+          id: 'n',
+          topic: 'X',
+          sources: [{ title: 'T', url: 'data:text/html,x' }],
+          at: '2026-10-19T09:00:00.000Z',
+        }),
+      ]);
+    expect(readNotes(doc)[0]!.sources).toEqual([{ title: 'T', url: '', accessed: '' }]);
+  });
+
+  it('takes at most 500 notes, and still updates one by its topic', () => {
+    const doc = project();
+    for (let i = 0; i < 500; i++) saveNote(doc, note({ topic: `Tema ${i}`, at: '2026-10-19T09:00:00.000Z' }));
+    expect(() => saveNote(doc, note({ topic: 'Uno di troppo' }))).toThrow('researchNotes: at most 500 items');
+    expect(saveNote(doc, note({ topic: 'tema 7' })).created).toBe(false);
+    expect(() => saveNote(doc, note({ topic: 'tema 7', at: 'ora' }))).toThrow('at: "ora"');
+    expect(() => updateNote(doc, readNotes(doc)[0]!.id, { summary: 'x' }, 'ora')).toThrow('at: "ora"');
+  });
+
   it('reads mistyped lists as their fallbacks', () => {
     const doc = project();
     doc.getArray('researchNotes').push([
@@ -303,8 +376,10 @@ describe('research notes', () => {
         facts: ['ok', 3, null],
         sources: [{ title: 'T', url: 'https://example.org' }, 'bad', null],
         by: 'claude',
-        at: 5,
+        at: '2026-10-19T09:00:00.000Z',
+        editedAt: 5,
       }),
+      map({ id: 'm', topic: 'senza data', at: 5 }),
     ]);
     expect(readNotes(doc)).toEqual([
       {
@@ -314,8 +389,8 @@ describe('research notes', () => {
         facts: ['ok'],
         sources: [{ title: 'T', url: 'https://example.org', accessed: '' }],
         by: 'claude',
-        at: '',
-        editedAt: '',
+        at: '2026-10-19T09:00:00.000Z',
+        editedAt: '2026-10-19T09:00:00.000Z',
       },
     ]);
   });
@@ -335,8 +410,16 @@ describe('brainstorm log', () => {
     expect(readLog(doc).map((e) => e.id)).toEqual([first.id]);
   });
 
+  it('takes at most 1000 entries', () => {
+    const doc = project();
+    for (let i = 0; i < 1000; i++) addLogEntry(doc, entry({ at: '2026-10-19T09:00:00.000Z' }));
+    expect(() => addLogEntry(doc, entry())).toThrow('brainstorm: at most 1000 items');
+    expect(readLog(doc)).toHaveLength(1000);
+  });
+
   it('checks the limits', () => {
     const doc = project();
+    expect(() => addLogEntry(doc, entry({ at: '2026-10-19' }))).toThrow('at: "2026-10-19"');
     expect(() => addLogEntry(doc, entry({ title: 'a'.repeat(201) }))).toThrow('title: at most 200');
     expect(() => addLogEntry(doc, entry({ questions: Array(51).fill('q') }))).toThrow('questions: at most 50');
     expect(() => addLogEntry(doc, entry({ rejected: [{ idea: 'x', why: 'a'.repeat(2001) }] }))).toThrow(
@@ -385,13 +468,21 @@ describe('brainstorm log', () => {
 
   it('reads mistyped values as their fallbacks', () => {
     const doc = project();
-    doc
-      .getArray('brainstorm')
-      .push([map({ id: 'e', title: 'T', ideas: 'one', rejected: [{ idea: 'x' }, 7], todoAdded: 'yes', by: 'claude' })]);
+    doc.getArray('brainstorm').push([
+      map({
+        id: 'e',
+        at: '2026-10-19T09:00:00.000Z',
+        title: 'T',
+        ideas: 'one',
+        rejected: [{ idea: 'x' }, 7],
+        todoAdded: 'yes',
+        by: 'claude',
+      }),
+    ]);
     expect(readLog(doc)).toEqual([
       {
         id: 'e',
-        at: '',
+        at: '2026-10-19T09:00:00.000Z',
         title: 'T',
         ideas: [],
         decisions: [],

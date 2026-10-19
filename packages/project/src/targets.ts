@@ -27,9 +27,21 @@ export type FoundTarget =
 
 const lineStart = (text: string, offset: number) => text.lastIndexOf('\n', offset - 1) + 1;
 
-// Moves an end back over the blank lines before it.
+const isBlank = (char: string | undefined) => char === ' ' || char === '\t';
+
+// Moves an end back over the blank lines before it: every line break, with
+// the spaces and tabs after it, at the end. A loop, not a regex: a regex
+// anchored at the end is quadratic on a long run of blank lines.
 function trimEnd(text: string, from: number, to: number): number {
-  return from + text.slice(from, to).replace(/(?:\r?\n[ \t]*)+$/, '').length;
+  let end = to;
+  for (;;) {
+    let i = end;
+    while (i > from && isBlank(text[i - 1])) i--;
+    if (i <= from || text[i - 1] !== '\n') return end;
+    i--;
+    if (i > from && text[i - 1] === '\r') i--;
+    end = i;
+  }
 }
 
 const SCENE_ID = new RegExp(`^${templates.avventura.ids.scene}\\d+$`);
@@ -87,23 +99,33 @@ function adventureTargets(text: string): Target[] {
   return targets.sort((a, b) => a.from - b.from);
 }
 
-// ATX headings outside fenced code and the front matter. A heading of level
-// 2 or 3 is a target; it runs to the next heading of the same or a higher
-// level.
+const LIST_OR_QUOTE = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)|^ {0,3}>/;
+
+// The front matter: a first line of --- closed by a later line of --- or
+// ...; the number of lines it takes, none when it is not closed.
+function frontMatterLines(lines: readonly string[]): number {
+  if (lines[0] !== '---') return 0;
+  const close = lines.findIndex((line, i) => i > 0 && (line === '---' || line === '...'));
+  return close === -1 ? 0 : close + 1;
+}
+
+// ATX and setext headings outside fenced code and the front matter. An ATX
+// heading of level 2 or 3 is a target; it runs to the next heading of the
+// same or a higher level, setext ones included, which are not targets.
 function headingTargets(text: string): Target[] {
-  const headings: { level: number; title: string; from: number }[] = [];
-  const lines = text.split('\n');
+  const headings: { level: number; title: string; from: number; target: boolean }[] = [];
+  const raws = text.split('\n');
+  const lines = raws.map((raw) => raw.replace(/\r$/, ''));
+  const skip = frontMatterLines(lines);
   let offset = 0;
   let fence: string | null = null;
-  let frontMatter = lines[0]?.replace(/\r$/, '') === '---';
-  lines.forEach((raw, i) => {
-    const line = raw.replace(/\r$/, '');
+  // Where the paragraph the line belongs to starts: a setext underline makes
+  // that paragraph a heading.
+  let paragraph: number | null = null;
+  lines.forEach((line, i) => {
     const at = offset;
-    offset += raw.length + 1;
-    if (frontMatter) {
-      if (i > 0 && (line === '---' || line === '...')) frontMatter = false;
-      return;
-    }
+    offset += raws[i]!.length + 1;
+    if (i < skip) return;
     const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
     if (fence !== null) {
       if (marker && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker) fence = null;
@@ -111,15 +133,30 @@ function headingTargets(text: string): Target[] {
     }
     if (marker) {
       fence = marker;
+      paragraph = null;
       return;
     }
     const heading = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/.exec(line);
-    if (heading) headings.push({ level: heading[1]!.length, title: (heading[2] ?? '').trim(), from: at });
+    if (heading) {
+      headings.push({ level: heading[1]!.length, title: (heading[2] ?? '').trim(), from: at, target: true });
+      paragraph = null;
+      return;
+    }
+    const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
+    if (underline && paragraph !== null) {
+      headings.push({ level: underline[1]![0] === '=' ? 1 : 2, title: '', from: paragraph, target: false });
+      paragraph = null;
+      return;
+    }
+    // A list item or a quote is not a paragraph: a line of - under it is a
+    // thematic break.
+    if (line.trim() === '' || LIST_OR_QUOTE.test(line)) paragraph = null;
+    else paragraph ??= at;
   });
 
   const targets: Target[] = [];
   headings.forEach((heading, i) => {
-    if (heading.level < 2 || heading.level > 3) return;
+    if (!heading.target || heading.level < 2 || heading.level > 3) return;
     const next = headings.slice(i + 1).find((h) => h.level <= heading.level);
     targets.push({
       kind: 'heading',

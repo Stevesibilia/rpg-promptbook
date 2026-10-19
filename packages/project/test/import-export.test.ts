@@ -163,7 +163,7 @@ describe('exportProject', () => {
     addTopic(doc, 'Colapesce', '2026-10-19T09:00:00.000Z');
     addTopic(doc, 'Il dialetto messinese', '2026-10-19T09:01:00.000Z');
     saveNote(doc, {
-      topic: 'colapesce',
+      topic: 'colapesce\r\n',
       summary: 'Il pescatore che regge la Sicilia.',
       facts: ['Tre colonne', 'Una è incrinata\ndal fuoco'],
       sources: [
@@ -174,7 +174,7 @@ describe('exportProject', () => {
       at: '2026-10-19T11:00:00.000Z',
     });
     const entry = addLogEntry(doc, {
-      title: 'Il finale a Capo Peloro',
+      title: 'Il finale\na Capo Peloro',
       ideas: ['La terza scossa'],
       decisions: [],
       rejected: [{ idea: 'Un drago', why: 'fuori tono' }],

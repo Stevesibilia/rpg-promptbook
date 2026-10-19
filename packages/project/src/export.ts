@@ -36,6 +36,9 @@ export function todoMarkdown(items: readonly TodoItem[]): string {
 // first are continuation lines.
 const bullet = (text: string) => `- ${text.split('\n').join('\n  ')}\n`;
 
+// Text printed as a heading stays on one line.
+const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+
 const who = (by: Author) => (by === 'claude' ? 'by Claude' : 'by you');
 
 const KIND_NAMES: Record<InspirationItem['kind'], string> = {
@@ -67,7 +70,7 @@ export function researchMarkdown(topics: readonly ResearchTopic[], notes: readon
     parts.push(`# Topics\n\n${list}`);
   }
   for (const note of notes) {
-    const lines = [`# ${note.topic}`, '', `${who(note.by)} · created ${note.at} · edited ${note.editedAt}`];
+    const lines = [`# ${oneLine(note.topic)}`, '', `${who(note.by)} · created ${note.at} · edited ${note.editedAt}`];
     if (note.summary) lines.push('', note.summary);
     let text = `${lines.join('\n')}\n`;
     if (note.facts.length > 0) text += `\n## Facts\n\n${note.facts.map(bullet).join('')}`;
@@ -86,7 +89,7 @@ export function researchMarkdown(topics: readonly ResearchTopic[], notes: readon
 export function logMarkdown(entries: readonly LogEntry[]): string {
   return entries
     .map((entry) => {
-      let text = `# ${entry.title}\n\n${entry.at} · ${entry.by === 'claude' ? 'via Claude' : 'by you'}\n`;
+      let text = `# ${oneLine(entry.title)}\n\n${entry.at} · ${entry.by === 'claude' ? 'via Claude' : 'by you'}\n`;
       const part = (heading: string, items: readonly string[]) => {
         if (items.length > 0) text += `\n## ${heading}\n\n${items.map(bullet).join('')}`;
       };
