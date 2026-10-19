@@ -1,9 +1,9 @@
 ## 1. Layout package and engine (brief A)
 
-- [ ] 1.1 `packages/layout` workspace `promptbook-layout`; typst.ts packages pinned at `0.8.0-rc3`; fonts copied from `impagina-avventura/scripts/fonts/` with an `OFL.txt` per family; `cmarker` 0.1.10 vendored with its licence (decision 1)
-- [ ] 1.2 `engine.ts` and `assets.ts`: `createEngine`, `build` through `runWithWorld`, `pdf` with `format: 1`, diagnostics returned (decision 4)
-- [ ] 1.3 `positions.ts`, `checks.ts`, `licence.ts` (decisions 5, 7, 8)
-- [ ] 1.4 Tests: engine on a small document; unit tests of positions, checks and licence
+- [x] 1.1 `packages/layout` workspace `promptbook-layout`; typst.ts packages pinned at `0.8.0-rc3`; fonts copied from `impagina-avventura/scripts/fonts/` with an `OFL.txt` per family; `cmarker` 0.1.10 vendored with its licence (decision 1)
+- [x] 1.2 `engine.ts` and `assets.ts`: `createEngine`, `build` through `runWithWorld`, `pdf` with `format: 1`, diagnostics returned (decision 4)
+- [x] 1.3 `positions.ts`, `checks.ts`, `licence.ts` (decisions 5, 7, 8)
+- [x] 1.4 Tests: engine on a small document; unit tests of positions, checks and licence
 
 ## 2. Template (brief A)
 

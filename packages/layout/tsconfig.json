@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist/src",
+    "tsBuildInfoFile": "dist/src.tsbuildinfo",
+    "lib": ["ES2023", "DOM"],
+    "types": []
+  },
+  "include": ["src"],
+  "references": [{ "path": "../format" }]
+}

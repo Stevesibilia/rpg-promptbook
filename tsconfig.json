@@ -3,6 +3,8 @@
   "references": [
     { "path": "./packages/format" },
     { "path": "./packages/format/test" },
+    { "path": "./packages/layout" },
+    { "path": "./packages/layout/test" },
     { "path": "./packages/project" },
     { "path": "./packages/project/test" },
     { "path": "./packages/server" },
