@@ -10,6 +10,9 @@
 .app.no-sel {
   --right: 0px;
 }
+.app.wide-right {
+  --right: 460px;
+}
 /* Focus mode: the text, the sync pill and the status bar. */
 .app.focus {
   grid-template-columns: 0 0 1fr 0;

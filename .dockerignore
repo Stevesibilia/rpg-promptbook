@@ -4,6 +4,7 @@
 !package-lock.json
 !tsconfig.base.json
 !packages/format/
+!packages/layout/
 !packages/project/
 !packages/server/
 !packages/web/

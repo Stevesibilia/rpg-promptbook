@@ -7,7 +7,15 @@ import type { KeyBinding } from '@codemirror/view';
 // and Ctrl elsewhere.
 
 export type ShortcutId =
-  'outline' | 'inspector' | 'focus' | 'syntax' | 'palette' | 'nextProblem' | 'previousProblem' | 'escape';
+  | 'outline'
+  | 'inspector'
+  | 'focus'
+  | 'syntax'
+  | 'palette'
+  | 'pdfReview'
+  | 'nextProblem'
+  | 'previousProblem'
+  | 'escape';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -21,6 +29,8 @@ export const shortcuts: readonly Shortcut[] = [
   { id: 'focus', keys: 'Mod-.', label: 'Focus mode' },
   { id: 'syntax', keys: 'Mod-/', label: 'Syntax sheet' },
   { id: 'palette', keys: 'Mod-k', label: 'Command palette' },
+  // Firefox keeps ⌘⇧P for a private window; the button and the palette cover it.
+  { id: 'pdfReview', keys: 'Mod-Shift-p', label: 'Review PDF' },
   { id: 'nextProblem', keys: 'F8', label: 'Next problem' },
   { id: 'previousProblem', keys: 'Shift-F8', label: 'Previous problem' },
   { id: 'escape', keys: 'Escape', label: 'Close a dialog, leave focus mode' },

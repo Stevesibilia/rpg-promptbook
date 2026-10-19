@@ -27,7 +27,7 @@ that its app works offline.
 | gdrarchive    | **Decided:** independent app. Prep comes before play, and not everything prepared ends up in gdrarchive. Players with gdrarchive access must not see prep.                                                                                                                                                                                                           |
 | Users         | Proposed: the game master only. Players have no accounts, so no spoiler can leak through permissions.                                                                                                                                                                                                                                                                |
 | Offline       | **Decided:** offline writing and editing in a desktop app for Mac, Linux and Windows. The browser does not need to work offline.                                                                                                                                                                                                                                     |
-| PDF           | **Decided:** the PDF is built offline, in the desktop app. Engine: Typst.                                                                                                                                                                                                                                                                                            |
+| PDF           | **Decided:** Typst's WASM build, in the browser today and offline in the desktop app later.                                                                                                                                                                                                                                                                          |
 | Source format | **Decided:** Markdown (CommonMark + GFM) with YAML front matter and callouts for boxes, checked against a closed grammar.                                                                                                                                                                                                                                            |
 | Hosting       | **Decided:** homelab cluster.                                                                                                                                                                                                                                                                                                                                        |
 | CueBard       | **Decided:** `.cbpack` export only. CueBard must not depend on this app.                                                                                                                                                                                                                                                                                             |
@@ -372,6 +372,23 @@ WeasyPrint 13 pages (today), Chromium + Paged.js 14, Chromium + Vivliostyle
 Target: the same
 structure as today (one page per scene, same tabs, footers and references),
 not the same page breaks as WeasyPrint.
+
+**Built in the browser first** (2026-10-19, #20): the owner moved the PDF
+ahead of the desktop app, so the web client builds it with the
+`promptbook-layout` package, which the desktop app will reuse.
+
+- Engine: typst.ts `0.8.0-rc3` (Typst 0.15.0), pinned exactly, in a web
+  worker. It loads only when a PDF is first opened on a page: about 8 MB with
+  Brotli (29 MB of WASM), kept by the browser for a year. The server allows
+  WebAssembly (`'wasm-unsafe-eval'`) and no JavaScript eval.
+- The preview and the review draw the pages as SVG; the PDF itself comes
+  from the same build. Print… opens the PDF in a new tab, whose viewer
+  prints it, rather than a print dialog over the page.
+- Print options (paper, ink saver, pregenerated sheets) are kept per project
+  on the device, not in the document.
+- Later: images in the PDF and the missing-image check (phase 2, with the
+  asset board), earlier PDF versions and compare (#4, with snapshots), the A5
+  booklet.
 
 Rejected: bundling Python and WeasyPrint (no macOS or Linux builds, no WASM in
 v70; native Pango on three systems), Prince (licence cost), pdfmake, react-pdf

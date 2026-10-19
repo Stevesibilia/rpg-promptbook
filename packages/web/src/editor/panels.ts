@@ -32,6 +32,7 @@ export function usePanel(
 
 export const OUTLINE_KEY = 'promptbook.editor.outline';
 export const INSPECTOR_KEY = 'promptbook.editor.inspector';
+export const PDF_KEY = 'promptbook.editor.pdf';
 
 const inDialog = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('[role="dialog"], dialog');

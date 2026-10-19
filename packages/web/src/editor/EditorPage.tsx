@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
+import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { StatusSelect } from '../projects/controls.js';
@@ -17,16 +18,33 @@ import { Inspector, useSections } from './Inspector.js';
 import { outlineOf } from './outline.js';
 import { OutlinePanel } from './OutlinePanel.js';
 import { resolveItem, type PaletteAction } from './palette.js';
-import { INSPECTOR_KEY, OUTLINE_KEY, usePanel, useShortcuts } from './panels.js';
+import { INSPECTOR_KEY, OUTLINE_KEY, PDF_KEY, usePanel, useShortcuts } from './panels.js';
+import { usePdfOptions } from './pdf/options.js';
+import { pdfFileName } from './pdf/pages.js';
+import { PdfPane } from './pdf/PdfPane.js';
+import { PdfReview } from './pdf/PdfReview.js';
+import { NoticeError, POPUPS_BLOCKED } from './pdf/notice.js';
+import { PdfSource } from './pdf/PdfSheet.js';
+import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
 import { jumpTo } from './writes.js';
 import './editor.css';
+import './pdf/pdf.css';
 
 const label = (id: Parameters<typeof shortcut>[0]) => `${shortcut(id).label} (${keyLabel(shortcut(id).keys)})`;
 
+// The PDF's bytes as a URL of this page, let go once the browser had time to
+// use it.
+function pdfUrl(bytes: Uint8Array): string {
+  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }));
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return url;
+}
+
 // The live project page (design decisions 1 and 11): the top bar with its
-// toggles, the outline, the editor, the inspector and the status bar.
+// toggles, the outline, the editor, the inspector or the PDF preview, and the
+// status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
   const { projects } = useProjects();
@@ -40,6 +58,12 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const [view, setView] = useState<EditorView | null>(null);
   const [dialog, setDialog] = useState<'palette' | 'syntax' | null>(null);
   const navigate = useNavigate();
+  const [pdfOpen, setPdfOpen] = usePanel(PDF_KEY, false);
+  // The page the review opened on, while it is open.
+  const [review, setReview] = useState<number | null>(null);
+  const [pdfOptions, setPdfOptions] = usePdfOptions(meta.id);
+  // The pane takes the inspector's place for adventures and one-shots.
+  const pane = checked && pdfOpen;
 
   // The editor's updates, for the status bar.
   const listeners = useRef(new Set<(update: ViewUpdate) => void>());
@@ -48,19 +72,91 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     return () => listeners.current.delete(listener);
   }, []);
 
+  const {
+    client: pdf,
+    snapshot: pdfSnapshot,
+    positions: pdfPositions,
+  } = usePdf({
+    view,
+    updates,
+    active: checked && ((pane && !focus) || review !== null),
+    options: pdfOptions,
+    title: meta.title,
+  });
+  const openReview = (page?: number) => {
+    const good = pdfSnapshot?.good;
+    const head = view?.state.selection.main.head ?? 0;
+    setReview(page ?? (good ? Math.min(pageOf(pdfPositions(), head), good.pages.length) : 1));
+  };
+  const closeReview = () => {
+    setReview(null);
+    view?.focus();
+  };
+  // A double-click on a page: the text printed there, moved through the edits
+  // made since the build read it.
+  const jumpFromPdf = (page: number, y: number) => {
+    const at = blockAt(pdfPositions(), page, y);
+    if (!view || !at) return;
+    setReview(null);
+    jumpTo(view, at.from, 'center');
+  };
+  const savePdf = async () => {
+    if (!pdf) return;
+    const link = document.createElement('a');
+    link.href = pdfUrl(await pdf.pdf());
+    link.download = pdfFileName(meta.title);
+    link.click();
+  };
+  // The PDF in a tab of its own, where the browser's viewer prints it. The
+  // tab is opened at the click, before the build, or the browser may block
+  // it; a blocked or closed tab is never opened again after the build.
+  const printPdf = async () => {
+    if (!pdf) return;
+    const tab = window.open('', '_blank');
+    if (!tab) throw new NoticeError(POPUPS_BLOCKED);
+    try {
+      const bytes = await pdf.pdf();
+      if (tab.closed) throw new NoticeError(POPUPS_BLOCKED);
+      tab.location.href = pdfUrl(bytes);
+    } catch (error) {
+      tab.close();
+      throw error;
+    }
+  };
+  const toggleInspector = () => {
+    if (pane) {
+      setPdfOpen(false);
+      setInspector(true);
+    } else setInspector((open) => !open);
+  };
+
   const toProblem = (run: typeof nextDiagnostic) => () => {
     if (!view) return;
     view.focus();
     run(view);
   };
-  const handlers: ShortcutHandlers = {
+  // While the review is open, only Escape, ⌘⇧P, ⌘K and its own keys act;
+  // the editor's other shortcuts are swallowed.
+  const swallowed = () => {};
+  const handlers: ShortcutHandlers = review !== null ? {
+    outline: swallowed,
+    inspector: swallowed,
+    focus: swallowed,
+    syntax: swallowed,
+    nextProblem: swallowed,
+    previousProblem: swallowed,
+    palette: () => setDialog('palette'),
+    pdfReview: closeReview,
+    escape: closeReview,
+  } : {
     outline: () => setOutline((open) => !open),
-    inspector: () => setInspector((open) => !open),
+    inspector: toggleInspector,
     focus: () => setFocus((on) => !on),
     nextProblem: toProblem(nextDiagnostic),
     previousProblem: toProblem(previousDiagnostic),
     syntax: () => setDialog('syntax'),
     palette: () => setDialog('palette'),
+    ...(checked ? { pdfReview: () => openReview() } : {}),
     // Left alone outside focus mode, so Escape keeps its other uses.
     ...(focus ? { escape: () => setFocus(false) } : {}),
   };
@@ -90,6 +186,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       case 'status':
         setStatus(doc, action.status);
         return;
+      case 'pdf':
+        setPdfOpen((open) => !open);
+        return;
       case 'projects':
         navigate('/');
         return;
@@ -117,6 +216,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     <Shell
       rail="document"
       focus={focus}
+      wideRight={pane}
       crumbs={
         <>
           <Link to="/">Projects</Link>
@@ -151,17 +251,31 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
             </svg>
           </button>
           <button
-            className={`tb hide-in-focus${inspector ? ' on' : ''}`}
+            className={`tb hide-in-focus${inspector && !pane ? ' on' : ''}`}
             title={label('inspector')}
             aria-label="Inspector"
-            aria-pressed={inspector}
-            onClick={() => setInspector((open) => !open)}
+            aria-pressed={inspector && !pane}
+            onClick={toggleInspector}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="4" width="18" height="16" rx="2" />
               <path d="M15 4v16" />
             </svg>
           </button>
+          {checked && (
+            <button
+              className="tb primary hide-in-focus"
+              title="PDF preview"
+              aria-pressed={pane}
+              onClick={() => setPdfOpen((open) => !open)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3h9l4 4v14H6z" />
+                <path d="M14 3v5h5" />
+              </svg>
+              PDF
+            </button>
+          )}
           <button
             className={`tb${focus ? ' on' : ''}`}
             title={label('focus')}
@@ -185,7 +299,17 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       }
       left={outline ? <OutlinePanel view={view} updates={updates} /> : undefined}
       right={
-        inspector ? (
+        pane ? (
+          <PdfPane
+            view={view}
+            updates={updates}
+            snapshot={pdfSnapshot}
+            positions={pdfPositions}
+            onReview={openReview}
+            onClose={() => setPdfOpen(false)}
+            onJump={jumpFromPdf}
+          />
+        ) : inspector ? (
           <Inspector
             doc={doc}
             projectId={meta.id}
@@ -200,6 +324,19 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       status={<StatusBar view={view} updates={updates} onProblems={showChecks} />}
     >
       <Editor doc={doc} checked={checked} extensions={extensions} onView={setView} />
+      {pdfSnapshot && <PdfSource svg={pdfSnapshot.good?.svg ?? null} />}
+      {review !== null && (
+        <PdfReview
+          snapshot={pdfSnapshot}
+          initialPage={review}
+          options={pdfOptions}
+          setOptions={setPdfOptions}
+          onClose={closeReview}
+          onJump={jumpFromPdf}
+          onSave={savePdf}
+          onPrint={printPdf}
+        />
+      )}
       {dialog === 'syntax' && <SyntaxSheet checked={checked} onClose={closeDialog} />}
       {dialog === 'palette' && (
         <CommandPalette view={view} updates={updates} checked={checked} onRun={runPalette} onClose={closeDialog} />

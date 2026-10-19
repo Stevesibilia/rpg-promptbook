@@ -9,5 +9,5 @@
     "types": ["vite/client"]
   },
   "include": ["src"],
-  "references": [{ "path": "../project" }, { "path": "../format" }]
+  "references": [{ "path": "../project" }, { "path": "../format" }, { "path": "../layout" }]
 }

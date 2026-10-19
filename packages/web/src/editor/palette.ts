@@ -11,6 +11,7 @@ export type PaletteAction =
   | { kind: 'go'; key: string; name: string }
   | { kind: 'shortcut'; id: Exclude<ShortcutId, 'palette' | 'escape'> }
   | { kind: 'status'; status: Status }
+  | { kind: 'pdf' }
   | { kind: 'projects' };
 
 export interface PaletteEntry {
@@ -22,8 +23,8 @@ export interface PaletteEntry {
   action: PaletteAction;
 }
 
-// Commands first, then every outline item. Problems are offered only where
-// there are checks.
+// Commands first, then every outline item. Problems and the PDF are offered
+// only where there are checks: adventures and one-shots.
 export function paletteEntries(items: readonly OutlineItem[], { checked }: { checked: boolean }): PaletteEntry[] {
   const fromTable = (id: Exclude<ShortcutId, 'palette' | 'escape'>): PaletteEntry => ({
     key: `cmd:${id}`,
@@ -42,7 +43,14 @@ export function paletteEntries(items: readonly OutlineItem[], { checked }: { che
       keys: null,
       action: { kind: 'status', status },
     })),
-    ...(checked ? [fromTable('nextProblem'), fromTable('previousProblem')] : []),
+    ...(checked
+      ? [
+          fromTable('nextProblem'),
+          fromTable('previousProblem'),
+          { key: 'pdf', label: 'PDF preview', keys: null, action: { kind: 'pdf' } } satisfies PaletteEntry,
+          fromTable('pdfReview'),
+        ]
+      : []),
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
     ...items.map((item): PaletteEntry => ({
       key: `go:${item.key}`,
