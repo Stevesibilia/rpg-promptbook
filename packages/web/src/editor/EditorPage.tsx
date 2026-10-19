@@ -12,6 +12,7 @@ import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
 import { Editor } from './Editor.js';
+import { Inspector, useSections } from './Inspector.js';
 import { OutlinePanel } from './OutlinePanel.js';
 import { INSPECTOR_KEY, OUTLINE_KEY, usePanel, useShortcuts } from './panels.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
@@ -29,6 +30,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
   const [inspector, setInspector] = usePanel(INSPECTOR_KEY);
+  const [sections, setSection] = useSections();
   const [focus, setFocus] = useState(false);
   const [view, setView] = useState<EditorView | null>(null);
 
@@ -56,6 +58,14 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const latest = useRef(handlers);
   latest.current = handlers;
   useShortcuts(handlers);
+
+  // The status bar's counts open the inspector at its Checks.
+  const showChecks = () => {
+    setFocus(false);
+    setInspector(true);
+    setSection('checks', true);
+    requestAnimationFrame(() => document.querySelector('.inspector .checks')?.scrollIntoView({ block: 'nearest' }));
+  };
 
   // Read once, when the editor's view is created.
   const extensions = useMemo(
@@ -132,8 +142,20 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         </div>
       }
       left={outline ? <OutlinePanel view={view} updates={updates} /> : undefined}
-      right={inspector ? <div className="inspector" aria-label="Inspector" /> : undefined}
-      status={<StatusBar view={view} updates={updates} onProblems={() => setInspector(true)} />}
+      right={
+        inspector ? (
+          <Inspector
+            doc={doc}
+            projectId={meta.id}
+            checked={checked}
+            view={view}
+            updates={updates}
+            sections={sections}
+            setSection={setSection}
+          />
+        ) : undefined
+      }
+      status={<StatusBar view={view} updates={updates} onProblems={showChecks} />}
     >
       <Editor doc={doc} checked={checked} extensions={extensions} onView={setView} />
     </Shell>

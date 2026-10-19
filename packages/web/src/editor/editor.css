@@ -533,3 +533,33 @@
   border-left: 3px solid var(--amber);
   padding-left: 10px;
 }
+
+/* Inspector details */
+.rules .mk {
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+.rules li .ins {
+  padding: 0 4px;
+}
+.checks .cnt .d {
+  color: var(--danger);
+}
+.checks .cnt .a {
+  color: var(--amber);
+}
+.prob .where {
+  display: block;
+}
+.inspector .hint {
+  margin: 0;
+}
+.this-scene .snips + .hint {
+  margin-top: 8px;
+}
+.edit-seed {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--primary);
+}

@@ -22,9 +22,9 @@
 
 ## 4. Inspector and inserts
 
-- [ ] 4.1 `inserts.ts`: every insert of decision 8, strings from the template, template order, one blank line between blocks, cursor placement
-- [ ] 4.2 `Inspector.tsx` with This scene, Checks, To-do (`TodoList`), Seed; sections open and closed remembered; campaign shows To-do and Seed only
-- [ ] 4.3 Tests: each insert's text and position on Sabaoth and on the adventure skeleton (field between two present ones, empty scene, blank lines)
+- [x] 4.1 `inserts.ts`: every insert of decision 8, strings from the template, template order, one blank line between blocks, cursor placement
+- [x] 4.2 `Inspector.tsx` with This scene, Checks, To-do (`TodoList`), Seed; sections open and closed remembered; campaign shows To-do and Seed only
+- [x] 4.3 Tests: each insert's text and position on Sabaoth and on the adventure skeleton (field between two present ones, empty scene, blank lines)
 
 ## 5. Insert menu, syntax sheet and palette
 
