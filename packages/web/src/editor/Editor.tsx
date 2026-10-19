@@ -12,6 +12,7 @@ import { markdownWithTables } from './cm/language.js';
 import { preview, previewConfigOf } from './cm/preview.js';
 import { problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
 import { slashMenu } from './cm/slash.js';
+import { tables } from './cm/tables.js';
 import { editorHighlight } from './cm/theme.js';
 
 // The prep document's editor: CodeMirror 6 bound to the document's Y.Text,
@@ -48,6 +49,7 @@ export function Editor({
           markdownWithTables(),
           editorHighlight,
           preview(previewConfigOf(templates.avventura, checked)),
+          tables,
           analysis({ checked, connect: connectWorker, onResult: pushDiagnostics }),
           checked ? problems : [],
           slashMenu(templates.avventura, checked),

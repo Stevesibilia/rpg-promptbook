@@ -1,7 +1,7 @@
-import { markdown } from '@codemirror/lang-markdown';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { ChangeSet, EditorSelection, EditorState } from '@codemirror/state';
 import { parseAdventure, templates, type ParseResult } from 'promptbook-format';
+import { markdownWithTables } from '../src/editor/cm/language.js';
 import { analysis, setAnalysis } from '../src/editor/analysis/field.js';
 
 export const parse = (text: string): ParseResult => parseAdventure(text, { template: templates.avventura });
@@ -30,7 +30,7 @@ export function campaign(doc: string, cursor = 0): EditorState {
   const state = EditorState.create({
     doc,
     selection: EditorSelection.cursor(cursor),
-    extensions: [markdown(), analysis({ checked: false, connect: noWorker })],
+    extensions: [markdownWithTables(), analysis({ checked: false, connect: noWorker })],
   });
   ensureSyntaxTree(state, state.doc.length, 5000);
   return state;

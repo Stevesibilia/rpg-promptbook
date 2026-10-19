@@ -35,8 +35,8 @@
 
 ## 5b. Tables
 
-- [ ] 5b.1 GFM Markdown language and the table widget field (design decision 4, Tables): drawn off the selection, source on it, click to the cell, sideways scroll, bold and italic only
-- [ ] 5b.2 Tests: the table items for a state with and without a selection in the table, the cell a click maps to, cell text never read as HTML
+- [x] 5b.1 GFM Markdown language and the table widget field (design decision 4, Tables): drawn off the selection, source on it, click to the cell, sideways scroll, bold and italic only
+- [x] 5b.2 Tests: the table items for a state with and without a selection in the table, the cell a click maps to, cell text never read as HTML
 
 ## 6. End to end, preview and hand-back
 

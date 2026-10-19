@@ -42,12 +42,12 @@ export const focusTracking: Extension = [
 ];
 
 // The lines touched by a selection, as [first, last] line numbers.
-function activeLines(state: EditorState): [number, number][] {
+export function activeLines(state: EditorState): [number, number][] {
   if (!state.field(focusedField, false)) return [];
   return state.selection.ranges.map((r) => [state.doc.lineAt(r.from).number, state.doc.lineAt(r.to).number]);
 }
 
-const isActive = (active: [number, number][], line: number) => active.some(([a, b]) => line >= a && line <= b);
+export const isActive = (active: [number, number][], line: number) => active.some(([a, b]) => line >= a && line <= b);
 
 // Front matter
 
@@ -145,6 +145,8 @@ export function inlineItems(
       enter(node) {
         if (node.name === 'Document') return;
         if (fm && node.from < fm.to) return false;
+        // Tables are drawn, or shown whole as source, by tables.ts.
+        if (node.name === 'Table') return false;
         const heading = /^ATXHeading(\d)$/.exec(node.name);
         if (heading) {
           const line = doc.lineAt(node.from);

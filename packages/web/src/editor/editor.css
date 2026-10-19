@@ -684,6 +684,7 @@ button.kbd:hover {
 }
 .syntax-sheet table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13.5px;
 }
@@ -693,7 +694,10 @@ button.kbd:hover {
   vertical-align: top;
 }
 .syntax-sheet td.sx {
-  width: 42%;
+  width: 40%;
+}
+.syntax-sheet td:nth-child(2) {
+  width: 24%;
 }
 .syntax-sheet code {
   font: 12.5px var(--mono);
@@ -712,4 +716,44 @@ button.kbd:hover {
 }
 .syntax-sheet td.nt {
   color: var(--muted);
+}
+
+/* Tables (design decision 4, Tables): drawn off the selection, scrolled
+   sideways inside the widget when wider than the column. */
+.editor .cm-table-wrap {
+  /* As wide as the column and no wider: a wide table scrolls in here. */
+  width: 0;
+  min-width: 100%;
+  overflow-x: auto;
+  margin: 4px 0;
+  cursor: text;
+}
+.editor .cm-table {
+  border-collapse: collapse;
+  width: 100%;
+  font: 15px/22px var(--prose);
+  /* Words wrap whole: the editor's own wrapping breaks anywhere. */
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.editor .cm-table th,
+.editor .cm-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 4em;
+}
+.editor .cm-table th {
+  font: 600 13px/20px var(--font);
+  color: var(--muted);
+  background: var(--surface);
+}
+.editor .cm-table strong {
+  font-weight: 600;
+}
+/* A table shown as source keeps its columns lined up. */
+.editor .cm-line.cm-table-src {
+  font: 13.5px/22px var(--mono);
 }

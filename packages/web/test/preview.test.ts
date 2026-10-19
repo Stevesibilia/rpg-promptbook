@@ -1,8 +1,8 @@
-import { markdown } from '@codemirror/lang-markdown';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { templates } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
+import { markdownWithTables } from '../src/editor/cm/language.js';
 import {
   focusedField,
   frontMatterItems,
@@ -44,7 +44,7 @@ function stateAt(cursor: number, focused: boolean): EditorState {
   return EditorState.create({
     doc: text,
     selection: EditorSelection.cursor(cursor),
-    extensions: [markdown(), focusedField.init(() => focused)],
+    extensions: [markdownWithTables(), focusedField.init(() => focused)],
   });
 }
 
