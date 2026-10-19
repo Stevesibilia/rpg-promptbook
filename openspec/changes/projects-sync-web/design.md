@@ -105,10 +105,11 @@ campaign of the same user, a campaign with a campaign) are summarised as
 `draft` and stand-alone; the document is not rewritten. An unknown category
 reads as `adventure` (amended at review of groups 1 and 2); the server never
 writes the `category` column from a summary, only at creation, since the
-category is fixed. A campaign in the bin is not in the `campaigns` passed to
-`summarize`, and the list query also treats a link to a campaign in the bin
-as stand-alone, because the children's summaries are not recomputed when
-their campaign is deleted or restored.
+category is fixed. The server passes every campaign of the user, in the bin
+or not, to `summarize` when it stores a row, so a link to a campaign in the
+bin survives an edit, and the list query treats such a link as stand-alone,
+because the children's summaries are not recomputed when their campaign is
+deleted or restored (amended at review of group 3).
 
 ### 3. `promptbook-project` API
 
@@ -133,8 +134,9 @@ copyright, licence })`: adventure and one-shot from
   (decision 6). Words: whitespace-separated tokens containing a letter, in
   the document after the front matter.
 - `prepareImport(note, { fileName, campaigns })` → `{ title, category | null,
-campaignId | null, text, report, isAdventureNote, imageRefs }`, using
-  `convertNote`. An adventure note has front matter in the original, a
+campaignId | null, system, text, report, isAdventureNote, imageRefs }`, using
+  `convertNote`; `system` is the converted front matter's `sistema`, empty
+  when absent (amended at review of group 3). An adventure note has front matter in the original, a
   converted front matter key other than `titolo`, or a `### S<n>.` heading.
   Image references: Markdown image links and `<img src>` whose target is a
   relative path.
@@ -260,7 +262,9 @@ messages to `handleMessage`, its close to `handleClose` and its pongs to
   `edited_at`. On failure, broadcast the stateless message
   `{"type":"store-failed"}`; after every successful store,
   `{"type":"stored"}` (amended in group 3: decision 9's list refresh needs
-  it).
+  it). A failed store is tried again after 5 s, since Hocuspocus keeps the
+  document in memory but stores again only on the next edit, and a quiet tab
+  would otherwise stay on Not saved (amended at review of group 3).
 - Closing: a helper `closeConnections(predicate)` walks the open documents'
   connections and closes those matching a session hash (sign-out, password
   change) or a project id (delete). Sign-out and password change close the
@@ -358,7 +362,8 @@ campaigns «Blacksad - Il Continentale», «Cronaca del Gabbiano» and
 Malamocco» in Cronaca del Gabbiano; the one-shot «L'Ancora di Sabaoth» with
 `packages/format/fixtures/l-ancora-di-sabaoth.converted.md` as its document;
 and a draft one-shot imported from `packages/format/fixtures/esempio.md`
-through `prepareImport`, keeping that note's title. To-do states and seeds as in the mockup. It refuses
+through `prepareImport`, titled «L'Ancora di Sabaoth (esempio del modello)»,
+since the template's example is the same adventure. To-do states and seeds as in the mockup. It refuses
 to run when the user already has projects.
 
 ### 11. Tests

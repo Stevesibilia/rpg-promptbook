@@ -1,4 +1,4 @@
-import { readDocument, readTodo } from 'promptbook-project';
+import { prepareImport, readDocument, readTodo } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import { runCli, type CliIo } from '../../src/cli.js';
 import { fixture } from '../../src/fixtures.js';
@@ -38,17 +38,22 @@ describe('seed', () => {
     expect(one('Pioggia su Kenmore Street')).toMatchObject({ status: 'complete', campaignId: blacksad.id, todoDone: 4 });
     expect(one("Le ali di Ca' Malamocco")).toMatchObject({ status: 'in-progress', campaignId: gabbiano.id, todoDone: 4 });
 
-    const [sabaoth, imported] = byTitle("L'Ancora di Sabaoth").sort((a, b) => b.todoTotal - a.todoTotal);
+    const sabaoth = one("L'Ancora di Sabaoth");
+    const imported = one("L'Ancora di Sabaoth (esempio del modello)");
     expect(sabaoth).toMatchObject({ category: 'one-shot', status: 'in-progress', todoDone: 5, todoTotal: 9, scenes: 5 });
-    expect(sabaoth!.nextDue).toMatch(/^\d{4}-10-24$/);
-    expect(readDocument((await loadProjectDoc(db, sabaoth!.id))!)).toBe(fixture('l-ancora-di-sabaoth.converted.md'));
+    expect(sabaoth.nextDue).toMatch(/^\d{4}-10-24$/);
+    expect(readDocument((await loadProjectDoc(db, sabaoth.id))!)).toBe(fixture('l-ancora-di-sabaoth.converted.md'));
     expect(imported).toMatchObject({ category: 'one-shot', status: 'draft', campaignId: null, todoDone: 0, todoTotal: 4 });
-    expect(readTodo((await loadProjectDoc(db, imported!.id))!).map((t) => t.text)).toEqual([
+    expect(readTodo((await loadProjectDoc(db, imported.id))!).map((t) => t.text)).toEqual([
       'Scrivere le scene',
       'Schede dei PNG',
       'PDF per il tavolo',
       'Rilettura',
     ]);
+    // Renamed in the list only: the document is the imported note's.
+    expect(readDocument((await loadProjectDoc(db, imported.id))!)).toBe(
+      prepareImport(fixture('esempio.md'), { fileName: 'esempio.md', campaigns: [] }).text,
+    );
     expect(projects).toHaveLength(8);
   });
 

@@ -62,6 +62,13 @@ describe('prepareImport', () => {
     })).toMatchObject({ category: 'campaign', campaignId: null });
   });
 
+  it('takes the system from the front matter, or leaves it empty', () => {
+    expect(prepareImport('---\ntitolo: A\nsistema: " Not The End "\n---\n', { fileName: 'x.md', campaigns: [] }).system).toBe(
+      'Not The End',
+    );
+    expect(prepareImport('# Spesa\n\n- latte\n', { fileName: 'spesa.md', campaigns: [] }).system).toBe('');
+  });
+
   it('lists relative image references and leaves them in the text', () => {
     const body =
       '# Note\n\n![mappa](_resources/abc123.png)\n\n<img src="_resources/def456.jpg" width="300">\n\n' +

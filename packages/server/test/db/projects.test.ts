@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { strFromU8, unzipSync } from 'fflate';
 import type { FastifyInstance } from 'fastify';
 import { parseAdventure, templates } from 'promptbook-format';
-import { defaultSettings, readDocument, readTodo, seedVersions } from 'promptbook-project';
+import { addTodo, defaultSettings, readDocument, readTodo, seedVersions } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import { createUser } from '../../src/accounts/users.js';
-import { loadProjectDoc, purge } from '../../src/projects.js';
+import { loadProjectDoc, purge, storeProjectDoc } from '../../src/projects.js';
 import { db, ORIGIN, PASSWORD, signedIn, startApp, steve } from './helpers.js';
 
 const fixture = (name: string) => readFileSync(new URL(`../../../format/fixtures/${name}`, import.meta.url), 'utf8');
@@ -145,6 +145,24 @@ describe('the bin', () => {
     expect((await list()).find((p) => p.id === child.id)!.campaignId).toBe(campaign.id);
   });
 
+  it('keeps the link of an adventure stored while its campaign is in the bin', async () => {
+    const { create, call, list } = await signedInApi();
+    const campaign = await create({ category: 'campaign', title: 'Cronaca del Gabbiano' });
+    const child = await create({ category: 'adventure', title: "Le ali di Ca' Malamocco", campaignId: campaign.id });
+    await call('DELETE', `/api/projects/${campaign.id}`);
+
+    // An edit stored as sync stores it, while the campaign is in the bin.
+    const doc = (await loadProjectDoc(db, child.id))!;
+    addTodo(doc, 'Stampare le schede');
+    await storeProjectDoc(db, child.id, doc);
+    const binned = (await list()).find((p) => p.id === child.id)!;
+    expect(binned).toMatchObject({ campaignId: null, todoTotal: 10 });
+
+    // Restored, with no further edit: back under its campaign.
+    await call('POST', `/api/projects/${campaign.id}/restore`);
+    expect((await list()).find((p) => p.id === child.id)!.campaignId).toBe(campaign.id);
+  });
+
   it('purges projects in the bin for more than 30 days, and sign-in failures older than a day', async () => {
     const { create, call, list } = await signedInApi();
     const old = await create({ category: 'one-shot', title: 'Vecchio' });
@@ -260,7 +278,8 @@ describe('import', () => {
       'Lista della spesa',
     ]);
     expect(results.map((r) => r.project.status)).toEqual(['draft', 'draft', 'draft', 'draft']);
-    expect(results[0]!.project).toMatchObject({ category: 'one-shot', todoTotal: 9, scenes: 5 });
+    expect(results[0]!.project).toMatchObject({ category: 'one-shot', todoTotal: 9, scenes: 5, system: 'Kulthos' });
+    expect(results[1]!.project.system).toBe('');
     expect(results[0]!.report.counts).toEqual(expect.any(Object));
     expect(results[1]!.imagesNotImported).toBe(2);
     expect(results[2]!.project.campaignId).toBe(campaign.id);

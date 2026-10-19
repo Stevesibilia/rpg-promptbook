@@ -97,14 +97,20 @@ export async function getProject(db: Queryable, ownerId: string, id: string): Pr
   return row ? toRow(row) : null;
 }
 
-// The user's campaigns not in the bin: what summaries check links against and
-// what imports match `campagna` with.
-export async function campaignsOf(db: Queryable, ownerId: string): Promise<CampaignRef[]> {
+// The user's campaigns not in the bin: what a new project may join and what
+// imports match `campagna` with. With the bin: what a stored summary checks
+// links against, so a link to a campaign in the bin survives an edit and the
+// list's join alone decides how it shows.
+export async function campaignsOf(
+  db: Queryable,
+  ownerId: string,
+  { includeBin = false }: { includeBin?: boolean } = {},
+): Promise<CampaignRef[]> {
   return db.query<CampaignRef>(
     `select id, title from projects
-     where owner_id = $1 and category = 'campaign' and deleted_at is null
+     where owner_id = $1 and category = 'campaign' and ($2 or deleted_at is null)
      order by title, id`,
-    [ownerId],
+    [ownerId, includeBin],
   );
 }
 
@@ -126,7 +132,7 @@ const summaryParams = (s: Summary) => [
 // A new project's row and document. The category column is written here
 // only: the category is fixed at creation, so no summary rewrites it.
 export async function insertProject(tx: Queryable, ownerId: string, doc: Y.Doc): Promise<void> {
-  const summary = summarize(doc, { campaigns: await campaignsOf(tx, ownerId) });
+  const summary = summarize(doc, { campaigns: await campaignsOf(tx, ownerId, { includeBin: true }) });
   await tx.query(
     `insert into projects (id, owner_id, category, title, status, campaign_id, system, seed,
                            todo_done, todo_total, next_due, scenes, words, errors, warnings)
@@ -147,7 +153,7 @@ export async function storeProjectDoc(db: Db, projectId: string, doc: Y.Doc): Pr
       projectId,
     ]);
     if (!project) return;
-    const summary = summarize(doc, { campaigns: await campaignsOf(tx, project.owner_id) });
+    const summary = summarize(doc, { campaigns: await campaignsOf(tx, project.owner_id, { includeBin: true }) });
     await tx.query(
       `insert into project_docs (project_id, state) values ($1, $2)
        on conflict (project_id) do update set state = excluded.state, updated_at = now()`,

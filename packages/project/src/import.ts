@@ -7,6 +7,8 @@ export interface PreparedImport {
   // From the front matter's `formato`; null leaves the choice to the user.
   category: Category | null;
   campaignId: string | null;
+  // From the front matter's `sistema`; empty when there is none.
+  system: string;
   // The converted note: the new project's document.
   text: string;
   report: ConvertReport;
@@ -92,6 +94,7 @@ export function prepareImport(note: string, { fileName, campaigns }: PrepareImpo
     title,
     category,
     campaignId,
+    system: text(meta.sistema),
     text: converted.text,
     report: converted.report,
     isAdventureNote,

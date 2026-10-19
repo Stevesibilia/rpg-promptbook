@@ -62,7 +62,7 @@ export async function transferRoutes(app: FastifyInstance, { db, sync }: { db: D
           category: note.category,
           status: 'draft',
           campaignId: campaign?.id ?? null,
-          system: '',
+          system: prepared.system,
           todo: settings.todoTemplates[note.category],
           document: prepared.text,
         });

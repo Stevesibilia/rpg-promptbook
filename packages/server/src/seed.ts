@@ -3,6 +3,7 @@ import {
   createProjectDoc,
   prepareImport,
   readTodo,
+  setTitle,
   skeletonDocument,
   updateTodo,
   type Category,
@@ -148,9 +149,11 @@ const samples: Sample[] = [
 ];
 
 // The mockup's imported draft one-shot, from the format package's example
-// note through the import path, keeping that note's title.
+// note through the import path. The template's example is the same adventure
+// as the Sabaoth above, so it is renamed to tell the two apart in the list.
 const imported = {
   fileName: 'esempio.md',
+  title: "L'Ancora di Sabaoth (esempio del modello)",
   todo: [
     ['Scrivere le scene', false],
     ['Schede dei PNG', false],
@@ -225,6 +228,7 @@ export async function seedProjects(db: Db, username: string): Promise<number> {
       todo: imported.todo.map(([text]) => text),
       document: note.text,
     });
+    setTitle(doc, imported.title);
     await insertProject(tx, user.id, doc);
     return samples.length + 1;
   });
