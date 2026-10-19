@@ -265,3 +265,45 @@ are no longer read; the owner may delete them.
 - **The username suffix** makes an Authentik user `steve` become `steve-2`
   if the old local account still exists at the first sign-in. The release
   deletes `steve` first.
+
+## Departures and review, brief A
+
+Recorded by the architect after the server brief (2026-10-19):
+
+- **The ID token's signature is always checked**
+  (`enableNonRepudiationChecks`). `openid-client` 6 skips it for a token
+  fetched straight from the token endpoint, trusting TLS (OIDC Core
+  3.1.3.7); a bad signature would otherwise sign in. One JWKS fetch,
+  cached.
+- **The callback route logs at `warn` only:** Fastify's request lines carry
+  the URL, whose query holds the authorization code.
+- **Account creation takes a second, global advisory lock**
+  (`promptbook-oidc-new-account`) around the username search and insert: the
+  per-identity lock alone lets two new identities pick the same username.
+  Against a password account created by `createUser` at the same moment, the
+  insert runs under a savepoint and a 23505 on the username retries the
+  search, up to five times.
+- **No settings row is created** at the first sign-in: `createUser` creates
+  none either; settings are written on the first `PUT`.
+- **`/start` answers `/?sign_in=unreachable`** when discovery fails, as the
+  callback does.
+- **`POST /api/auth/login` returns the same user shape as `/me`** (`email`,
+  `signIn` included).
+- **`/api/auth/config` carries `issuerHost`** for the sign-in page's footer.
+- **Pending sign-ins are capped at 500** unexpired rows: past that, `/start`
+  inserts nothing and answers `unreachable`, with a warning at most once a
+  minute. Per-address limits would be useless behind Traefik (#11).
+- **`OIDC_REDIRECT_URI` must equal `<PUBLIC_URL origin>/api/auth/oidc/callback`**
+  (startup `ConfigError` otherwise): the route and the handshake cookie only
+  work there.
+- **The handshake cookie is `__Host-pb_oidc`** (Secure, `Path=/`, no
+  `Domain`) over https, so a sibling `*.siberio.eu` site cannot plant it;
+  plain `pb_oidc` with path `/api/auth/oidc` over http for local
+  development.
+- **Recovery uses the owner's own account:** with single sign-on off,
+  `user:password <username>` gives the single sign-on account a password, so
+  its projects come back with it; `user:create` would make an empty account.
+  The account still refuses passwords while single sign-on is on.
+- **Brief B's preview issuer runs over https** with a self-signed CA that the
+  app container trusts through `NODE_EXTRA_CA_CERTS`: the production client
+  refuses plain `http` and has no switch for it.
