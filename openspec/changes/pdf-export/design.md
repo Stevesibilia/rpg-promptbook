@@ -316,6 +316,10 @@ diagnostics }`. A `pdf` request answers the bytes.
   and one request in flight; it sends only while the pane or the review is
   open. First open shows «Loading the PDF engine…» until the engine is
   ready.
+- The web build never inlines files from `packages/layout` as data URLs
+  (`connect-src` refuses them), and marks `@myriaddreamin/*` free of side
+  effects so the page's chunk does not pull typst.ts in through `pageOf` and
+  `blockAt`.
 
 ### 10. Web: drawing pages
 

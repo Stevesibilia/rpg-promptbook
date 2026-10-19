@@ -1,0 +1,75 @@
+/* The PDF preview and review, from docs/mockups/editor.html. */
+
+/* The rendered document, kept out of sight: the pages draw from it. */
+.pdf-source {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* One page. Shapes without a fill of their own draw none, as the renderer's
+   own style sheet does; links in the page are not followed from here. */
+.pdf-sheet {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  fill: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.pdf-sheet use {
+  pointer-events: none;
+}
+.pdf-sheet.stale,
+.stale .pdf-sheet {
+  opacity: 0.45;
+}
+
+.pdf-note {
+  margin: 0 0 12px;
+  color: #cfd6d2;
+  font-size: 13px;
+}
+.pdf-note.error {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 14%, #2b2f2d);
+}
+.pdf-note.error span {
+  font: 12px var(--mono);
+  overflow-wrap: anywhere;
+}
+
+/* The PDF button stays primary while the pane is open. */
+.tb.primary[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--on-primary) 45%, transparent);
+}
+
+/* The pane, in place of the inspector */
+.app .right:has(> .pdfpane) {
+  background: #2b2f2d;
+}
+.pdfpane {
+  padding: 18px;
+}
+.pdfpane .bar2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: #cfd6d2;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.pdfpane .bar2 .tb {
+  color: #cfd6d2;
+}
+.pdfpane .pdf-sheet {
+  cursor: text;
+}

@@ -13,6 +13,7 @@ FROM registry.access.redhat.com/hi/nodejs:26-builder AS deps
 WORKDIR /app
 COPY --chown=65532:0 package.json package-lock.json ./
 COPY --chown=65532:0 packages/format/package.json packages/format/
+COPY --chown=65532:0 packages/layout/package.json packages/layout/
 COPY --chown=65532:0 packages/project/package.json packages/project/
 COPY --chown=65532:0 packages/server/package.json packages/server/
 COPY --chown=65532:0 packages/web/package.json packages/web/
@@ -21,6 +22,7 @@ RUN --mount=type=cache,target=/tmp/.npm,uid=65532 npm ci --no-audit --no-fund
 FROM deps AS build
 COPY --chown=65532:0 tsconfig.base.json ./
 COPY --chown=65532:0 packages/format packages/format
+COPY --chown=65532:0 packages/layout packages/layout
 COPY --chown=65532:0 packages/project packages/project
 COPY --chown=65532:0 packages/server packages/server
 COPY --chown=65532:0 packages/web packages/web
@@ -33,6 +35,7 @@ FROM registry.access.redhat.com/hi/nodejs:26-builder AS prod-deps
 WORKDIR /app
 COPY --chown=65532:0 package.json package-lock.json ./
 COPY --chown=65532:0 packages/format/package.json packages/format/
+COPY --chown=65532:0 packages/layout/package.json packages/layout/
 COPY --chown=65532:0 packages/project/package.json packages/project/
 COPY --chown=65532:0 packages/server/package.json packages/server/
 COPY --chown=65532:0 packages/web/package.json packages/web/

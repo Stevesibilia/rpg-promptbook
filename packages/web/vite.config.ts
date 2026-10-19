@@ -22,6 +22,16 @@ export default defineConfig({
     // The main chunk carries the format package, which the import preview and
     // the new-project preview run in the browser; CodeMirror is split off.
     chunkSizeWarningLimit: 1000,
+    // The PDF worker fetches the layout package's files (decision 9); a small
+    // one inlined as a data: URL would be refused by the content security
+    // policy's connect-src.
+    assetsInlineLimit: (file) => (file.includes('/packages/layout/') ? false : undefined),
+    rolldownOptions: {
+      // typst.ts does not declare itself free of side effects, so importing
+      // the layout package's pure helpers (pageOf, blockAt) on the page would
+      // pull its whole JavaScript in. Only the PDF worker uses it.
+      treeshake: { moduleSideEffects: (id) => !id.includes('/@myriaddreamin/') },
+    },
   },
   server: {
     port: 5173,

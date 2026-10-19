@@ -10,6 +10,8 @@ describe('the shortcut table', () => {
     expect(keyLabel('Mod-k', false)).toBe('Ctrl+K');
     expect(keyLabel('Shift-F8', true)).toBe('⇧F8');
     expect(keyLabel('Mod-.', false)).toBe('Ctrl+.');
+    expect(keyLabel('Mod-Shift-p', true)).toBe('⌘⇧P');
+    expect(keyLabel('Mod-Shift-p', false)).toBe('Ctrl+Shift+P');
   });
 
   it('matches Mod to ⌘ on the Mac and Ctrl elsewhere', () => {
@@ -17,6 +19,9 @@ describe('the shortcut table', () => {
     expect(matchShortcut(key({ key: '1', ctrlKey: true }), true)).toBeNull();
     expect(matchShortcut(key({ key: '2', ctrlKey: true }), false)).toBe('inspector');
     expect(matchShortcut(key({ key: 'K', metaKey: true }), true)).toBe('palette');
+    expect(matchShortcut(key({ key: 'P', metaKey: true, shiftKey: true }), true)).toBe('pdfReview');
+    expect(matchShortcut(key({ key: 'P', ctrlKey: true, shiftKey: true }), false)).toBe('pdfReview');
+    expect(matchShortcut(key({ key: 'p', metaKey: true }), true)).toBeNull();
   });
 
   it('ignores Shift for a key typed as a symbol, not for F8', () => {

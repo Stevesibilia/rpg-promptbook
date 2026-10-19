@@ -20,6 +20,7 @@ export function Shell({
   left,
   right,
   focus = false,
+  wideRight = false,
   status,
   documentLink,
   children,
@@ -32,6 +33,8 @@ export function Shell({
   left?: ReactNode;
   right?: ReactNode;
   focus?: boolean;
+  // The right panel at the PDF preview's width.
+  wideRight?: boolean;
   status?: ReactNode;
   // The open project's page, when there is one to go back to.
   documentLink?: string;
@@ -40,7 +43,9 @@ export function Shell({
   const sync = useSync();
   const navigate = useNavigate();
   return (
-    <div className={`app${left ? ' with-left' : ''}${right ? '' : ' no-sel'}${focus ? ' focus' : ''}`}>
+    <div
+      className={`app${left ? ' with-left' : ''}${right ? '' : ' no-sel'}${wideRight && right ? ' wide-right' : ''}${focus ? ' focus' : ''}`}
+    >
       <header className="topbar">
         <Link className="logo" to="/" title="Promptbook">
           P

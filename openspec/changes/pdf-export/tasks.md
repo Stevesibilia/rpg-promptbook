@@ -15,10 +15,10 @@
 
 ## 3. Web: worker and pane (brief B)
 
-- [ ] 3.1 `editor/pdf/pdf.worker.ts` and `client.ts` (decision 9)
-- [ ] 3.2 Page drawing (decision 10)
-- [ ] 3.3 PDF button, pane, panels state, inspector interplay, loading and error states (decision 11)
-- [ ] 3.4 Unit tests: spread pairing, options storage, anything pure added here
+- [x] 3.1 `editor/pdf/pdf.worker.ts` and `client.ts` (decision 9)
+- [x] 3.2 Page drawing (decision 10)
+- [x] 3.3 PDF button, pane, panels state, inspector interplay, loading and error states (decision 11)
+- [x] 3.4 Unit tests: spread pairing, options storage, anything pure added here
 
 ## 4. Web: review, shortcuts, server (brief B)
 
