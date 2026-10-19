@@ -14,5 +14,5 @@
 
 ## 3. Release (architect)
 
-- [ ] 3.1 Pull request, CI green (the `e2e` job builds amd64), merge
-- [ ] 3.2 Tag `v0.1.1`, GitHub Release, GitLab pipeline green, live sign-in; archive; close #14
+- [x] 3.1 Pull request, CI green (the `e2e` job builds amd64), merge
+- [x] 3.2 Tag `v0.1.1`, GitHub Release, GitLab pipeline green, live sign-in; archive; close #14
