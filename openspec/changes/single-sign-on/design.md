@@ -307,3 +307,33 @@ Recorded by the architect after the server brief (2026-10-19):
 - **Brief B's preview issuer runs over https** with a self-signed CA that the
   app container trusts through `NODE_EXTRA_CA_CERTS`: the production client
   refuses plain `http` and has no switch for it.
+
+## Departures and review, brief B
+
+Recorded by the architect after the web, chart and preview brief
+(2026-10-19). The owner looked at the LAN preview and said "Looks ok", after
+one round ("keep emerald theme on login": the app's sign-in pages were
+already Emerald; the test issuer's stand-in page was restyled to match).
+
+- **Rendering tests are e2e** (`e2e/sso.spec.ts`, six tests): the web
+  package's unit tests are pure functions without a DOM by design.
+- **The e2e and preview issuer is the server's test issuer** with opt-in
+  options (TLS, host, port, public origin, a sign-in page with Sign in,
+  Cancel, provider down and bad signature), run in a container from the app
+  image with its files mounted; the production image is unchanged.
+  Chromium reaches it through `--host-resolver-rules`.
+- **The `sign_in` parameter is removed through the router**
+  (`navigate(…, { replace: true })`), keeping its location in sync.
+- **Settings, Account follows `user.signIn`:** in recovery (single sign-on
+  off, a password set with `user:password`) the owner's account still shows
+  the single sign-on variant without "Change password…". Accepted: recovery
+  is temporary, and the password was set on the command line.
+- **The status dot uses `--primary`**: the mockup's `--ok` is not a token of
+  the app.
+- **`prepare-secrets` checks that `rpg-promptbook-oidc` exists**, so a
+  missing Secret fails the pipeline rather than leaving the pod in
+  `CreateContainerConfigError`.
+- **The chart requires `app.oidc.issuer`** while single sign-on is on, and
+  `NOTES.txt` says which sign-in is configured.
+- **The sign-in window opens as a popup** (`popup,width=520,height=720`)
+  with its opener cleared; the tabs talk only over the `BroadcastChannel`.
