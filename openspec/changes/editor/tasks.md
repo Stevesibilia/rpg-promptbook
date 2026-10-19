@@ -16,7 +16,7 @@
 ## 3. Outline and moving scenes
 
 - [x] 3.1 `outline.ts`: tree, badges, current item; campaign headings tree (decisions 2 and 6)
-- [x] 3.2 `Outline.tsx`: click to jump, current item, drag handle, Alt+↑ and Alt+↓ on a focused scene
+- [x] 3.2 `OutlinePanel.tsx`: click to jump, current item, drag handle, Alt+↑ and Alt+↓ on a focused scene
 - [x] 3.3 `moveScene.ts` (decision 7), applied as one transaction from a fresh parse
 - [x] 3.4 Tests: outline of Sabaoth with its badges; `moveScene` round trip byte-identical, reparse with the same scenes and no new problems, last scene before the next section
 
@@ -32,6 +32,11 @@
 - [ ] 5.2 `syntax.ts` and `SyntaxSheet.tsx` (decision 10)
 - [ ] 5.3 `palette.ts` and `CommandPalette.tsx` (decision 10)
 - [ ] 5.4 Tests: `syntax.ts` covers every field, section and callout; `palette.ts` filtering with accents; menu entries for a scene, a section and the scenes section
+
+## 5b. Tables
+
+- [ ] 5b.1 GFM Markdown language and the table widget field (design decision 4, Tables): drawn off the selection, source on it, click to the cell, sideways scroll, bold and italic only
+- [ ] 5b.2 Tests: the table items for a state with and without a selection in the table, the cell a click maps to, cell text never read as HTML
 
 ## 6. End to end, preview and hand-back
 

@@ -82,9 +82,15 @@ A new folder `packages/web/src/editor/`, replacing
   (decision 8), `moveScene.ts` (decision 7), `fixes.ts` (decision 5),
   `palette.ts` (filter and commands list), `syntax.ts` (the syntax sheet's
   data from the template).
-- Components: `Outline.tsx`, `Inspector.tsx` (with `ThisScene.tsx`,
-  `Checks.tsx`, `SeedView.tsx`), `CommandPalette.tsx`, `SyntaxSheet.tsx`,
-  `StatusBar.tsx`, `editor.css`.
+- Components: `OutlinePanel.tsx`, `Inspector.tsx` (with `ThisScene.tsx`,
+  `Checks.tsx`, `SeedView.tsx`, `InspectorSection.tsx`),
+  `CommandPalette.tsx`, `SyntaxSheet.tsx`, `StatusBar.tsx`, `editor.css`.
+- Amended at review of brief B: the outline component is `OutlinePanel.tsx`
+  because `Outline.tsx` and `outline.ts` are one file on macOS's
+  case-insensitive disk and `tsc` refuses them. `writes.ts` holds every
+  write from the panels (one transaction with undo stops and an immediate
+  parse: `write`, `applyMove`, `applyInsert`, `jumpTo`), and
+  `InspectorSection.tsx` the section frame shared by the inspector's parts.
 
 `TodoList` is reused as it is in the inspector. Why pure modules: the logic
 that writes text (inserts, moves, fixes) is where a bug corrupts a document,
@@ -122,6 +128,10 @@ the adventure template would show only false errors.
   keystroke is not.
 - After a move or an insert the client asks the worker at once instead of
   after 250 ms, so the outline and This scene catch up in one parse.
+- Amended at review of brief B: a place's end is mapped towards the text
+  typed at it, and the current item includes its end, so typing at the end
+  of a scene keeps the cursor in that scene until the next result. Items
+  never touch (blank lines are between them), so none takes another's text.
 - Diagnostics are pushed with `@codemirror/lint`'s `setDiagnostics` only for
   a fresh result; between results the lint state maps the existing
   diagnostics through the edits, so they do not jump or vanish while typing.
@@ -176,8 +186,30 @@ Neri`. An unknown type is a plain quote; the checks flag it.
   focus. Without focus every mark is hidden and the front matter folds;
   otherwise the cursor at offset 0 on opening would keep the front matter
   open and the first line's marks shown.
-- Lists, tables, links and images stay as source, in the prose font, with
-  list marks kept (they are content).
+- Lists, links and images stay as source, in the prose font, with list
+  marks kept (they are content).
+- **Tables** (decided by the owner on 2026-10-19, after seeing brief A: the
+  padded GFM tables of Sabaoth wrapped into long dash lines): while no
+  selection touches any line of a table, it is drawn as a table; with a
+  selection on one of its lines, every line shows as source.
+  - The Markdown language is built with GFM (`markdown({ base:
+markdownLanguage })`), so CodeMirror's tree has `Table`, `TableHeader`,
+    `TableRow` and `TableCell` nodes.
+  - The table is one block widget replacing its lines, from a `StateField`
+    like the front matter fold (a view plugin may not hide line breaks),
+    rebuilt when the text, the selection, the focus or the syntax tree
+    changes. The widget's `eq` compares the table's source, so typing
+    elsewhere does not redraw it.
+  - Header cells in Barlow 600, body cells in Spectral, borders and header
+    tint from the tokens; cells wrap; a table wider than the column scrolls
+    sideways inside the widget, never the page.
+  - Cell text shows bold and italic without their marks; everything else
+    in a cell is plain text (no HTML from the document, so nothing can be
+    injected).
+  - A click in a cell puts the cursor at the start of that cell's text in
+    the source, which shows the source by the rule above.
+  - A problem inside a table keeps its margin dot; its underline shows when
+    the table shows as source.
 - Prose in Spectral 17 px, about 70 characters wide, as today; `lang="it"`
   and spellcheck stay.
 
@@ -265,9 +297,13 @@ The right panel, collapsed with ⌘2, remembered in `localStorage`
   document order with its message and place («S5 · line 44», or the section
   name, or «Front matter»); a click selects the problem's range and scrolls
   to it.
-- **To-do:** `TodoList` with a «5 / 9» count in the heading.
+- **To-do:** `TodoList` with a «5 / 9» count in the heading. Amended at
+  review of brief B: `TodoList` is used unchanged, so the count reads
+  «5/9», and the section's open state is kept by a wrapper around it.
 - **Seed:** the current seed (`currentSeed`), read-only, with an **Edit**
-  link to the project panel (`/?p=<id>`); «No seed yet.» when empty.
+  link to the project panel (`/?p=<id>`); «No seed yet.» when empty. The
+  link sits under the seed, not in the section heading, where a click would
+  also fold the section.
 
 `inserts.ts` holds every insert, used by This scene, the `/` menu and the
 palette, so each writes the same text:
