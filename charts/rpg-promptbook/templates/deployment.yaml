@@ -1,0 +1,153 @@
+{{- $secret := include "rpg-promptbook.databaseSecretName" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rpg-promptbook.fullname" . }}
+  labels:
+    {{- include "rpg-promptbook.labels" . | nindent 4 }}
+spec:
+  # Exactly one server, and the old one goes away before the new one starts.
+  # It holds the open Yjs documents in memory, so two servers would each hold
+  # their own copy; and the migrations run as it starts, so two versions must
+  # never meet. A release therefore drops the open sync connections once; the
+  # clients reconnect.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "rpg-promptbook.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rpg-promptbook.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Roll the pod when a value that feeds its environment changes. The
+        # credentials Secret is written outside Helm, so a rotated password
+        # needs `kubectl rollout restart` (docs/deploy-homelab.md).
+        checksum/config: {{ dict "publicUrl" .Values.app.publicUrl "trustProxyHops" .Values.app.trustProxyHops "sessionTtlHours" .Values.app.sessionTtlHours "credentialsSecret" .Values.app.credentialsSecret | toJson | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # `pg_isready -d` takes the whole connection string.
+        - name: wait-for-database
+          image: {{ printf "%s:%s" .Values.waitForDatabase.image.repository .Values.waitForDatabase.image.tag }}
+          imagePullPolicy: {{ .Values.waitForDatabase.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              deadline=$(( $(date +%s) + {{ .Values.waitForDatabase.timeoutSeconds }} ))
+              until pg_isready -d "$DATABASE_URL" -t 3 >/dev/null 2>&1; do
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                  echo "database did not become ready within {{ .Values.waitForDatabase.timeoutSeconds }}s"
+                  exit 1
+                fi
+                echo "waiting for the database"
+                sleep 2
+              done
+              echo "database is ready"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: uri
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+      containers:
+        - name: server
+          image: {{ include "rpg-promptbook.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+          env:
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: uri
+            - name: PUBLIC_URL
+              value: {{ .Values.app.publicUrl | quote }}
+            - name: TRUST_PROXY_HOPS
+              value: {{ .Values.app.trustProxyHops | quote }}
+            - name: SESSION_TTL_HOURS
+              value: {{ .Values.app.sessionTtlHours | quote }}
+            # The release /api/health reports and the tag pipeline checks: the
+            # tag of the image above, so it cannot name another build.
+            - name: APP_VERSION
+              value: {{ include "rpg-promptbook.tag" . | quote }}
+            - name: PROMPTBOOK_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.credentialsSecret }}
+                  key: admin-username
+                  optional: false
+            - name: PROMPTBOOK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.credentialsSecret }}
+                  key: admin-password
+                  optional: false
+          # Starting includes the migrations, which can take a while on a
+          # release that changes the schema.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          # /api/health queries the database: during an outage the pod leaves
+          # the Service and comes back by itself.
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Only the port, not the database: an outage must not restart the
+          # server and drop every open sync connection.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

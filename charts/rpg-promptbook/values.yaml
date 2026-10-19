@@ -1,0 +1,116 @@
+# Default values for rpg-promptbook. values-homelab.yaml holds the homelab's.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: rpg-promptbook
+  # -- The release to run. The helmdeploy CI component sets it to the tag
+  # being deployed; empty falls back to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# -- Pull secrets for the image, e.g. `- name: regcred`.
+imagePullSecrets: []
+
+# One replica, always: the server keeps each open Yjs document in memory and
+# serves the sync websocket, so two servers would each hold their own copy of
+# a document. The Deployment is not scaled by a value for that reason.
+
+app:
+  # -- The address people reach the app at, scheme included. Writes and sync
+  # are accepted only from this origin.
+  publicUrl: https://promptbook.example
+  # -- How many proxies in front of the server to believe about the client
+  # address, which the sign-in throttle keys on. 1: the ingress controller.
+  trustProxyHops: 1
+  # -- A Secret with the keys `admin-username` and `admin-password`: the first
+  # account, created only while the database has none. Written by the deploy
+  # pipeline, never by this chart, so the password stays out of Helm's release.
+  credentialsSecret: rpg-promptbook-credentials
+  sessionTtlHours: 720
+
+waitForDatabase:
+  # -- Hold the server back until the database accepts connections, so the
+  # migrations at start do not crash-loop while it comes up.
+  image:
+    repository: postgres
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+  timeoutSeconds: 300
+
+service:
+  port: 3000
+
+ingress:
+  enabled: true
+  className: traefik-ingress
+  annotations: {}
+  hosts:
+    - host: promptbook.example
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 192Mi
+  limits:
+    memory: 768Mi
+
+# -- The image is built for one architecture.
+nodeSelector: {}
+
+# ── Database ─────────────────────────────────────────────────────────────────
+
+# The CloudNativePG cluster <fullname>-db, backed up to an S3 bucket. The
+# operator, the `postgresql` ClusterImageCatalog and the backup Secret come
+# from the homelab kubernetes_cluster repository.
+cnpg:
+  database: promptbook
+  owner: promptbook
+
+  imageCatalog:
+    name: postgresql
+    major: 18
+
+  storage:
+    storageClass: ur-default
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+  backup:
+    enabled: true
+    endpointURL: "http://192.168.2.8:9900"
+    bucket: cnpg-rpg-promptbook
+    # -- Secret with `ACCESS_KEY_ID` and `ACCESS_SECRET_KEY` for the bucket.
+    credentialsSecret: cnpg-backup-s3
+    # -- How far back a point-in-time recovery can go.
+    retention: 30d
+    # -- Six fields, seconds first, in UTC.
+    schedule: "0 15 2 * * *"
+
+  podMonitor:
+    enabled: true
+    # -- The labels the Prometheus that should scrape it selects PodMonitors by.
+    labels:
+      release: prometheus-community
+
+  # -- Create the cluster from its own backups instead of empty, to rebuild a
+  # lost database (docs/deploy-homelab.md). Only acts when the cluster is
+  # created. `serverName` is the folder in the bucket to read, `targetTime` an
+  # optional RFC 3339 point in time, `archiveServerName` the new folder to
+  # archive to, which must differ from `serverName`: the operator refuses to
+  # archive into a folder that already holds WAL.
+  restore:
+    serverName: ""
+    targetTime: ""
+    archiveServerName: ""

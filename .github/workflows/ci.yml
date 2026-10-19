@@ -49,6 +49,21 @@ jobs:
             echo "No Markdown files changed."
           fi
 
+  # The Helm chart, rendered with each values file, so a broken template shows
+  # on the pull request rather than on a release tag (design decision 5). Not a
+  # required check yet.
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.3.1
+      - run: helm lint charts/rpg-promptbook
+      - run: helm lint charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml
+      - run: helm template rpg-promptbook charts/rpg-promptbook --set image.tag=ci > /dev/null
+      - run: helm template rpg-promptbook charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml --set image.tag=ci > /dev/null
+
   # The end-to-end tests against the compose stack (design decision 11). Not a
   # required check until the owner says so.
   e2e:

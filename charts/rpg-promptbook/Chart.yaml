@@ -1,0 +1,18 @@
+apiVersion: v2
+name: rpg-promptbook
+description: The RPG Promptbook server, its web client and its CloudNativePG database
+type: application
+
+# The chart's own version. Bump it for chart changes; appVersion is the
+# fallback image tag when a deploy does not set image.tag.
+version: 0.1.0
+appVersion: "0.1.0"
+
+home: https://github.com/Stevesibilia/rpg-promptbook
+sources:
+  - https://github.com/Stevesibilia/rpg-promptbook
+maintainers:
+  - name: Stefano Sibilia
+
+# No dependencies on purpose: the database is a CloudNativePG Cluster that
+# templates/cnpg.yaml renders itself, as the homelab's other charts do.

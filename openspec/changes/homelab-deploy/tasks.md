@@ -10,11 +10,11 @@
 
 ## 2. Helm chart
 
-- [ ] 2.1 `charts/rpg-promptbook`: `Chart.yaml`, `values.yaml`, `values-homelab.yaml`, `_helpers.tpl`, `NOTES.txt` (decision 3)
-- [ ] 2.2 `deployment.yaml` (init container, probes, security context, environment table), `service.yaml`, `ingress.yaml`
-- [ ] 2.3 `cnpg.yaml` from gdrarchive's, renamed, schedule `0 15 2 * * *`
-- [ ] 2.4 The read-only root filesystem check of the risks, with the image from `Dockerfile` and the compose database
-- [ ] 2.5 Job `chart` in `.github/workflows/ci.yml` (decision 5); `helm lint` and `helm template` pass with both values files
+- [x] 2.1 `charts/rpg-promptbook`: `Chart.yaml`, `values.yaml`, `values-homelab.yaml`, `_helpers.tpl`, `NOTES.txt` (decision 3)
+- [x] 2.2 `deployment.yaml` (init container, probes, security context, environment table), `service.yaml`, `ingress.yaml`
+- [x] 2.3 `cnpg.yaml` from gdrarchive's, renamed, schedule `0 15 2 * * *`
+- [x] 2.4 The read-only root filesystem check of the risks, with the image from `Dockerfile` and the compose database
+- [x] 2.5 Job `chart` in `.github/workflows/ci.yml` (decision 5); `helm lint` and `helm template` pass with both values files
 
 ## 3. Pipelines
 
