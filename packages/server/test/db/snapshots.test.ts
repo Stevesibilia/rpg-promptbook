@@ -133,17 +133,75 @@ describe('the live write path', () => {
       openLiveDocument(s.app.sync, s.id, s.user.id),
     ]);
     expect(a.doc).toBe(b.doc);
-    a.transact((doc) => addTodo(doc, 'Da A'));
+    await a.transact((doc) => addTodo(doc, 'Da A'));
     await b.close();
-    a.transact((doc) => addTodo(doc, 'Ancora da A'));
+    await a.transact((doc) => addTodo(doc, 'Ancora da A'));
     await a.close();
-    expect(() => a.transact(() => null)).toThrow('closed');
+    await expect(a.transact(() => null)).rejects.toThrow('closed');
     const texts = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => readTodo(doc).map((t) => t.text));
     expect(texts.slice(-2)).toEqual(['Da A', 'Ancora da A']);
   });
 });
 
+describe('the live write path, when the write throws', () => {
+  it('rejects with the error, changes nothing and closes the connection', async () => {
+    const s = await setup();
+    await expect(
+      withLiveDocument(s.app.sync, s.id, s.user.id, () => {
+        throw new Error('rifiutato');
+      }),
+    ).rejects.toThrow('rifiutato');
+    expect(s.app.sync.liveDocument(s.id)).toBeNull();
+    expect(await storedText(s.id)).toBe(ADVENTURE);
+  });
+});
+
 describe('snapshotThenWrite', () => {
+  it('deletes the snapshot when the write throws', async () => {
+    const s = await setup();
+    const live = await openLiveDocument(s.app.sync, s.id, s.user.id);
+    const throwing = {
+      ...live,
+      transact: () => Promise.reject(new Error('scrittura fallita')),
+    };
+    try {
+      await expect(
+        snapshotThenWrite(db, throwing, {
+          snapshot: (text) =>
+            insertSnapshot(db, { projectId: s.id, kind: 'restore', label: 'x', text, category: 'adventure' }),
+          next: () => 'nuovo',
+        }),
+      ).rejects.toThrow('scrittura fallita');
+    } finally {
+      await live.close();
+    }
+    expect(await snapshotRows(s.id)).toEqual([]);
+    expect(await storedText(s.id)).toBe(ADVENTURE);
+  });
+
+  it('deletes the snapshot when the connection closes under the write', async () => {
+    const s = await setup();
+    const live = await openLiveDocument(s.app.sync, s.id, s.user.id);
+    await expect(
+      snapshotThenWrite(db, live, {
+        snapshot: async (text) => {
+          const row = await insertSnapshot(db, {
+            projectId: s.id,
+            kind: 'restore',
+            label: 'x',
+            text,
+            category: 'adventure',
+          });
+          await live.close();
+          return row;
+        },
+        next: () => 'nuovo',
+      }),
+    ).rejects.toThrow('closed');
+    expect(await snapshotRows(s.id)).toEqual([]);
+    expect(await storedText(s.id)).toBe(ADVENTURE);
+  });
+
   it('snapshots again when a keystroke lands between the snapshot and the write', async () => {
     const s = await setup();
     const live = await openLiveDocument(s.app.sync, s.id, s.user.id);
@@ -257,6 +315,37 @@ describe('snapshots API', () => {
       (await s.call('GET', `/api/projects/${s.id}/snapshots/00000000-0000-4000-8000-000000000000`)).statusCode,
     ).toBe(404);
     expect((await s.call('GET', `/api/projects/${s.id}/snapshots/nope`)).statusCode).toBe(404);
+  });
+
+  it('refuses to snapshot a project with no stored text', async () => {
+    const s = await setup();
+    await db.query('delete from project_docs where project_id = $1', [s.id]);
+    const response = await s.call('POST', `/api/projects/${s.id}/snapshots`, { label: 'vuoto' });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'no_document' });
+    expect(await snapshotRows(s.id)).toEqual([]);
+  });
+
+  it('cuts every label to 200 characters, so a restore of a restore does not grow it', async () => {
+    const s = await setup();
+    const long = await insertSnapshot(db, {
+      projectId: s.id,
+      kind: 'user',
+      label: `${'a'.repeat(199)}😀 e oltre`,
+      text: ADVENTURE,
+      category: 'adventure',
+    });
+    expect(long.label).toBe('a'.repeat(199));
+    let id = long.id;
+    for (let i = 0; i < 3; i++) {
+      const restored = await s.call('POST', `/api/projects/${s.id}/snapshots/${id}/restore`);
+      expect(restored.json().snapshot.label.length).toBeLessThanOrEqual(200);
+      id = restored.json().snapshot.id;
+    }
+    const labels = await db.query<{ n: number }>('select length(label) as n from snapshots where project_id = $1', [
+      s.id,
+    ]);
+    expect(labels.every((r) => r.n <= 200)).toBe(true);
   });
 
   it('refuses an empty or a long name', async () => {

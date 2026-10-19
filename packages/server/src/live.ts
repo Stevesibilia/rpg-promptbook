@@ -14,9 +14,10 @@ export interface LiveDocument {
   // The document as the open clients have it. Read it, never write it here:
   // writes go through transact.
   readonly doc: Y.Doc;
-  // Runs fn as one local transaction that every connected client receives.
-  // Yjs does not roll back: fn checks everything before it changes anything.
-  transact<T>(fn: (doc: Y.Doc) => T): T;
+  // Runs fn as one local transaction that every connected client receives,
+  // and answers what fn returns. An error thrown by fn rejects it. Yjs does
+  // not roll back: fn checks everything before it changes anything.
+  transact<T>(fn: (doc: Y.Doc) => T): Promise<T>;
   // A stateless message to every client of the document.
   broadcast(message: string): void;
   // Ends the connection and stores the document at once; the summary row and
@@ -34,12 +35,12 @@ export async function openLiveDocument(sync: Sync, projectId: string, userId: st
   let closed = false;
   return {
     doc: document,
-    transact<T>(fn: (doc: Y.Doc) => T): T {
+    async transact<T>(fn: (doc: Y.Doc) => T): Promise<T> {
       if (closed) throw new Error('The live document is closed.');
       let result!: T;
-      // DirectConnection.transact runs its function synchronously, inside
-      // Y.Doc.transact; it is async only in its signature.
-      void connection.transact((doc) => {
+      // The function runs synchronously inside Y.Doc.transact; awaiting the
+      // call carries an error thrown in it to the caller.
+      await connection.transact((doc) => {
         result = fn(doc);
       });
       return result;
@@ -56,6 +57,7 @@ export async function openLiveDocument(sync: Sync, projectId: string, userId: st
 }
 
 // Runs fn as one transaction on the project's live document, then stores it.
+// An error inside fn reaches the caller; the connection is closed either way.
 export async function withLiveDocument<T>(
   sync: Sync,
   projectId: string,
@@ -64,7 +66,7 @@ export async function withLiveDocument<T>(
 ): Promise<T> {
   const live = await openLiveDocument(sync, projectId, userId);
   try {
-    return live.transact(fn);
+    return await live.transact(fn);
   } finally {
     await live.close();
   }

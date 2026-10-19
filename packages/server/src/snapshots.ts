@@ -112,6 +112,16 @@ export interface NewSnapshot {
   grantId?: string | null;
 }
 
+export const LABEL_MAX = 200;
+
+// At most LABEL_MAX UTF-16 units, never half a surrogate pair: a restore of a
+// restore names the one before, so labels would otherwise grow.
+function cutLabel(label: string): string {
+  if (label.length <= LABEL_MAX) return label;
+  const code = label.charCodeAt(LABEL_MAX - 1);
+  return label.slice(0, code >= 0xd800 && code <= 0xdbff ? LABEL_MAX - 1 : LABEL_MAX);
+}
+
 export async function insertSnapshot(db: Queryable, s: NewSnapshot): Promise<Snapshot> {
   const row = await db.queryOne<DbRow>(
     `insert into snapshots (project_id, kind, label, text, words, tool, target, before_section, after_hash, grant_id)
@@ -120,7 +130,7 @@ export async function insertSnapshot(db: Queryable, s: NewSnapshot): Promise<Sna
     [
       s.projectId,
       s.kind,
-      s.label,
+      cutLabel(s.label),
       s.text,
       documentWords(s.text, s.category),
       s.tool ?? null,
@@ -145,14 +155,16 @@ export async function deleteSnapshot(db: Queryable, projectId: string, id: strin
   await removeSnapshot(db, id);
 }
 
-// A user snapshot of the text as the open clients have it, or as stored.
+// A user snapshot of the text as the open clients have it, or as stored. A
+// project with no stored document has no text to keep.
 export async function createUserSnapshot(db: Db, sync: Sync, project: ProjectRow, label: string): Promise<SnapshotRow> {
   const doc = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
+  if (!doc) throw new AppError(409, 'no_document', 'This project has no stored text to snapshot.');
   const snapshot = await insertSnapshot(db, {
     projectId: project.id,
     kind: 'user',
     label,
-    text: doc ? readDocument(doc) : '',
+    text: readDocument(doc),
     category: project.category,
   });
   broadcastToProject(sync, project.id, snapshotMessage(snapshot));
@@ -189,16 +201,33 @@ export async function snapshotThenWrite(
     const text = readDocument(live.doc);
     const replacement = next(text);
     const stored = await snapshot(text);
-    const written = live.transact((doc) => {
-      if (readDocument(doc) !== text) return false;
-      setDocumentText(doc, replacement);
-      return true;
-    });
+    // The snapshot never outlives a write that did not happen: a moved text,
+    // a write that throws, a connection closed under it.
+    let written = false;
+    let threw = false;
+    try {
+      written = await live.transact((doc) => {
+        if (readDocument(doc) !== text) return false;
+        setDocumentText(doc, replacement);
+        return true;
+      });
+    } catch (error) {
+      threw = true;
+      throw error;
+    } finally {
+      if (!written) {
+        try {
+          await removeSnapshot(db, stored.id);
+        } catch (error) {
+          // The write's own error says more than the cleanup's.
+          if (!threw) throw error;
+        }
+      }
+    }
     if (written) {
       live.broadcast(snapshotMessage(stored));
       return stored;
     }
-    await removeSnapshot(db, stored.id);
   }
   throw moved();
 }

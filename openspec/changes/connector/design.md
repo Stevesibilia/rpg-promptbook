@@ -205,6 +205,11 @@ the writers and by the server's tool schemas: texts 2000 characters (a
 summary 10 000), names and titles 200, URLs 2048 and `http:` or `https:`
 only, at most 50 items in any list and 30 sources.
 
+- `removeTopic` deletes a topic and leaves its notes.
+- Collections are capped (inspiration 500, topics 200, notes 500, brainstorm
+  entries 1000); `at` must be an ISO 8601 date; readers skip items that fail
+  either, and drop URLs that fail `isWebUrl`.
+
 `SCHEMA` stays 1: the change only adds types; a client that does not know
 them leaves them untouched, and readers of an older document see empty
 lists. No migration.
@@ -238,6 +243,8 @@ one:
   insensitive; anything else matches with `sameName`. No match answers
   `unknown_target` with the valid targets; two matches (a section and a sheet
   with one name) answer `ambiguous_target` with both.
+- In a campaign, line 0 is front matter only when a closing `---` or `...`
+  follows; setext headings bound spans.
 
 Why: the format package already knows every range; the outline in the editor
 uses the same model (`web/src/editor/outline.ts`). Putting targets in
@@ -266,6 +273,9 @@ inspiration items, topics, notes and log entries. Restoring a snapshot from
 the web goes through it too. The text is changed with the smallest edit:
 common prefix and suffix of the old and new span kept, one delete and one
 insert in between, so cursors and concurrent typing elsewhere survive.
+
+- `withLiveDocument` awaits the transaction; an error inside it reaches the
+  caller, and the connection is closed either way.
 
 Snapshot creation tells open clients with a stateless message
 `{"type":"snapshot","id":…,"kind":…}` on the document
@@ -365,6 +375,16 @@ expiresAt` (null for `user`).
   `section_changed`.
 - `DELETE /api/projects/:id/snapshots/:sid`: `user` only, else 409
   `not_deletable`; 204.
+- Restore and undo run `snapshotThenWrite`: read, compute, insert the
+  snapshot, then check the text inside the transaction before writing; on a
+  moved text the snapshot is deleted and it tries again, up to three times,
+  then 409 `document_busy`. A snapshot row is deleted in a `finally` unless
+  its write completed. A snapshot of a project with no stored text is refused
+  with 409 `no_document`. Labels are cut to 200 characters.
+- When `purge` deletes a project after 30 days in the bin, its snapshots of
+  every kind go with it.
+- Undo of a non-Claude snapshot, or one missing its edit record, answers 409
+  `not_undoable`.
 
 Why: history is a server feature in `docs/design.md`; keeping it out of the
 Yjs document keeps the document small and its history private to the
@@ -633,6 +653,10 @@ decision after review: a whole-document restore would drop whatever the user
 typed elsewhere after the edit). A `claude` snapshot also stores
 `before_section` (the target's text before the edit, empty for `add_scene`)
 and `after_hash` (SHA-256 of the target's text right after the edit).
+The writer computes `after_hash` as `textHash` of the span `findTarget`
+returns on the new text, the same span undo hashes; `add_scene` stores the new
+scene's id as target, `''` as `before_section`, and inserts the scene as
+`\n\n### Sn. …` after the last scene.
 `POST …/snapshots/:id/undo` finds the target in the current text: when its
 hash equals `after_hash`, it stores a `restore` snapshot of the current text,
 puts `before_section` back in place of the target (or removes the added
