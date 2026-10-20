@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultScope, forwardedParameters, nameSource } from '../src/connect/consent.js';
+import { defaultScope, forwardedParameters, grantName, nameSource } from '../src/connect/consent.js';
 
 describe('the consent page', () => {
   it('sends back the request parameters only, unchanged', () => {
@@ -18,6 +18,18 @@ describe('the consent page', () => {
       state: 's&t',
     });
     expect(forwardedParameters('')).toEqual({});
+    expect(forwardedParameters('?client_id=promptbook-desktop&device_name=studio-mac&scope=app')).toEqual({
+      client_id: 'promptbook-desktop',
+      device_name: 'studio-mac',
+      scope: 'app',
+    });
+  });
+
+  it('names the desktop app by its computer in Connected apps', () => {
+    expect(grantName({ client_name: 'Promptbook desktop', first_party: true, device_name: 'studio-mac' })).toBe(
+      'Promptbook desktop · studio-mac',
+    );
+    expect(grantName({ client_name: 'Claude', first_party: false, device_name: null })).toBe('Claude');
   });
 
   it('names the host of a metadata document client id, and nothing for a registered client', () => {

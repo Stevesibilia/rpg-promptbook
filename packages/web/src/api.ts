@@ -66,6 +66,8 @@ export interface Snapshot extends SnapshotRow {
 }
 
 export type OAuthScope = 'read' | 'read_write';
+// What a grant carries: a connector's scope, or app for the desktop app.
+export type GrantScope = OAuthScope | 'app';
 
 // An authorization request as the server validated it, for the consent page.
 export interface ConsentRequest {
@@ -74,7 +76,9 @@ export interface ConsentRequest {
   client_host: string | null;
   redirect_host: string;
   loopback_only: boolean;
-  requested_scopes: OAuthScope[];
+  requested_scopes: GrantScope[];
+  // The desktop app: approved at once, with no question.
+  first_party: boolean;
 }
 
 // An app the user allowed, as GET /api/auth/grants lists it.
@@ -82,7 +86,10 @@ export interface Grant {
   id: string;
   client_name: string;
   client_uri: string | null;
-  scope: OAuthScope;
+  scope: GrantScope;
+  // The desktop app's grant, and the computer it was made on.
+  first_party: boolean;
+  device_name: string | null;
   created_at: string;
   last_used_at: string | null;
 }
@@ -171,7 +178,7 @@ export const api = {
   // The consent page sends the request's parameters back as it received them;
   // the server builds the address the browser goes to.
   consentRequest: (params: URLSearchParams) => request<ConsentRequest>('GET', `/api/oauth/authorize?${params}`),
-  approve: (params: Record<string, string>, grantedScope: OAuthScope) =>
+  approve: (params: Record<string, string>, grantedScope: GrantScope) =>
     request<{ redirect_to: string }>('POST', '/api/oauth/authorize', { ...params, granted_scope: grantedScope }),
   deny: (params: Record<string, string>) =>
     request<{ redirect_to: string }>('POST', '/api/oauth/authorize/deny', params),

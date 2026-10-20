@@ -1,4 +1,4 @@
-import type { OAuthScope } from '../api.js';
+import type { GrantScope, OAuthScope } from '../api.js';
 
 // The consent page's pure parts (connector design decision 8).
 
@@ -13,6 +13,8 @@ const FORWARDED = [
   'resource',
   'scope',
   'state',
+  // The desktop app's computer.
+  'device_name',
 ] as const;
 
 export function forwardedParameters(search: string): Record<string, string> {
@@ -39,5 +41,10 @@ export function nameSource(clientId: string): string | null {
 }
 
 // The widest scope asked for is offered first; narrowing it is the choice.
-export const defaultScope = (requested: OAuthScope[]): OAuthScope =>
+export const defaultScope = (requested: GrantScope[]): OAuthScope =>
   requested.includes('read_write') ? 'read_write' : 'read';
+
+// How Connected apps names a grant: the desktop app by the computer it was
+// made on, any other app by its own name.
+export const grantName = (grant: { client_name: string; first_party: boolean; device_name: string | null }): string =>
+  grant.first_party && grant.device_name ? `${grant.client_name} · ${grant.device_name}` : grant.client_name;

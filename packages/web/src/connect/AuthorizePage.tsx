@@ -24,13 +24,16 @@ const scopes: { key: OAuthScope; label: string; hint: string }[] = [
 type State =
   | { state: 'loading' }
   | { state: 'failed'; code: string; message: string }
-  | { state: 'ready'; request: ConsentRequest };
+  | { state: 'ready'; request: ConsentRequest }
+  | { state: 'first-party' };
 
 // The connector's authorization endpoint (connector design decision 8): a
 // page of the app, so the app's sign-in covers it and a signed-out visitor
 // comes back here with the request intact. The server validates the request
 // before anything shows and builds every address the browser is sent to; the
-// page builds none. Nothing is approved without a press of Allow.
+// page builds none. Nothing is approved without a press of Allow, except the
+// desktop app, Promptbook's own, which signs in at once (desktop-app design
+// decision 8).
 export function AuthorizePage() {
   const { search } = useLocation();
   const { user, signOut } = useAuth();
@@ -45,8 +48,14 @@ export function AuthorizePage() {
     setState({ state: 'loading' });
     api
       .consentRequest(new URLSearchParams(parameters))
-      .then((request) => {
+      .then(async (request) => {
         if (!live) return;
+        if (request.first_party) {
+          setState({ state: 'first-party' });
+          const { redirect_to } = await api.approve(parameters, 'app');
+          if (live) window.location.assign(redirect_to);
+          return;
+        }
         setScope(defaultScope(request.requested_scopes));
         setState({ state: 'ready', request });
       })
@@ -72,6 +81,8 @@ export function AuthorizePage() {
   let body;
   if (state.state === 'loading') {
     body = <p className="signed-in">Checking the request…</p>;
+  } else if (state.state === 'first-party') {
+    body = <p className="signed-in">Signing in Promptbook on this computer…</p>;
   } else if (state.state === 'failed') {
     body = (
       <>
