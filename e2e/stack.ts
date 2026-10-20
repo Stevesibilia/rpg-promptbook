@@ -9,7 +9,11 @@ import { fileURLToPath } from 'node:url';
 // (compose.oidc.yaml), on the same database.
 
 export const port = Number(process.env.E2E_PORT ?? 8091);
+// Another run on the same machine sets its own project, with its own ports.
+export const project = process.env.E2E_PROJECT ?? 'promptbook-e2e';
 export const baseURL = `http://localhost:${port}`;
+// What the stack's server reports as its release (the rail shows it).
+export const releaseVersion = 'v9.9.9';
 export const username = 'e2e';
 export const password = 'e2e-password-0123';
 
@@ -32,6 +36,7 @@ const env = {
   PROMPTBOOK_ADMIN_USERNAME: username,
   PROMPTBOOK_ADMIN_PASSWORD: password,
   POSTGRES_PASSWORD: 'promptbook-e2e',
+  APP_VERSION: releaseVersion,
   OIDC_APP_PORT: String(oidcPort),
   OIDC_PUBLIC_URL: oidcURL,
   ISSUER_ORIGIN: `https://${issuerHost}:${issuerPort}`,
@@ -41,7 +46,7 @@ const env = {
 
 export function compose(...args: string[]): string {
   const files = ['-f', 'compose.yaml', '-f', 'e2e/compose.oidc.yaml'];
-  return execFileSync('docker', ['compose', '-p', 'promptbook-e2e', ...files, ...args], {
+  return execFileSync('docker', ['compose', '-p', project, ...files, ...args], {
     cwd: root,
     env,
     encoding: 'utf8',
