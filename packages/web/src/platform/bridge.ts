@@ -116,6 +116,9 @@ export interface DesktopProjectStatus {
   bytes: number;
   // Made on this device and not on the server yet (D9).
   localOnly: boolean;
+  // The server refused its upload (409 or 400): it stays on this device
+  // until the app is started again.
+  refused: boolean;
   // The provider finished its exchange with the server since it connected.
   synced: boolean;
   // Changes made on this device not yet acknowledged by the server; kept

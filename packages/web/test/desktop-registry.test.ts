@@ -13,6 +13,7 @@ const project = (patch: Partial<DesktopProjectStatus> = {}): DesktopProjectStatu
   downloaded: true,
   bytes: 1400,
   localOnly: false,
+  refused: false,
   synced: true,
   unsynced: 0,
   notSaved: 0,
@@ -198,6 +199,13 @@ describe('desktopSnapshot', () => {
     expect(desktopSnapshot(status({ online: false, offlineSince: '2026-10-20T10:05:00.000Z' }), 'active').state).toBe(
       'local',
     );
+  });
+
+  it('keeps a project the server refused on this device, online', () => {
+    const refused = project({ localOnly: true, refused: true, synced: false, unsynced: 1 });
+    expect(desktopSnapshot(status({ projects: [refused] }), 'active').state).toBe('local');
+    // Its upload in flight reads as syncing.
+    expect(desktopSnapshot(status({ projects: [{ ...refused, refused: false }] }), 'active').state).toBe('syncing');
   });
 
   it('is synced with no project and the server there', () => {

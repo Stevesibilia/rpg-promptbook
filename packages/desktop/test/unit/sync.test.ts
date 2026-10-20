@@ -177,7 +177,8 @@ describe('sync engine', () => {
     await until(() => !engine.isOnline);
     edit(A, 'Offline uno. ');
     edit(A, 'Offline due. ');
-    expect(engine.status().projects[0]!.unsynced).toBe(2);
+    // Typed without a pause: one change.
+    expect(engine.status().projects[0]!.unsynced).toBe(1);
     expect(engine.status().offlineSince).not.toBeNull();
 
     // Quit and relaunch, still offline.
@@ -188,7 +189,7 @@ describe('sync engine', () => {
     engine.add(A);
     engine.setActive(true);
     expect(engine.doc(A)!.getText('document').toString()).toBe('Offline due. Offline uno. Testo del server.');
-    expect(engine.status().projects[0]!.unsynced).toBe(2);
+    expect(engine.status().projects[0]!.unsynced).toBe(1);
 
     // The web edited meanwhile; the server comes back.
     const web = new Y.Doc();

@@ -34,15 +34,16 @@ interface Entry {
 }
 
 // The pill's reading of main's status: a project offline is kept on this
-// device; a disk write that failed is Not saved; an account whose session
-// ended or that signed out is Sign in to sync. Before main first knows
-// whether the server is there, the projects read as syncing, not offline.
+// device, as is one whose upload the server refused; a disk write that
+// failed is Not saved; an account whose session ended or that signed out is
+// Sign in to sync. Before main first knows whether the server is there, the
+// projects read as syncing, not offline.
 export function desktopSnapshot(status: DesktopSyncStatus, session: AuthState['session']): SyncSnapshot {
   const connected = status.online || status.offlineSince === null;
   const providers = status.projects.map((p): ProviderSnapshot => ({
     id: p.id,
     title: p.title,
-    connected,
+    connected: connected && !p.refused,
     synced: p.synced,
     unsynced: p.unsynced,
     signedOut: false,

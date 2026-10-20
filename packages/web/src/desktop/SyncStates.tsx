@@ -27,6 +27,10 @@ const pillClass: Record<SyncState, string> = {
 const unsent = (projects: readonly DesktopProjectStatus[]) => projects.reduce((n, p) => n + p.unsynced, 0);
 const inMemory = (projects: readonly DesktopProjectStatus[]) => projects.reduce((n, p) => n + p.notSaved, 0);
 
+// Online, and kept here only because the server refused a project's upload.
+const refusedOnline = (sync: SyncSnapshot) =>
+  !!sync.device?.online && sync.device.projects.some((p) => p.refused);
+
 // Projects the server is still sending: on the server, not yet in step.
 const receiving = (sync: SyncSnapshot) =>
   (sync.device?.projects ?? []).filter((p) => !p.localOnly && !p.synced && p.unsynced === 0);
@@ -44,6 +48,7 @@ export function popoverLine(sync: SyncSnapshot): string {
     }
     case 'local':
     case 'reconnecting': {
+      if (refusedOnline(sync)) return 'The server refused this project; it stays on this computer.';
       const since = sync.device?.offlineSince;
       return `${since ? `Offline since ${clockTime(new Date(since))}. ` : ''}Everything is saved here and goes to the server when you are back online.`;
     }
@@ -243,26 +248,31 @@ export function DesktopSyncStrip() {
   return null;
 }
 
-// The status bar's sync text, on the right.
-export function desktopStatusSync(sync: SyncSnapshot) {
+// The status bar's sync text, on the right, and its colour: amber (a) or
+// red (d).
+export function statusSyncText(sync: SyncSnapshot): { text: string; tone?: 'a' | 'd' } {
   const projects = sync.device?.projects ?? [];
   switch (sync.state) {
     case 'synced':
-      return (
-        <span>
-          {sync.lastSync ? `Synced ${clockTime(sync.lastSync)}` : 'Synced'} · {serverHost()}
-        </span>
-      );
+      return { text: `${sync.lastSync ? `Synced ${clockTime(sync.lastSync)}` : 'Synced'} · ${serverHost()}` };
     case 'syncing':
-      return <span>Syncing…</span>;
+      return { text: 'Syncing…' };
     case 'local':
-    case 'reconnecting':
-      return <span className="a">Offline · {changes(unsent(projects))} on this device</span>;
+    case 'reconnecting': {
+      if (refusedOnline(sync)) return { text: stateLabels.local, tone: 'a' };
+      const n = unsent(projects);
+      return { text: n ? `Offline · ${changes(n)} on this device` : 'Offline · nothing waiting to sync', tone: 'a' };
+    }
     case 'not-saved':
-      return <span className="d">Not saved</span>;
+      return { text: 'Not saved', tone: 'd' };
     case 'signed-out':
-      return <span className="a">Signed out · sync paused</span>;
+      return { text: 'Signed out · sync paused', tone: 'a' };
   }
+}
+
+export function desktopStatusSync(sync: SyncSnapshot) {
+  const { text, tone } = statusSyncText(sync);
+  return <span {...(tone ? { className: tone } : {})}>{text}</span>;
 }
 
 // «All on this device», or how many are, during the first sync.

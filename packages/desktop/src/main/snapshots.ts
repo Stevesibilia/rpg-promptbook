@@ -50,6 +50,9 @@ export interface LocalSnapshotsOptions {
   now?: () => number;
   // A shorter interval for the tests (PROMPTBOOK_E2E only).
   intervalMs?: number;
+  // A snapshot was taken: the windows with the project open read History
+  // again, as for the server's own.
+  taken?: (record: LocalSnapshotRecord) => void;
 }
 
 export class LocalSnapshots {
@@ -146,6 +149,7 @@ export class LocalSnapshots {
     };
     this.options.store.insertSnapshot(record);
     this.last.set(id, body);
+    this.options.taken?.(record);
     return record;
   }
 

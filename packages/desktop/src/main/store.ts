@@ -12,6 +12,10 @@ import * as Y from 'yjs';
 
 export const COMPACT_AT = 500;
 export const RETRY_MS = 10_000;
+// One change, as the UI counts them: the updates made on this device to one
+// project with no pause longer than this between them. Typing makes one
+// update per key.
+export const BURST_GAP_MS = 2_000;
 
 // Where an update came from: the server, a window (by its webContents id),
 // or main itself (a restore, a new project).
@@ -50,6 +54,8 @@ interface PendingUpdate {
   update: Uint8Array;
   origin: UpdateOrigin;
   at: number;
+  // The first update of a change made on this device (BURST_GAP_MS).
+  starts: boolean;
 }
 
 // The subset of DatabaseSync the store uses; tests wrap a real one to make
@@ -99,6 +105,7 @@ const MIGRATIONS = [
 ];
 
 const isLocal = (origin: UpdateOrigin) => origin !== 'remote';
+const starts = (items: PendingUpdate[]) => items.filter((i) => i.starts).length;
 
 const unsyncedKey = (projectId: string) => `unsynced:${projectId}`;
 
@@ -113,6 +120,9 @@ export class Store {
   private closed = false;
   private rows = new Map<string, number>();
   private unsynced = new Map<string, number>();
+  // When each project's last change made here was, to tell a new change
+  // from the rest of one.
+  private lastLocal = new Map<string, number>();
   private pending = new Map<string, PendingUpdate[]>();
   private retryTimer: ReturnType<typeof setInterval> | null = null;
   private listeners = new Set<() => void>();
@@ -219,7 +229,14 @@ export class Store {
   // in memory and retried every RETRY_MS and with the project's next update.
   appendUpdate(projectId: string, update: Uint8Array, origin: UpdateOrigin): boolean {
     if (this.closed) return false;
-    const item = { update, origin, at: this.now() };
+    const at = this.now();
+    let first = false;
+    if (isLocal(origin)) {
+      const last = this.lastLocal.get(projectId);
+      first = last === undefined || at - last > BURST_GAP_MS;
+      this.lastLocal.set(projectId, at);
+    }
+    const item = { update, origin, at, starts: first };
     const queue = this.pending.get(projectId);
     if (queue) {
       queue.push(item);
@@ -240,7 +257,7 @@ export class Store {
   }
 
   private writeUpdates(projectId: string, items: PendingUpdate[]): void {
-    const local = items.filter((i) => isLocal(i.origin)).length;
+    const local = starts(items);
     const unsynced = (this.unsynced.get(projectId) ?? 0) + local;
     this.transaction(() => {
       const insert = this.db.prepare(
@@ -298,12 +315,14 @@ export class Store {
 
   // Changes made on this device the server has not acknowledged.
   unsyncedCount(projectId: string): number {
-    const held = (this.pending.get(projectId) ?? []).filter((i) => isLocal(i.origin)).length;
+    const held = starts(this.pending.get(projectId) ?? []);
     return (this.unsynced.get(projectId) ?? 0) + held;
   }
 
   // The server acknowledged every change of the project.
   resetUnsynced(projectId: string): void {
+    // What is typed next is a change of its own.
+    this.lastLocal.delete(projectId);
     if (this.closed || !this.unsynced.get(projectId)) return;
     try {
       this.run('delete from kv where key = ?', unsyncedKey(projectId));
@@ -342,7 +361,7 @@ export class Store {
     if (held) {
       // Their changes are in the state; only their count of local changes
       // is still to be kept.
-      const local = held.filter((i) => isLocal(i.origin)).length;
+      const local = starts(held);
       this.pending.delete(projectId);
       if (local > 0) this.setUnsynced(projectId, (this.unsynced.get(projectId) ?? 0) + local);
       if (this.pending.size === 0) {
@@ -409,6 +428,7 @@ export class Store {
     });
     this.rows.delete(id);
     this.unsynced.delete(id);
+    this.lastLocal.delete(id);
     this.pending.delete(id);
   }
 

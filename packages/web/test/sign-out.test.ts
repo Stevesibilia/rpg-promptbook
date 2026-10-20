@@ -8,6 +8,7 @@ const project = (title: string, patch: Partial<DesktopProjectStatus> = {}): Desk
   downloaded: true,
   bytes: 0,
   localOnly: false,
+  refused: false,
   synced: true,
   unsynced: 0,
   notSaved: 0,

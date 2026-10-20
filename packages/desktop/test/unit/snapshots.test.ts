@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { documentWords, expiresAt, LocalSnapshots, MODES } from '../../src/main/snapshots.js';
+import type { LocalSnapshotRecord } from '../../src/main/store.js';
 import { projectDoc, rowOf } from './helpers.js';
 import { world, type World } from './world.js';
 
@@ -17,14 +18,14 @@ afterEach(async () => {
   await w?.close();
 });
 
-async function setup(now: () => number) {
+async function setup(now: () => number, taken?: (record: LocalSnapshotRecord) => void) {
   w = await world(() => {}, { online: false });
   const doc = projectDoc(A, 'Ancora', '---\ntitolo: Ancora\n---\nUna due tre.');
   w.store.appendUpdate(A, Y.encodeStateAsUpdate(doc), 'remote');
   w.store.putProject({ id: A, row: rowOf(doc), serverEditedAt: null, deletedAt: null, createdLocal: false, uploaded: true });
   w.engine.add(A);
   w.snapshots.stop();
-  return new LocalSnapshots({ store: w.store, engine: w.engine, now });
+  return new LocalSnapshots({ store: w.store, engine: w.engine, now, ...(taken ? { taken } : {}) });
 }
 
 const type = (text: string) => w.engine.transact(A, (doc) => doc.getText('document').insert(doc.getText('document').length, text));
@@ -98,6 +99,23 @@ describe('local snapshots', () => {
     snapshots.baseline(B);
     w.engine.transact(B, (doc) => doc.getText('document').insert(0, 'Modificato. '));
     expect(snapshots.tick(B)?.text).toBe('Modificato. Scaricato.');
+    snapshots.stop();
+  });
+
+  it('announces every snapshot it takes, so History reads them at once', async () => {
+    const taken: LocalSnapshotRecord[] = [];
+    const snapshots = await setup(() => Date.now(), (record) => taken.push(record));
+    snapshots.track(A);
+    type(' Quattro.');
+    const hourly = snapshots.tick(A);
+    const user = snapshots.take(A, 'user', 'prima della prova');
+    expect(taken.map((s) => [s.id, s.kind])).toEqual([
+      [hourly!.id, 'hourly'],
+      [user!.id, 'user'],
+    ]);
+    // Nothing changed: no snapshot, no message.
+    snapshots.tick(A);
+    expect(taken).toHaveLength(2);
     snapshots.stop();
   });
 

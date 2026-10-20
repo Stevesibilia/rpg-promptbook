@@ -126,6 +126,12 @@ class Account {
       engine,
       ...(o.now ? { now: o.now } : {}),
       ...(o.snapshotIntervalMs ? { intervalMs: o.snapshotIntervalMs } : {}),
+      // The server's message for a new snapshot (live.ts).
+      taken: (s) =>
+        o.broadcast(channels.syncOnStateless, {
+          id: s.projectId,
+          payload: JSON.stringify({ type: 'snapshot', id: s.id, kind: s.kind }),
+        }),
     });
     this.router = new Router({
       store: this.store,

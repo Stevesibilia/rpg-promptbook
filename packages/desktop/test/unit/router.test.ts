@@ -219,6 +219,9 @@ describe('router', () => {
     await w.creator.upload(second);
     expect(w.store.getProject(first)?.uploaded).toBe(true);
     expect(w.store.getProject(second)?.uploaded).toBe(false);
+    const status = (id: string) => w.engine.status().projects.find((p) => p.id === id);
+    expect(status(first)).toMatchObject({ localOnly: false, refused: false });
+    expect(status(second)).toMatchObject({ localOnly: true, refused: true });
     const posts = w.api.requests.filter((r) => r.method === 'POST').length;
     await w.creator.uploadPending();
     // Not tried again until a relaunch.

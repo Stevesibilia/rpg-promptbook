@@ -161,6 +161,7 @@ export class Creator {
     } catch (error) {
       if (error instanceof HttpError && (error.status === 409 || error.status === 400)) {
         this.refused.add(id);
+        this.engine.refused(id);
         this.log(`Project ${id} stays on this device: the server answered ${error.status} ${error.code ?? ''}.`);
         return;
       }

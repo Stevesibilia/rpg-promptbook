@@ -6,6 +6,7 @@ import { channels, type BridgeRequestInit, type DeviceInfo } from 'promptbook-we
 import type { App } from './app.js';
 import { isRoutablePath } from './router.js';
 import { isMode } from './snapshots.js';
+import { appVersion } from './version.js';
 import { isAppUrl } from './window.js';
 
 // The handlers behind window.promptbook (desktop-app design decision 3).
@@ -82,7 +83,7 @@ function handle(channel: string, handler: Handler): void {
 export function registerIpc(app: App): void {
   handle(channels.deviceInfo, (): DeviceInfo => ({
     os: process.platform === 'win32' || process.platform === 'darwin' ? process.platform : 'linux',
-    version: electronApp.getVersion(),
+    version: electronApp.isPackaged ? electronApp.getVersion() : appVersion(__dirname, electronApp.getVersion()),
     packaged: electronApp.isPackaged,
     serverOrigin: app.serverOrigin(),
     dataFolder: app.options.userData,

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { COMPACT_AT, RETRY_MS, Store, type Database } from '../../src/main/store.js';
+import { BURST_GAP_MS, COMPACT_AT, RETRY_MS, Store, type Database, type UpdateOrigin } from '../../src/main/store.js';
 
 // The local store on a real node:sqlite database (desktop-app design
 // decision 4): append, load, compaction, and a write that fails and is
@@ -121,7 +121,8 @@ describe('store', () => {
     expect(store.appendUpdate(ID, typed(doc, 'due '), 'renderer:1')).toBe(false);
     expect(store.notSaved(ID)).toBe(2);
     expect(store.lastError).toBe('disk full');
-    expect(store.unsyncedCount(ID)).toBe(2);
+    // Typed without a pause: one change.
+    expect(store.unsyncedCount(ID)).toBe(1);
     vi.advanceTimersByTime(RETRY_MS);
     expect(store.notSaved(ID)).toBe(2);
 
@@ -142,7 +143,8 @@ describe('store', () => {
 
     const again = Store.open(file);
     expect(again.loadDoc(ID)?.getText('document').toString()).toBe('uno due tre quattro');
-    expect(again.unsyncedCount(ID)).toBe(4);
+    // «tre quattro» came 20 s later: a second change.
+    expect(again.unsyncedCount(ID)).toBe(2);
     again.close();
     expect(changes).toContain(2);
     expect(changes.at(-1)).toBe(0);
@@ -161,6 +163,42 @@ describe('store', () => {
     expect(store.unsyncedCount(ID)).toBe(1);
     store.close();
     expect(Store.open(file).loadDoc(ID)?.getText('document').toString()).toBe('tenuto');
+  });
+
+  it('counts a change as the updates made here with no pause over 2 s', () => {
+    let now = 1_000_000;
+    const file = join(dir, 'a.sqlite');
+    const store = Store.open(file, () => now);
+    const doc = new Y.Doc();
+    const type = (text: string, after: number, origin: UpdateOrigin = 'renderer:1') => {
+      now += after;
+      store.appendUpdate(ID, typed(doc, text), origin);
+      return store.unsyncedCount(ID);
+    };
+    expect(type('a', 0)).toBe(1);
+    expect(type('b', 500)).toBe(1);
+    expect(type('c', BURST_GAP_MS)).toBe(1);
+    // The server's updates neither count nor end a change.
+    expect(type('d', 1_000, 'remote')).toBe(1);
+    expect(type('e', 1_000)).toBe(1);
+    expect(type('f', BURST_GAP_MS + 1)).toBe(2);
+    // main's own (a restore) is a change too.
+    expect(type('g', 60_000, 'main')).toBe(3);
+    store.close();
+    // Kept across a relaunch.
+    expect(Store.open(file).unsyncedCount(ID)).toBe(3);
+  });
+
+  it('starts a new change after the server acknowledged the last one', () => {
+    let now = 1_000_000;
+    const store = Store.open(join(dir, 'a.sqlite'), () => now);
+    const doc = new Y.Doc();
+    store.appendUpdate(ID, typed(doc, 'a'), 'renderer:1');
+    store.resetUnsynced(ID);
+    now += 100;
+    store.appendUpdate(ID, typed(doc, 'b'), 'renderer:1');
+    expect(store.unsyncedCount(ID)).toBe(1);
+    store.close();
   });
 
   it('resets the unsynced count once the server has everything', () => {

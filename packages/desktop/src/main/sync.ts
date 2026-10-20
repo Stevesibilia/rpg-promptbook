@@ -67,6 +67,7 @@ interface Entry {
   downloaded: boolean;
   bytes: number;
   localOnly: boolean;
+  refused: boolean;
   onUpdate: (update: Uint8Array, origin: unknown) => void;
 }
 
@@ -183,6 +184,7 @@ export class SyncEngine {
       downloaded: stored !== null,
       bytes: 0,
       localOnly,
+      refused: false,
       onUpdate: (update, origin) => this.onUpdate(entry, update, origin),
     };
     if (entry.downloaded) entry.bytes = Y.encodeStateAsUpdate(entry.doc).byteLength;
@@ -215,6 +217,14 @@ export class SyncEngine {
     if (!entry) return;
     entry.localOnly = false;
     if (this.active) this.attach(entry);
+    this.changed();
+  }
+
+  // The server refused a project made here: it stays on this device.
+  refused(id: string): void {
+    const entry = this.entries.get(id);
+    if (!entry || !entry.localOnly) return;
+    entry.refused = true;
     this.changed();
   }
 
@@ -403,6 +413,7 @@ export class SyncEngine {
         downloaded: entry.downloaded,
         bytes: entry.bytes,
         localOnly: entry.localOnly,
+        refused: entry.refused,
         synced: !!entry.provider?.isSynced && this.online,
         unsynced: store.unsyncedCount(entry.id),
         notSaved: store.notSaved(entry.id),
