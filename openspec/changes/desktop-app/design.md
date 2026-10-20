@@ -816,6 +816,43 @@ app or MCP grants (production is single sign-on only, which refuses password
 changes); Hocuspocus `onTokenSync` is not handled, so a socket keeps its first
 token until it closes, and revocation is what closes it.
 
+### Departures accepted in review (brief B, 2026-10-20)
+
+1. **A wrong `state` at the loopback callback** answers the failure page with
+   400 and the listener keeps waiting for the right one, so a local page
+   probing loopback ports cannot end a real sign-in. An `error` parameter or a
+   failed exchange still ends it.
+2. **The socket opens only while a provider is attached** (D5 said one socket
+   always): Hocuspocus terminates a socket that never authenticates after
+   60 s, so an idle socket would flap. With no provider attached, online
+   comes from `GET ${server}/api/health` every 10 s.
+3. **Local restore label** is `<restored label> · <ISO>`, the server's format,
+   which History's `labels.ts` already shows as Before restore.
+4. **Bridge additions** for a first read, since events fire only on change:
+   `sync.status()`, `auth.state()`, `updates.state()` and the event channels
+   `pb:sync:on-update`, `pb:sync:on-status`, `pb:sync:on-stateless`,
+   `pb:auth:on-state`, `pb:updates:on-state`
+   (`packages/web/src/platform/bridge.ts`).
+5. **`isRoutablePath`** also lets `/.well-known/oauth-protected-resource`
+   through (Connected apps reads it); every other path must normalise to
+   `/api/…` with no dot segments.
+6. **Dependencies:** main bundles everything but `electron`, so all deps are
+   devDependencies except `electron-updater` (kept in dependencies, as
+   CueBard does; bundling it is group 4's call).
+7. **`packages/desktop` is `"type": "module"`** (Playwright's TS loader needs
+   it); the build outputs are explicit `.cjs`.
+
+Also fixed in brief B, worth knowing for the web side: re-creating a
+Hocuspocus provider for the same name on an open socket lets the server read
+the old Close after the new provider's first messages and end that session,
+so re-attaching reconnects the socket; Close messages queued while offline
+are dropped on open, since every provider resyncs fully; `unref()`'d timers
+never fire in Electron main while offline, so main uses none. The proof
+against the stack is `npm run prove -w promptbook-desktop`
+(`test/stack/offline.spec.ts`), with an opt-in scale probe
+(`PROMPTBOOK_PROVE_PROJECTS=60`: 62 projects first-synced, main RSS 194 → 222
+MB, no reconnect storm).
+
 ## Mockup in words
 
 `desktop.html` shows one app window and, for one screen, a browser window.
