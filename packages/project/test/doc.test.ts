@@ -189,7 +189,7 @@ describe('randomId', () => {
   // A page served over plain HTTP has no crypto.randomUUID.
   it('builds a version 4 UUID from getRandomValues outside a secure context', () => {
     const real = globalThis.crypto;
-    const getRandomValues = <T extends Uint8Array>(array: T) => real.getRandomValues(array);
+    const getRandomValues = (array: Uint8Array<ArrayBuffer>) => real.getRandomValues(array);
     Object.defineProperty(globalThis, 'crypto', { value: { getRandomValues }, configurable: true });
     try {
       const ids = new Set(Array.from({ length: 200 }, () => randomId()));
