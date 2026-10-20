@@ -37,6 +37,10 @@ services:
       # Create the first account on a database with none.
       PROMPTBOOK_ADMIN_USERNAME: ${PROMPTBOOK_ADMIN_USERNAME:-}
       PROMPTBOOK_ADMIN_PASSWORD: ${PROMPTBOOK_ADMIN_PASSWORD:-}
+    volumes:
+      # The board's images and tracks, kept across restarts and rebuilds.
+      - app-data:/data
 
 volumes:
   postgres:
+  app-data:

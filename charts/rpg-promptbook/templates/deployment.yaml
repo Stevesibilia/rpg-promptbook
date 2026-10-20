@@ -30,7 +30,7 @@ spec:
         # credentials and OIDC Secrets are written outside Helm, so a rotated
         # password or client secret needs `kubectl rollout restart`
         # (docs/deploy-homelab.md).
-        checksum/config: {{ dict "publicUrl" .Values.app.publicUrl "trustProxyHops" .Values.app.trustProxyHops "sessionTtlHours" .Values.app.sessionTtlHours "credentialsSecret" .Values.app.credentialsSecret "admin" .Values.app.admin "oidc" $oidc | toJson | sha256sum }}
+        checksum/config: {{ dict "publicUrl" .Values.app.publicUrl "trustProxyHops" .Values.app.trustProxyHops "sessionTtlHours" .Values.app.sessionTtlHours "filesQuotaGb" .Values.app.filesQuotaGb "filesGraceDays" .Values.app.filesGraceDays "credentialsSecret" .Values.app.credentialsSecret "admin" .Values.app.admin "oidc" $oidc | toJson | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -40,6 +40,11 @@ spec:
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
+        # The files volume is made writable for the server's group; only when
+        # its root's group differs, so a large volume is not walked on every
+        # start.
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       initContainers:
@@ -103,6 +108,12 @@ spec:
               value: {{ .Values.app.trustProxyHops | quote }}
             - name: SESSION_TTL_HOURS
               value: {{ .Values.app.sessionTtlHours | quote }}
+            - name: PROMPTBOOK_DATA_DIR
+              value: /data
+            - name: PROMPTBOOK_FILES_QUOTA_GB
+              value: {{ .Values.app.filesQuotaGb | quote }}
+            - name: PROMPTBOOK_FILES_GRACE_DAYS
+              value: {{ .Values.app.filesGraceDays | quote }}
             # The release /api/health reports and the tag pipeline checks: the
             # tag of the image above, so it cannot name another build.
             - name: APP_VERSION
@@ -169,9 +180,18 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: data
+              mountPath: /data
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "rpg-promptbook.dataClaimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

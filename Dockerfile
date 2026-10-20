@@ -27,6 +27,10 @@ COPY --chown=65532:0 packages/project packages/project
 COPY --chown=65532:0 packages/server packages/server
 COPY --chown=65532:0 packages/web packages/web
 RUN npm run build -w promptbook-server && npm run build -w promptbook-web
+# The file store's folder, empty, for the runtime to copy with its owner:
+# a named volume mounted there starts with the image folder's owner, and the
+# user cannot make a folder at the root itself. /tmp is the user's HOME.
+RUN mkdir -p /tmp/out/data
 
 # The server's npm dependencies without the dev ones. The workspace packages
 # are inlined in the bundle, but their npm dependencies (yjs, yaml, unified,
@@ -50,6 +54,10 @@ COPY packages/server/migrations packages/server/migrations
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/web/dist /app/web
 ENV WEB_DIST=/app/web
+# Images and tracks (asset-board design decision 17): the one folder the
+# server writes besides /tmp, a volume in compose and in the chart.
+COPY --from=build --chown=65532:0 /tmp/out/data /data
+ENV PROMPTBOOK_DATA_DIR=/data
 WORKDIR /app/packages/server
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
