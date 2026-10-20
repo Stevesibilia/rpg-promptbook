@@ -902,6 +902,73 @@ History shows it only on the next visit; unpackaged, Version shows Electron's
 version; "Offline · 0 changes on this device"; a refused upload (409/400)
 reads "Syncing…" forever.
 
+### Departures accepted in review (brief D, 2026-10-20)
+
+Packaging (D15):
+
+1. `mac.identity: "-"` instead of `null`: with `null` the bundle was only
+   linker-signed and `codesign --verify --deep --strict` failed; `-` is the
+   ad-hoc signature D15 asks for, still with no identity and no notarisation.
+2. `files` also excludes `dist/types/**` (tsc's declarations and
+   tsbuildinfo); `npmRebuild: false` (no native module);
+   `directories.buildResources: build`.
+3. electron-updater is bundled into `main.cjs` by esbuild and listed in
+   devDependencies, so the app ships no `node_modules`.
+4. Maintainer and author: the owner's GitHub noreply address; package.json
+   gains `homepage` and `author`.
+5. Icon: `scripts/icon.mjs` draws the web client's "P" mark (Emerald on a
+   rounded square) as a dependency-free PNG, since the web app has no icon
+   file.
+6. Local builds set the version with `-c.extraMetadata.version`, CI with
+   `npm version`.
+
+Updates (D14):
+
+7. When electron-updater cannot check (Windows, AppImage), the updater asks
+   the latest-release API and offers the release page, as CueBard does. A
+   later check that finds nothing newer withdraws an earlier offer.
+8. Restart now closes the store and stops sync before `quitAndInstall`.
+9. Download opens the API's `html_url` only under
+   `github.com/Stevesibilia/rpg-promptbook/`, otherwise the tag's page.
+
+Release workflow (D16):
+
+10. Only a push of a `v*` tag releases; a manual run builds and releases
+    nothing.
+11. The release is created as a draft, the files uploaded with `--clobber`,
+    then published, so "latest" never lacks its installers or manifests; a
+    re-run of the tag reuses the release.
+12. Both Mac architectures build in one job, so one `latest-mac.yml` lists
+    both; a `version` job checks the tag is on `main` and is `vX.Y.Z`.
+13. A concurrency group cancels superseded pull-request runs only.
+
+Tests (D17):
+
+14. CI's e2e job builds web and desktop, lifts Ubuntu's AppArmor limit on
+    unprivileged user namespaces (where the setting exists) for Electron's
+    sandbox, and runs under `xvfb-run`.
+15. The local snapshot is checked offline, before the relaunch, with
+    `PROMPTBOOK_E2E_SNAPSHOT_SECONDS=3`; on Linux with no keyring the test
+    signs in again after the relaunch and records which path it took; text is
+    read after Ctrl/Cmd+End, since CodeMirror draws only the lines in view.
+
+Brief C's carry-overs, as built:
+
+16. A change is a burst of local updates to one project with no gap over 2 s,
+    counted in kv `unsynced:<id>` and reset when the server confirms; updates
+    made by main (restore, create) count too.
+17. Offline with nothing waiting reads "Offline · nothing waiting to sync".
+18. A refused upload adds `refused` to the project's status: the status bar
+    reads "On this device only" for the account, and the popover says "The
+    server refused this project; it stays on this computer."
+19. Unpackaged, Version reads `packages/desktop/package.json`.
+
+Known and left for later: a download that stalls stays "downloading" until
+the next start; Check for updates gives no feedback on its result (not in the
+mockup); the pull-request package check does not launch the packaged app.
+Windows and Linux packaging, the e2e under xvfb, self-update and Gatekeeper on
+a downloaded build are proved only by CI and the first release.
+
 ## Mockup in words
 
 `desktop.html` shows one app window and, for one screen, a browser window.
