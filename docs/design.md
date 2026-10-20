@@ -331,9 +331,10 @@ README says how to connect it.
 - **Access:** read, or read and edit, chosen on the consent page. Settings →
   Connected apps lists the approved apps and revokes them.
 - **Tools:** projects, the outline, the prep document by section, the to-do
-  list, inspiration, research topics and notes, the brainstorm log. Claude
-  can add and edit; it never deletes, never ticks a to-do item, and never
-  rewrites the seed.
+  list, inspiration, research topics and notes, the brainstorm log, the
+  board's prompts. Claude can add and edit; it never ticks a to-do item and
+  never rewrites the seed, and the only thing it deletes is an image prompt
+  (`remove_image_prompt`, #36), whose images go to the Unmatched tray.
 - **Section-scoped edits:** Claude replaces one section, scene or sheet, or
   adds a scene. The edit carries the hash of the text Claude read, so text
   the user changed in between is never overwritten. An edit that adds
@@ -409,10 +410,19 @@ the prep document:
 
 - A Midjourney prompt and a Suno prompt per row, written with the rules of the
   `midjourney-prompts` and `suno-prompts` skills, each with a copy button.
-- A status per asset: wanted, received, chosen.
+- Image prompts in four categories, one tab each (#36, the OpenSpec change
+  `image-categories`): Scenes, with any number of prompts per scene; PCs,
+  NPCs and Handouts, project-wide lists of a name and a prompt. Music stays
+  one Suno prompt per scene.
+- A status per image prompt and per scene's music: wanted, received, chosen;
+  one chosen image per prompt.
 - Claude writes the prompts through the connector (`get_board`,
-  `set_scene_prompts`); the user edits them by hand. Prompts are not
+  `add_image_prompt`, `update_image_prompt`, `remove_image_prompt`,
+  `set_scene_prompts`); the user adds, edits and removes them by hand.
+  Removing a prompt sends its images to the Unmatched tray. Prompts are not
   versioned.
+- Boards from before the categories migrate on every replica: each scene's
+  prompt and chosen image become its prompt 1.
 - Files are stored once per content, reachable only by their owner, and
   removed 30 days after no document lists them. The desktop app keeps every
   file of every project and works with the board offline.
@@ -427,9 +437,12 @@ Downloads say what they are:
 - Suno filenames are the track title (`dominus deus sabaoth.mp3`), and the app
   sets the title in the prompt.
 
-Drop the whole Downloads batch on the board: each file matches its scene.
+Drop the whole Downloads batch on the board: each image matches its prompt
+in any category (Scenes, PCs, NPCs, Handouts), each track its scene.
 Unmatched files go to a tray to assign by hand, or to match again once their
-prompt or title is written. Built 2026-10-20 (#26).
+prompt or title is written; an image whose name matches two prompts waits
+there with those prompts listed first. Built 2026-10-20 (#26), across
+categories with #36.
 
 ### PDF for the table
 
@@ -494,7 +507,9 @@ large or slow).
 ### CueBard export
 
 A `.cbpack` archive: one cue group per scene, tracks, images sorted into visual
-folders, each image linked to its scene's cue. CueBard source is
+folders, each image linked to its scene's cue. The board's model is ready for
+one visual folder per image category (#36): each prompt has a category, a
+stable id and, outside Scenes, a name. CueBard source is
 [Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard) (`electron/ipc/project.js` builds and reads `.cbpack`);
 the project file is JSON at `schemaVersion` 5 with `items`, `cartItems`,
 `visualMedia`, `visualFolders`.
@@ -537,7 +552,8 @@ and managed from the UI, not in environment variables.
    offline sync, Markdown editor, the format package with validation in the
    editor, `.md` import with the converter from today's notes, MCP connector with the
    brainstorm log, desktop app plus browser access.
-2. Asset board with prompts and intake by filename. Built 2026-10-20 (#26).
+2. Asset board with prompts and intake by filename. Built 2026-10-20 (#26);
+   image prompts in four categories (#36).
 3. `.cbpack` export.
 4. PDF in the desktop app with Typst: template ported from `stile.css`,
    checked against today's PDFs (Sabaoth first).

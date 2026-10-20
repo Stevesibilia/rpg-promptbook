@@ -85,18 +85,25 @@ signing out with removal says how many are not uploaded yet.
 
 ## Images and music
 
-Each adventure and one-shot has a board, **Images and music** in the rail:
-one row per scene of the appendix "Appendice: immagini e musica" at the end
-of the prep document, with its `visual:` and `mood:` lines. A document
-without the appendix gets one from the board's **Add the appendix**.
+Each adventure and one-shot has a board, **Images and music** in the rail,
+with image prompts in four categories, one tab each:
 
-Each row holds a Midjourney prompt and a Suno prompt (title, style, lyrics),
-each with Copy. Claude writes them through the connector ("write the image
-and music prompts for the board of …"); you can write or edit any of them by
-hand.
+- **Scenes:** one row per scene of the appendix "Appendice: immagini e
+  musica" at the end of the prep document, with its `visual:` and `mood:`
+  lines; any number of Midjourney prompts per scene (one shot each), and one
+  Suno prompt (title, style, lyrics). A document without the appendix gets
+  one from the board's **Add the appendix**.
+- **PCs**, **NPCs** and **Handouts:** project-wide lists, each item a name
+  and a Midjourney prompt. They work without the appendix.
+
+Every prompt has Copy. Claude writes them through the connector ("write the
+image and music prompts for the board of …, with portraits of the PCs and
+NPCs and the handouts"); you can add, edit or remove any of them by hand.
+Each tab shows how many prompts it has and how many still want images.
 
 Generate in Midjourney and Suno, then drop the whole Downloads batch anywhere
-on the board, or use **Add files…**. Each file finds its scene by its name:
+on the board, or use **Add files…**. Each file finds its prompt by its name,
+whatever the tab:
 
 - a Midjourney image by the prompt's first words, which Midjourney puts in
   the file name;
@@ -104,10 +111,20 @@ on the board, or use **Add files…**. Each file finds its scene by its name:
   in "(1)").
 
 Files that match nothing wait in the Unmatched tray: assign them by hand, or
-press **Match again** once their prompt or title is written. Choose one image
-and one track per scene; the viewer and each track's menu move or remove a
-file. The project's export holds `board.md` with the prompts and the files by
-scene.
+press **Match again** once their prompt or title is written. An image whose
+name matches two prompts (they start with the same words) waits there too,
+marked "matches 2 prompts", with those prompts first in its menu: start each
+prompt differently to avoid it. Removing a prompt sends its images to the
+tray; no file is deleted. Choose one image per prompt and one track per
+scene; the viewer and each track's menu move or remove a file. The project's
+export holds `board.md` with the prompts, and the files in
+`files/scenes/<scene>/<prompt number>/`, `files/scenes/<scene>/music/`,
+`files/pcs/<name>/`, `files/npcs/<name>/`, `files/handouts/<name>/` and
+`files/unmatched/`.
+
+Boards made before image categories (v0.6) keep everything: each scene's
+prompt and chosen image become its prompt 1, on the server, in the desktop
+app offline, and through the connector.
 
 ## Editor shortcuts
 
@@ -133,8 +150,10 @@ buttons or the palette.
 Promptbook is its own connector for Claude on the web and Claude Desktop. In
 a brainstorm, Claude reads and writes your projects: the prep document one
 section at a time, the to-do list, the inspiration items, research notes, the
-brainstorm log, and the board's prompts (`get_board`, then `set_scene_prompts`
-one scene at a time). A new chat about a project starts by reading its
+brainstorm log, and the board's prompts (`get_board`; `add_image_prompt`,
+`update_image_prompt` and `remove_image_prompt` for the image prompts of every
+category; `set_scene_prompts` for a scene's music and first image prompt, one
+scene at a time). A new chat about a project starts by reading its
 brainstorm log.
 
 To connect Claude:
@@ -151,8 +170,9 @@ The page asks which access to give:
 - **Read your projects:** Claude reads everything and changes nothing.
 - **Read and edit your projects:** Claude also creates projects, edits the
   prep document and adds to-do items, inspiration items, research notes and
-  log entries, and writes the board's prompts. It never ticks or deletes anything, and never rewrites the
-  seed.
+  log entries, and writes the board's prompts. It never ticks a to-do item,
+  never rewrites the seed, and deletes nothing except an image prompt with
+  `remove_image_prompt`, whose images move to the Unmatched tray.
 
 Settings → Connected apps lists every app you allowed, with its access and
 when it was last used. **Revoke** cuts it off at once; to use it again,

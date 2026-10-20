@@ -1,5 +1,6 @@
 import type * as Y from 'yjs';
-import { readDocumentBoard, type FileEntry } from './board.js';
+import { migratedView } from './board-migration.js';
+import { readDocumentBoard, type FileEntry, type NamedCategory, type PromptRow } from './board.js';
 import {
   readDocument,
   readInspiration,
@@ -109,12 +110,12 @@ export function logMarkdown(entries: readonly LogEntry[]): string {
 
 // A name that stays inside its folder on every file system: no separators,
 // reserved characters or control characters, and not empty, "." or "..".
-function fileSafe(name: string): string {
+function fileSafe(name: string, empty = 'file'): string {
   const clean = name
     .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '-')
     .trim()
     .replace(/[. ]+$/, '');
-  return clean === '' ? 'file' : clean;
+  return clean === '' ? empty : clean;
 }
 
 // " (2)", " (3)"… before the extension until the name is free in its folder.
@@ -127,6 +128,16 @@ function freeName(name: string, taken: Set<string>): string {
   return candidate;
 }
 
+// A PC's, an NPC's or a handout's folder: its name, made safe, «Untitled»
+// when empty, with " (2)", " (3)"… when another of its category has it.
+function freeFolder(name: string, taken: Set<string>): string {
+  const base = fileSafe(name, 'Untitled');
+  let candidate = base;
+  for (let n = 2; taken.has(candidate.toLowerCase()); n++) candidate = `${base} (${n})`;
+  taken.add(candidate.toLowerCase());
+  return candidate;
+}
+
 // Text in a fenced block that no run of backticks inside it can close.
 function fenced(text: string): string {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
@@ -135,19 +146,31 @@ function fenced(text: string): string {
 }
 
 export interface ExportFile {
-  // Inside the project's folder: files/<scene id>/<name>, or
-  // files/unmatched/<name>.
+  // Inside the project's folder: files/scenes/<scene id>/<n>/<name>,
+  // files/scenes/<scene id>/music/<name>, files/pcs/<name>/<name>,
+  // files/npcs/…, files/handouts/…, or files/unmatched/<name>.
   path: string;
   // The bytes are in the file store under this name.
   sha256: string;
 }
 
+const PARTS: [NamedCategory, string, string][] = [
+  ['pc', 'PCs', 'pcs'],
+  ['npc', 'NPCs', 'npcs'],
+  ['handout', 'Handouts', 'handouts'],
+];
+
 // board.md and the list of the files to put beside it (asset-board design
-// decision 16): per appendix row its prompts, who wrote them and when, and
-// the chosen files; every image and track in its scene's folder, the ones in
-// the Unmatched tray in files/unmatched. Thumbnails are not listed.
+// decision 16, image-categories design decision 6): a part per category,
+// Scenes per appendix row with its image prompts numbered and its music,
+// then PCs, NPCs and Handouts, every prompt with who wrote it and when and
+// its chosen file; every image in its prompt's folder, every track in its
+// scene's, the ones in the Unmatched tray in files/unmatched. A board from
+// before image categories is read migrated, the document left as it is.
+// Thumbnails are not listed. A campaign's board.md is empty.
 export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[] } {
-  const { rows, unmatched } = readDocumentBoard(doc);
+  const view = migratedView(doc);
+  const { rows, named, unmatched } = readDocumentBoard(view);
   const taken = new Map<string, Set<string>>();
   const names = new Map<string, string>();
   const files: ExportFile[] = [];
@@ -158,16 +181,36 @@ export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[]
     names.set(file.id, name);
     files.push({ path: `files/${folder}/${name}`, sha256: file.sha256 });
   };
-  for (const row of rows) for (const file of [...row.images, ...row.tracks]) place(file, fileSafe(row.sceneId));
+  for (const row of rows) {
+    const scene = `scenes/${fileSafe(row.sceneId)}`;
+    for (const prompt of row.prompts) for (const file of prompt.images) place(file, `${scene}/${prompt.number}`);
+    for (const file of row.tracks) place(file, `${scene}/music`);
+  }
+  for (const [category, , folder] of PARTS) {
+    const folders = new Set<string>();
+    for (const prompt of named[category]) {
+      const own = freeFolder(prompt.prompt.name ?? '', folders);
+      for (const file of prompt.images) place(file, `${folder}/${own}`);
+    }
+  }
   for (const { file } of unmatched) place(file, 'unmatched');
 
-  const chosen = (id: string | null) => (id === null ? [] : [`Chosen: ${names.get(id) ?? ''}`]);
-  const sections = rows.map((row) => {
-    const lines = [`## ${row.sceneId} · ${oneLine(row.title)}`, '', '### Image', ''];
-    if (row.image) lines.push(fenced(row.image.prompt), '', `${who(row.image.by)} · ${row.image.at}`);
-    else lines.push('No prompt yet.');
-    lines.push(...(row.chosenImage ? ['', ...chosen(row.chosenImage)] : []));
-    lines.push('', '### Music', '');
+  if (readMeta(view).category === 'campaign') return { markdown: '', files };
+  const empty = rows.length === 0 && PARTS.every(([category]) => named[category].length === 0);
+  if (empty) return { markdown: '', files };
+
+  const chosen = (id: string | null) => (id === null ? [] : ['', `Chosen: ${names.get(id) ?? ''}`]);
+  const promptLines = (row: PromptRow) => [
+    ...(row.prompt.prompt === ''
+      ? ['No prompt yet.']
+      : [fenced(row.prompt.prompt), '', `${who(row.prompt.by)} · ${row.prompt.at}`]),
+    ...chosen(row.chosen),
+  ];
+  const scenes = rows.map((row) => {
+    const lines = [`## ${row.sceneId} · ${oneLine(row.title)}`, ''];
+    for (const prompt of row.prompts) lines.push(`### Image prompt ${prompt.number}`, '', ...promptLines(prompt), '');
+    if (row.prompts.length === 0) lines.push('No image prompts yet.', '');
+    lines.push('### Music', '');
     if (row.music) {
       lines.push(
         `Title: ${oneLine(row.music.title)}`,
@@ -185,10 +228,17 @@ export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[]
     } else {
       lines.push('No prompt yet.');
     }
-    lines.push(...(row.chosenTrack ? ['', ...chosen(row.chosenTrack)] : []));
+    lines.push(...chosen(row.chosenTrack));
     return `${lines.join('\n')}\n`;
   });
-  return { markdown: sections.join('\n'), files };
+  const parts = [`# Scenes\n\n${scenes.length > 0 ? scenes.join('\n') : 'None yet.\n'}`];
+  for (const [category, title] of PARTS) {
+    const items = named[category].map(
+      (row) => `${[`## ${oneLine(row.prompt.name ?? '') || 'Untitled'}`, '', ...promptLines(row)].join('\n')}\n`,
+    );
+    parts.push(`# ${title}\n\n${items.length > 0 ? items.join('\n') : 'None yet.\n'}`);
+  }
+  return { markdown: parts.join('\n'), files };
 }
 
 // The files of one project's folder: the document as stored, the to-do list,

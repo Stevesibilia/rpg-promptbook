@@ -86,10 +86,11 @@ date), `inspiration.md` (the sources of inspiration with kind, text, URL,
 why, who and date), `research.md` (the topics with their state, then each
 note with summary, facts and sources), `brainstorm-log.md` (the entries,
 newest first, with their ideas, decisions, rejected ideas and why, and open
-questions), `board.md` (each scene's image and music prompts and chosen
-files), the images and tracks under `files/`, and `project.json` (id, title,
-category, status, campaign title, system, dates and schema version).
-Snapshots SHALL NOT be exported. Export SHALL lose no text the user wrote.
+questions), `board.md` (the image prompts of the scenes, the PCs, the NPCs
+and the handouts, each scene's music prompt, and the chosen files), the
+images and tracks under `files/`, and `project.json` (id, title, category,
+status, campaign title, system, dates and schema version). Snapshots SHALL
+NOT be exported. Export SHALL lose no text the user wrote.
 
 #### Scenario: Round trip of the document
 
@@ -106,20 +107,36 @@ Snapshots SHALL NOT be exported. Export SHALL lose no text the user wrote.
 
 ### Requirement: Board and files in the export
 
-`board.md` SHALL hold, per appendix row in order, the scene id and title,
-the image prompt, the music title, style and lyrics, each with who wrote it
-and when, and the names of the chosen image and track. Each file SHALL be at
-`files/<scene id>/<original name>`, and a file in the Unmatched tray at
-`files/unmatched/<original name>`; a name taken twice in one folder SHALL get
-« (2)», « (3)»… before its extension. Thumbnails SHALL NOT be exported. The
-zip SHALL be streamed, never built whole in memory.
+`board.md` SHALL hold a part per category: Scenes, per appendix row in order,
+with the scene id and title, its image prompts numbered in order and its
+music title, style and lyrics; then PCs, NPCs and Handouts, each item with
+its name and prompt; every prompt with who wrote it and when and the name of
+its chosen file. The images of a scene's prompt n SHALL be at
+`files/scenes/<scene id>/<n>/<original name>`, a scene's tracks at
+`files/scenes/<scene id>/music/`, the images of a PC, an NPC or a handout at
+`files/pcs/<name>/`, `files/npcs/<name>/` or `files/handouts/<name>/`, and a
+file in the Unmatched tray at `files/unmatched/<original name>`. A name
+taken twice in one folder, or by two items of one category, SHALL get «
+(2)», « (3)»… Thumbnails SHALL NOT be exported. The zip SHALL be streamed,
+never built whole in memory.
 
 #### Scenario: Files in their scene's folder
 
-- **WHEN** a project whose S1 has four Midjourney images and two tracks, one
-  of each chosen, and one unmatched track is exported
-- **THEN** the folder holds `files/S1/` with six files, `files/unmatched/`
-  with the track, and `board.md` naming the two chosen files under S1
+- **WHEN** a project whose S1 has two image prompts with four images each,
+  one chosen, two tracks, the NPC «Padre Anselmo» with four images and one
+  unmatched track is exported
+- **THEN** the folder holds `files/scenes/S1/1/` and `files/scenes/S1/2/`
+  with four images each, `files/scenes/S1/music/` with two tracks,
+  `files/npcs/Padre Anselmo/` with four images, `files/unmatched/` with the
+  track, and `board.md` lists S1's two prompts, the music and Padre Anselmo
+  with the chosen file
+
+#### Scenario: Board from v0.6 exported
+
+- **WHEN** a project whose board was written before image categories is
+  exported before anyone opens it
+- **THEN** each scene's single prompt and its images are exported as its
+  prompt 1, and the stored document is unchanged
 
 #### Scenario: Large export
 

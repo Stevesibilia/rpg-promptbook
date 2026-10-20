@@ -8,6 +8,7 @@ import {
   exportBoard,
   exportFolderName,
   exportProject,
+  migratedView,
   prepareImport,
   type ExportFile,
 } from 'promptbook-project';
@@ -113,8 +114,11 @@ export async function transferRoutes(
     titles: Map<string, string>,
     folder: string,
   ): Promise<{ folder: string; texts: Record<string, string>; files: ExportFile[]; missing: string[] }> {
-    const doc = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
-    if (!doc) return { folder, texts: {}, files: [], missing: [] };
+    const stored = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
+    if (!stored) return { folder, texts: {}, files: [], missing: [] };
+    // A board from before image categories is exported migrated, without
+    // writing to the document (image-categories design decision 2).
+    const doc = migratedView(stored);
     const texts = exportProject(doc, {
       campaignTitle: project.campaignId ? (titles.get(project.campaignId) ?? null) : null,
       editedAt: project.editedAt,

@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addFiles, readFiles, setImagePrompt, setMusicPrompt, type FileKind } from 'promptbook-project';
+import {
+  addFiles,
+  addImagePrompt,
+  readFiles,
+  readImagePrompts,
+  setFirstScenePrompt,
+  setMusicPrompt,
+  type FileKind,
+} from 'promptbook-project';
 import * as Y from 'yjs';
 import { hashBytes } from '../src/board/hash.js';
-import { Intake, kindOf, progressLine, resultLine, type IntakeDeps } from '../src/board/intake.js';
+import { Intake, kindOf, placesText, progressLine, resultLine, type IntakeDeps } from '../src/board/intake.js';
 import type { PutFileResult } from '../src/platform/bridge.js';
 import { PutFileError } from '../src/platform/index.js';
 import { createWebPlatform } from '../src/platform/web.js';
@@ -16,11 +24,13 @@ const png = (seed: number) => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a
 const mp3 = (seed: number) => new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 0, seed, seed >> 8]);
 const file = (name: string, bytes: Uint8Array, type = '') => new File([bytes as Uint8Array<ArrayBuffer>], name, { type });
 const sha = (bytes: Uint8Array) => hashBytes(bytes);
+// A scene's first image prompt.
+const promptOf = (doc: Y.Doc, sceneId: string) => readImagePrompts(doc).find((p) => p.sceneId === sceneId)!.id;
 
 function setup(options: { put?: IntakeDeps['putFile']; parallel?: number } = {}) {
   const doc = new Y.Doc();
-  setImagePrompt(doc, 'S1', 'collapsed 1900s Sicilian library at night, broken beams --ar 16:9', 'claude');
-  setImagePrompt(doc, 'S2', "ruined doctor's office in 1908 Messina, anatomical drawings", 'claude');
+  setFirstScenePrompt(doc, 'S1', 'collapsed 1900s Sicilian library at night, broken beams --ar 16:9', 'claude');
+  setFirstScenePrompt(doc, 'S2', "ruined doctor's office in 1908 Messina, anatomical drawings", 'claude');
   setMusicPrompt(doc, 'S1', { title: 'Cinque e venti', style: 'dark ambient', lyrics: '[End]' }, 'claude');
   const puts: { sha256: string; mime: string }[] = [];
   const opened: string[] = [];
@@ -74,7 +84,7 @@ describe('intake', () => {
 
     const files = readFiles(doc);
     expect(files).toHaveLength(6);
-    expect(files.filter((f) => f.sceneId === 'S2').map((f) => f.matchedBy)).toEqual(['prompt', 'prompt', 'prompt', 'prompt']);
+    expect(files.filter((f) => f.promptId === promptOf(doc, 'S2')).map((f) => f.matchedBy)).toEqual(['prompt', 'prompt', 'prompt', 'prompt']);
     expect(files.find((f) => f.name === 'cinque e venti (1).mp3')).toMatchObject({ sceneId: 'S1', matchedBy: 'title', duration: 192 });
     expect(files.find((f) => f.name === 'untitled track.mp3')).toMatchObject({ sceneId: null, matchedBy: null });
     const image = files.find((f) => f.kind === 'image')!;
@@ -87,14 +97,48 @@ describe('intake', () => {
 
     const result = intake.state.result!;
     expect(result).toMatchObject({ added: 6, matched: 5, toAssign: 1, alreadyHere: 0, skipped: 0, failed: 0 });
-    expect(resultLine(result)).toEqual({
-      head: '6 files added: 5 matched, 1 to assign.',
-      rest: 'S1: 1 track · S2: 4 images. New files are marked.',
-    });
+    const line = resultLine(result);
+    expect(line).toMatchObject({ head: '6 files added: 5 matched, 1 to assign.', rest: 'New files are marked.' });
+    expect(placesText(line.places)).toBe('S1: 1 track · S2: 4 images.');
+    expect(line.places.map((p) => [p.category, p.sceneId])).toEqual([
+      ['scene', 'S1'],
+      ['scene', 'S2'],
+    ]);
     expect(intake.state.marks.size).toBe(6);
     // The document held from the first file to the last.
     expect(opened).toEqual(['p1']);
     expect(released).toEqual(['p1']);
+  });
+
+  it('matches every category, counts per scene (all its prompts) and per named prompt, and leaves two matches to assign', async () => {
+    const { doc, intake, done } = setup();
+    const second = addImagePrompt(doc, { category: 'scene', sceneId: 'S1', prompt: 'close-up of an oil lamp on a desk' }, 'claude');
+    const anselmo = addImagePrompt(
+      doc,
+      { category: 'npc', name: 'Padre Anselmo', prompt: 'portrait of an old Sicilian priest in a torn cassock' },
+      'claude',
+    );
+    addImagePrompt(doc, { category: 'pc', name: 'Rosalia', prompt: 'portrait of a young Sicilian nurse' }, 'claude');
+    addImagePrompt(doc, { category: 'npc', name: "Za' Nina", prompt: 'portrait of an old Sicilian fisherwoman singing' }, 'claude');
+    addImagePrompt(doc, { category: 'scene', sceneId: 'S2', prompt: 'portrait of an old Sicilian fisherwoman singing on the beach' }, 'user');
+    intake.add([
+      file(`steve_collapsed_1900s_Sicilian_library_at_night_${UUID}_0.png`, png(10), 'image/png'),
+      file(`steve_close-up_of_an_oil_lamp_on_a_${UUID}_0.png`, png(11), 'image/png'),
+      file(`steve_portrait_of_an_old_Sicilian_priest_${UUID}_0.png`, png(12), 'image/png'),
+      file(`steve_portrait_of_an_old_Sicilian_priest_${UUID}_1.png`, png(13), 'image/png'),
+      file(`steve_portrait_of_a_young_Sicilian_nurse_${UUID}_0.png`, png(14), 'image/png'),
+      file(`steve_portrait_of_an_old_Sicilian_fisherwoman_singing_${UUID}_0.png`, png(15), 'image/png'),
+    ]);
+    await done();
+    const byName = new Map(readFiles(doc).map((f) => [f.name, f]));
+    expect(byName.get(`steve_close-up_of_an_oil_lamp_on_a_${UUID}_0.png`)).toMatchObject({ promptId: second.id });
+    expect(byName.get(`steve_portrait_of_an_old_Sicilian_priest_${UUID}_1.png`)).toMatchObject({ promptId: anselmo.id });
+    expect(byName.get(`steve_portrait_of_an_old_Sicilian_fisherwoman_singing_${UUID}_0.png`)).toMatchObject({ promptId: null });
+    const result = intake.state.result!;
+    expect(result).toMatchObject({ added: 6, matched: 5, toAssign: 1 });
+    const line = resultLine(result);
+    expect(placesText(line.places)).toBe('S1: 2 images · PCs · Rosalia: 1 image · NPCs · Padre Anselmo: 2 images.');
+    expect(line.places.map((p) => p.category)).toEqual(['scene', 'pc', 'npc']);
   });
 
   it('skips what is not an image or a track, by type and extension, then by its bytes', async () => {
@@ -106,14 +150,14 @@ describe('intake', () => {
     await done();
     expect(puts).toEqual([]);
     expect(intake.state.result).toMatchObject({ added: 0, skipped: 2 });
-    expect(resultLine(intake.state.result!)).toEqual({ head: 'No files added.', rest: '2 skipped: not an image or a track.' });
+    expect(resultLine(intake.state.result!)).toEqual({ head: 'No files added.', places: [], rest: '2 skipped: not an image or a track.' });
   });
 
   it('counts a content the project lists as already here, with no upload', async () => {
     const { doc, intake, puts, done } = setup();
     const bytes = png(7);
     addFiles(doc, [
-      { sha256: await sha(bytes), thumbSha256: null, name: 'old.png', kind: 'image', mime: 'image/png', size: 13, width: null, height: null, duration: null, sceneId: null, matchedBy: null, addedBy: 'user' },
+      { sha256: await sha(bytes), thumbSha256: null, name: 'old.png', kind: 'image', mime: 'image/png', size: 13, width: null, height: null, duration: null, sceneId: null, promptId: null, matchedBy: null, addedBy: 'user' },
     ]);
     intake.add([file('again.png', bytes, 'image/png')]);
     await done();
@@ -199,13 +243,13 @@ describe('intake', () => {
     await done();
     expect(readFiles(doc)).toEqual([]);
     expect(intake.state.failed).toMatchObject([{ message: 'The server cannot be reached.', retry: true }]);
-    expect(resultLine(intake.state.result!)).toEqual({ head: 'No files added.', rest: '1 not added.' });
+    expect(resultLine(intake.state.result!)).toEqual({ head: 'No files added.', places: [], rest: '1 not added.' });
 
     down = false;
     intake.retry(intake.state.failed[0]!.key);
     await done();
     expect(intake.state.failed).toEqual([]);
-    expect(readFiles(doc)).toMatchObject([{ sceneId: 'S1', matchedBy: 'prompt' }]);
+    expect(readFiles(doc)).toMatchObject([{ promptId: promptOf(doc, 'S1'), matchedBy: 'prompt' }]);
     expect(intake.state.result).toMatchObject({ added: 1, matched: 1 });
   });
 

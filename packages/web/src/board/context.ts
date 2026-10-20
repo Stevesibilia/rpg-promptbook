@@ -1,25 +1,45 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry } from 'promptbook-project';
+import type { BoardRow, FileEntry, ImageCategory } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
+import type { Named, ShownPrompt } from './summary.js';
 
-// What every part of the board shares: the document, the rows as drawn, the
-// new marks, the toast, the viewer and the one audio player.
+// Where the one new prompt is being written: a scene's stack, or the PCs,
+// NPCs or Handouts grid.
+export type Adding = { category: 'scene'; sceneId: string } | { category: Exclude<ImageCategory, 'scene'> };
+
+export const addingKey = (a: Adding) => (a.category === 'scene' ? `scene:${a.sceneId}` : a.category);
+
+// What every part of the board shares: the document, the rows, cards and
+// prompts as drawn, the new marks, the toast, the viewer and the one audio
+// player.
 export interface BoardContextValue {
   doc: Y.Doc;
   projectId: string;
   rows: BoardRow[];
+  named: Named;
+  shown: ReadonlyMap<string, ShownPrompt>;
   marks: ReadonlySet<string>;
   toast(message: string): void;
-  openViewer(sceneId: string, fileId: string): void;
+  openViewer(promptId: string, fileId: string): void;
   player: Player;
   // A file assigned by hand from the tray is marked new.
   mark(fileId: string): void;
-  // The scenes with a prompt editor open, kept on the board whatever the
-  // filter, so a draft is never unmounted by a change of state.
+  // The prompts (by id) and music halves (`<sceneId>/music`) with an editor
+  // open, and the prompts (`<id>/remove`) and tracks (`<sceneId>/track`)
+  // with a confirm open, kept on the board whatever the filter, so a draft
+  // or a question is never unmounted by a change of state.
   editing: ReadonlySet<string>;
   setEditing(key: string, on: boolean): void;
+  // One new prompt at a time: Add elsewhere drops an unsaved one.
+  adding: Adding | null;
+  setAdding(adding: Adding | null): void;
 }
+
+// A prompt held on the board whatever the filter: its editor or its remove
+// confirm is open.
+export const held = (editing: ReadonlySet<string>, promptId: string) =>
+  editing.has(promptId) || editing.has(`${promptId}/remove`);
 
 export const BoardContext = createContext<BoardContextValue | null>(null);
 

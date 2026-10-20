@@ -26,7 +26,7 @@ export function SceneRow({ row, filter }: { row: BoardRow; filter: Filter }) {
         </div>
       )}
       <div className="halves">
-        <ImageHalf row={row} dim={dims(row.imageStatus, filter)} />
+        <ImageHalf row={row} filter={filter} />
         <MusicHalf row={row} dim={dims(row.musicStatus, filter)} />
       </div>
     </article>

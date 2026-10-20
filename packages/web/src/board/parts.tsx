@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Author, FileEntry, HalfStatus } from 'promptbook-project';
 import { relativeTime } from '../dates.js';
 import { projectPath } from '../project/top.js';
 import { platform } from '../platform/index.js';
 import { useDownloadsVersion } from './device.js';
-import { statusLabels } from './summary.js';
+import { filterLabels, filters, statusLabels, type Filter, type HalfCounts } from './summary.js';
 
 // Small parts the halves, the tray and the viewer share.
 
@@ -91,5 +91,47 @@ export function FileImage({
       draggable={false}
       onError={() => setBroken(attempt)}
     />
+  );
+}
+
+// «1 chosen, 2 received, 3 wanted», the numbers bold.
+export function Counts({ counts }: { counts: HalfCounts }) {
+  return (
+    <>
+      <b>{counts.chosen}</b> chosen, <b>{counts.received}</b> received, <b>{counts.wanted}</b> wanted
+    </>
+  );
+}
+
+// The summary line of a tab, with the filters All, Wanted, Received and
+// Chosen and how many rows or cards each keeps.
+export function SummaryLine({
+  children,
+  counts,
+  filter,
+  setFilter,
+  label,
+}: {
+  children: ReactNode;
+  counts: Record<Filter, number>;
+  filter: Filter;
+  setFilter(filter: Filter): void;
+  label: string;
+}) {
+  return (
+    <div className="sumline">
+      <span className="summary">{children}</span>
+      <span className="spacer" />
+      <div className="segwrap">
+        <div className="seg" role="group" aria-label={label}>
+          {filters.map((f) => (
+            <button key={f} className={filter === f ? 'on' : ''} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {filterLabels[f]}
+              <span className="n">{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

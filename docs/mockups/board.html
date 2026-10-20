@@ -1,4 +1,19 @@
 <!doctype html>
+<!--
+  Mockup: the Images and music board (#26), with any number of image prompts in four
+  categories (#36). Draft for the owner's review, not the shipped UI.
+  - A category switch at the top: Scenes, PCs, NPCs, Handouts. Each tab shows its count of
+    image prompts and what is still wanted; the Wanted / Received / Chosen filters work
+    inside the active tab.
+  - Scenes: one row per scene of the appendix. The image half is a stack of prompts
+    (S1 has three, S2 one, S6 none), each with its own status, files and chosen image, and
+    "Add image prompt" below. The music half is unchanged: one Suno prompt per scene.
+  - PCs, NPCs, Handouts: project-wide cards, each a name and a Midjourney prompt.
+  - Intake by filename matches every image prompt in every category. A file that matches
+    none, or more than one, waits in Unmatched; assigning it means picking a prompt,
+    grouped by category.
+  - Existing boards: the single scene prompt becomes that scene's prompt 1. Nothing to show.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -167,7 +182,8 @@ body.phone .notch { display: flex; }
 .uf .fn { font: 12px/1.4 var(--mono); word-break: break-all; }
 .uf .why { font-size: 12px; color: var(--faint); }
 .uf .uact { display: flex; gap: 8px; align-items: center; }
-.uf select { padding: 4px 8px; font-size: 13px; width: 210px; }
+.uf select { padding: 4px 8px; font-size: 13px; width: 250px; }
+.uf .amb { font: 600 11px var(--font); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent); border-radius: 999px; padding: 0 7px; margin-right: 4px; white-space: nowrap; }
 .uf .mini { width: 64px; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 4px; }
 .uf .trk { width: 64px; height: 36px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); }
 
@@ -219,6 +235,46 @@ body.phone .notch { display: flex; }
 .editbox .eg input, .editbox .eg textarea { font: 12.5px/1.5 var(--mono); padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; min-height: 0; background: var(--surface-2); }
 .editbox .eg textarea { min-height: 70px; }
 .editbox .pfoot .hint { margin-right: auto; }
+
+/* Category switch: Scenes, PCs, NPCs, Handouts */
+.cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.cats button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px 9px; min-width: 0; text-align: left; border-right: 1px solid var(--border); }
+.cats button:last-child { border-right: 0; }
+.cats button:hover { background: var(--hover); }
+.cats button.on { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+.cats button.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--primary); }
+.cats .cl { font: 700 18px/1.2 var(--display); letter-spacing: .02em; display: flex; align-items: baseline; gap: 6px; color: var(--muted); }
+.cats button.on .cl { color: var(--text); }
+.cats .cl .n { font: 500 11.5px var(--mono); color: var(--faint); }
+.cats .cl .nd { width: 7px; height: 7px; border-radius: 50%; background: var(--info); align-self: center; }
+.cats .cs { font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cats .cs.w { color: var(--muted); }
+
+/* Scene rows: a stack of image prompts in the image half */
+.hh .hsum { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.ip { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; transition: opacity .15s; }
+.ip.dim { opacity: .4; }
+.iph { display: flex; align-items: center; gap: 8px; }
+.iph .num { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.iph .st { margin-left: auto; }
+.rm { color: var(--faint); } .rm:hover { color: var(--danger); background: var(--hover); }
+.addp { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--muted); font-size: 13px; }
+.addp:hover, .addcard:hover { border-color: var(--primary); color: var(--primary); }
+.addp svg, .addcard svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+
+/* PCs, NPCs, Handouts: project-wide cards */
+.ents { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
+.ent { overflow: hidden; min-width: 0; }
+.ent .eh { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.ent .enm { font: 600 17px/1.3 var(--prose); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ent .enm.new { color: var(--faint); font-style: italic; font-weight: 400; }
+.ent .eh .st { margin-left: auto; }
+.ent .eb { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+.ent .thumbs { gap: 6px; }
+.addcard { min-height: 120px; border: 1px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
+.none { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
+.emptyst.catempty { margin: 24px auto; }
 
 /* Thumbnails */
 .thumbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -344,6 +400,9 @@ body.phone .notch { display: flex; }
   .scene .sh { padding: 10px 14px; } .half { padding: 12px 14px 14px; }
   .scene .sh .go { margin-left: 0; flex-basis: 100%; }
   .sumline { gap: 10px; } .sumline .spacer { display: none; }
+  .cats button { padding: 7px 8px 8px; } .cats .cl { font-size: 16px; gap: 4px; }
+  .ip { padding: 8px 8px 10px; } .ent .eb { padding: 12px 12px 14px; }
+  .thumbs.tall { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 }
 @media (max-width: 900px) {
   .lb { grid-template-columns: minmax(0, 1fr); overflow: auto; } .lb .side { border-left: 0; border-top: 1px solid var(--border); }
@@ -395,7 +454,7 @@ body.phone .notch { display: flex; }
       <div class="pane">
         <div class="head">
           <h1>Images and music</h1>
-          <p class="lead">One row per scene, from the document's appendix. For the table and the CueBard export.</p>
+          <p class="lead">Image prompts for scenes, PCs, NPCs and handouts; music for each scene. For the table and the CueBard export.</p>
           <span class="spacer"></span>
           <span class="row acts">
             <button class="tb line sm" id="helpBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"/></svg>How matching works</button>
@@ -403,17 +462,20 @@ body.phone .notch { display: flex; }
             <input type="file" id="fileIn" multiple accept="image/*,audio/*" hidden>
           </span>
           <div class="pop" id="help" hidden>
-            <h4>How files find their scene <button class="tb xs" id="helpX" title="Close">✕</button></h4>
-            <div class="m"><b>Midjourney</b><div><p>The filename holds the first words of the prompt. They pick the scene.</p>
-              <div class="fn">steve_<u>collapsed_1900s_Sicilian_library_at_night</u>_3f9a1c22-…_2.png</div><div class="arrow">→ S1 · La casa che cede</div></div></div>
+            <h4>How files find their prompt <button class="tb xs" id="helpX" title="Close">✕</button></h4>
+            <div class="m"><b>Midjourney</b><div><p>The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, PCs, NPCs or Handouts.</p>
+              <div class="fn">steve_<u>collapsed_1900s_Sicilian_library_at_night</u>_3f9a1c22-…_2.png</div><div class="arrow">→ Scenes · S1 · prompt 1</div>
+              <div class="fn">steve_<u>portrait_of_an_old_Sicilian_priest</u>_c41d07e2-…_0.png</div><div class="arrow">→ NPCs · Padre Anselmo</div></div></div>
             <div class="m"><b>Suno</b><div><p>The filename is the track title from the prompt. A second take gets "(1)".</p>
               <div class="fn"><u>dominus deus sabaoth</u> (1).mp3</div><div class="arrow">→ S5 · Capo Peloro, la terza scossa</div></div></div>
+            <div class="m"><b>Two matches</b><div><p>When two prompts start with the same words, their files match both. They wait in Unmatched, marked "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it.</p></div></div>
             <div class="m"><b>Other files</b><div><p>Renamed files, or prompts you changed in Midjourney or Suno, go to Unmatched. Assign them by hand.</p></div></div>
           </div>
         </div>
 
         <div id="boardBody">
-          <div class="sumline">
+          <div class="cats" id="cats" role="tablist" aria-label="Image categories"></div>
+          <div class="sumline" id="sumline">
             <span class="summary" id="summary"></span>
             <span class="spacer"></span>
             <div class="segwrap"><div class="seg" id="filters"></div></div>
@@ -421,7 +483,8 @@ body.phone .notch { display: flex; }
           <div id="strips"></div>
           <div id="tray"></div>
           <div class="rows" id="rows"></div>
-          <p class="hint" style="margin-top:14px">Rows follow the appendix. Add or rename a scene there and the board follows.</p>
+          <div id="grid"></div>
+          <p class="hint" id="hintLine" style="margin-top:14px"></p>
         </div>
 
         <div class="card emptyst" id="emptySt" hidden>
@@ -448,9 +511,9 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
         <div class="zone"><div>
           <svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
           <h2>Drop images and tracks</h2>
-          <p>They find their scene by filename.</p>
-          <p class="hint">Files that match nothing wait in Unmatched.</p>
-          <div class="cnt">14 files · 10 images, 4 tracks</div>
+          <p>They find their prompt by filename, in any category.</p>
+          <p class="hint">Files that match no prompt, or more than one, wait in Unmatched.</p>
+          <div class="cnt">18 files · 14 images, 4 tracks</div>
         </div></div>
       </div>
 
@@ -476,7 +539,7 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
     <div class="strip" id="lbStrip"></div>
     <div class="acts">
       <button class="tb primary" id="lbChoose"></button>
-      <select id="lbMove" aria-label="Move to another scene"></select>
+      <select id="lbMove" aria-label="Move to another prompt"></select>
       <button class="tb danger" id="lbRemove"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Remove</button>
     </div>
   </div>
@@ -493,18 +556,23 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
   <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
   <div class="lab">Screen</div>
   <div class="lrow" id="screens">
-    <button data-sc="board" class="on">1 Board</button><button data-sc="noprompts">2 No prompts yet</button><button data-sc="noappendix">3 No appendix</button>
+    <button data-sc="board" class="on">1 Scenes</button><button data-sc="pcs">1b PCs</button><button data-sc="npcs">1c NPCs</button><button data-sc="handouts">1d Handouts</button>
+    <button data-sc="noprompts">2 No prompts yet</button><button data-sc="noappendix">3 No appendix</button>
     <button data-sc="dropping">4 Dropping</button><button data-sc="afterdrop">5 After a drop</button><button data-sc="matching">5b Matching help</button><button data-sc="viewer">6 Image viewer</button>
-    <button data-sc="edit">7 Edit a prompt</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
+    <button data-sc="edit">7 Edit a prompt</button><button data-sc="addnpc">7b Add an NPC</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
   </div>
   <ul>
     <li>Route <code>/projects/:id/board</code>. Rail entry <b>Images and music</b>, between Research and Brainstorm log.</li>
-    <li><b>Board</b>: one row per <code>### S… </code> of the appendix. Each half has the scene's <code>visual:</code> or <code>mood:</code> line (read-only), the prompt with Copy and Edit, who wrote it, the files, and a status: Wanted (no files), Received (files, none chosen), Chosen.</li>
-    <li>Click a thumbnail to open it; the round badge chooses it. Play only toggles (no audio). Filters keep rows with at least one half in that state; the other half dims.</li>
-    <li><b>No prompts yet</b>: the prompts come from Claude through the connector; the request is copyable. Write by hand stays on every row.</li>
+    <li><b>Categories</b>: the switch at the top. Each tab shows its number of image prompts and what is still wanted; a blue dot means new files. The filters work inside the active tab.</li>
+    <li><b>Scenes</b>: one row per <code>### S… </code> of the appendix. The image half is a stack of prompts (S1 three, S4 two, S6 none), each with Copy, Edit, Remove, its files and its own status: Wanted (no files), Received (files, none chosen), Chosen. The music half is unchanged.</li>
+    <li><b>PCs, NPCs, Handouts</b>: project-wide cards, a name and a prompt each. Thumbnails follow the prompt's <code>--ar</code>.</li>
+    <li>Click a thumbnail to open it; the round badge chooses it, one per prompt. Removing a prompt sends its images to Unmatched. Play only toggles (no audio).</li>
+    <li><b>No prompts yet</b>: the prompts come from Claude through the connector; the request is copyable. Each tab has its empty state with an Add button.</li>
+    <li><b>No appendix</b>: only Scenes needs it; PCs, NPCs and Handouts work without.</li>
     <li><b>Dropping</b>: real files dropped on this page also open the overlay, then the result.</li>
-    <li><b>After a drop</b>: the result line, new files marked, Unmatched pinned at the top while you scroll. Assigning moves a file into its row.</li>
+    <li><b>After a drop</b>: the result line links to the tabs, new files marked, Unmatched pinned at the top. One file matches two prompts; its menu lists those two first, then every prompt by category.</li>
     <li><b>Matching help</b>: the popover behind "How matching works", also linked from the Unmatched tray.</li>
+    <li>Existing boards: the scene's single prompt becomes its prompt 1. Nothing to show.</li>
     <li><b>Desktop, offline</b>: files dropped offline stay on this computer and upload later; choosing and prompts still work.</li>
     <li><b>Phone width</b>: the same board in a 390 px frame. A narrow browser window gets the same layout.</li>
     <li>The half-circle in the top bar switches light and dark.</li>
@@ -521,6 +589,8 @@ const IC = {
   mus: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
   copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
   drop: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>',
@@ -528,16 +598,25 @@ const IC = {
   check: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>',
   info: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
   warn: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  pc: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  npc: '<svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 5 1.6 5 4.5"/></svg>',
+  handout: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h4"/></svg>',
 };
 
-/* Fake image art: gradients per scene, from its visual: line */
+/* Fake image art: gradients per prompt */
 const PAL = {
-  S1: ['#1d1610', '#5b4429', '#e3b366', '#2b2119'],
+  S1: ['#1d1610', '#5b4429', '#e3b366', '#2b2119'], S1b: ['#1a120a', '#6b4a22', '#f0c070', '#2e2014'], S1c: ['#0c0f1a', '#2d3a5c', '#b8c4e0', '#1a2034'],
   S2: ['#141c20', '#4d6672', '#d3e0e2', '#26343a'],
   S3: ['#1b1b1e', '#5c5853', '#c2ae92', '#34302d'],
-  S4: ['#0d1b2a', '#355f72', '#e2cf9f', '#1b3346'],
+  S4: ['#0d1b2a', '#355f72', '#e2cf9f', '#1b3346'], S4b: ['#0e1c2a', '#3e6478', '#e6c48a', '#22384a'],
   S5: ['#1c0a16', '#7c2836', '#ef8a3c', '#3d1a4a'],
   S6: ['#0b1d22', '#4a8388', '#d9eee6', '#1a3a40'],
+  P1: ['#1d1712', '#6e5640', '#f1d9b0', '#3a2c20'], P2: ['#11161c', '#3f5263', '#cfd8de', '#222c36'],
+  P3: ['#17140f', '#4f463a', '#d8c7a4', '#2c261e'], P4: ['#141a1f', '#56697a', '#e4e8ea', '#2a3540'],
+  N1: ['#1a1410', '#5e4630', '#e8c38a', '#30241a'], N2: ['#0f1a1c', '#3a6066', '#cfe6e4', '#1e3236'],
+  N3: ['#18181a', '#55524e', '#bdb5a8', '#2e2c2a'], N4: ['#0d1824', '#38607a', '#e2c99a', '#1c3244'],
+  N5: ['#1a0b14', '#6e2434', '#e8803a', '#3a1844'], N6: ['#161a14', '#5a6448', '#e8e2c0', '#2c3226'],
+  H1: ['#3a2e1c', '#a8895a', '#f2e4c0', '#6e5838'], H2: ['#2e2a1e', '#8c7e58', '#e8dcb4', '#5a4e34'], H3: ['#2a2218', '#7a6444', '#e6d2a6', '#4a3a28'],
   X1: ['#0d1a20', '#2f5866', '#9fd0d0', '#22323a'],
   X2: ['#161b22', '#4d5b6a', '#e0c38c', '#28313b'],
 };
@@ -553,100 +632,201 @@ function art(key, i) {
     linear-gradient(180deg, transparent 0 ${hz}%, color-mix(in srgb, ${p[2]} 22%, transparent) ${hz}% ${hz + 1}%, transparent ${hz + 1}%),
     linear-gradient(${178 - i * 9}deg, ${p[1]} 0%, ${p[3]} 52%, ${p[0]} 100%);`;
 }
+/* The prompt's --ar sets the thumbnails' shape */
+const arParts = p => { const m = /--ar\s+(\d+):(\d+)/.exec(p || ''); return m ? [+m[1], +m[2]] : [16, 9]; };
+const arOf = p => arParts(p).join(' / ');
+const tall = p => { const [w, h] = arParts(p); return w < h; };
 
-/* Data: the appendix of L'Ancora di Sabaoth (packages/format/fixtures/esempio.md), plus an S6 epilogue */
-const UUID = { S1: '3f9a1c22-5d4e-4b1a-9c2f-7e8d6a5b4c3d', S2: 'a1b2c3d4-6e7f-4a8b-9c0d-1e2f3a4b5c6d', S3: '5c7e9a01-2b3c-4d5e-8f60-718293a4b5c6',
-  S4: 'd4e5f607-8192-4a3b-bc4d-5e6f708192a3', S5: '9e8d7c6b-5a49-4382-a716-05f4e3d2c1b0' };
-const SLUG = { S1: 'collapsed_1900s_Sicilian_library_at_night', S2: 'ruined_doctors_office_in_1908_Messina_anatomical',
-  S3: 'collapsed_cathedral_facade_in_1908_Messina_Italian', S4: 'Sicilian_fishing_village_at_the_tip_of_the_strait',
-  S5: 'rocky_cape_at_sunset_a_man_in_a_black_coat' };
-const mjFiles = id => [0, 1, 2, 3].map(i => ({ n: `steve_${SLUG[id]}_${UUID[id]}_${i}.png`, art: id, i }));
+/* Midjourney filenames: the first words of the prompt, then a job id */
+const words = (p, n = 6) => p.replace(/['’]/g, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0, n).join('_');
+function uuid(s) {
+  let h = 2166136261; const o = [];
+  for (let k = 0; k < 32; k++) { h ^= s.charCodeAt(k % s.length) + k * 31; h = Math.imul(h, 16777619) >>> 0; o.push((h >>> 28).toString(16)); }
+  const x = o.join('');
+  return `${x.slice(0, 8)}-${x.slice(8, 12)}-4${x.slice(13, 16)}-${'89ab'[parseInt(x[16], 16) % 4]}${x.slice(17, 20)}-${x.slice(20, 32)}`;
+}
+const mjFiles = (d, n) => Array.from({ length: n }, (_, i) => ({ n: `steve_${words(d.p)}_${d.uuid || uuid(d.pid)}_${i}.png`, art: d.art, i }));
 const LYR = t => `[Intro: ${t}]\n[Instrumental]\n[Outro: fade out]\n[End]`;
-const BASE = [
+
+/* Data: the appendix of L'Ancora di Sabaoth (packages/format/fixtures/esempio.md), plus an S6 epilogue.
+   Scenes keep their visual:/mood: lines and their one Suno prompt. */
+const SCENES = [
   { id: 'S1', t: 'La casa che cede',
     visual: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, shadows stretching unnaturally toward the sea, sepia and ash palette',
     mood: 'chaotic, suffocating, low rumbling drones, sudden silence, dread',
-    img: { p: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, cinematic wide shot, muted sepia, film grain --ar 16:9 --v 8.1', by: 'you', when: 'yesterday', files: mjFiles('S1'), chosen: 2 },
     mus: { title: 'Cinque e venti', style: 'dark ambient, slow, low rumbling drones, creaking wood, sudden silences, dread', lyrics: '[Intro: low rumble]\n[Instrumental]\n[Break: sudden silence]\n[Outro: fade out]\n[End]', by: 'cl', when: '2 days ago',
       tracks: [{ n: 'cinque e venti.mp3', d: '3:12' }, { n: 'cinque e venti (1).mp3', d: '2:47' }], chosen: 0 } },
   { id: 'S2', t: "L'ambulatorio di Salvi",
     visual: "ruined doctor's office 1908, anatomical drawings of a sea strait shaped like a human body, spilled ether bottles, cold dawn light through a broken wall",
     mood: 'clinical, uncanny, quiet ticking, fevered obsession',
-    img: { p: "ruined doctor's office in 1908 Messina, anatomical drawings of a sea strait shaped like a human body pinned to the wall, spilled ether bottles, cold dawn light through a broken wall, cinematic, desaturated teal, film grain --ar 16:9 --v 8.1", by: 'cl', when: '5 min ago', files: mjFiles('S2'), chosen: null },
     mus: { title: 'Anatomia dello Stretto', style: 'dark ambient, clinical, sparse, quiet clock ticking, glass harmonics, uneasy strings, fevered', lyrics: LYR('ticking clock'), by: 'cl', when: '5 min ago', tracks: [], chosen: null } },
   { id: 'S3', t: "L'ordine di Donato",
     visual: 'collapsed cathedral facade, soldiers in 1908 Italian uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke and grey sky',
     mood: 'oppressive, martial, eerie stillness, a single drum',
-    img: { p: 'collapsed cathedral facade in 1908 Messina, Italian soldiers in period uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke, flat grey sky, wide shot, desaturated, film grain --ar 16:9 --v 8.1', by: 'cl', when: '5 min ago', files: mjFiles('S3'), chosen: null },
     mus: { title: 'Ordini del Re', style: 'dark martial ambient, slow, single snare drum, low brass drone, eerie stillness, oppressive', lyrics: '[Intro: single drum]\n[Instrumental]\n[Outro: the drum stops]\n[End]', by: 'cl', when: '5 min ago',
       tracks: [{ n: 'ordini del re.mp3', d: '2:54' }, { n: 'ordini del re (1).mp3', d: '3:21' }], chosen: null } },
   { id: 'S4', t: 'Torre Faro e la canzone',
     visual: "Sicilian fishing village at the strait's tip, overturned boats, a lighthouse in the distance, the sea with countless glints like eyes, an old woman singing on the shore",
     mood: 'melancholic, haunting folk song, wind, waves, quiet grief',
-    img: { p: 'Sicilian fishing village at the tip of the strait at dusk, overturned boats on the shore, a distant lighthouse, the sea full of glints like eyes, an old woman singing on the beach, cinematic, cold blue and ochre, film grain --ar 16:9 --v 8.1', by: 'cl', when: '2 days ago', files: mjFiles('S4'), chosen: 1 },
     mus: { title: 'Canzone di Colapesce', style: 'melancholic Sicilian folk, solo mandolin, accordion drone, wind, waves, quiet grief, haunting', lyrics: LYR('waves'), by: 'cl', when: '2 days ago',
       tracks: [{ n: 'canzone di colapesce.mp3', d: '3:40' }], chosen: 0 } },
   { id: 'S5', t: 'Capo Peloro, la terza scossa',
     visual: 'rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor wedged in rock, the strait boiling, sky twisting in impossible colors, a vast presence beneath the water',
     mood: 'apocalyptic, choral, overwhelming pressure, a voice too big for the sky',
-    img: { p: 'rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor wedged in the rock, the strait boiling, sky twisting in impossible colors, a vast presence beneath the water, epic wide shot, film grain --ar 16:9 --v 8.1', by: 'cl', when: '5 min ago', files: mjFiles('S5'), chosen: null },
     mus: { title: 'Dominus Deus Sabaoth', style: 'dark ambient, slow, low drones, distant choir pads, tape hiss, dread', lyrics: LYR('low drone'), by: 'you', when: '3 min ago', tracks: [], chosen: null } },
   { id: 'S6', t: 'Il mare di vetro',
     visual: 'the Strait of Messina at dawn, the sea perfectly still like glass, the ruined city on the shore, survivors on the quay, pale gold light',
     mood: 'still, exhausted, fragile hope, solo cello, distant bells',
-    img: { p: null, files: [], chosen: null },
     mus: { title: null, tracks: [], chosen: null } },
+];
+
+/* Every image prompt, in order. cat: scene (tied to a scene), pc, npc, handout (project-wide, with a name). nf: files already in. */
+const PROMPTS = [
+  { pid: 's1a', cat: 'scene', scene: 'S1', art: 'S1', uuid: '3f9a1c22-5d4e-4b1a-9c2f-7e8d6a5b4c3d', nf: 4, chosen: 2, by: 'you', when: 'yesterday',
+    p: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, cinematic wide shot, muted sepia, film grain --ar 16:9 --v 8.1' },
+  { pid: 's1b', cat: 'scene', scene: 'S1', art: 'S1b', nf: 4, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'close-up of an oil lamp on a desk buried in dust and fallen books, 1900s Sicilian library, warm flicker against deep shadow, shallow depth of field, sepia, film grain --ar 16:9 --v 8.1' },
+  { pid: 's1c', cat: 'scene', scene: 'S1', art: 'S1c', nf: 0, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'shadows stretching unnaturally toward the sea through a broken library window at night, 1908 Messina, moonlit dust, cinematic, ash and indigo palette, film grain --ar 16:9 --v 8.1' },
+  { pid: 's2a', cat: 'scene', scene: 'S2', art: 'S2', nf: 4, chosen: null, by: 'cl', when: '5 min ago',
+    p: "ruined doctor's office in 1908 Messina, anatomical drawings of a sea strait shaped like a human body pinned to the wall, spilled ether bottles, cold dawn light through a broken wall, cinematic, desaturated teal, film grain --ar 16:9 --v 8.1" },
+  { pid: 's3a', cat: 'scene', scene: 'S3', art: 'S3', nf: 4, chosen: null, by: 'cl', when: '5 min ago',
+    p: 'collapsed cathedral facade in 1908 Messina, Italian soldiers in period uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke, flat grey sky, wide shot, desaturated, film grain --ar 16:9 --v 8.1' },
+  { pid: 's4a', cat: 'scene', scene: 'S4', art: 'S4', nf: 4, chosen: 1, by: 'cl', when: '2 days ago',
+    p: 'Sicilian fishing village at the tip of the strait at dusk, overturned boats on the shore, a distant lighthouse, the sea full of glints like eyes, an old woman singing on the beach, cinematic, cold blue and ochre, film grain --ar 16:9 --v 8.1' },
+  { pid: 's4b', cat: 'scene', scene: 'S4', art: 'S4b', nf: 0, chosen: null, by: 'you', when: '1 hour ago',
+    p: 'portrait of an old Sicilian fisherwoman singing on the beach at dusk, close-up, salt in her grey hair, the lighthouse blurred behind her, cold blue and ochre, film grain --ar 16:9 --v 8.1' },
+  { pid: 's5a', cat: 'scene', scene: 'S5', art: 'S5', nf: 4, chosen: null, by: 'cl', when: '5 min ago',
+    p: 'rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor wedged in the rock, the strait boiling, sky twisting in impossible colors, a vast presence beneath the water, epic wide shot, film grain --ar 16:9 --v 8.1' },
+
+  { pid: 'pc1', cat: 'pc', name: 'Rosalia Ferrante', art: 'P1', nf: 4, chosen: 1, by: 'cl', when: 'yesterday',
+    p: 'portrait of a young Sicilian nurse in 1908, white apron stained with plaster dust, dark braided hair, tired determined eyes, oil lamp light, half-length, sepia, film grain --ar 2:3 --v 8.1' },
+  { pid: 'pc2', cat: 'pc', name: 'Tenente Carlo Bruni', art: 'P2', nf: 4, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of an Italian navy lieutenant in 1908 dress uniform, torn sleeve, soot on his face, rubble of Messina behind him, cold dawn light, half-length, desaturated, film grain --ar 2:3 --v 8.1' },
+  { pid: 'pc3', cat: 'pc', name: 'Ignazio Scuderi', art: 'P3', nf: 0, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of a middle-aged Sicilian notary in 1908, round spectacles, black frock coat grey with dust, clutching a leather ledger, a ruined street behind him, sepia, film grain --ar 2:3 --v 8.1' },
+  { pid: 'pc4', cat: 'pc', name: 'Elsa Lindqvist', art: 'P4', nf: 0, chosen: null, by: 'you', when: '2 hours ago',
+    p: 'portrait of a Swedish woman journalist in 1908, grey travelling coat, notebook and pencil in hand, wind-blown fair hair, the ruined harbour of Messina behind her, overcast light, film grain --ar 2:3 --v 8.1' },
+
+  { pid: 'n1', cat: 'npc', name: 'Padre Anselmo', art: 'N1', uuid: 'c41d07e2-9a3b-4c5d-8e6f-1a2b3c4d5e6f', nf: 0, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of an old Sicilian priest in a torn cassock, holding a cracked crucifix, eyes fixed on the sea, candlelight, dust in the air, muted ochre, film grain --ar 2:3 --v 8.1' },
+  { pid: 'n2', cat: 'npc', name: 'Dottor Salvi', art: 'N2', nf: 4, chosen: 3, by: 'cl', when: '2 days ago',
+    p: 'portrait of a gaunt Sicilian doctor in 1908, ether-stained waistcoat, feverish eyes, anatomical sketches of the strait pinned behind him, cold teal light, film grain --ar 2:3 --v 8.1' },
+  { pid: 'n3', cat: 'npc', name: 'Capitano Donato', art: 'N3', nf: 4, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of an Italian army captain in 1908 uniform standing perfectly still, face blank as a mask, smoke and a ruined cathedral behind him, flat grey light, desaturated, film grain --ar 2:3 --v 8.1' },
+  { pid: 'n4', cat: 'npc', name: "Za' Nina", art: 'N4', nf: 0, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of an old Sicilian fisherwoman singing, black shawl, salt-cracked hands, the Torre Faro lighthouse behind her, dusk, cold blue and ochre, film grain --ar 2:3 --v 8.1' },
+  { pid: 'n5', cat: 'npc', name: "L'uomo col cappotto nero", art: 'N5', nf: 0, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'portrait of a man in a long black coat on a rocky cape, face half in shadow, green bronze rust on his hands, sky twisting in impossible colors, film grain --ar 2:3 --v 8.1' },
+  { pid: 'n6', cat: 'npc', name: 'Turi', art: 'N6', nf: 4, chosen: null, by: 'you', when: 'yesterday',
+    p: 'portrait of a barefoot Sicilian boy in 1908, oversized flat cap, carrying a bucket of seawater, ruins behind him, pale gold dawn light, film grain --ar 2:3 --v 8.1' },
+
+  { pid: 'h1', cat: 'handout', name: 'Lettera di Salvi', art: 'H1', nf: 4, chosen: 0, by: 'cl', when: '2 days ago',
+    p: 'a handwritten letter on yellowed paper, 1908, Italian cursive in brown ink, an anatomical sketch of the Strait of Messina in the margin, water stains, illegible script, top-down flat lay --ar 3:4 --v 8.1' },
+  { pid: 'h2', cat: 'handout', name: 'Mappa dello Stretto', art: 'H2', nf: 4, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'an antique nautical chart of the Strait of Messina, 1908, sepia ink, compass rose, an anchor drawn by hand at Capo Peloro, torn edges, top-down flat lay --ar 4:3 --v 8.1' },
+  { pid: 'h3', cat: 'handout', name: 'Avviso di ricerca', art: 'H3', nf: 0, chosen: null, by: 'you', when: '1 hour ago',
+    p: 'a 1908 Italian police wanted poster nailed to a wooden door, engraved portrait of a man in a black coat, bold serif headline, torn corners, plaster dust, illegible text --ar 2:3 --v 8.1' },
 ];
 const UNMATCHED = [
   { k: 'img', n: 'steve_a_vast_cathedral_nave_flooded_with_seawater_8c1e2f40-1b2a-4c3d-9e8f-0a1b2c3d4e5f_2.png', art: 'X1', i: 1, why: 'No prompt starts with "a vast cathedral nave flooded".' },
   { k: 'mus', n: 'untitled track.mp3', d: '2:31', why: 'No track title "untitled track".' },
-  { k: 'img', n: 'steve_portrait_of_an_old_Sicilian_fisherwoman_singing_77ab31c2-4e5f-4a6b-8c7d-9e0f1a2b3c4d_0.png', art: 'X2', i: 2, why: 'No prompt starts with "portrait of an old Sicilian".' },
+  { k: 'img', n: 'steve_portrait_of_an_old_Sicilian_fisherwoman_singing_77ab31c2-4e5f-4a6b-8c7d-9e0f1a2b3c4d_0.png', art: 'X2', i: 2, amb: ['s4b', 'n4'],
+    why: 'Two prompts start with "portrait of an old Sicilian fisherwoman singing".' },
 ];
 
-let S, cur = 'board', filter = 'all';
+const CATS = ['scene', 'pc', 'npc', 'handout'];
+const CAT = {
+  scene: { tab: 'Scenes', one: 'Scene', add: 'Add image prompt' },
+  pc: { tab: 'PCs', one: 'PC', add: 'Add PC', icon: IC.pc, empty: 'No PCs yet', name: 'Rosalia Ferrante',
+    what: 'Portraits of the player characters, one prompt each: a name, then a Midjourney prompt.' },
+  npc: { tab: 'NPCs', one: 'NPC', add: 'Add NPC', icon: IC.npc, empty: 'No NPCs yet', name: 'Padre Anselmo',
+    what: 'Portraits of the people the PCs meet, one prompt each: a name, then a Midjourney prompt.' },
+  handout: { tab: 'Handouts', one: 'Handout', add: 'Add handout', icon: IC.handout, empty: 'No handouts yet', name: 'Lettera di Salvi',
+    what: 'Props you hand to the players, like letters, maps and posters. One prompt each: a name, then a Midjourney prompt.' },
+};
+
+let S, cur = 'board', filter = 'all', cat = 'scene', seq = 0;
 const clone = o => JSON.parse(JSON.stringify(o));
+const mk = d => { const p = clone(d); p.files = mjFiles(d, d.nf); delete p.nf; delete p.uuid; return p; };
+const SCREEN_CAT = { pcs: 'pc', npcs: 'npc', handouts: 'handout', addnpc: 'npc' };
 function build(k) {
-  const st = { scenes: clone(BASE), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false };
-  if (k === 'noprompts') st.scenes.forEach(s => { s.img = { p: null, files: [], chosen: null }; s.mus = { title: null, tracks: [], chosen: null }; });
+  const st = { scenes: clone(SCENES), prompts: PROMPTS.map(mk), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false };
+  const P = id => st.prompts.find(p => p.pid === id);
+  if (k === 'noprompts') { st.prompts = []; st.scenes.forEach(s => { s.mus = { title: null, tracks: [], chosen: null }; }); }
   if (k === 'noappendix') st.noAppendix = true;
   if (k === 'afterdrop') {
-    const by = id => st.scenes.find(s => s.id === id);
-    by('S3').img.files.forEach(f => f.new = true); by('S5').img.files.forEach(f => f.new = true);
-    by('S3').mus.tracks.forEach(t => t.new = true);
-    by('S5').mus.tracks.push({ n: 'dominus deus sabaoth.mp3', d: '4:05', new: true });
+    P('s3a').files.forEach(f => f.new = true); P('s5a').files.forEach(f => f.new = true);
+    P('n1').files = mjFiles(PROMPTS.find(d => d.pid === 'n1'), 4).map(f => ({ ...f, new: true }));
+    st.scenes.find(s => s.id === 'S3').mus.tracks.forEach(t => t.new = true);
+    st.scenes.find(s => s.id === 'S5').mus.tracks.push({ n: 'dominus deus sabaoth.mp3', d: '4:05', new: true });
     st.unmatched = clone(UNMATCHED); st.result = true;
   }
-  if (k === 'edit') st.editing = 'S2.img';
-  if (k === 'desktop') { st.local = true; st.scenes[0].img.files.forEach(f => f.local = true); }
+  if (k === 'edit') st.editing = 's2a';
+  if (k === 'addnpc') { st.prompts.push({ pid: 'new1', cat: 'npc', name: '', p: '', files: [], chosen: null, by: 'you', when: 'just now', fresh: true }); st.editing = 'new1'; }
+  if (k === 'desktop') { st.local = true; P('s1a').files.forEach(f => f.local = true); }
   return st;
 }
-const imgSt = h => !h.files.length ? 'wanted' : h.chosen != null ? 'chosen' : 'received';
+
+/* Helpers */
+const find = pid => S.prompts.find(p => p.pid === pid);
+const sceneOf = id => S.scenes.find(s => s.id === id);
+const scenePrompts = id => S.prompts.filter(p => p.cat === 'scene' && p.scene === id);
+const inCat = c => S.prompts.filter(p => p.cat === c);
+const numOf = p => scenePrompts(p.scene).indexOf(p) + 1;
+const label = (p, long) => p.cat === 'scene' ? `${p.scene}${long ? ' · ' + sceneOf(p.scene).t : ''} · prompt ${numOf(p)}` : `${CAT[p.cat].one} · ${p.name || 'New ' + CAT[p.cat].one}`;
+const firstWords = (t, n) => { const w = t.split(/\s+/); return w.slice(0, n).join(' ').replace(/,$/, '') + (w.length > n ? '…' : ''); };
+const optLabel = p => p.cat === 'scene' ? `${p.scene} #${numOf(p)} · ${firstWords(p.p, 5)}` : p.name;
+const pst = p => !p.files.length ? 'wanted' : p.chosen != null ? 'chosen' : 'received';
 const musSt = h => !h.tracks.length ? 'wanted' : h.chosen != null ? 'chosen' : 'received';
 const STL = { wanted: 'Wanted', received: 'Received', chosen: 'Chosen' };
 const chip = st => `<span class="st ${st}"><i></i>${STL[st]}</span>`;
 const prov = h => h.by === 'cl' ? `by <span class="who-cl">Claude</span> · ${h.when}` : `edited by <span class="who-you">you</span> · ${h.when}`;
-const copyBtn = (key, label = 'Copy') => `<button class="tb sm line" data-copy="${key}">${IC.copy}<span>${label}</span></button>`;
+const copyBtn = (key, lbl = 'Copy') => `<button class="tb sm line" data-copy="${key}">${IC.copy}<span>${lbl}</span></button>`;
+function tally(list, fn = pst) { const c = { chosen: 0, received: 0, wanted: 0 }; list.forEach(x => c[fn(x)]++); return c; }
 
-/* Rendering */
-function imgHalf(s) {
-  const h = s.img, st = imgSt(h), key = s.id + '.img';
-  let p;
-  if (S.editing === key) p = `<div class="editbox"><textarea id="ed-${s.id}-img" aria-label="Midjourney prompt for ${s.id}">${esc(h.p)}</textarea>
-      <div class="pfoot"><span class="hint">Claude can rewrite it later; History keeps the old text.</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${key}">Save</button></div></div>`;
-  else if (h.p) p = `<div class="pbox"><div class="ptext">${esc(h.p)}</div>
-      <div class="pfoot"><span class="prov">${prov(h)}</span>${copyBtn(key)}<button class="tb sm" data-edit="${key}">${IC.edit}Edit</button></div></div>`;
-  else p = `<div class="noprompt"><span>No Midjourney prompt yet. Ask Claude, or write one.</span><button class="tb sm line" data-write="${key}">${IC.edit}Write by hand</button></div>`;
-  const files = h.files.length
-    ? `<div class="thumbs">${h.files.map((f, i) => `<div class="th-i${h.chosen === i ? ' chosen' : h.chosen != null ? ' others' : ''}" style="${art(f.art, f.i)}" data-open="${s.id}:${i}" tabindex="0" role="button" aria-label="Open image ${i + 1} of ${s.id}">
-        <button class="pick" data-pick="${s.id}:${i}" title="${h.chosen === i ? 'Chosen. Click to unchoose' : 'Choose this image'}">${h.chosen === i ? '✓' : ''}</button>
+/* Rendering: one image prompt (its text, then its files) */
+function promptBody(p) {
+  let box;
+  if (S.editing === p.pid) {
+    const named = p.cat !== 'scene';
+    const hint = p.fresh ? 'Its first words are how its images find it.' : 'Claude can rewrite it later; History keeps the old text.';
+    box = `<div class="editbox">${named
+      ? `<div class="eg"><label for="edn-${p.pid}">Name</label><input id="edn-${p.pid}" value="${esc(p.name || '')}" placeholder="${esc(CAT[p.cat].name)}">
+         <label for="ed-${p.pid}">Prompt</label><textarea id="ed-${p.pid}" placeholder="portrait of …">${esc(p.p || '')}</textarea></div>`
+      : `<textarea id="ed-${p.pid}" aria-label="Midjourney prompt" placeholder="A Midjourney prompt for ${esc(p.scene)}…">${esc(p.p || '')}</textarea>`}
+      <div class="pfoot"><span class="hint">${hint}</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${p.pid}">${p.fresh ? 'Add' : 'Save'}</button></div></div>`;
+    if (p.fresh) return box;
+  } else box = `<div class="pbox"><div class="ptext">${esc(p.p)}</div>
+      <div class="pfoot"><span class="prov">${prov(p)}</span>${copyBtn('p:' + p.pid)}<button class="tb sm" data-edit="${p.pid}">${IC.edit}Edit</button></div></div>`;
+  const ar = arOf(p.p), who = esc(label(p));
+  const files = p.files.length
+    ? `<div class="thumbs${tall(p.p) ? ' tall' : ''}">${p.files.map((f, i) => `<div class="th-i${p.chosen === i ? ' chosen' : p.chosen != null ? ' others' : ''}" style="${art(f.art, f.i)}aspect-ratio:${ar};" data-open="${p.pid}:${i}" tabindex="0" role="button" aria-label="Open image ${i + 1} of ${who}">
+        <button class="pick" data-pick="${p.pid}:${i}" title="${p.chosen === i ? 'Chosen. Click to unchoose' : 'Choose this image'}">${p.chosen === i ? '✓' : ''}</button>
         ${f.new ? '<span class="badge new">new</span>' : ''}${f.local ? `<span class="badge dev" title="On this computer. Uploads when you are back online">${IC.dev}on this device</span>` : ''}
         ${f.local ? '' : `<span class="idx">${i + 1}</span>`}</div>`).join('')}</div>`
-    : h.p ? `<div class="empty-drop">${IC.drop}<span>No images yet. Drop Midjourney's four files anywhere on the board.</span></div>`
-          : `<div class="slots"><i></i><i></i><i></i><i></i></div>`;
-  return `<div class="half" data-half="${st}">
-    <div class="hh"><span class="lab">${IC.img}Image · Midjourney</span>${chip(st)}</div>
-    ${srcLine('visual', s.visual)}${p}${files}</div>`;
+    : `<div class="empty-drop">${IC.drop}<span>No images yet. Drop Midjourney's four files anywhere on the board.</span></div>`;
+  return box + files;
 }
+const rmBtn = p => `<button class="tb xs rm" data-rmp="${p.pid}" title="Remove this prompt" aria-label="Remove ${esc(label(p))}">${IC.trash}</button>`;
+
+/* Scenes tab: the image half is a stack of prompts */
+function imgHalf(s) {
+  const ps = scenePrompts(s.id), c = tally(ps.filter(p => !p.fresh));
+  const n = ps.filter(p => !p.fresh).length;
+  const sum = n ? `${n} ${n === 1 ? 'prompt' : 'prompts'} · ${c.chosen} chosen` : 'No prompts';
+  const dimAll = filter !== 'all' && !ps.some(p => pst(p) === filter || p.pid === S.editing);
+  const stack = ps.length
+    ? `<div class="stack">${ps.map((p, i) => `<div class="ip${!dimAll && filter !== 'all' && pst(p) !== filter && p.pid !== S.editing ? ' dim' : ''}" id="p-${p.pid}">
+        <div class="iph"><span class="num">${p.fresh ? 'New prompt' : 'Prompt ' + (i + 1)}</span>${p.fresh ? '' : chip(pst(p)) + rmBtn(p)}</div>
+        ${promptBody(p)}</div>`).join('')}</div>
+      ${ps.some(p => p.fresh) ? '' : `<button class="addp" data-add="scene:${s.id}">${IC.plus}Add image prompt</button>`}`
+    : `<div class="noprompt"><span>No image prompts yet. Ask Claude, or write one.</span><button class="tb sm line" data-add="scene:${s.id}">${IC.plus}Add image prompt</button></div>`;
+  return `<div class="half${dimAll ? ' dim' : ''}">
+    <div class="hh"><span class="lab">${IC.img}Images · Midjourney</span><span class="hsum">${sum}</span></div>
+    ${srcLine('visual', s.visual)}${stack}</div>`;
+}
+/* Music half: unchanged, one Suno prompt per scene */
 function musHalf(s) {
   const h = s.mus, st = musSt(h), key = s.id + '.mus';
   let p;
@@ -670,7 +850,7 @@ function musHalf(s) {
         ${h.chosen === i ? `<button class="chosen-tag" data-choose-t="${s.id}:${i}" title="Click to unchoose">✓ Chosen</button>` : `<button class="tb sm line" data-choose-t="${s.id}:${i}">Choose</button>`}
         <span class="bar"></span></div>`).join('')}</div>`
     : h.title ? `<div class="empty-drop">${IC.drop}<span>No tracks yet. Drop Suno's downloads anywhere on the board.</span></div>` : '';
-  return `<div class="half" data-half="${st}">
+  return `<div class="half${filter !== 'all' && st !== filter ? ' dim' : ''}">
     <div class="hh"><span class="lab">${IC.mus}Music · Suno</span>${chip(st)}</div>
     ${srcLine('mood', s.mood)}${p}${tracks}</div>`;
 }
@@ -678,59 +858,116 @@ function srcLine(k, v) {
   if (S.emptyAppendix) return `<div class="srcline empty"><span class="k">${k}:</span>empty <a data-other-doc>Edit in the document</a></div>`;
   return `<div class="srcline"><span class="k">${k}:</span>${esc(v)} <a data-other-doc>Edit in the document</a></div>`;
 }
-function render() {
-  const has = !S.noAppendix;
-  $('#boardBody').hidden = !has; $('#emptySt').hidden = has;
-  $('#helpBtn').hidden = $('#addFiles').hidden = !has;
-  const rows = $('#rows');
-  rows.innerHTML = S.scenes.map(s => {
-    const a = imgSt(s.img), b = musSt(s.mus);
-    const show = filter === 'all' || a === filter || b === filter;
-    const html = `<article class="card scene" id="row-${s.id}" ${show ? '' : 'hidden'}>
+const rowShown = s => filter === 'all' || scenePrompts(s.id).some(p => pst(p) === filter || p.pid === S.editing) || musSt(s.mus) === filter || S.editing === s.id + '.mus';
+function rows() {
+  return S.scenes.map(s => `<article class="card scene" id="row-${s.id}" ${rowShown(s) ? '' : 'hidden'}>
       <div class="sh"><span class="sid">${s.id}</span><span class="stt">${esc(s.t)}</span><a class="go" data-other-doc>Open the scene in the document</a></div>
-      <div class="halves">${imgHalf(s)}${musHalf(s)}</div></article>`;
-    return html;
-  }).join('');
-  if (filter !== 'all') $$('.half').forEach(h => h.classList.toggle('dim', h.dataset.half !== filter));
-  summary(); strips(); tray();
-  $('#sbCount').textContent = S.noAppendix ? 'No appendix' : S.scenes.length + ' scenes';
+      <div class="halves">${imgHalf(s)}${musHalf(s)}</div></article>`).join('');
 }
-function counts(fn) { const c = { chosen: 0, received: 0, wanted: 0 }; S.scenes.forEach(s => c[fn(s)]++); return c; }
+
+/* PCs, NPCs, Handouts tabs: project-wide cards */
+function entCard(p) {
+  return `<article class="card ent" id="p-${p.pid}">
+    <div class="eh"><span class="enm${p.name ? '' : ' new'}">${esc(p.name || 'New ' + CAT[p.cat].one)}</span>${p.fresh ? '' : chip(pst(p)) + rmBtn(p)}</div>
+    <div class="eb">${promptBody(p)}</div></article>`;
+}
+function grid() {
+  const items = inCat(cat), c = CAT[cat];
+  if (!items.length) return `<div class="card emptyst catempty">
+      <div class="big-ic">${c.icon}</div><h2>${c.empty}</h2><p>${c.what}</p>
+      <div class="row"><button class="tb primary" data-add="${cat}">${IC.plus}${c.add}</button></div>
+      <p class="hint" style="margin:10px 0 0">Claude can write them too, from the document: ask for "the ${c.tab} of «L'Ancora di Sabaoth»".</p></div>`;
+  const shown = items.filter(p => filter === 'all' || pst(p) === filter || p.pid === S.editing);
+  const adding = items.some(p => p.fresh);
+  return `<div class="ents">${shown.map(entCard).join('')}${adding ? '' : `<button class="addcard" data-add="${cat}">${IC.plus}${c.add}</button>`}</div>
+    ${shown.length ? '' : `<p class="none">No ${c.tab} are ${STL[filter].toLowerCase()}. <a data-filter="all">Show all</a></p>`}`;
+}
+
+function tabs() {
+  $('#cats').innerHTML = CATS.map(k => {
+    const ps = inCat(k).filter(p => !p.fresh), c = tally(ps), nw = ps.some(p => p.files.some(f => f.new));
+    const sub = !ps.length ? 'none yet' : c.wanted ? `${c.wanted} wanted` : c.received ? `${c.received} received` : 'all chosen';
+    const title = `${ps.length} image ${ps.length === 1 ? 'prompt' : 'prompts'}: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`;
+    return `<button role="tab" aria-selected="${cat === k}" class="${cat === k ? 'on' : ''}" data-cat="${k}" title="${title}">
+      <span class="cl">${CAT[k].tab}<span class="n">${ps.length}</span>${nw ? '<i class="nd" title="New files"></i>' : ''}</span><span class="cs${c.wanted ? ' w' : ''}">${sub}</span></button>`;
+  }).join('');
+}
+function render() {
+  tabs();
+  const sceneView = cat === 'scene', noApp = sceneView && S.noAppendix;
+  $('#emptySt').hidden = !noApp;
+  $('#sumline').hidden = noApp || (!sceneView && !inCat(cat).length);
+  $('#rows').hidden = !sceneView || noApp;
+  $('#grid').hidden = sceneView;
+  $('#rows').innerHTML = sceneView && !noApp ? rows() : '';
+  $('#grid').innerHTML = sceneView ? '' : grid();
+  $('#hintLine').hidden = noApp || (!sceneView && !inCat(cat).length);
+  $('#hintLine').textContent = sceneView ? 'Rows follow the appendix. Add or rename a scene there and the board follows.'
+    : `${CAT[cat].tab} belong to the whole adventure, not to a scene.`;
+  summary(); strips(); tray();
+  const n = S.prompts.filter(p => !p.fresh).length;
+  $('#sbCount').textContent = (S.noAppendix ? 'No appendix' : S.scenes.length + ' scenes') + ` · ${n} image prompts`;
+}
 function summary() {
-  const i = counts(s => imgSt(s.img)), m = counts(s => musSt(s.mus));
   const part = c => `<b>${c.chosen}</b> chosen, <b>${c.received}</b> received, <b>${c.wanted}</b> wanted`;
-  $('#summary').innerHTML = `<b>${S.scenes.length}</b> scenes<span class="sep">·</span>images ${part(i)}<span class="sep">·</span>music ${part(m)}`;
-  const rowsIn = f => S.scenes.filter(s => f === 'all' || imgSt(s.img) === f || musSt(s.mus) === f).length;
+  const sep = '<span class="sep">·</span>';
+  let counts;
+  if (cat === 'scene') {
+    const ps = inCat('scene').filter(p => !p.fresh);
+    $('#summary').innerHTML = `<b>${S.scenes.length}</b> scenes${sep}${ps.length} image prompts: ${part(tally(ps))}${sep}music ${part(tally(S.scenes.map(s => s.mus), musSt))}`;
+    const save = filter;
+    counts = k => { filter = k; const r = S.scenes.filter(rowShown).length; filter = save; return r; };
+  } else {
+    const ps = inCat(cat).filter(p => !p.fresh);
+    $('#summary').innerHTML = `<b>${ps.length}</b> ${CAT[cat].tab}${sep}${part(tally(ps))}`;
+    counts = k => k === 'all' ? ps.length : ps.filter(p => pst(p) === k).length;
+  }
   $('#filters').innerHTML = [['all', 'All'], ['wanted', 'Wanted'], ['received', 'Received'], ['chosen', 'Chosen']]
-    .map(([k, l]) => `<button data-filter="${k}" class="${filter === k ? 'on' : ''}">${l}<span class="n">${rowsIn(k)}</span></button>`).join('');
+    .map(([k, l]) => `<button data-filter="${k}" class="${filter === k ? 'on' : ''}">${l}<span class="n">${counts(k)}</span></button>`).join('');
 }
 function strips() {
   let h = '';
   if (cur === 'noprompts') h += `<div class="card claude"><span class="avatar cl">C</span><div>
       <h3>Prompts come from Claude</h3>
-      <p>Claude reads each scene's <code>visual:</code> and <code>mood:</code> lines and writes one Midjourney prompt and one Suno prompt per row. Ask in a chat on claude.ai:</p>
-      <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth»</span>${copyBtn('ask')}</div>
+      <p>Claude reads the document and writes Midjourney prompts for the scenes, the PCs, the NPCs and the handouts, and one Suno prompt per scene from its <code>mood:</code> line. Ask in a chat on claude.ai:</p>
+      <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth», with portraits of the PCs and NPCs and the handouts</span>${copyBtn('ask')}</div>
       <p class="hint">Claude needs the Promptbook connector, with read and edit access. <a data-other-settings>Settings → Connected apps</a></p></div></div>`;
-  if (S.result) h += `<div class="info good">${IC.check}<span><b>14 files added: 11 matched, 3 to assign.</b> S3: 4 images, 2 tracks · S5: 4 images, 1 track. New files are marked.</span><button class="tb xs x" id="resX" title="Dismiss">✕</button></div>`;
+  if (S.result) h += `<div class="info good">${IC.check}<span><b>18 files added: 15 matched, 3 to assign.</b> <a data-cat="scene">S3</a>: 4 images, 2 tracks · <a data-cat="scene">S5</a>: 4 images, 1 track · <a data-cat="npc">NPCs · Padre Anselmo</a>: 4 images. New files are marked.</span><button class="tb xs x" id="resX" title="Dismiss">✕</button></div>`;
   if (S.local) h += `<div class="info local">${IC.dev}<span><b>4 files on this computer, uploaded when you are back online.</b> Choosing and editing prompts work offline; they sync too.</span></div>`;
   $('#strips').innerHTML = h;
 }
-const sceneOpts = (sel) => `<option value="">Assign to scene…</option>` + S.scenes.map(s => `<option value="${s.id}"${sel === s.id ? ' selected' : ''}>${s.id} · ${esc(s.t)}</option>`).join('');
+
+/* Choosing a prompt: grouped by category; a file that matched two prompts lists them first */
+function promptOpts(placeholder, { first = [], except = null } = {}) {
+  const opt = p => `<option value="${p.pid}">${esc(optLabel(p))}</option>`;
+  let h = `<option value="">${placeholder}</option>`;
+  if (first.length) h += `<optgroup label="Its name matches">${first.map(id => { const p = find(id); return p ? `<option value="${p.pid}">${esc(CAT[p.cat].tab + ' · ' + optLabel(p))}</option>` : ''; }).join('')}</optgroup>`;
+  CATS.forEach(c => {
+    const ps = inCat(c).filter(p => !p.fresh && p.pid !== except);
+    if (ps.length) h += `<optgroup label="${CAT[c].tab}">${ps.map(opt).join('')}</optgroup>`;
+  });
+  return h;
+}
+const sceneOpts = () => `<option value="">Assign to scene…</option>` + S.scenes.map(s => `<option value="${s.id}">${s.id} · ${esc(s.t)}</option>`).join('');
 function tray() {
   const t = $('#tray');
   if (!S.unmatched.length) { t.innerHTML = ''; return; }
-  t.innerHTML = `<div class="card tray"><div class="th">${IC.warn}<b>Unmatched</b><span class="cnt">${S.unmatched.length} ${S.unmatched.length === 1 ? 'file' : 'files'}</span><span class="hint">Their names match no prompt or track title.</span>
-      <span class="spacer"></span><button class="tb xs" id="trayHelp">How matching works</button></div>
-    ${S.unmatched.map((f, i) => `<div class="uf">
+  t.innerHTML = `<div class="card tray"><div class="th">${IC.warn}<b>Unmatched</b><span class="cnt">${S.unmatched.length} ${S.unmatched.length === 1 ? 'file' : 'files'}</span><span class="hint">Their names match no prompt or track title, or more than one prompt.</span>
+      <span class="spacer"></span><button class="tb xs line" id="matchAgain" title="Match the files again against the prompts and titles as they are now">Match again</button><button class="tb xs" id="trayHelp">How matching works</button></div>
+    ${S.unmatched.map((f, i) => {
+      const amb = (f.amb || []).filter(find);
+      const why = amb.length > 1 ? `<span class="amb">matches ${amb.length} prompts</span>${amb.map(id => esc(label(find(id)))).join(' and ')}. Pick one.` : esc(f.why);
+      return `<div class="uf">
       ${f.k === 'img' ? `<span class="mini" style="${art(f.art, f.i)}"></span>` : `<span class="trk">${IC.mus}</span>`}
-      <div style="min-width:0"><div class="fn">${esc(f.n)}</div><div class="why">${f.k === 'img' ? 'Image' : 'Track · ' + f.d} · ${esc(f.why)}</div></div>
-      <div class="uact"><select data-assign="${i}" aria-label="Assign ${esc(f.n)} to a scene">${sceneOpts()}</select>
-      <button class="tb sm danger" data-unrm="${i}">Remove</button></div></div>`).join('')}</div>`;
+      <div style="min-width:0"><div class="fn">${esc(f.n)}</div><div class="why">${f.k === 'img' ? 'Image' : 'Track · ' + f.d} · ${why}</div></div>
+      <div class="uact"><select data-assign="${i}" aria-label="Assign ${esc(f.n)} to ${f.k === 'img' ? 'a prompt' : 'a scene'}">${f.k === 'img' ? promptOpts('Assign to prompt…', { first: amb.length > 1 ? amb : [] }) : sceneOpts()}</select>
+      <button class="tb sm danger" data-unrm="${i}">Remove</button></div></div>`;
+    }).join('')}</div>`;
 }
 
 /* Screens */
 function screen(k) {
-  cur = k; S = build(k); filter = 'all';
+  cur = k; S = build(k); filter = 'all'; cat = SCREEN_CAT[k] || 'scene';
   $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === k));
   document.body.classList.toggle('desk', k === 'desktop');
   document.body.classList.toggle('phone', k === 'phone');
@@ -743,8 +980,9 @@ function screen(k) {
   setHelp(false);
   closeLb();
   $('#center').scrollTop = 0;
-  if (k === 'viewer') openLb('S3', 1);
+  if (k === 'viewer') openLb('s3a', 1);
   if (k === 'edit') { const r = $('#row-S2'); $('#center').scrollTop = r.offsetTop - 12; }
+  if (k === 'addnpc') { const el = $('#edn-new1'); if (el) el.focus(); }
   if (k === 'matching') setHelp(true);
 }
 $$('#screens button').forEach(b => b.onclick = () => screen(b.dataset.sc));
@@ -767,8 +1005,8 @@ $('#helpX').onclick = () => setHelp(false);
 /* Copy */
 function copyText(key) {
   if (key === 'ask') return $('#askText').textContent;
-  const [id, half, part] = key.split('.'), s = S.scenes.find(x => x.id === id);
-  if (half === 'img') return s.img.p;
+  if (key.startsWith('p:')) return find(key.slice(2)).p;
+  const [id, , part] = key.split('.'), s = sceneOf(id);
   return { t: s.mus.title, s: s.mus.style, l: s.mus.lyrics }[part];
 }
 function flash(btn) {
@@ -778,54 +1016,66 @@ function flash(btn) {
 }
 
 /* Lightbox */
-let lbScene = null, lbIdx = 0;
-function openLb(id, i) { lbScene = id; lbIdx = i; drawLb(); $('#lb').hidden = false; }
-function closeLb() { $('#lb').hidden = true; lbScene = null; }
+let lbP = null, lbIdx = 0;
+function openLb(pid, i) { lbP = pid; lbIdx = i; drawLb(); $('#lb').hidden = false; }
+function closeLb() { $('#lb').hidden = true; lbP = null; }
 function drawLb() {
-  const s = S.scenes.find(x => x.id === lbScene), h = s.img, f = h.files[lbIdx];
-  $('#lbBig').setAttribute('style', art(f.art, f.i));
-  $('#lbCtr').textContent = `${lbIdx + 1} of ${h.files.length}`;
-  $('#lbScene').textContent = `${s.id} · ${s.t}`;
+  const p = find(lbP), f = p.files[lbIdx];
+  $('#lbBig').setAttribute('style', art(f.art, f.i) + `aspect-ratio:${arOf(p.p)};` + (tall(p.p) ? 'width:auto;height:min(62vh,560px);' : ''));
+  $('#lbCtr').textContent = `${lbIdx + 1} of ${p.files.length}`;
+  $('#lbScene').textContent = p.cat === 'scene' ? `${p.scene} · ${sceneOf(p.scene).t}` : `${CAT[p.cat].tab} · ${p.name}`;
   $('#lbFn').textContent = f.n;
-  const size = ['2.1', '1.9', '2.3', '2.0'][lbIdx % 4];
-  $('#lbKv').innerHTML = `<dt>Scene</dt><dd>${s.id} · ${esc(s.t)}</dd><dt>Size</dt><dd>${size} MB · PNG</dd><dt>Dimensions</dt><dd>1456 × 816 px</dd>
+  const size = ['2.1', '1.9', '2.3', '2.0'][lbIdx % 4], [w, h] = arParts(p.p);
+  const dims = w > h ? '1456 × 816' : w === h ? '1024 × 1024' : w * 3 === h * 2 ? '896 × 1344' : w * 4 === h * 3 ? '928 × 1232' : '816 × 1456';
+  $('#lbKv').innerHTML = `<dt>Prompt</dt><dd>${esc(label(p, true))}</dd><dt>Size</dt><dd>${size} MB · PNG</dd><dt>Dimensions</dt><dd>${dims} px</dd>
     <dt>Matched by</dt><dd>the prompt's first words</dd><dt>Added</dt><dd>${f.local ? 'Today 21:38 · on this device' : 'Today 21:38 by you'}</dd>
-    <dt>Status</dt><dd>${h.chosen === lbIdx ? '<span class="who-you">Chosen for this scene</span>' : h.chosen != null ? 'Another image is chosen' : 'None chosen yet'}</dd>`;
-  $('#lbStrip').innerHTML = h.files.map((g, j) => `<button class="${j === lbIdx ? 'cur' : ''}${h.chosen === j ? ' ch' : ''}" style="${art(g.art, g.i)}" data-lbgo="${j}" title="Image ${j + 1}"></button>`).join('');
-  const ch = h.chosen === lbIdx;
+    <dt>Status</dt><dd>${p.chosen === lbIdx ? '<span class="who-you">Chosen for this prompt</span>' : p.chosen != null ? 'Another image is chosen' : 'None chosen yet'}</dd>`;
+  $('#lbStrip').innerHTML = p.files.map((g, j) => `<button class="${j === lbIdx ? 'cur' : ''}${p.chosen === j ? ' ch' : ''}" style="${art(g.art, g.i)}" data-lbgo="${j}" title="Image ${j + 1}"></button>`).join('');
+  const ch = p.chosen === lbIdx;
   $('#lbChoose').className = 'tb ' + (ch ? 'line' : 'primary');
-  $('#lbChoose').innerHTML = ch ? '✓ Chosen · click to unchoose' : `${IC.check.replace('class="ic"', '')}Choose for this scene`;
-  $('#lbMove').innerHTML = `<option value="">Move to another scene…</option>` + S.scenes.filter(x => x.id !== s.id).map(x => `<option value="${x.id}">${x.id} · ${esc(x.t)}</option>`).join('');
+  $('#lbChoose').innerHTML = ch ? '✓ Chosen · click to unchoose' : `${IC.check.replace('class="ic"', '')}Choose for this prompt`;
+  $('#lbMove').innerHTML = promptOpts('Move to another prompt…', { except: p.pid });
 }
-function lbStep(d) { const h = S.scenes.find(x => x.id === lbScene).img; lbIdx = (lbIdx + d + h.files.length) % h.files.length; drawLb(); }
+function lbStep(d) { const p = find(lbP); lbIdx = (lbIdx + d + p.files.length) % p.files.length; drawLb(); }
 $('#lbPrev').onclick = () => lbStep(-1); $('#lbNext').onclick = () => lbStep(1);
 $('#lbClose').onclick = closeLb;
 $('#lb').onclick = e => { if (e.target.id === 'lb') closeLb(); const g = e.target.closest('[data-lbgo]'); if (g) { lbIdx = +g.dataset.lbgo; drawLb(); } };
-$('#lbChoose').onclick = () => { const h = S.scenes.find(x => x.id === lbScene).img; h.chosen = h.chosen === lbIdx ? null : lbIdx; render(); drawLb(); if (h.chosen != null) toast(`Chosen for ${lbScene}.`); };
+$('#lbChoose').onclick = () => { const p = find(lbP); p.chosen = p.chosen === lbIdx ? null : lbIdx; render(); drawLb(); if (p.chosen != null) toast(`Chosen for ${label(p)}.`); };
+function takeFile(p, i) { const [f] = p.files.splice(i, 1); if (p.chosen === i) p.chosen = null; else if (p.chosen > i) p.chosen--; return f; }
 $('#lbMove').onchange = e => {
   const to = e.target.value; if (!to) return;
-  const from = S.scenes.find(x => x.id === lbScene), dst = S.scenes.find(x => x.id === to);
-  const [f] = from.img.files.splice(lbIdx, 1); dst.img.files.push(f);
-  if (from.img.chosen === lbIdx) from.img.chosen = null; else if (from.img.chosen > lbIdx) from.img.chosen--;
-  closeLb(); render(); toast(`Moved to ${dst.id} · ${dst.t}.`);
+  const dst = find(to); dst.files.push(takeFile(find(lbP), lbIdx));
+  closeLb(); render(); toast(`Moved to ${label(dst)}.`);
 };
 $('#lbRemove').onclick = () => {
-  const s = S.scenes.find(x => x.id === lbScene);
-  ask('Remove this image?', `Image ${lbIdx + 1} leaves ${s.id} · ${s.t}.`, 'The file in your Downloads folder is not touched.', () => {
-    s.img.files.splice(lbIdx, 1);
-    if (s.img.chosen === lbIdx) s.img.chosen = null; else if (s.img.chosen > lbIdx) s.img.chosen--;
-    if (!s.img.files.length) closeLb(); else { lbIdx = Math.min(lbIdx, s.img.files.length - 1); drawLb(); }
+  const p = find(lbP);
+  ask('Remove this image?', `Image ${lbIdx + 1} leaves ${label(p, true)}.`, 'The file in your Downloads folder is not touched.', () => {
+    takeFile(p, lbIdx);
+    if (!p.files.length) closeLb(); else { lbIdx = Math.min(lbIdx, p.files.length - 1); drawLb(); }
     render(); toast('Image removed.');
   });
 };
 document.addEventListener('keydown', e => {
   if (!$('#lb').hidden) { if (e.key === 'Escape') closeLb(); if (e.key === 'ArrowLeft') lbStep(-1); if (e.key === 'ArrowRight') lbStep(1); return; }
   if (e.key === 'Escape') { setHelp(false); $('#dropov').hidden = true; $('#confirm').hidden = true; }
-  if (e.key === 'Enter' && e.target.matches('[data-open]')) { const [id, i] = e.target.dataset.open.split(':'); openLb(id, +i); }
+  if (e.key === 'Enter' && e.target.matches('[data-open]')) { const [pid, i] = e.target.dataset.open.split(':'); openLb(pid, +i); }
 });
 
+/* Adding, editing and removing prompts */
+function focusEdit(pid) {
+  const el = $(`#edn-${pid}`) && !find(pid)?.name ? $(`#edn-${pid}`) : $(`#ed-${pid}`);
+  if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
+}
+function dropFresh() { S.prompts = S.prompts.filter(p => !p.fresh); }
+function addPrompt(where) {
+  dropFresh();
+  const [c, scene] = where.split(':'), pid = 'new' + (++seq);
+  const p = { pid, cat: c, p: '', files: [], chosen: null, by: 'you', when: 'just now', fresh: true, art: ['X1', 'X2', 'S6', 'N4'][seq % 4] };
+  if (c === 'scene') p.scene = scene; else p.name = '';
+  S.prompts.push(p); S.editing = pid; render(); focusEdit(pid);
+}
+
 /* Board clicks */
-let playing = null;
 document.addEventListener('click', e => {
   const t = e.target;
   const c = t.closest('[data-copy]');
@@ -834,12 +1084,14 @@ document.addEventListener('click', e => {
     try { navigator.clipboard.writeText(txt).catch(() => {}); } catch (_) {}
     flash(c); return;
   }
+  const tab = t.closest('[data-cat]');
+  if (tab) { cat = tab.dataset.cat; render(); $('#center').scrollTop = 0; return; }
   const pk = t.closest('[data-pick]');
-  if (pk) { e.stopPropagation(); const [id, i] = pk.dataset.pick.split(':'); const h = S.scenes.find(x => x.id === id).img; h.chosen = h.chosen === +i ? null : +i; render(); return; }
+  if (pk) { e.stopPropagation(); const [pid, i] = pk.dataset.pick.split(':'); const p = find(pid); p.chosen = p.chosen === +i ? null : +i; render(); return; }
   const op = t.closest('[data-open]');
-  if (op) { const [id, i] = op.dataset.open.split(':'); openLb(id, +i); return; }
+  if (op) { const [pid, i] = op.dataset.open.split(':'); openLb(pid, +i); return; }
   const ct = t.closest('[data-choose-t]');
-  if (ct) { const [id, i] = ct.dataset.chooseT.split(':'); const h = S.scenes.find(x => x.id === id).mus; h.chosen = h.chosen === +i ? null : +i; render(); return; }
+  if (ct) { const [id, i] = ct.dataset.chooseT.split(':'); const h = sceneOf(id).mus; h.chosen = h.chosen === +i ? null : +i; render(); return; }
   const pl = t.closest('[data-play]');
   if (pl) {
     const r = pl.closest('.trk-r'), on = !r.classList.contains('playing');
@@ -849,18 +1101,42 @@ document.addEventListener('click', e => {
   }
   const f = t.closest('[data-filter]');
   if (f) { filter = f.dataset.filter; render(); return; }
+  const ad = t.closest('[data-add]');
+  if (ad) { addPrompt(ad.dataset.add); return; }
   const ed = t.closest('[data-edit], [data-write]');
-  if (ed) { S.editing = ed.dataset.edit || ed.dataset.write; render(); const el = $(`#row-${S.editing.split('.')[0]} .editbox textarea, #row-${S.editing.split('.')[0]} .editbox input`); if (el) el.focus(); return; }
-  if (t.closest('[data-cancel-edit]')) { S.editing = null; render(); return; }
+  if (ed) {
+    dropFresh(); S.editing = ed.dataset.edit || ed.dataset.write; render();
+    if (S.editing.endsWith('.mus')) { const el = $(`#row-${S.editing.split('.')[0]} .editbox input`); if (el) el.focus(); } else focusEdit(S.editing);
+    return;
+  }
+  if (t.closest('[data-cancel-edit]')) { dropFresh(); S.editing = null; render(); return; }
   const sv = t.closest('[data-save]');
   if (sv) {
-    const [id, half] = sv.dataset.save.split('.'), s = S.scenes.find(x => x.id === id);
-    if (half === 'img') { s.img.p = $(`#ed-${id}-img`).value.trim() || s.img.p; s.img.by = 'you'; s.img.when = 'just now'; }
-    else { s.mus.title = $(`#ed-${id}-t`).value.trim() || null; s.mus.style = $(`#ed-${id}-s`).value.trim(); s.mus.lyrics = $(`#ed-${id}-l`).value; s.mus.by = 'you'; s.mus.when = 'just now'; }
-    S.editing = null; render(); toast(`Saved. The old text is in History.`); return;
+    const key = sv.dataset.save;
+    if (key.endsWith('.mus')) {
+      const id = key.split('.')[0], s = sceneOf(id);
+      s.mus.title = $(`#ed-${id}-t`).value.trim() || null; s.mus.style = $(`#ed-${id}-s`).value.trim(); s.mus.lyrics = $(`#ed-${id}-l`).value; s.mus.by = 'you'; s.mus.when = 'just now';
+      S.editing = null; render(); toast('Saved. The old text is in History.'); return;
+    }
+    const p = find(key), text = $(`#ed-${key}`).value.trim(), nameEl = $(`#edn-${key}`);
+    if (!text) { toast('Write the prompt first: its first words are how its images find it.'); $(`#ed-${key}`).focus(); return; }
+    p.p = text; p.by = 'you'; p.when = 'just now';
+    if (nameEl) p.name = nameEl.value.trim() || 'New ' + CAT[p.cat].one;
+    const wasNew = p.fresh; delete p.fresh;
+    S.editing = null; render(); toast(wasNew ? `Added ${label(p)}. Copy it into Midjourney.` : 'Saved. The old text is in History.'); return;
+  }
+  const rp = t.closest('[data-rmp]');
+  if (rp) {
+    const p = find(rp.dataset.rmp), n = p.files.length;
+    ask('Remove this image prompt?', `${label(p, true)} leaves the board.`, n ? `Its ${n} ${n === 1 ? 'image moves' : 'images move'} to Unmatched, where you can assign ${n === 1 ? 'it' : 'them'} to another prompt.` : 'It has no images yet.', () => {
+      p.files.forEach(f => S.unmatched.push({ k: 'img', n: f.n, art: f.art, i: f.i, why: 'Its prompt was removed.' }));
+      S.prompts = S.prompts.filter(x => x !== p); render(); toast(n ? `Prompt removed. ${n} ${n === 1 ? 'image' : 'images'} in Unmatched.` : 'Prompt removed.');
+    });
+    return;
   }
   const rm = t.closest('[data-unrm]');
   if (rm) { const f2 = S.unmatched.splice(+rm.dataset.unrm, 1)[0]; render(); toast(`Removed ${f2.n.length > 40 ? f2.n.slice(0, 40) + '…' : f2.n}.`); return; }
+  if (t.closest('#matchAgain')) { toast('Matched again: no file found a single prompt.'); return; }
   if (t.closest('#resX')) { S.result = false; strips(); return; }
   if (t.closest('#trayHelp')) { setHelp(true); $('#center').scrollTop = 0; return; }
   if (t.closest('[data-other]')) { toast('Mockup: the other project views are in connector.html.'); return; }
@@ -870,9 +1146,9 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => {
   const a = e.target.closest('[data-assign]'); if (!a || !a.value) return;
-  const f = S.unmatched.splice(+a.dataset.assign, 1)[0], s = S.scenes.find(x => x.id === a.value);
-  if (f.k === 'img') s.img.files.push({ n: f.n, art: f.art, i: f.i, new: true }); else s.mus.tracks.push({ n: f.n, d: f.d, new: true });
-  render(); toast(`Assigned to ${s.id} · ${s.t}.`);
+  const f = S.unmatched.splice(+a.dataset.assign, 1)[0];
+  if (f.k === 'img') { const p = find(a.value); p.files.push({ n: f.n, art: f.art, i: f.i, new: true }); render(); toast(`Assigned to ${CAT[p.cat].tab} · ${optLabel(p)}.`); }
+  else { const s = sceneOf(a.value); s.mus.tracks.push({ n: f.n, d: f.d, new: true }); render(); toast(`Assigned to ${s.id} · ${s.t}.`); }
 });
 $('#addAppendix').onclick = () => { screen('noprompts'); S.emptyAppendix = true; render(); toast('Appendix added with 6 scenes. Fill in visual: and mood:, or ask Claude.'); };
 $('#addFiles').onclick = () => $('#fileIn').click();
@@ -881,7 +1157,7 @@ $('#fileIn').onchange = () => screen('afterdrop');
 /* Real drag and drop on the page */
 let dragDepth = 0;
 const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-window.addEventListener('dragenter', e => { if (!hasFiles(e) || S.noAppendix) return; e.preventDefault(); dragDepth++; $('#dropov').hidden = false; });
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $('#dropov').hidden = false; });
 window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
 window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; if (cur !== 'dropping') $('#dropov').hidden = true; } });
 window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; screen('afterdrop'); });

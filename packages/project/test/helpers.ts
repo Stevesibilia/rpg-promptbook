@@ -34,3 +34,34 @@ export function sync(a: Y.Doc, b: Y.Doc): void {
   Y.applyUpdate(b, toB);
   Y.applyUpdate(a, toA);
 }
+
+// A file item as v0.6 wrote it: images and tracks alike name their scene, no
+// promptId.
+interface V06File {
+  id: string;
+  sha256: string;
+  kind: 'image' | 'audio';
+  sceneId: string | null;
+  name?: string;
+  addedAt?: string;
+}
+
+export function v06File(doc: Y.Doc, fields: V06File): void {
+  const item = new Y.Map<unknown>();
+  const image = fields.kind === 'image';
+  const all = {
+    thumbSha256: image ? fields.sha256.replace(/^./, 'f') : null,
+    name: fields.name ?? `${fields.id}.${image ? 'png' : 'mp3'}`,
+    mime: image ? 'image/png' : 'audio/mpeg',
+    size: 1000,
+    width: image ? 1456 : null,
+    height: image ? 816 : null,
+    duration: image ? null : 120,
+    matchedBy: fields.sceneId === null ? null : 'prompt',
+    addedAt: '2026-10-19T09:00:00.000Z',
+    addedBy: 'user',
+    ...fields,
+  };
+  for (const [k, v] of Object.entries(all)) item.set(k, v);
+  doc.getArray<Y.Map<unknown>>('files').push([item]);
+}
