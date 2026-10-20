@@ -51,6 +51,10 @@ const bridge: PromptbookBridge = {
   files: {
     openPdf: (bytes, name) => invoke(channels.filesOpenPdf, bytes, name),
     save: (source, name) => invoke(channels.filesSave, source, name),
+    // Main answers these from brief D of asset-board (task 4.2); until then an invoke rejects.
+    put: (projectId, sha256, bytes, mime) => invoke(channels.filesPut, projectId, sha256, bytes, mime),
+    status: () => invoke(channels.filesStatus),
+    onStatus: (cb) => on(channels.filesOnStatus, cb),
   },
 };
 

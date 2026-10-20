@@ -24,7 +24,7 @@
 
 ## 3. Web board (brief C)
 
-- [ ] 3.1 Platform seam (D13): `fileUrl` and `putFile` in `platform/index.ts`, `web.ts` (fetch PUT with `application/octet-stream`, errors mapped to messages) and `desktop.ts` (bridge `files.put`); `bridge.ts` gains `files.put`, `files.status`, `files.onStatus`, the channels `pb:files:put`, `pb:files:status`, `pb:files:on-status`, `FilesStatus`, and `DeviceUsage.files` and `fileBytes`
+- [x] 3.1 Platform seam (D13): `fileUrl` and `putFile` in `platform/index.ts`, `web.ts` (fetch PUT with `application/octet-stream`, errors mapped to messages) and `desktop.ts` (bridge `files.put`); `bridge.ts` gains `files.put`, `files.status`, `files.onStatus`, the channels `pb:files:put`, `pb:files:status`, `pb:files:on-status`, `FilesStatus`, and `DeviceUsage.files` and `fileBytes`
 - [ ] 3.2 Route and rail (D12): `projectViews` gains `board`; `projectEntries` gains Images and music with `BoardIcon` between Research and Brainstorm log; the entry hidden and the route redirected for a campaign
 - [ ] 3.3 `board/useBoard.ts` (parse through `createAnalysisClient`, `boardRows`, statuses, summary, filters) and `BoardView.tsx`, `SceneRow.tsx`, `ImageHalf.tsx`, `MusicHalf.tsx`, `ClaudeCard.tsx`, `board.css`: screens 1, 2 and 9 of Mockup in words with their strings, Copy with the secure-context fallback, the shared-title warning
 - [ ] 3.4 `PromptEditor.tsx`: Edit and Write by hand, Save overwriting the prompt as the user's with the toast «Saved.», Cancel (screen 7, D8)

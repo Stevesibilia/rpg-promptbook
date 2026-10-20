@@ -230,6 +230,9 @@ class Account {
       bytes,
       projects: this.list.rows().length,
       localSnapshots: this.store.snapshotCount(),
+      // Brief D of asset-board counts the files folder (task 4.4).
+      files: 0,
+      fileBytes: 0,
     };
   }
 
@@ -497,7 +500,8 @@ export class App {
   }
 
   usage(): DeviceUsage {
-    return this.account?.usage() ?? { bytes: 0, projects: 0, localSnapshots: 0 };
+    // Brief D of asset-board fills files and fileBytes in (task 4.4).
+    return this.account?.usage() ?? { bytes: 0, projects: 0, localSnapshots: 0, files: 0, fileBytes: 0 };
   }
 
   databaseFile(): string | null {

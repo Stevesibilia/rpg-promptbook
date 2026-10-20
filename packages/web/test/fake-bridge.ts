@@ -4,6 +4,7 @@ import type {
   DesktopStateless,
   DesktopSyncStatus,
   DeviceInfo,
+  FilesStatus,
   OpenedDoc,
   PromptbookBridge,
   UpdatesState,
@@ -69,6 +70,7 @@ export function fakeBridge() {
     open: [] as string[],
     update: [] as [string, Uint8Array][],
     release: [] as string[],
+    put: [] as [string, string][],
   };
   const events = {
     update: emitter<[string, Uint8Array]>(),
@@ -76,6 +78,7 @@ export function fakeBridge() {
     stateless: emitter<[DesktopStateless]>(),
     auth: emitter<[AuthState]>(),
     updates: emitter<[UpdatesState]>(),
+    files: emitter<[FilesStatus]>(),
   };
   // Open answers held back until released, for the races.
   let hold: Promise<void> | null = null;
@@ -130,7 +133,7 @@ export function fakeBridge() {
     device: {
       showDataFolder: async () => {},
       setLocalSnapshots: async () => {},
-      usage: async () => ({ bytes: 38_000_000, projects: 12, localSnapshots: 214 }),
+      usage: async () => ({ bytes: 38_000_000, projects: 12, localSnapshots: 214, files: 0, fileBytes: 0 }),
     },
     updates: {
       state: async () => ({ kind: 'off' }),
@@ -142,6 +145,12 @@ export function fakeBridge() {
     files: {
       openPdf: async () => {},
       save: async () => true,
+      put: async (projectId, sha256, _bytes, mime) => {
+        calls.put.push([projectId, sha256]);
+        return { mime, state: 'waiting' };
+      },
+      status: async (): Promise<FilesStatus> => ({ waiting: [], downloading: 0, refused: [] }),
+      onStatus: events.files.on,
     },
   };
 

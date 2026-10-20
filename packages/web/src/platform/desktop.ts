@@ -1,6 +1,6 @@
-import type { AuthState, DeviceInfo, PromptbookBridge, UpdatesState } from './bridge.js';
+import type { AuthState, DeviceInfo, FilesStatus, PromptbookBridge, UpdatesState } from './bridge.js';
 import { DesktopSyncRegistry } from './desktopRegistry.js';
-import { asRelease, type Platform } from './index.js';
+import { asRelease, fileUrl, PutFileError, type Platform } from './index.js';
 import { createStore, type Store } from './store.js';
 
 // The desktop app: everything through window.promptbook (desktop-app design
@@ -15,6 +15,8 @@ export interface Desktop {
   refreshInfo(): Promise<void>;
   auth: Store<AuthState>;
   updates: Store<UpdatesState>;
+  // The board's files waiting to upload, downloading, or refused.
+  files: Store<FilesStatus>;
   registry: DesktopSyncRegistry;
   // Starts a sign-in through the browser, once: another call before main
   // reports the browser step (or a failure) does nothing.
@@ -32,6 +34,8 @@ const NO_INFO: DeviceInfo = {
   localSnapshots: 'hourly',
   updates: 'manual',
 };
+
+export const NO_FILES: FilesStatus = { waiting: [], downloading: 0, refused: [] };
 
 const NO_AUTH: AuthState = {
   server: '',
@@ -62,12 +66,14 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
   const info = createStore<DeviceInfo>(NO_INFO);
   const auth = createStore<AuthState>(NO_AUTH);
   const updates = createStore<UpdatesState>({ kind: 'off' });
+  const files = createStore<FilesStatus>(NO_FILES);
   const registry = new DesktopSyncRegistry(bridge, auth);
   const refreshInfo = async () => info.set(await bridge.info());
   // Events counted, so a first read answered before a newer event never
   // overwrites it.
   let authEvents = 0;
   let updateEvents = 0;
+  let fileEvents = 0;
   let starting: ReturnType<typeof setTimeout> | null = null;
   const startSignIn = (server: string) => {
     if (starting) return;
@@ -79,7 +85,7 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
       starting = null;
     });
   };
-  const desktop: Desktop = { bridge, info, refreshInfo, auth, updates, registry, startSignIn };
+  const desktop: Desktop = { bridge, info, refreshInfo, auth, updates, files, registry, startSignIn };
 
   // Events first, so nothing that changes during the first reads is lost.
   bridge.auth.onState((state) => {
@@ -102,6 +108,10 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
     updateEvents += 1;
     updates.set(state);
   });
+  bridge.files.onStatus((status) => {
+    fileEvents += 1;
+    files.set(status);
+  });
 
   return {
     kind: 'desktop',
@@ -117,9 +127,24 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
       info.set(i);
       if (authEvents === seen.auth) auth.set(a);
       if (updateEvents === seen.updates) updates.set(u);
+      // Read apart, so a main without the files' handlers still starts.
+      const fileSeen = fileEvents;
+      void bridge.files
+        .status()
+        .then((status) => fileEvents === fileSeen && files.set(status))
+        .catch(() => {});
       await registry.refresh();
     },
     request: (path, init) => bridgeRequest(bridge, path, init),
+    // Served by main's protocol from this computer (design decision 14).
+    fileUrl,
+    async putFile(projectId, sha256, bytes, mime) {
+      try {
+        return await bridge.files.put(projectId, sha256, bytes, mime);
+      } catch (error) {
+        throw new PutFileError(0, error instanceof Error && error.message ? error.message : 'The file could not be stored.');
+      }
+    },
     openSync: () => registry,
     // The app's own version, there offline too.
     releaseVersion: async () => asRelease(info.get().version),
