@@ -27,16 +27,16 @@
 
 ## 3. Web client (brief C)
 
-- [ ] 3.1 `src/platform/` (`index.ts`, `web.ts`, `desktop.ts`, `bridge.ts`): `platform.init()` awaited in `main.tsx`; `api.ts` `request()` through `platform.request` (D6)
-- [ ] 3.2 Every browser-only use through the seam: `SyncPill.tsx:88`/`:138`, `SettingsPage.tsx:426`/`:435`, `ConnectedApps.tsx:19`, `Shell.tsx:152`, `SignInDialog.tsx:59`, `ProjectPanel.tsx:102`, `EditorPage.tsx` PDF save and print (D6)
-- [ ] 3.3 `desktopRegistry.ts`: the IPC-backed `SyncRegistry` with the current public API; `sync/state.ts` gains `local` (order and label of D11); the hooks unchanged (D5, D11)
-- [ ] 3.4 Desktop screens: Sign in (label from the server's auth config), In browser, Sign-in failed, First sync with «Start with what is downloaded»; rows not yet downloaded (Mockup in words, D8, D10)
-- [ ] 3.5 Desktop sync states: pill, popover (On this device, Show data folder, Sign out…), amber and red strips, status bar, the list's device column and the panel's «On this device» line (D11)
-- [ ] 3.6 «Needs the server» on the actions of D7 while offline
-- [ ] 3.7 History sources: Source column, All/Server/This device filter, offline line, hint with the link, local save toast (D7, D12)
-- [ ] 3.8 Settings → This device at `/settings/device` (desktop only) and Sync and storage's desktop lead; the sign-out dialog with the removal tick and its warning; the update strip, status-bar item and What's new dialog driven by `updates.onState` (D13, D14)
-- [ ] 3.9 Unit tests: `overallState` with `local`, platform selection, the desktop registry against a fake bridge, the sign-out dialog's states
-- [ ] 3.10 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the web suite unchanged and green; hand-back of brief C
+- [x] 3.1 `src/platform/` (`index.ts`, `web.ts`, `desktop.ts`, `bridge.ts`): `platform.init()` awaited in `main.tsx`; `api.ts` `request()` through `platform.request` (D6)
+- [x] 3.2 Every browser-only use through the seam: `SyncPill.tsx:88`/`:138`, `SettingsPage.tsx:426`/`:435`, `ConnectedApps.tsx:19`, `Shell.tsx:152`, `SignInDialog.tsx:59`, `ProjectPanel.tsx:102`, `EditorPage.tsx` PDF save and print (D6)
+- [x] 3.3 `desktopRegistry.ts`: the IPC-backed `SyncRegistry` with the current public API; `sync/state.ts` gains `local` (order and label of D11); the hooks unchanged (D5, D11)
+- [x] 3.4 Desktop screens: Sign in (label from the server's auth config), In browser, Sign-in failed, First sync with «Start with what is downloaded»; rows not yet downloaded (Mockup in words, D8, D10)
+- [x] 3.5 Desktop sync states: pill, popover (On this device, Show data folder, Sign out…), amber and red strips, status bar, the list's device column and the panel's «On this device» line (D11)
+- [x] 3.6 «Needs the server» on the actions of D7 while offline
+- [x] 3.7 History sources: Source column, All/Server/This device filter, offline line, hint with the link, local save toast (D7, D12)
+- [x] 3.8 Settings → This device at `/settings/device` (desktop only) and Sync and storage's desktop lead; the sign-out dialog with the removal tick and its warning; the update strip, status-bar item and What's new dialog driven by `updates.onState` (D13, D14)
+- [x] 3.9 Unit tests: `overallState` with `local`, platform selection, the desktop registry against a fake bridge, the sign-out dialog's states
+- [x] 3.10 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the web suite unchanged and green; hand-back of brief C
 
 ## 4. Packaging, updates, release pipeline, e2e and docs (brief D)
 
