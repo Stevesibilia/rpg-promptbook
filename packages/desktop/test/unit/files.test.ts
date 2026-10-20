@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -403,6 +403,32 @@ describe('downloads', () => {
     await until(() => files!.has(sha(bytes)));
   });
 
+  it('waits at sign-out for a put being written, which then writes nothing', async () => {
+    const { engine, docs } = fakeEngine();
+    engine.isOnline = false;
+    docs.set(P1, new Y.Doc());
+    open(engine);
+    const bytes = Buffer.concat([png(0), randomBytes(30 * 1024 * 1024)]);
+    const put = files!.put(P1, sha(bytes), bytes);
+    await files!.close();
+    await expect(put).rejects.toThrow('Signed out.');
+    expect(existsSync(join(folder(), sha(bytes).slice(0, 2)))).toBe(false);
+    expect(store.listUploads()).toEqual([]);
+  });
+
+  it('starts, and sweeps, when the temporary folder cannot be read', async () => {
+    const { engine, docs } = fakeEngine();
+    docs.set(P1, new Y.Doc());
+    mkdirSync(join(folder(), 'tmp'), { recursive: true });
+    chmodSync(join(folder(), 'tmp'), 0o000);
+    try {
+      expect(() => open(engine)).not.toThrow();
+      expect(() => files!.sweep()).not.toThrow();
+    } finally {
+      chmodSync(join(folder(), 'tmp'), 0o755);
+    }
+  });
+
   it('stops at sign-out mid-download, leaving nothing named', async () => {
     const bytes = png(2_000_000);
     server.linked.set(`${P1}/${sha(bytes)}`, bytes);
@@ -482,6 +508,42 @@ describe('the protocol file route', () => {
     expect(parseRange('bytes=5-2', 100)).toBeNull();
     expect(parseRange('bytes=-10', 100)).toEqual({ start: 90, end: 99 });
     expect(parseRange('bytes=0-1,4-5', 100)).toBeNull();
+  });
+
+  it('answers 404 at once for a file whose last download failed, until its retry is due', async () => {
+    const bytes = png();
+    const { engine, docs } = fakeEngine();
+    const doc = new Y.Doc();
+    addFiles(doc, [entry(bytes)]);
+    docs.set(P1, doc);
+    open(engine);
+    // The queue's attempt: the server does not have it.
+    await until(() => server.hits.length === 1 && !files!['fetching'].size);
+    server.linked.set(`${P1}/${sha(bytes)}`, bytes);
+    expect((await get(P1, sha(bytes))).status).toBe(404);
+    expect(server.hits).toHaveLength(1);
+    now += 10_000;
+    expect((await get(P1, sha(bytes))).status).toBe(200);
+  });
+
+  it('downloads what the window asks for two at a time', async () => {
+    const all = [png(), png(), png(), png(), png()];
+    for (const b of all) server.linked.set(`${P1}/${sha(b)}`, b);
+    const { engine, docs } = fakeEngine();
+    engine.isOnline = false;
+    open(engine);
+    const doc = new Y.Doc();
+    docs.set(P1, doc);
+    addFiles(doc, all.map((b) => entry(b)));
+    engine.isOnline = true;
+    let most = 0;
+    const answers = all.map((b) => get(P1, sha(b)));
+    const watch = setInterval(() => (most = Math.max(most, files!['fetching'].size)), 1);
+    const statuses = (await Promise.all(answers)).map((a) => a.status);
+    clearInterval(watch);
+    expect(statuses).toEqual([200, 200, 200, 200, 200]);
+    expect(most).toBeLessThanOrEqual(2);
+    expect(server.hits.filter((h) => h.method === 'GET')).toHaveLength(5);
   });
 
   it('fetches a listed file once from the server when online and not here', async () => {

@@ -22,6 +22,8 @@ import type { SyncEngine } from './sync.js';
 export const RETRY_FIRST_MS = 10_000;
 export const RETRY_MAX_MS = 5 * 60_000;
 const DOWNLOADS_AT_ONCE = 2;
+// How long the protocol waits for a file's turn in the download queue.
+const SERVE_WAIT_MS = 60_000;
 // One file's whole exchange, body included.
 const TRANSFER_TIMEOUT_MS = 15 * 60_000;
 const DAY = 86_400_000;
@@ -119,6 +121,9 @@ export class Files {
   private recent = new Set<string>();
   private wanted = new Map<string, Wanted>();
   private fetching = new Map<string, Promise<boolean>>();
+  // The protocol's requests waiting for a download, by sha256.
+  private waiters = new Map<string, Set<() => void>>();
+  private puts = new Set<Promise<unknown>>();
   private uploading: Promise<void> | null = null;
   private counts = new Map<string, { missing: number; bytes: number }>();
   private docTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -143,8 +148,12 @@ export class Files {
     }
     // A put's temporary file is from a process that stopped mid-write; a
     // download's is kept to resume.
-    for (const name of readdirSync(this.tmp)) {
-      if (name.endsWith('.put')) rmSync(join(this.tmp, name), { force: true });
+    try {
+      for (const name of readdirSync(this.tmp)) {
+        if (name.endsWith('.put')) rmSync(join(this.tmp, name), { force: true });
+      }
+    } catch {
+      // Left for the sweep.
     }
   }
 
@@ -167,10 +176,20 @@ export class Files {
   // Every project's files looked at, the sweep, then the queues.
   start(): void {
     for (const id of this.options.engine.ids()) this.scan(id);
-    this.sweep();
-    this.sweepTimer = setInterval(() => this.sweep(), DAY);
+    this.trySweep();
+    this.sweepTimer = setInterval(() => this.trySweep(), DAY);
     this.statusChanged();
     this.wake();
+  }
+
+  // A sweep that fails (a disk error, the store) waits for the next one,
+  // and never stops a launch or a sign-in.
+  private trySweep(): void {
+    try {
+      this.sweep();
+    } catch {
+      // Tried again tomorrow.
+    }
   }
 
   // Online, or signed in again: uploads and downloads go on.
@@ -264,7 +283,16 @@ export class Files {
     if (!type) throw new FileError('Only PNG, JPEG and WebP images and MP3, M4A, AAC, WAV, Ogg and FLAC tracks.');
     if (bytes.byteLength > FILE_LIMITS[type.kind]) throw new FileError('The file is too large.');
     this.recent.add(`${projectId}/${sha256}`);
-    if (!this.onDisk.has(sha256)) await this.writeBlob(sha256, bytes);
+    if (!this.onDisk.has(sha256)) {
+      // close() waits for it, so nothing is written after the account goes.
+      const writing = this.writeBlob(sha256, bytes);
+      this.puts.add(writing);
+      try {
+        await writing;
+      } finally {
+        this.puts.delete(writing);
+      }
+    }
     if (this.closed) throw new FileError('Signed out.');
     this.mimes.set(sha256, type.mime);
     this.options.store.addUpload({ projectId, sha256, mime: type.mime, size: bytes.byteLength });
@@ -280,6 +308,7 @@ export class Files {
     const temp = join(this.tmp, `${sha256}.${randomBytes(6).toString('hex')}.put`);
     try {
       await writeFile(temp, bytes);
+      if (this.closed) return;
       await mkdir(join(this.options.folder, sha256.slice(0, 2)), { recursive: true });
       if (this.closed) return;
       await rename(temp, this.blobPath(sha256));
@@ -437,6 +466,7 @@ export class Files {
       .catch(() => false)
       .finally(() => {
         this.fetching.delete(sha256);
+        this.settle(sha256);
         this.statusChanged();
         this.pumpDownloads();
       });
@@ -529,10 +559,38 @@ export class Files {
     }
   }
 
+  private settle(sha256: string): void {
+    const waiting = this.waiters.get(sha256);
+    this.waiters.delete(sha256);
+    for (const done of waiting ?? []) done();
+  }
+
+  // Waits for the file's download, through the queue (two at a time), or
+  // SERVE_WAIT_MS.
+  private turn(sha256: string): Promise<void> {
+    return new Promise((resolve) => {
+      let waiting = this.waiters.get(sha256);
+      if (!waiting) {
+        waiting = new Set();
+        this.waiters.set(sha256, waiting);
+      }
+      const set = waiting;
+      const done = () => {
+        clearTimeout(timer);
+        set.delete(done);
+        resolve();
+      };
+      const timer = setTimeout(done, SERVE_WAIT_MS);
+      set.add(done);
+      this.pumpDownloads();
+    });
+  }
+
   // The protocol's file route: promptbook://app/api/projects/<id>/files/<sha>.
   // Only a project of this account whose document, upload queue or a put of
-  // this session names the file; from disk, with Range; fetched once from the
-  // server when online and not here yet.
+  // this session names the file; from disk, with Range; when online and not
+  // here yet, fetched in its turn of the download queue, unless its last
+  // attempt failed and waits to be tried again.
   async serve(projectId: string, sha256: string, request: Request): Promise<Response> {
     if (request.method !== 'GET' && request.method !== 'HEAD') return answer(405);
     if (this.closed || !this.allowed(projectId, sha256)) return notFound();
@@ -543,8 +601,9 @@ export class Files {
         w = { projects: new Set(), attempts: 0, nextAt: 0, notFound: false };
         this.wanted.set(sha256, w);
       }
+      if (w.nextAt > this.now()) return notFound();
       w.projects.add(projectId);
-      await this.download(sha256);
+      await this.turn(sha256);
       if (!this.onDisk.has(sha256)) return notFound();
     }
     const file = this.blobPath(sha256);
@@ -634,11 +693,22 @@ export class Files {
     }
     for (const sha of [...this.onDisk.keys()]) {
       if (names.has(sha) || this.fetching.has(sha)) continue;
-      rmSync(this.blobPath(sha), { force: true });
+      try {
+        rmSync(this.blobPath(sha), { force: true });
+      } catch {
+        // Locked (an antivirus, a track playing on Windows): the next sweep.
+        continue;
+      }
       this.onDisk.delete(sha);
       this.mimes.delete(sha);
     }
-    for (const name of readdirSync(this.tmp)) {
+    let temps: string[] = [];
+    try {
+      temps = readdirSync(this.tmp);
+    } catch {
+      // The folder is made again at the next start.
+    }
+    for (const name of temps) {
       const sha = name.slice(0, 64);
       if (this.fetching.has(sha)) continue;
       try {
@@ -710,6 +780,7 @@ export class Files {
     this.docTimers.clear();
     for (const t of [this.uploadTimer, this.downloadTimer, this.statusTimer]) if (t) clearTimeout(t);
     if (this.sweepTimer) clearInterval(this.sweepTimer);
-    await Promise.allSettled([...this.fetching.values(), this.uploading]);
+    for (const sha of [...this.waiters.keys()]) this.settle(sha);
+    await Promise.allSettled([...this.fetching.values(), this.uploading, ...this.puts]);
   }
 }
