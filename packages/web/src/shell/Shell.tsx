@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
+import type { Category } from 'promptbook-project';
 import { useAuth } from '../auth/context.js';
 import { DesktopStatusItems, DesktopStrips } from '../desktop/frame.js';
 import { desktopStatusSync } from '../desktop/SyncStates.js';
 import { platform, serverHost } from '../platform/index.js';
 import { useSync } from '../sync/hooks.js';
 import {
+  BoardIcon,
   DocumentIcon,
   HistoryIcon,
   InspirationIcon,
@@ -18,14 +20,24 @@ import {
 import { statusBarSync, SyncPill, unsentCount } from './SyncPill.js';
 import './shell.css';
 
-export type RailItem = 'projects' | 'document' | 'inspiration' | 'research' | 'log' | 'history' | 'settings';
+export type RailItem =
+  | 'projects'
+  | 'document'
+  | 'inspiration'
+  | 'research'
+  | 'board'
+  | 'log'
+  | 'history'
+  | 'settings';
 
 // The rail's entries for the open project (connector design decision 12), with
-// the path under /projects/:id each one opens.
-const projectEntries: { item: RailItem; label: string; path: string; Icon: typeof DocumentIcon }[] = [
+// the path under /projects/:id each one opens. Images and music is for
+// adventures and one-shots only (asset-board design decision 12).
+const projectEntries: { item: RailItem; label: string; path: string; Icon: typeof DocumentIcon; board?: true }[] = [
   { item: 'document', label: 'Document', path: '', Icon: DocumentIcon },
   { item: 'inspiration', label: 'Inspiration', path: '/inspiration', Icon: InspirationIcon },
   { item: 'research', label: 'Research', path: '/research', Icon: SearchIcon },
+  { item: 'board', label: 'Images and music', path: '/board', Icon: BoardIcon, board: true },
   { item: 'log', label: 'Brainstorm log', path: '/log', Icon: LogIcon },
   { item: 'history', label: 'History', path: '/history', Icon: HistoryIcon },
 ];
@@ -45,6 +57,7 @@ export function Shell({
   wideRight = false,
   status,
   project,
+  category,
   banner,
   children,
 }: {
@@ -61,6 +74,8 @@ export function Shell({
   status?: ReactNode;
   // The open project's id: its entries in the rail are enabled.
   project?: string;
+  // The open project's category: a campaign has no board.
+  category?: Category;
   // A banner of the page's own under the shell's, such as Claude's edit.
   banner?: ReactNode;
   children: ReactNode;
@@ -96,19 +111,21 @@ export function Shell({
         >
           <ProjectsIcon />
         </button>
-        {projectEntries.map(({ item, label, path, Icon }) => (
-          <button
-            key={item}
-            className={rail === item ? 'on' : project ? '' : 'dis'}
-            data-tip={project ? label : `${label} (open a project first)`}
-            aria-label={label}
-            aria-current={rail === item ? 'page' : undefined}
-            disabled={!project}
-            onClick={() => project && navigate(`/projects/${encodeURIComponent(project)}${path}`)}
-          >
-            <Icon />
-          </button>
-        ))}
+        {projectEntries
+          .filter((entry) => !(entry.board && category === 'campaign'))
+          .map(({ item, label, path, Icon }) => (
+            <button
+              key={item}
+              className={rail === item ? 'on' : project ? '' : 'dis'}
+              data-tip={project ? label : `${label} (open a project first)`}
+              aria-label={label}
+              aria-current={rail === item ? 'page' : undefined}
+              disabled={!project}
+              onClick={() => project && navigate(`/projects/${encodeURIComponent(project)}${path}`)}
+            >
+              <Icon />
+            </button>
+          ))}
         <button
           className={`bottom last${rail === 'settings' ? ' on' : ''}`}
           data-tip="Settings and templates"
