@@ -89,6 +89,7 @@ export function registerIpc(app: App): void {
     databaseFile: app.databaseFile(),
     signInRemembered: app.options.secrets.isEncryptionAvailable(),
     localSnapshots: app.localSnapshots(),
+    updates: process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE) ? 'self' : 'manual',
   }));
 
   handle(channels.apiRequest, (_event, path, init) => {

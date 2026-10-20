@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, type Grant } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { longDate, snapshotTime } from '../dates.js';
+import { platform } from '../platform/index.js';
 import { Confirm } from '../ui/Confirm.js';
 import { useToast } from '../ui/Toast.js';
 import { hostOf } from '../inspiration/links.js';
@@ -17,7 +18,7 @@ export function ConnectedApps() {
   const [grants, setGrants] = useState<Grant[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [revoking, setRevoking] = useState<Grant | null>(null);
-  const [resource, setResource] = useState(`${window.location.origin}/api/mcp`);
+  const [resource, setResource] = useState(`${platform.serverOrigin}/api/mcp`);
   const [toast, showToast] = useToast();
   const urlInput = useRef<HTMLInputElement>(null);
 

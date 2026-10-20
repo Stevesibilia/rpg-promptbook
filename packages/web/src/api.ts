@@ -1,9 +1,12 @@
-import type { Category, ProjectRow, Settings, Status } from 'promptbook-project';
+import { exportFolderName, type Category, type ProjectRow, type Settings, type Status } from 'promptbook-project';
 import type { ConvertReport } from 'promptbook-format';
+import { platform } from './platform/index.js';
 
 // A small fetch wrapper for the server's REST API (design decision 7). Every
 // call sends the session cookie; a 401 from a signed-in page means the
-// session ended, which the shell shows as Sign in to sync.
+// session ended, which the shell shows as Sign in to sync. On the desktop the
+// same calls go to main's router through the platform (desktop-app design
+// decisions 6 and 7), which answers 503 offline for what needs the server.
 
 export interface User {
   id: string;
@@ -119,7 +122,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   let response: Response;
   try {
-    response = await fetch(path, init);
+    response = await platform.request(path, init);
   } catch {
     throw new ApiError(0, 'network', 'The server cannot be reached.');
   }
@@ -192,3 +195,7 @@ const snapshotsPath = (projectId: string) => `/api/projects/${encodeURIComponent
 
 export const exportUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/export`;
 export const exportAllUrl = '/api/export';
+
+// The names the server gives the exports, for the desktop's save dialog.
+export const exportName = (title: string) => `${exportFolderName(title, new Set())}.zip`;
+export const exportAllName = () => `promptbook-${new Date().toISOString().slice(0, 10)}.zip`;

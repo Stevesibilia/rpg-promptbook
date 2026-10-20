@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.js';
+import { serverHost } from '../platform/index.js';
 import { useSync } from '../sync/hooks.js';
 import {
   DocumentIcon,
@@ -149,7 +150,7 @@ function Banner() {
       <div className="alert warn" role="alert">
         <WarningIcon className="ic amber" />
         <span>
-          <b>Signed out.</b> Your session on {location.host} ended. Sign in again to send your changes.
+          <b>Signed out.</b> Your session on {serverHost()} ended. Sign in again to send your changes.
         </span>
         <span className="spacer" />
         <button className="tb line" onClick={openSignIn}>

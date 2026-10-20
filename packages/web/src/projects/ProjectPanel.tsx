@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { addSeedVersion, readMeta, seedVersions } from 'promptbook-project';
 import type * as Y from 'yjs';
-import { api, ApiError, exportUrl, type ProjectRow } from '../api.js';
+import { api, ApiError, exportName, exportUrl, type ProjectRow } from '../api.js';
 import { useDocValue, useProjectDoc } from '../sync/hooks.js';
+import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
 import { categoryLabels, statusLabels } from './list.js';
@@ -99,9 +100,9 @@ function LivePanel({
       <details className="acc">
         <summary>Actions</summary>
         <div className="body links">
-          <a className="tb" href={exportUrl(row.id)} download>
+          <DownloadLink className="tb" href={exportUrl(row.id)} name={exportName(meta.title)}>
             Export as a Markdown folder…
-          </a>
+          </DownloadLink>
           <button className="tb danger" onClick={() => setConfirm(true)}>
             Delete…
           </button>

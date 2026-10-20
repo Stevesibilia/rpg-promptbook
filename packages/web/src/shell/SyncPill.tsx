@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/context.js';
 import { clockTime, relativeTime } from '../dates.js';
+import { serverHost } from '../platform/index.js';
 import { registry } from '../sync/registry.js';
 import { useSync } from '../sync/hooks.js';
 import { stateLabels, type SyncState } from '../sync/state.js';
@@ -10,6 +11,7 @@ const pillClass: Record<SyncState, string> = {
   synced: '',
   syncing: 'busy',
   reconnecting: 'local',
+  local: 'local',
   'not-saved': 'fail',
   'signed-out': 'out',
 };
@@ -28,6 +30,8 @@ function explanation(state: SyncState, unsent: number): string {
       return unsent
         ? `The connection dropped. ${changes(unsent)} ${unsent === 1 ? 'is' : 'are'} only in this tab: keep it open until they are sent.`
         : 'The connection dropped. Promptbook reconnects on its own.';
+    case 'local':
+      return 'Everything is saved here and goes to the server when you are back online.';
     case 'not-saved':
       return 'The server could not store the last changes. Copy your text before closing the tab.';
     case 'signed-out':
@@ -85,7 +89,7 @@ export function SyncPill() {
           <div className="sub">{explanation(sync.state, unsent)}</div>
           <dl className="kv">
             <dt>Server</dt>
-            <dd>{location.host}</dd>
+            <dd>{serverHost()}</dd>
             <dt>Account</dt>
             <dd>{user.displayName} · local account</dd>
             <dt>Last sync</dt>
@@ -135,13 +139,15 @@ export function statusBarSync(state: SyncState, unsent: number, lastSync: Date |
     case 'synced':
       return (
         <span>
-          {lastSync ? `Synced ${clockTime(lastSync)}` : 'Synced'} · {location.host}
+          {lastSync ? `Synced ${clockTime(lastSync)}` : 'Synced'} · {serverHost()}
         </span>
       );
     case 'syncing':
       return <span>Syncing…</span>;
     case 'reconnecting':
       return <span className="a">Reconnecting · {changes(unsent)} in this tab</span>;
+    case 'local':
+      return <span className="a">Offline · {changes(unsent)} on this device</span>;
     case 'not-saved':
       return <span className="d">Not saved</span>;
     case 'signed-out':

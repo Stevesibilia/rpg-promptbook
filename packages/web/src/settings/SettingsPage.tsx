@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { categories, type Category, type Settings } from 'promptbook-project';
-import { api, ApiError, exportAllUrl } from '../api.js';
+import { api, ApiError, exportAllName, exportAllUrl } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
 import { ConnectedApps } from '../connect/ConnectedApps.js';
+import { platform } from '../platform/index.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
+import { DownloadLink } from '../ui/DownloadLink.js';
 import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
 import './settings.css';
 
@@ -423,7 +425,7 @@ function SyncStorage() {
       <div className="card wide-card">
         <div className="field">
           <label htmlFor="sync-server">Server</label>
-          <input id="sync-server" value={location.origin} readOnly />
+          <input id="sync-server" value={platform.serverOrigin} readOnly />
         </div>
       </div>
       <div className="card wide-card">
@@ -432,9 +434,9 @@ function SyncStorage() {
           One folder per project: the document as <code>document.md</code>, the to-do list and the seed as Markdown, and
           the project's details in <code>project.json</code>.
         </p>
-        <a className="tb line" href={exportAllUrl} download>
+        <DownloadLink className="tb line" href={exportAllUrl} name={exportAllName()}>
           Export all projects…
-        </a>
+        </DownloadLink>
       </div>
     </section>
   );

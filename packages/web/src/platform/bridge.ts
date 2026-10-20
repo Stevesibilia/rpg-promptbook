@@ -62,6 +62,10 @@ export interface DeviceInfo {
   // computer».
   signInRemembered: boolean;
   localSnapshots: LocalSnapshotsMode;
+  // How this build gets a new version (design decision 14): self, it
+  // downloads and installs it (Windows, AppImage); manual, the user
+  // downloads it from GitHub (Mac, deb).
+  updates: 'self' | 'manual';
 }
 
 export interface DeviceUsage {
