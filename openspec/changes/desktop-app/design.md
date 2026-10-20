@@ -776,6 +776,46 @@ Server token lifetimes, MCP tools and scopes, the web client's behaviour in
 the browser, the chart (only the migration runs at start), Inspiration-view
 follow-ups, mobile.
 
+### Departures accepted in review (brief A, 2026-10-20)
+
+1. **Code exchange without `resource`.** The token endpoint issues for the
+   code's resource when the client names none (it used to default to the MCP
+   resource). The desktop sends `resource` anyway; MCP clients see no change.
+2. **Upload error codes.** Every problem with `state` (base64, over 5 MB
+   decoded, not a project, unknown category, `meta.id` mismatch, a summarize
+   failure) answers 400 `invalid_state`; a body over 8 MB is Fastify's 413;
+   `state` without `id`, or an `id` that is not a lower-case UUID, is 400
+   `validation_error`.
+3. **Chosen ids in lower case only.** Postgres writes a uuid in lower case,
+   so an upper-case id would name the same row and another document.
+4. **`id` without `state`** follows the upload's rules: 201 new, 200 for the
+   same owner with nothing changed, 409 `id_taken` for another user's id.
+5. **Defence in depth.** The token endpoint checks again that the app
+   resource goes only to a first-party code; REST, `/sync` and `/api/mcp`
+   check the grant's scope (`app` or not) on top of the resource.
+6. **Unfinished desktop sign-ins are bounded** (from the security review:
+   auto-approval lets any page send a signed-in browser to the desktop's
+   authorize URL, each visit leaving a grant). The purge deletes first-party
+   grants older than the code lifetime with no `oauth_tokens` row, which also
+   clears a desktop grant whose refresh token lapsed unused (it can no longer
+   sync); MCP grants are untouched. `POST /api/oauth/authorize` answers 429
+   `too_many_requests` to a first-party approval when the user has 10 or more
+   first-party grants from the last 10 minutes with no token, counted under a
+   per-user advisory lock.
+7. **An upload is decoded and summarized once:** `readUploadedState` returns
+   the checked `Y.Doc`, `insertProject(tx, owner, doc, { uploaded: true })`
+   summarizes it once and turns a summarize error into `invalid_state`.
+8. **Connected apps wording with no mockup:** a desktop row's Revoke confirm
+   reads "It stops syncing with your projects at once." with "To sync it
+   again, sign in from Promptbook on that computer."
+
+Known and accepted: a local process that listens on a loopback port can get
+an app token with no click while the browser is signed in (the RFC 8252
+trade-off of auto-approval); a password change ends cookie sessions but not
+app or MCP grants (production is single sign-on only, which refuses password
+changes); Hocuspocus `onTokenSync` is not handled, so a socket keeps its first
+token until it closes, and revocation is what closes it.
+
 ## Mockup in words
 
 `desktop.html` shows one app window and, for one screen, a browser window.
