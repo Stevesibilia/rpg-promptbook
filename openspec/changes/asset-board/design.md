@@ -706,6 +706,38 @@ sweep, inverted Range, size checked after rename).
 For brief D: `e2e/compose.oidc.yaml`'s second app shares the database but
 not the volume; give it `app-data` too.
 
+### Departures accepted in review (brief B, 2026-10-20)
+
+1. `exportProject` still returns text files (now with `board.md`); the file
+   list comes from `exportBoard(doc)`: `{ markdown, files: { path, sha256 }[] }`.
+   `readDocumentBoard(doc)` gives `{ rows, unmatched }` to the tools and the
+   export (no rows for a campaign).
+2. `tools.ts` hands `board.ts` a toolkit and calls `registerBoardTools`, to
+   avoid a circular import.
+3. `set_scene_prompts`: image, music or both required (`invalid_input`);
+   `image.prompt`, `music.title` (one line) and `music.style` non-empty,
+   `lyrics` may be empty; a write never clears a half. `unknown_scene` is
+   404 with the valid ids; `no_board` is 400, also for `get_board` on a
+   campaign. The shared-title warning names the other scenes.
+4. `get_board`: null fields where no prompt exists; counts of images and
+   tracks; `appendix` true when the board has a row.
+5. `board.md`: prompts, style and lyrics in fenced blocks (longer fences
+   when the text holds backticks); "No prompt yet." for an empty half; full
+   ISO dates as in `inspiration.md`.
+6. Export: files of a scene without an appendix row go to
+   `files/unmatched/`; names are made safe for any file system, duplicates
+   get " (2)"; a hash is exported only when the project links it (a document
+   cannot export another user's file); missing bytes are listed in
+   `files-missing.txt`; text deflated, files stored; projects planned one at
+   a time; the first chunk is read before the headers go out, so an early
+   database error is a 500.
+7. A project folder named `.`, `..`, empty or with control characters
+   becomes "Untitled" (an older defect that files would have made worse).
+8. **Known limit:** the zip writer has no ZIP64. An export over
+   4,000,000,000 bytes of files or 65,000 entries answers 413
+   `export_too_large` ("Export fewer projects at a time") before sending
+   anything. A ZIP64 writer is a follow-up.
+
 ## Strings not in the mockup
 
 Chosen by the plan, to check at the owner preview: "Scene S6 is not in the
