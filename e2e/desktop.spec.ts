@@ -197,6 +197,10 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
 test('back online: the web client has both edits and the new project', async () => {
   test.setTimeout(180_000);
   compose('start', 'app');
+  // Up before going on: signing in again goes straight to the server.
+  await expect
+    .poll(() => fetch(`${baseURL}/api/health`).then((r) => r.status, () => 0), { timeout: 60_000 })
+    .toBe(200);
   // Linux with no keyring keeps the sign-in in memory only (design decision
   // 8): the relaunch asks to sign in again.
   const { remembered } = await page.evaluate(() => window.promptbook.auth.state());
