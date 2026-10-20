@@ -1,5 +1,6 @@
 import { readMeta } from 'promptbook-project';
 import type * as Y from 'yjs';
+import { useWindowTitle } from '../desktop/title.js';
 import { HistoryView } from '../history/HistoryView.js';
 import { InspirationView } from '../inspiration/InspirationView.js';
 import { LogView } from '../log/LogView.js';
@@ -23,6 +24,7 @@ const labels: Record<ProjectViewId, string> = {
 // wide centre pane (connector design decision 12).
 export function ProjectView({ id, doc, view }: { id: string; doc: Y.Doc; view: ProjectViewId }) {
   const meta = useDocValue(doc, readMeta);
+  useWindowTitle(meta.title);
   return (
     <Shell
       rail={view}

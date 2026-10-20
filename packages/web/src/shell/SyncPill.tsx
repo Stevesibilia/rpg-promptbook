@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/context.js';
 import { clockTime, relativeTime } from '../dates.js';
-import { serverHost } from '../platform/index.js';
+import { useDesktopUi } from '../desktop/context.js';
+import { DesktopSyncPill } from '../desktop/SyncStates.js';
+import { platform, serverHost } from '../platform/index.js';
 import { registry } from '../sync/registry.js';
 import { useSync } from '../sync/hooks.js';
 import { stateLabels, type SyncState } from '../sync/state.js';
@@ -40,7 +42,17 @@ function explanation(state: SyncState, unsent: number): string {
 }
 
 // The pill in the top bar and the panel it opens; the avatar opens it too.
+// The desktop app has its own states (desktop/SyncStates.tsx).
 export function SyncPill() {
+  return platform.kind === 'desktop' ? <DesktopPill /> : <WebSyncPill />;
+}
+
+function DesktopPill() {
+  const ui = useDesktopUi();
+  return <DesktopSyncPill onSignOut={ui.openSignOut} />;
+}
+
+function WebSyncPill() {
   const sync = useSync();
   const { user, signOut, openSignIn } = useAuth();
   const [open, setOpen] = useState(false);

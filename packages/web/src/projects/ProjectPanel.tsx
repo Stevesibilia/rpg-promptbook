@@ -3,6 +3,8 @@ import { addSeedVersion, readMeta, seedVersions } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { api, ApiError, exportName, exportUrl, type ProjectRow } from '../api.js';
 import { useDocValue, useProjectDoc } from '../sync/hooks.js';
+import { DeviceLine } from '../desktop/ProjectDevice.js';
+import { useDeviceProject } from '../desktop/useDevice.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
@@ -24,6 +26,7 @@ export function ProjectPanel({
   onDeleted(): void;
 }) {
   const { doc, status } = useProjectDoc(row.id);
+  const device = useDeviceProject(row.id);
   if (status === 'gone') return <p className="panel-note">This project is in the bin.</p>;
   if (!doc || status === 'loading') {
     return (
@@ -36,11 +39,27 @@ export function ProjectPanel({
             {statusLabels[row.status]}
           </span>
         </div>
-        <p className="loading">Opening…</p>
+        {device && !device.downloaded ? (
+          <>
+            <p className="loading">Downloading…</p>
+            <div className="open">
+              <button className="tb primary" disabled title="Not on this device yet">
+                Open
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="loading">Opening…</p>
+        )}
       </div>
     );
   }
-  return <LivePanel doc={doc} row={row} campaigns={campaigns} onOpen={onOpen} onDeleted={onDeleted} />;
+  return (
+    <>
+      <LivePanel doc={doc} row={row} campaigns={campaigns} onOpen={onOpen} onDeleted={onDeleted} />
+      {device && <DeviceLine device={device} />}
+    </>
+  );
 }
 
 function LivePanel({

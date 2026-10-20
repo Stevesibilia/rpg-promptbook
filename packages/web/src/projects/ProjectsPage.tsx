@@ -19,6 +19,9 @@ import {
   type SortKey,
 } from './list.js';
 import { NewProjectDialog } from './NewProjectDialog.js';
+import { DeviceCell } from '../desktop/ProjectDevice.js';
+import { useDeviceProject } from '../desktop/useDevice.js';
+import { platform } from '../platform/index.js';
 import { ProjectPanel } from './ProjectPanel.js';
 import { useProjects } from './useProjects.js';
 import './projects.css';
@@ -203,6 +206,7 @@ export function ProjectsPage() {
             <span>Status</span>
             <span>To-do</span>
             <span className="c-when">Edited</span>
+            {platform.kind === 'desktop' && <span />}
           </div>
           {!list && <div className="empty">Loading…</div>}
           {list?.rows.map(({ project, child, dimmed }) => (
@@ -264,6 +268,10 @@ function Row({
   onOpen(): void;
 }) {
   const ratio = project.todoTotal ? (project.todoDone / project.todoTotal) * 100 : 0;
+  const device = useDeviceProject(project.id);
+  // A project the desktop has not downloaded yet does not open.
+  const downloading = !!device && !device.downloaded;
+  const openRow = downloading ? () => {} : onOpen;
   return (
     <div
       className={`tr${child ? ' child' : ''}${selected ? ' sel' : ''}${dimmed ? ' dim' : ''}`}
@@ -273,9 +281,9 @@ function Row({
       aria-selected={selected}
       title={dimmed ? 'Shown because it holds matching projects' : undefined}
       onClick={onSelect}
-      onDoubleClick={onOpen}
+      onDoubleClick={openRow}
       onKeyDown={(event) => {
-        if (event.key === 'Enter') (selected ? onOpen : onSelect)();
+        if (event.key === 'Enter') (selected ? openRow : onSelect)();
         if (event.key === ' ') {
           event.preventDefault();
           onSelect();
@@ -284,7 +292,7 @@ function Row({
     >
       <div className="ti">
         <b>{project.title}</b>
-        <div className="meta">{metaLine(project)}</div>
+        <div className="meta">{downloading ? 'Downloading…' : metaLine(project)}</div>
       </div>
       <span className="cat c-cat">{categoryLabels[project.category]}</span>
       <span className={`st ${project.status}`}>
@@ -300,6 +308,7 @@ function Row({
         </span>
       </span>
       <span className="when c-when">{relativeTime(project.editedAt)}</span>
+      {device && <DeviceCell device={device} />}
     </div>
   );
 }

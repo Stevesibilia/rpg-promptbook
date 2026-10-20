@@ -8,6 +8,7 @@ import { platform } from '../platform/index.js';
 import { useSync } from '../sync/hooks.js';
 import { useToast } from '../ui/Toast.js';
 import { DesktopContext, type DesktopUi } from './context.js';
+import { SignOutDialog } from './SignOutDialog.js';
 import { FirstSyncScreen, InBrowserScreen, SignInFailedScreen, SignInScreen } from './SignInScreens.js';
 import '../auth/auth.css';
 import './desktop.css';
@@ -71,7 +72,8 @@ export function DesktopApp() {
     // Read again for another account only.
   }, [accountId]);
 
-  const ui = useMemo<DesktopUi>(() => ({ toast: showToast }), [showToast]);
+  const [signingOut, setSigningOut] = useState(false);
+  const ui = useMemo<DesktopUi>(() => ({ toast: showToast, openSignOut: () => setSigningOut(true) }), [showToast]);
 
   const value = useMemo<Auth | null>(
     () =>
@@ -79,7 +81,7 @@ export function DesktopApp() {
         ? {
             user,
             setUser,
-            signOut: async () => desktop.bridge.auth.signOut({ remove: false }),
+            signOut: async () => setSigningOut(true),
             openSignIn: () => void platform.startSignIn(),
           }
         : null,
@@ -110,6 +112,7 @@ export function DesktopApp() {
         </AuthContext.Provider>
       )}
       {screen}
+      {signingOut && account && <SignOutDialog onClose={() => setSigningOut(false)} onToast={showToast} />}
       {toast}
     </DesktopContext.Provider>
   );

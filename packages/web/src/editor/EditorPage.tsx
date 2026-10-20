@@ -7,6 +7,7 @@ import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
+import { useWindowTitle } from '../desktop/title.js';
 import { platform } from '../platform/index.js';
 import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
@@ -38,6 +39,7 @@ const label = (id: Parameters<typeof shortcut>[0]) => `${shortcut(id).label} (${
 // status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
+  useWindowTitle(meta.title);
   const checked = meta.category !== 'campaign';
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);

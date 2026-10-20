@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.js';
-import { serverHost } from '../platform/index.js';
+import { DesktopStatusItems, DesktopStrips } from '../desktop/frame.js';
+import { desktopStatusSync } from '../desktop/SyncStates.js';
+import { platform, serverHost } from '../platform/index.js';
 import { useSync } from '../sync/hooks.js';
 import {
   DocumentIcon,
@@ -81,7 +83,7 @@ export function Shell({
       </header>
 
       <div className="banners">
-        <Banner />
+        {platform.kind === 'desktop' ? <DesktopStrips /> : <Banner />}
         {banner}
       </div>
 
@@ -125,7 +127,12 @@ export function Shell({
 
       <footer className="status">
         {status}
-        <span className="r">{statusBarSync(sync.state, unsentCount(sync.providers), sync.lastSync)}</span>
+        {platform.kind === 'desktop' && <DesktopStatusItems />}
+        <span className="r">
+          {platform.kind === 'desktop'
+            ? desktopStatusSync(sync)
+            : statusBarSync(sync.state, unsentCount(sync.providers), sync.lastSync)}
+        </span>
       </footer>
     </div>
   );
