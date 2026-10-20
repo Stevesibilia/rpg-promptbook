@@ -106,3 +106,23 @@ describe('a document with almost nothing in it', () => {
     expect(result.positions.filter((p) => p.kind === 'part').map((p) => p.id)).toEqual(['cover', 'night', 'references']);
   });
 });
+
+describe('several read-alouds', () => {
+  it('builds with two read-alouds in a scene and in Inizio forte, each at its own position', async () => {
+    let text = sabaoth();
+    for (const after of ['## Inizio forte', '### S1.']) {
+      const at = text.indexOf('> [!leggi]', text.indexOf(after));
+      text = `${text.slice(0, at)}> [!leggi]\n> Un brano in più.\n\n${text.slice(at)}`;
+    }
+    const two = toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, defaultLayoutOptions, {
+      title: 'Sabaoth',
+    });
+    const result = await engine.build(two);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const boxes = two.scenes[0]!.readAlouds.map((b) => b.from);
+    expect(boxes).toHaveLength(2);
+    for (const from of [...boxes, ...two.start.strongStart!.blocks.filter((b) => b.box?.role === 'readAloud').map((b) => b.from)]) {
+      expect(result.positions.some((p) => p.kind === 'block' && p.from === from), `box at ${from}`).toBe(true);
+    }
+  });
+});

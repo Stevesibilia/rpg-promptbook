@@ -40,7 +40,7 @@ export function readScene(ctx: ParseContext, heading: Heading, nodes: RootConten
     headingRange: source.nodeRange(heading),
     fields: [],
     boxes: [],
-    readAloud: null,
+    readAlouds: [],
     reactions: null,
     tables: [],
     references: [],
@@ -109,10 +109,9 @@ export function readScene(ctx: ParseContext, heading: Heading, nodes: RootConten
   }
 
   const readAloud = template.callouts.filter((c) => c.role === 'readAloud');
-  scene.readAloud =
-    scene.boxes.find(
-      (box) => box.kind === 'callout' && readAloud.some((c) => c.type === box.type && (c.meta ?? null) === box.meta),
-    )?.id ?? null;
+  scene.readAlouds = scene.boxes
+    .filter((box) => box.kind === 'callout' && readAloud.some((c) => c.type === box.type && (c.meta ?? null) === box.meta))
+    .map((box) => box.id);
   scene.references = findReferences(ctx, scene, nodes);
   return { scene, clues: readClues(ctx, scene), unplaced };
 }

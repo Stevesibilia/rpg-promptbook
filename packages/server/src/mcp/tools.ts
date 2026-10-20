@@ -69,7 +69,7 @@ export const INSTRUCTIONS = [
 ].join('\n');
 
 // What a scene needs so that adding it adds no error, read from the
-// template: a scene missing any of it is refused with more_errors.
+// template: a scene missing any of it is written, with the problems reported.
 const template = templates.avventura;
 const fieldText = (f: (typeof template.sceneFields)[number]) =>
   f.form === 'inline' ? `**${f.label}:** …` : `**${f.label}** followed by a list`;
@@ -320,7 +320,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'replace_section',
-    'Replace one target of a project’s prep document (a section, a scene or a sheet; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id); the template’s field names stay in Italian. In an adventure or a one-shot an edit that adds errors is refused with the problems; warnings are reported. A snapshot of the text before the edit is kept, and the user can undo it.',
+    'Replace one target of a project’s prep document (a section, a scene or a sheet; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id); the template’s field names stay in Italian. In an adventure or a one-shot the result reports the errors and warnings before and after, and the problems in the new text: problems are reported, never refused, so fix them in later edits when you can. A snapshot of the text before the edit is kept, and the user can undo it.',
     { title: 'Replace a section', readOnly: false, idempotent: false, destructive: true },
     {
       projectId,
@@ -337,7 +337,8 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
   tool(
     'add_scene',
     'Add a scene at the end of the «Scene» section of an adventure or a one-shot, with the next id (S1, S2…). Send the title and the scene’s body without its heading; the template’s field names stay in Italian. ' +
-      `The body needs, or the scene is refused with the problems: ${SCENE_REQUIRED.join('; ')}. ` +
+      `The body needs, or the result reports an error: ${SCENE_REQUIRED.join('; ')}. ` +
+      'Problems never refuse the scene: it is written and the result lists them; fix them in later edits when you can. ' +
       (SCENE_RECOMMENDED.length ? `Recommended (a warning when missing): ${SCENE_RECOMMENDED.join('; ')}. ` : '') +
       'A snapshot is kept first, and the user can undo it.',
     { title: 'Add a scene', readOnly: false, idempotent: false },

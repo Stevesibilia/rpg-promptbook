@@ -214,11 +214,12 @@ insensitive; for a campaign, a `##` or `###` heading's text.
 `replace_section` SHALL replace one target's text, heading included, only
 when the hash sent equals the hash of the target's current text, and only
 when the new text starts with a heading of the same level (for a scene, the
-same id). For an adventure or a one-shot, an edit that raises the document's
-error count SHALL be refused with the new problems; warnings SHALL be
-reported and allowed. For a campaign no check SHALL run. `add_scene` SHALL
-append a scene with the next id at the end of the «Scene» section under the
-same check. Every change to the prep document by a tool SHALL first store a
+same id). Problems found by the checks SHALL never refuse an edit: for an
+adventure or a one-shot, the result SHALL report the document's errors and
+warnings before and after the edit and the problems in the edited text, as
+information. For a campaign no check SHALL run. `add_scene` SHALL append a
+scene with the next id at the end of the «Scene» section, reported the same
+way. Every change to the prep document by a tool SHALL first store a
 snapshot of the text it replaces, and SHALL apply as a Yjs change to the live
 document so open editors see it at once.
 
@@ -229,11 +230,18 @@ document so open editors see it at once.
 - **THEN** the call fails with `changed_since_read` and the text is the
   user's
 
-#### Scenario: Edit adding an error refused
+#### Scenario: Edit adding an error is written and reported
 
 - **WHEN** Claude replaces S3 with text that has no read-aloud callout
-- **THEN** the call fails with `more_errors`, lists the new problem, and the
-  document is unchanged
+- **THEN** the edit is written, and the result lists the new error and the
+  error counts before and after
+
+#### Scenario: Scene added before its appendix row
+
+- **WHEN** Claude adds a scene with `add_scene` while the appendix has no row
+  for it, then adds the row with `replace_section`
+- **THEN** both edits are written, the first result reports the missing
+  row, and the second reports it gone
 
 #### Scenario: Edit seen live
 

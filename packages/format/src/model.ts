@@ -197,8 +197,9 @@ export interface Scene {
   headingRange: Range;
   fields: SceneField[];
   boxes: BoxBlock[];
-  // The id of the scene's read-aloud box, the first callout with that role.
-  readAloud: string | null;
+  // The ids of the scene's read-aloud boxes, every callout with that role, in
+  // document order.
+  readAlouds: string[];
   // The table whose first header cell starts like the template's reactions table.
   reactions: TableBlock | null;
   tables: TableBlock[];

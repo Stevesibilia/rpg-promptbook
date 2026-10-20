@@ -28,7 +28,7 @@ function sceneOf(state: EditorState): SceneSnapshot | null {
   return {
     id: scene.id,
     fields: scene.fields.filter((f) => f.known).map((f) => f.label),
-    readAloud: !!scene.readAloud,
+    readAloud: scene.readAlouds.length > 0,
   };
 }
 

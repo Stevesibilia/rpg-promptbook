@@ -41,6 +41,7 @@ describe('the / menu', () => {
         "missing: Se deragliano (required)",
         "missing: Regole della situazione (optional)",
         "missing: Cosa decide la notte (optional)",
+        "insert: Da leggere (> [!leggi])",
         "insert: Documento da consegnare (> [!documento])",
         "insert: Riquadro (> [!riquadro])",
         "insert: Riquadro laterale (> [!riquadro|laterale])",

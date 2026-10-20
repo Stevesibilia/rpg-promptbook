@@ -65,7 +65,7 @@ export function applyInsert(view: EditorView, what: Insert, template: Template):
   const scene = result.model.scenes[sceneAt(result.model, pos)];
   if (scene && (what.kind === 'field' || what.kind === 'readAloud')) {
     const field = what.kind === 'field' ? scene.fields.find((f) => f.known && f.label === what.label) : undefined;
-    const box = what.kind === 'readAloud' ? scene.boxes.find((b) => b.id === scene.readAloud) : undefined;
+    const box = what.kind === 'readAloud' ? scene.boxes.find((b) => b.id === scene.readAlouds[0]) : undefined;
     const existing = field?.range ?? box?.range;
     if (existing) {
       jumpTo(view, existing.start.offset, 'center');

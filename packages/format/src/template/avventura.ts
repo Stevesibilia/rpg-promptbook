@@ -69,7 +69,7 @@ export const avventura = defineTemplate({
       label: 'Da leggere',
       title: 'none',
       allowedIn: ['scene', 'strongStart'],
-      perPlace: { min: 1, max: 1 },
+      perPlace: { min: 1, max: null },
     },
     {
       type: 'documento',

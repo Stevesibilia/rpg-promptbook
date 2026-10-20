@@ -86,7 +86,8 @@ export interface LayoutScene {
   threats: LayoutThreat[];
   sideBoxes: LayoutBlock[];
   // The main column.
-  readAloud: LayoutBlock | null;
+  // Every read-aloud of the scene, in the order written.
+  readAlouds: LayoutBlock[];
   happens: LayoutField | null;
   clues: LayoutField | null;
   handouts: LayoutBlock[];
@@ -316,7 +317,7 @@ function scene(model: Model, found: Scene): LayoutScene {
   }
 
   const boxes = found.boxes.map((b) => toBlock(b, found.references));
-  const readAloud = found.boxes.findIndex((b) => b.id === found.readAloud);
+  const isReadAloud = (i: number) => found.readAlouds.includes(found.boxes[i]!.id);
   return {
     id: found.id ?? '',
     title: found.title,
@@ -328,11 +329,11 @@ function scene(model: Model, found: Scene): LayoutScene {
     cast: get(cast),
     threats,
     sideBoxes: boxes.filter((b) => b.box?.side),
-    readAloud: boxes[readAloud] ?? null,
+    readAlouds: boxes.filter((_, i) => isReadAloud(i)),
     happens: get(FIELD.happens),
     clues: get(roleField('clues')),
     handouts: boxes.filter((b) => b.box?.role === 'handout'),
-    boxes: boxes.filter((b, i) => i !== readAloud && !b.box?.side && b.box?.role !== 'handout'),
+    boxes: boxes.filter((b, i) => !isReadAloud(i) && !b.box?.side && b.box?.role !== 'handout'),
     tests: get(FIELD.tests),
     reactions: found.reactions ? toBlock(found.reactions, found.references) : null,
     tables: found.tables.map((t) => toBlock(t, found.references)),
