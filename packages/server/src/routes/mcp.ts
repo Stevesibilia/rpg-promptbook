@@ -66,7 +66,9 @@ export async function mcpRoutes(app: FastifyInstance, { config, db, sync }: { co
     const presented = bearerToken(req);
     if (!presented) return challenge(reply, oauth.resourceMetadataUrl, false);
     const caller = await verifyAccessToken(db, presented, oauth.resource);
-    if (!caller) return challenge(reply, oauth.resourceMetadataUrl, true);
+    // An app token is bound to the app resource and fails above; its scope
+    // is refused here too, so no app grant ever reaches a tool.
+    if (!caller || caller.scope === 'app') return challenge(reply, oauth.resourceMetadataUrl, true);
 
     const extra: McpCaller = {
       userId: caller.userId,

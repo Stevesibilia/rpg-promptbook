@@ -22,6 +22,7 @@ describe('command line', () => {
       '001_init.sql',
       '002_oidc.sql',
       '003_connector.sql',
+      '004_desktop.sql',
     ]);
     expect(await runMigrations(db)).toEqual([]);
   });

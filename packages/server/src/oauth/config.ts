@@ -6,12 +6,17 @@
 // for two.
 
 export const MCP_PATH = '/api/mcp';
+// The desktop app's resource: the REST API and /sync (desktop-app design
+// decision 8).
+export const APP_PATH = '/api';
 
 export interface OAuthConfig {
   // The origin only, so the metadata lives at the root well-known paths.
   issuer: string;
-  // The RFC 8707 resource every token is bound to.
+  // The RFC 8707 resource every connector token is bound to.
   resource: string;
+  // The resource of first-party clients' tokens, and of nobody else's.
+  appResource: string;
   // The web page /authorize, behind the app's own sign-in.
   authorizationEndpoint: string;
   tokenEndpoint: string;
@@ -25,6 +30,7 @@ export function oauthConfig(publicOrigin: string): OAuthConfig {
   return {
     issuer: publicOrigin,
     resource: `${publicOrigin}${MCP_PATH}`,
+    appResource: `${publicOrigin}${APP_PATH}`,
     authorizationEndpoint: `${publicOrigin}/authorize`,
     tokenEndpoint: `${publicOrigin}/api/oauth/token`,
     registrationEndpoint: `${publicOrigin}/api/oauth/register`,
@@ -37,6 +43,11 @@ export function oauthConfig(publicOrigin: string): OAuthConfig {
 // includes read.
 export const OAUTH_SCOPES = ['read', 'read_write'] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
+
+// The one scope of the app resource: the desktop app acts as the user on
+// REST and /sync. Never offered to a connector.
+export const APP_SCOPE = 'app';
+export type GrantScope = OAuthScope | typeof APP_SCOPE;
 
 // The scopes of a space-separated scope parameter, each once; null when one is
 // unknown. None asked means read.
@@ -52,7 +63,7 @@ export function parseScopeParameter(value: string | undefined): OAuthScope[] | n
 
 // True when the scope granted is no wider than what was asked: a client that
 // asked for read_write has asked for read too.
-export function scopeWithin(granted: OAuthScope, requested: readonly OAuthScope[]): boolean {
+export function scopeWithin(granted: GrantScope, requested: readonly GrantScope[]): boolean {
   if (requested.includes(granted)) return true;
   return granted === 'read' && requested.includes('read_write');
 }

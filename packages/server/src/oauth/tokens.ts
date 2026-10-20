@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashToken } from '../accounts/sessions.js';
 import type { Queryable } from '../db.js';
-import type { OAuthScope } from './config.js';
+import type { GrantScope } from './config.js';
 import { deleteGrant } from './grants.js';
 
 // Codes, access tokens and refresh tokens (connector design decision 7,
@@ -77,8 +77,17 @@ export interface CodeRedemption {
   code: string;
   clientId: string;
   redirectUri: string;
-  resource: string;
+  // Checked only when the client states one; the code's resource otherwise.
+  resource?: string | undefined;
   codeVerifier: string;
+}
+
+export interface RedeemedCode {
+  grantId: string;
+  scope: GrantScope;
+  // What the tokens are issued for: the resource the code was approved for.
+  resource: string;
+  firstParty: boolean;
 }
 
 interface CodeRow {
@@ -87,8 +96,9 @@ interface CodeRow {
   code_challenge: string;
   resource: string;
   expires_at: Date;
-  scope: OAuthScope;
+  scope: GrantScope;
   client_id: string;
+  first_party: boolean;
 }
 
 // Spends a code, or refuses. Marked spent in one statement, before any
@@ -97,13 +107,14 @@ interface CodeRow {
 // finds it spent. A spent code presented again is a replay (RFC 6749
 // section 4.1.2): someone else may hold it, so the grant it was issued under
 // is revoked, and every token issued from it with it.
-export async function redeemCode(db: Queryable, input: CodeRedemption): Promise<{ grantId: string; scope: OAuthScope }> {
+export async function redeemCode(db: Queryable, input: CodeRedemption): Promise<RedeemedCode> {
   const codeHash = hashToken(input.code);
   const row = await db.queryOne<CodeRow>(
     `update oauth_codes oc set spent_at = now()
      from oauth_grants g, oauth_clients c
      where oc.code_hash = $1 and oc.spent_at is null and g.id = oc.grant_id and c.id = g.client_id
-     returning oc.grant_id, oc.redirect_uri, oc.code_challenge, oc.resource, oc.expires_at, g.scope, c.client_id`,
+     returning oc.grant_id, oc.redirect_uri, oc.code_challenge, oc.resource, oc.expires_at, g.scope, c.client_id,
+               c.first_party`,
     [codeHash],
   );
   if (!row) {
@@ -133,13 +144,13 @@ export async function redeemCode(db: Queryable, input: CodeRedemption): Promise<
   if (row.redirect_uri !== input.redirectUri) {
     throw new TokenError('invalid_grant', 'The redirect URI does not match the one the code was issued for.');
   }
-  if (row.resource !== input.resource) {
+  if (input.resource !== undefined && row.resource !== input.resource) {
     throw new TokenError('invalid_grant', 'The resource does not match the one the code was issued for.');
   }
   if (!safeEqual(s256(input.codeVerifier), row.code_challenge)) {
     throw new TokenError('invalid_grant', 'The code verifier does not match the challenge.');
   }
-  return { grantId: row.grant_id, scope: row.scope };
+  return { grantId: row.grant_id, scope: row.scope, resource: row.resource, firstParty: row.first_party };
 }
 
 // Tokens.
@@ -188,7 +199,7 @@ interface RefreshRow {
   resource: string;
   expires_at: Date;
   rotated_at: Date | null;
-  scope: OAuthScope;
+  scope: GrantScope;
   client_id: string;
 }
 
@@ -217,7 +228,7 @@ async function revokeForReuse(db: Queryable, grantId: string): Promise<never> {
 export async function rotateRefreshToken(
   db: Queryable,
   input: RefreshRedemption,
-): Promise<{ grantId: string; scope: OAuthScope; resource: string }> {
+): Promise<{ grantId: string; scope: GrantScope; resource: string }> {
   const row = await db.queryOne<RefreshRow>(
     `select t.id, t.grant_id, t.resource, t.expires_at, t.rotated_at, g.scope, c.client_id
      from oauth_tokens t
@@ -264,7 +275,7 @@ export async function revokeByTokenValue(db: Queryable, value: string): Promise<
 
 export interface McpCaller {
   userId: string;
-  scope: OAuthScope;
+  scope: GrantScope;
   grantId: string;
   expiresAt: Date;
   clientName: string;
@@ -275,7 +286,7 @@ interface AccessRow {
   grant_id: string;
   expires_at: Date;
   resource: string;
-  scope: OAuthScope;
+  scope: GrantScope;
   last_used_at: Date | null;
   client_name: string;
   user_id: string;

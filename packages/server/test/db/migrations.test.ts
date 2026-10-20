@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from '../../src/accounts/passwords.js';
 import { createDb, type Db } from '../../src/db.js';
 import { MIGRATIONS, runMigrations } from '../../src/migrate.js';
 import { testDatabaseUrl } from './guard.js';
-import { PASSWORD } from './helpers.js';
+import { db, PASSWORD, seedDesktopClient } from './helpers.js';
 
 const quote = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
@@ -52,7 +52,7 @@ describe('migrations', () => {
       await hashPassword(PASSWORD),
     ]);
 
-    expect(await runMigrations(old)).toEqual(['002_oidc.sql', '003_connector.sql']);
+    expect(await runMigrations(old)).toEqual(['002_oidc.sql', '003_connector.sql', '004_desktop.sql']);
 
     const user = await findUserByUsername(old, 'steve');
     expect(user).toMatchObject({ username: 'steve', displayName: 'Stefano' });
@@ -71,5 +71,34 @@ describe('migrations', () => {
     await expect(
       old.query("insert into users (username, display_name, oidc_issuer) values ('bea', 'Bea', 'https://idp/')"),
     ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('004 seeds the desktop client as the tests do, and takes the app scope and a device name', async () => {
+    const columns = 'client_id, kind, client_name, client_uri, redirect_uris, first_party';
+    const seeded = await old.query(`select ${columns} from oauth_clients`);
+    expect(seeded).toEqual([
+      {
+        client_id: 'promptbook-desktop',
+        kind: 'registered',
+        client_name: 'Promptbook desktop',
+        client_uri: null,
+        redirect_uris: ['http://127.0.0.1/callback'],
+        first_party: true,
+      },
+    ]);
+    await seedDesktopClient(db);
+    expect(await db.query(`select ${columns} from oauth_clients`)).toEqual(seeded);
+
+    const user = await findUserByUsername(old, 'steve');
+    const grant = (scope: string, device: string | null) =>
+      old.query(
+        `insert into oauth_grants (user_id, client_id, scope, device_name)
+         select $1, id, $2, $3 from oauth_clients where client_id = 'promptbook-desktop'`,
+        [user!.id, scope, device],
+      );
+    await grant('app', 'studio-mac');
+    await grant('read', null);
+    await expect(grant('admin', null)).rejects.toMatchObject({ code: '23514' });
+    await expect(grant('app', 'x'.repeat(81))).rejects.toMatchObject({ code: '23514' });
   });
 });

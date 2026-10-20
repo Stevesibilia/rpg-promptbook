@@ -282,6 +282,7 @@ describe('redirect URIs', () => {
     clientName: 'x',
     clientUri: null,
     redirectUris,
+    firstParty: false,
   });
 
   it('matches exactly, except the port of a loopback URI', () => {
@@ -677,6 +678,7 @@ describe('the consent API', () => {
       redirect_host: 'client.example',
       loopback_only: false,
       requested_scopes: ['read', 'read_write'],
+      first_party: false,
     });
   });
 
@@ -1227,7 +1229,17 @@ describe('Connected apps', () => {
     const response = await app.inject({ url: '/api/auth/grants', headers: cookie(session) });
     const grants = response.json().grants;
     expect(grants.map((g: { scope: string }) => g.scope)).toEqual(['read_write', 'read']);
-    expect(Object.keys(grants[0]).sort()).toEqual(['client_name', 'client_uri', 'created_at', 'id', 'last_used_at', 'scope']);
+    expect(Object.keys(grants[0]).sort()).toEqual([
+      'client_name',
+      'client_uri',
+      'created_at',
+      'device_name',
+      'first_party',
+      'id',
+      'last_used_at',
+      'scope',
+    ]);
+    expect(grants[0]).toMatchObject({ first_party: false, device_name: null });
     expect(grants[1].last_used_at).toBeNull();
     expect(response.body).not.toContain(tokens.access_token);
     expect(response.body).not.toContain(hashToken(tokens.access_token));

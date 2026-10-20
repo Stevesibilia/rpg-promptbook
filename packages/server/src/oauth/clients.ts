@@ -34,6 +34,9 @@ const UNAPPROVED_CLIENTS_MAX = 1000;
 
 export type OAuthClientKind = 'registered' | 'metadata_document';
 
+// The desktop app's client, seeded by migration 004.
+export const DESKTOP_CLIENT_ID = 'promptbook-desktop';
+
 export interface OAuthClient {
   // The row's id, which a grant references.
   id: string;
@@ -43,6 +46,8 @@ export interface OAuthClient {
   // https, or http on a loopback host; never shown as a link.
   clientUri: string | null;
   redirectUris: string[];
+  // The desktop app: the app resource only, no consent question, never swept.
+  firstParty: boolean;
 }
 
 interface ClientRow {
@@ -52,6 +57,7 @@ interface ClientRow {
   client_name: string;
   client_uri: string | null;
   redirect_uris: unknown;
+  first_party: boolean;
 }
 
 const toClient = (row: ClientRow): OAuthClient => ({
@@ -63,9 +69,10 @@ const toClient = (row: ClientRow): OAuthClient => ({
   redirectUris: Array.isArray(row.redirect_uris)
     ? row.redirect_uris.filter((u): u is string => typeof u === 'string')
     : [],
+  firstParty: row.first_party,
 });
 
-const COLUMNS = 'id, client_id, kind, client_name, client_uri, redirect_uris';
+const COLUMNS = 'id, client_id, kind, client_name, client_uri, redirect_uris, first_party';
 
 // Redirect URIs.
 
@@ -486,7 +493,8 @@ async function reserveRegistration(db: Db, key: string): Promise<void> {
     await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-oauth-register', 0))");
     const unapproved = await tx.queryOne<{ n: string }>(
       `select count(*) as n from oauth_clients c
-       where c.kind = 'registered' and not exists (select 1 from oauth_grants g where g.client_id = c.id)`,
+       where c.kind = 'registered' and not c.first_party
+         and not exists (select 1 from oauth_grants g where g.client_id = c.id)`,
     );
     if (Number(unapproved?.n) >= UNAPPROVED_CLIENTS_MAX) {
       throw tooMany('Too many clients are waiting for approval on this server: try again later.');
@@ -507,12 +515,14 @@ async function reserveRegistration(db: Db, key: string): Promise<void> {
 
 // Registered clients nobody approved within a day, and metadata document
 // clients whose cached document has expired and that nobody approved (a
-// later request fetches the document again).
+// later request fetches the document again). The first-party client stays:
+// the migration made it, and nothing would make it again.
 export async function sweepUnusedClients(db: Queryable): Promise<number> {
   const rows = await db.query(
     `delete from oauth_clients c
      where ((c.kind = 'registered' and c.created_at < now() - make_interval(hours => $1))
             or (c.kind = 'metadata_document' and c.metadata_expires_at < now()))
+       and not c.first_party
        and not exists (select 1 from oauth_grants g where g.client_id = c.id)
      returning c.id`,
     [UNUSED_CLIENT_HOURS],
