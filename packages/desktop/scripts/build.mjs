@@ -40,7 +40,7 @@ await rm(appWeb, { recursive: true, force: true });
 await cp(webDist, appWeb, {
   recursive: true,
   filter: (source) => {
-    const path = source.slice(webDist.length - 1);
+    const path = source.slice(webDist.length - 1).replace(/\\/g, '/');
     return !/\.(br|gz)$/.test(path) && !/\.tsbuildinfo$/.test(path) && !path.startsWith('/types');
   },
 });
