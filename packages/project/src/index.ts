@@ -1,3 +1,32 @@
+export { appendixEdit } from './appendix.js';
+export {
+  addFiles,
+  assignFile,
+  boardRows,
+  chooseFile,
+  duplicateTitles,
+  fileKinds,
+  halfStatuses,
+  isSha256,
+  matchedBy,
+  readBoard,
+  readFiles,
+  removeFile,
+  setImagePrompt,
+  setMusicPrompt,
+  unmatchedFiles,
+  type BoardEntry,
+  type BoardRow,
+  type FileEntry,
+  type FileKind,
+  type HalfStatus,
+  type ImagePrompt,
+  type MatchedBy,
+  type MusicInput,
+  type MusicPrompt,
+  type NewFile,
+  type UnmatchedFile,
+} from './board.js';
 export {
   addInspirationItem,
   addLogEntry,
@@ -47,6 +76,16 @@ export {
   todoMarkdown,
   type ExportOptions,
 } from './export.js';
+export {
+  matchFile,
+  matchKey,
+  parseMidjourney,
+  parseSuno,
+  type MatchResult,
+  type MatchRow,
+  type MidjourneyName,
+  type SunoName,
+} from './match.js';
 export { imageReferences, prepareImport, type PreparedImport, type PrepareImportOptions } from './import.js';
 export {
   authors,
@@ -78,7 +117,9 @@ export {
   type TopicState,
 } from './model.js';
 export { projectRow, type ProjectRow, type RowDates } from './row.js';
+export { Sha256, sha256Hex } from './sha256.js';
 export { defaultSettings, type Settings } from './settings.js';
 export { formatOf, skeletonDocument, type SkeletonInput } from './skeleton.js';
+export { FILE_LIMITS, MAX_FILE_BYTES, sniff, SNIFF_BYTES, type Sniffed } from './sniff.js';
 export { countWords, summarize, type SummarizeOptions, type Summary } from './summary.js';
 export { findTarget, targetsOf, type FoundTarget, type Target } from './targets.js';

@@ -43,6 +43,20 @@ import {
 // whole. The schema stays 1: an older client leaves these types untouched,
 // and an older document reads them as empty.
 //
+// and, from the asset-board change (its design decision 1), read and written
+// by board.ts:
+//   board  Y.Map, keys "<sceneId>/<part>", plain JSON values set whole:
+//            "S3/image"        { prompt, by, at }
+//            "S3/music"        { title, style, lyrics, by, at }
+//            "S3/chosenImage"  file id | null
+//            "S3/chosenTrack"  file id | null
+//          Flat keys, not a Y.Map per scene: two replicas creating one
+//          scene's map at once would keep only one of them, while two halves
+//          under their own keys merge.
+//   files  Y.Array of Y.Map: id, sha256, thumbSha256, name, kind, mime, size,
+//          width, height, duration, sceneId, matchedBy, addedAt, addedBy.
+//          The bytes live outside the document, named by sha256.
+//
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
 // moved item. Changing one key merges like any other field.
@@ -60,7 +74,7 @@ const logOf = (doc: Y.Doc) => doc.getArray<Item>('brainstorm');
 
 // Available in browsers, Node and Electron alike; typed here because the
 // package compiles without DOM or Node types.
-const randomId = (): string => (globalThis as unknown as { crypto: { randomUUID(): string } }).crypto.randomUUID();
+export const randomId = (): string => (globalThis as unknown as { crypto: { randomUUID(): string } }).crypto.randomUUID();
 
 const DUE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -110,7 +124,7 @@ export function createProjectDoc(input: ProjectInput): Y.Doc {
 // type: each one falls back to its empty value, and an unknown status reads
 // as draft.
 
-const str = (value: unknown): string => (typeof value === 'string' ? value : '');
+export const str = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 export function readMeta(doc: Y.Doc): ProjectMeta {
   const meta = metaOf(doc);
@@ -275,7 +289,7 @@ export function addSeedVersion(doc: Y.Doc, text: string, at: string = new Date()
 
 // Inspiration, research and the brainstorm log (connector design decision 2).
 
-const nowIso = () => new Date().toISOString();
+export const nowIso = () => new Date().toISOString();
 
 // The comparison for topic names and section targets: accents, case and
 // runs of whitespace do not count.
@@ -286,13 +300,13 @@ export function sameName(a: string, b: string): boolean {
 const normalName = (name: string) =>
   name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-const oneOf = <T extends string>(values: readonly T[], value: unknown, fallback: T): T =>
+export const oneOf = <T extends string>(values: readonly T[], value: unknown, fallback: T): T =>
   typeof value === 'string' && (values as readonly string[]).includes(value) ? (value as T) : fallback;
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 
-const record = (value: unknown): Record<string, unknown> | null =>
+export const record = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 
 // A URL that is not http or https reads as none, whoever wrote it.
@@ -328,7 +342,7 @@ const byDate =
 // Another client may have put anything in an array; a map is told by its get
 // and set, not by instanceof, which a second copy of yjs in a bundle would
 // defeat. A Y.Array or a Y.XmlElement has a get but no set.
-const isItem = (value: unknown): value is Item =>
+export const isItem = (value: unknown): value is Item =>
   typeof value === 'object' &&
   value !== null &&
   typeof (value as Item).get === 'function' &&
@@ -361,7 +375,7 @@ function removeFrom(doc: Y.Doc, array: Y.Array<Item>, id: string): void {
   });
 }
 
-function mapOf(fields: Record<string, unknown>): Item {
+export function mapOf(fields: Record<string, unknown>): Item {
   const item: Item = new Y.Map<unknown>();
   for (const [key, value] of Object.entries(fields)) item.set(key, value);
   return item;
@@ -381,7 +395,7 @@ function patchItem(item: Item, patch: Record<string, unknown>): void {
 // The checks every writer runs (design decision 2). They throw: the callers,
 // the server's tool schemas and the web's forms, check first.
 
-function checkText(field: string, value: string, max: number, { required = false } = {}): void {
+export function checkText(field: string, value: string, max: number, { required = false } = {}): void {
   if (required && value.trim() === '') throw new Error(`${field}: is required`);
   if (value.length > max) throw new Error(`${field}: at most ${max} characters`);
 }
@@ -407,7 +421,7 @@ function checkSources(sources: readonly Source[]): void {
   });
 }
 
-function checkAt(at: string): void {
+export function checkAt(at: string): void {
   if (!isIsoDateTime(at)) throw new Error(`at: "${at}" is not an ISO 8601 date-time`);
 }
 

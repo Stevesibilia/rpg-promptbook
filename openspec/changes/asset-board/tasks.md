@@ -1,9 +1,9 @@
 ## 1. Project model, matching and server file store (brief A)
 
-- [ ] 1.1 `packages/project/src/board.ts` and `model.ts`: the `board` and `files` types of D1 with flat keys, `LIMITS` (image prompt 2000, title 120, style 1000, lyrics 3000, name 255) and `CAPS.files` 2000; `readBoard`, `readFiles`, `setImagePrompt`, `setMusicPrompt`, `addFiles`, `assignFile`, `removeFile`, `chooseFile`; `boardRows`, `unmatchedFiles`, `duplicateTitles` (D2); the shape comment in `doc.ts`; exported from `index.ts`
-- [ ] 1.2 `packages/project/src/match.ts`: `matchKey`, `parseMidjourney` (with the user-name fallback), `parseSuno`, `matchFile` and its reason strings (D10)
-- [ ] 1.3 `packages/project/src/sniff.ts` (D3), `sha256.ts` (D9's fallback), `appendix.ts` `appendixEdit` (D12)
-- [ ] 1.4 Unit tests `board.test.ts`, `match.test.ts`, `sniff.test.ts`, `sha256.test.ts`, `appendix.test.ts`: every case listed under `packages/project` in D18, including the concurrent-halves merge with two docs
+- [x] 1.1 `packages/project/src/board.ts` and `model.ts`: the `board` and `files` types of D1 with flat keys, `LIMITS` (image prompt 2000, title 120, style 1000, lyrics 3000, name 255) and `CAPS.files` 2000; `readBoard`, `readFiles`, `setImagePrompt`, `setMusicPrompt`, `addFiles`, `assignFile`, `removeFile`, `chooseFile`; `boardRows`, `unmatchedFiles`, `duplicateTitles` (D2); the shape comment in `doc.ts`; exported from `index.ts`
+- [x] 1.2 `packages/project/src/match.ts`: `matchKey`, `parseMidjourney` (with the user-name fallback), `parseSuno`, `matchFile` and its reason strings (D10)
+- [x] 1.3 `packages/project/src/sniff.ts` (D3), `sha256.ts` (D9's fallback), `appendix.ts` `appendixEdit` (D12)
+- [x] 1.4 Unit tests `board.test.ts`, `match.test.ts`, `sniff.test.ts`, `sha256.test.ts`, `appendix.test.ts`: every case listed under `packages/project` in D18, including the concurrent-halves merge with two docs
 - [ ] 1.5 `migrations/005_files.sql` exactly as D4
 - [ ] 1.6 `config.ts`: `PROMPTBOOK_DATA_DIR` (default `./data`), `PROMPTBOOK_FILES_QUOTA_GB` (default 20, at least 1) and `PROMPTBOOK_FILES_GRACE_DAYS` (default 30, at least 1); `.gitignore` gains `packages/server/data/`; start creates and empties `files/tmp` and stops with a `ConfigError` naming the variable when it cannot write (D3)
 - [ ] 1.7 `src/files/blobs.ts` (`BlobStore`, `FsBlobStore`), `src/files/store.ts` (link, quota, lookup), `routes/files.ts` with the no-op octet-stream parser in its own scope, PUT and GET of D5 with every status and error code, registered in `app.ts`

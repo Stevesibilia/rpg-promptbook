@@ -131,6 +131,12 @@ export const LIMITS = {
   url: 2048,
   list: 50,
   sources: 30,
+  // The board's prompts and file names (asset-board design decision 1).
+  imagePrompt: 2000,
+  trackTitle: 120,
+  style: 1000,
+  lyrics: 3000,
+  fileName: 255,
 } as const;
 
 // The most items each collection takes; past it a writer refuses and a reader
@@ -140,6 +146,7 @@ export const CAPS = {
   topics: 200,
   notes: 500,
   brainstorm: 1000,
+  files: 2000,
 } as const;
 
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
