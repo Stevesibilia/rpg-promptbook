@@ -76,6 +76,39 @@ remove the projects from this computer". The computer shows up in Connected
 apps on the web as "Promptbook desktop · <computer name>"; revoking it there
 stops its sync.
 
+The app also keeps every image and track of the board on the computer, in
+the account's `files` folder inside the data folder, named by their content.
+They download in the background after the first sync and the board shows
+them offline. Files dropped on the board offline wait there, marked "on this
+device", and upload when the server is back. This device counts them, and
+signing out with removal says how many are not uploaded yet.
+
+## Images and music
+
+Each adventure and one-shot has a board, **Images and music** in the rail:
+one row per scene of the appendix "Appendice: immagini e musica" at the end
+of the prep document, with its `visual:` and `mood:` lines. A document
+without the appendix gets one from the board's **Add the appendix**.
+
+Each row holds a Midjourney prompt and a Suno prompt (title, style, lyrics),
+each with Copy. Claude writes them through the connector ("write the image
+and music prompts for the board of …"); you can write or edit any of them by
+hand.
+
+Generate in Midjourney and Suno, then drop the whole Downloads batch anywhere
+on the board, or use **Add files…**. Each file finds its scene by its name:
+
+- a Midjourney image by the prompt's first words, which Midjourney puts in
+  the file name;
+- a Suno track by its title, the file name Suno gives it (a second take ends
+  in "(1)").
+
+Files that match nothing wait in the Unmatched tray: assign them by hand, or
+press **Match again** once their prompt or title is written. Choose one image
+and one track per scene; the viewer and each track's menu move or remove a
+file. The project's export holds `board.md` with the prompts and the files by
+scene.
+
 ## Editor shortcuts
 
 On the Mac, Mod is ⌘; elsewhere it is Ctrl.
@@ -99,8 +132,9 @@ buttons or the palette.
 
 Promptbook is its own connector for Claude on the web and Claude Desktop. In
 a brainstorm, Claude reads and writes your projects: the prep document one
-section at a time, the to-do list, the inspiration items, research notes and
-the brainstorm log. A new chat about a project starts by reading its
+section at a time, the to-do list, the inspiration items, research notes, the
+brainstorm log, and the board's prompts (`get_board`, then `set_scene_prompts`
+one scene at a time). A new chat about a project starts by reading its
 brainstorm log.
 
 To connect Claude:
@@ -117,7 +151,7 @@ The page asks which access to give:
 - **Read your projects:** Claude reads everything and changes nothing.
 - **Read and edit your projects:** Claude also creates projects, edits the
   prep document and adds to-do items, inspiration items, research notes and
-  log entries. It never ticks or deletes anything, and never rewrites the
+  log entries, and writes the board's prompts. It never ticks or deletes anything, and never rewrites the
   seed.
 
 Settings → Connected apps lists every app you allowed, with its access and

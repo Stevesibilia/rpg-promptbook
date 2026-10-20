@@ -11,6 +11,8 @@ const project = (patch: Partial<DesktopProjectStatus> = {}): DesktopProjectStatu
   title: "L'Ancora di Sabaoth",
   downloaded: true,
   bytes: 1400,
+  filesMissing: 0,
+  fileBytes: 0,
   localOnly: false,
   refused: false,
   synced: false,
@@ -30,6 +32,14 @@ describe('desktop sync texts', () => {
     });
     expect(statusSyncText(offline([project()]))).toEqual({ text: 'Offline · nothing waiting to sync', tone: 'a' });
     expect(statusSyncText(offline([]))).toEqual({ text: 'Offline · nothing waiting to sync', tone: 'a' });
+  });
+
+  it('counts the board files waiting to upload while offline', () => {
+    expect(statusSyncText(offline([project()]), 4)).toEqual({ text: 'Offline · 4 files waiting to upload', tone: 'a' });
+    expect(statusSyncText(offline([project({ unsynced: 3 })]), 1)).toEqual({
+      text: 'Offline · 3 changes on this device · 1 file waiting to upload',
+      tone: 'a',
+    });
   });
 
   it('keeps a refused project on this device instead of syncing for ever', () => {

@@ -52,3 +52,8 @@ that runs.
 {{- define "rpg-promptbook.databaseSecretName" -}}
 {{- printf "%s-app" (include "rpg-promptbook.cnpgClusterName" .) -}}
 {{- end }}
+
+{{/* The claim the files volume mounts: one made outside the chart, or the chart's own. */}}
+{{- define "rpg-promptbook.dataClaimName" -}}
+{{- .Values.persistence.existingClaim | default (printf "%s-data" (include "rpg-promptbook.fullname" .)) -}}
+{{- end }}

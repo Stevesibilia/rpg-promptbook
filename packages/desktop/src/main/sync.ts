@@ -34,6 +34,9 @@ export interface EngineHooks {
   // A project's document arrived from the server for the first time.
   downloaded?: (id: string) => void;
   removed?: (id: string) => void;
+  // The board's files a project's document lists: how many are not on this
+  // computer yet, and the bytes of those that are (asset-board D14).
+  files?: (id: string) => { missing: number; bytes: number };
 }
 
 export interface EngineOptions {
@@ -398,6 +401,12 @@ export class SyncEngine {
     else for (const entry of this.entries.values()) if (entry.provider?.isSynced) entry.provider.forceSync();
   }
 
+  // A project's files arrived, or its document lists others: First sync
+  // counts them.
+  filesChanged(): void {
+    this.changed();
+  }
+
   // The list changed: the windows read it again.
   listChanged(): void {
     this.listVersion += 1;
@@ -406,20 +415,26 @@ export class SyncEngine {
 
   status(): DesktopSyncStatus {
     const store = this.options.store;
-    const projects = [...this.entries.values()].map(
-      (entry): DesktopProjectStatus => ({
+    const projects = [...this.entries.values()].map((entry): DesktopProjectStatus => {
+      const files = entry.downloaded ? (this.options.hooks.files?.(entry.id) ?? { missing: 0, bytes: 0 }) : null;
+      return {
         id: entry.id,
         title: (entry.downloaded ? readMeta(entry.doc).title : '') || 'Untitled project',
         downloaded: entry.downloaded,
         bytes: entry.bytes,
+        filesMissing: files?.missing ?? 0,
+        fileBytes: files?.bytes ?? 0,
         localOnly: entry.localOnly,
         refused: entry.refused,
         synced: !!entry.provider?.isSynced && this.online,
         unsynced: store.unsyncedCount(entry.id),
         notSaved: store.notSaved(entry.id),
-      }),
-    );
-    if (this.firstSync && projects.length > 0 && projects.every((p) => p.downloaded)) this.firstSync = false;
+      };
+    });
+    // Every document here, with the files it lists.
+    if (this.firstSync && projects.length > 0 && projects.every((p) => p.downloaded && p.filesMissing === 0)) {
+      this.firstSync = false;
+    }
     const iso = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
     return {
       online: this.online,

@@ -30,6 +30,12 @@ app:
   # `admin.enabled`.
   credentialsSecret: rpg-promptbook-credentials
   sessionTtlHours: 720
+  # -- What each user may store of images and tracks, in GiB, each content
+  # counted once.
+  filesQuotaGb: 20
+  # -- How many days a project keeps a file its board no longer lists, so a
+  # file dropped again within them needs no upload.
+  filesGraceDays: 30
 
   admin:
     # -- Pass the credentials Secret to the server, for a deployment that
@@ -59,6 +65,18 @@ waitForDatabase:
     tag: "18"
     pullPolicy: IfNotPresent
   timeoutSeconds: 300
+
+# The board's images and tracks, at /data. One replica and the Recreate
+# strategy let a ReadWriteOnce claim follow the pod. The claim is kept when
+# the release is uninstalled; it is not backed up (docs/deploy-homelab.md).
+persistence:
+  # -- Off: an emptyDir, which loses every file when the pod goes.
+  enabled: true
+  storageClass: ur-default
+  size: 20Gi
+  accessMode: ReadWriteOnce
+  # -- A claim made outside the chart, used instead of the chart's own.
+  existingClaim: ""
 
 service:
   port: 3000

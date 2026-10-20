@@ -15,6 +15,9 @@ describe('configuration', () => {
       oidc: null,
       webDist: null,
       appVersion: 'dev',
+      dataDir: './data',
+      filesQuotaGb: 20,
+      filesGraceDays: 30,
     });
   });
 
@@ -30,6 +33,9 @@ describe('configuration', () => {
         PROMPTBOOK_ADMIN_PASSWORD: '14-characters!',
         WEB_DIST: '/srv/web',
         APP_VERSION: 'v0.1.0',
+        PROMPTBOOK_DATA_DIR: '/data',
+        PROMPTBOOK_FILES_QUOTA_GB: '5',
+        PROMPTBOOK_FILES_GRACE_DAYS: '7',
       }),
     ).toEqual({
       databaseUrl: base.DATABASE_URL,
@@ -41,6 +47,9 @@ describe('configuration', () => {
       oidc: null,
       webDist: '/srv/web',
       appVersion: 'v0.1.0',
+      dataDir: '/data',
+      filesQuotaGb: 5,
+      filesGraceDays: 7,
     });
   });
 
@@ -51,6 +60,14 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, DATABASE_URL: 'mysql://x' })).toThrow(/DATABASE_URL must be a postgres:/);
     expect(() => loadConfig({ ...base, PORT: 'eighty' })).toThrow(/PORT must be a whole number/);
     expect(() => loadConfig({ ...base, TRUST_PROXY_HOPS: '-1' })).toThrow(/TRUST_PROXY_HOPS must be a whole number of at least 0/);
+    expect(() => loadConfig({ ...base, PROMPTBOOK_FILES_QUOTA_GB: '0' })).toThrow(
+      /PROMPTBOOK_FILES_QUOTA_GB must be a whole number of at least 1/,
+    );
+    expect(() => loadConfig({ ...base, PROMPTBOOK_FILES_QUOTA_GB: '2.5' })).toThrow(/PROMPTBOOK_FILES_QUOTA_GB/);
+    expect(() => loadConfig({ ...base, PROMPTBOOK_FILES_GRACE_DAYS: '0' })).toThrow(
+      /PROMPTBOOK_FILES_GRACE_DAYS must be a whole number of at least 1/,
+    );
+    expect(() => loadConfig({ ...base, PROMPTBOOK_FILES_GRACE_DAYS: 'a month' })).toThrow(/PROMPTBOOK_FILES_GRACE_DAYS/);
     expect(() => loadConfig({ ...base, PROMPTBOOK_ADMIN_USERNAME: 'steve' })).toThrow(
       /PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD must be set together/,
     );

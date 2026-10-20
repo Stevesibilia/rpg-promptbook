@@ -39,6 +39,10 @@ services:
       PROMPTBOOK_ADMIN_PASSWORD: ${PROMPTBOOK_ADMIN_PASSWORD:-}
       # The release the rail shows; "dev" shows none.
       APP_VERSION: ${APP_VERSION:-dev}
+    volumes:
+      # The board's images and tracks, kept across restarts and rebuilds.
+      - app-data:/data
 
 volumes:
   postgres:
+  app-data:

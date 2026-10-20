@@ -15,6 +15,7 @@ import {
   setTitle,
   updateTodo,
 } from '../src/index.js';
+import { randomId } from '../src/doc.js';
 import { project, replica, sync } from './helpers.js';
 
 const texts = (doc: Y.Doc) => readTodo(doc).map((t) => t.text);
@@ -175,5 +176,27 @@ describe('concurrent edits on two documents', () => {
     sync(a, b);
     expect(seedVersions(a)).toEqual(seedVersions(b));
     expect(seedVersions(a).map((s) => s.text).sort()).toEqual(['Da A', 'Da B', 'Prima']);
+  });
+});
+
+describe('randomId', () => {
+  const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it('uses crypto.randomUUID when there is one', () => {
+    expect(randomId()).toMatch(UUID4);
+  });
+
+  // A page served over plain HTTP has no crypto.randomUUID.
+  it('builds a version 4 UUID from getRandomValues outside a secure context', () => {
+    const real = globalThis.crypto;
+    const getRandomValues = (array: Uint8Array<ArrayBuffer>) => real.getRandomValues(array);
+    Object.defineProperty(globalThis, 'crypto', { value: { getRandomValues }, configurable: true });
+    try {
+      const ids = new Set(Array.from({ length: 200 }, () => randomId()));
+      expect(ids.size).toBe(200);
+      for (const id of ids) expect(id).toMatch(UUID4);
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', { value: real, configurable: true });
+    }
   });
 });

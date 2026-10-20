@@ -12,6 +12,8 @@ const project = (patch: Partial<DesktopProjectStatus> = {}): DesktopProjectStatu
   title: "L'Ancora di Sabaoth",
   downloaded: true,
   bytes: 1400,
+  filesMissing: 0,
+  fileBytes: 0,
   localOnly: false,
   refused: false,
   synced: true,

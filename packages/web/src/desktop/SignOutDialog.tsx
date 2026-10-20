@@ -23,13 +23,20 @@ export function notOnServer(projects: readonly DesktopProjectStatus[]): Pending[
     .filter((p) => p.changes > 0);
 }
 
-export function signOutTexts(remove: boolean, pending: readonly Pending[]) {
+// `files`: the board's files on this computer the server does not have
+// (waiting to upload, or refused).
+export function signOutTexts(remove: boolean, pending: readonly Pending[], files = 0) {
   const total = pending.reduce((n, p) => n + p.changes, 0);
-  const lost = remove && total > 0;
+  const lost = remove && (total > 0 || files > 0);
+  const filesText = `${files} ${files === 1 ? 'file' : 'files'} not yet uploaded`;
+  let warning: string | null = null;
+  if (lost && total > 0) {
+    warning = `${changes(total)} not yet on the server: ${pending.map((p) => `${p.title} (${p.changes})`).join(', ')}${files > 0 ? `, and ${filesText}` : ''}.`;
+  } else if (lost) {
+    warning = `${filesText.charAt(0).toUpperCase()}${filesText.slice(1)}.`;
+  }
   return {
-    warning: lost
-      ? `${changes(total)} not yet on the server: ${pending.map((p) => `${p.title} (${p.changes})`).join(', ')}.`
-      : null,
+    warning,
     note: !remove
       ? 'Sign in again to sync. Nothing is downloaded twice.'
       : lost
@@ -44,11 +51,12 @@ export function SignOutDialog({ onClose, onToast }: { onClose(): void; onToast(m
   const desktop = useDesktop();
   const info = useStore(desktop.info);
   const sync = useSync();
+  const files = useStore(desktop.files);
   const [remove, setRemove] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const computer = osWords(info.os).computer;
-  const texts = signOutTexts(remove, notOnServer(sync.device?.projects ?? []));
+  const texts = signOutTexts(remove, notOnServer(sync.device?.projects ?? []), files.waiting.length + files.refused.length);
 
   async function signOut() {
     if (busy) return;

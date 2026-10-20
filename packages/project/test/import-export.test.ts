@@ -118,6 +118,7 @@ describe('exportProject', () => {
       'inspiration.md',
       'research.md',
       'brainstorm-log.md',
+      'board.md',
       'project.json',
     ]);
     expect(files['inspiration.md']).toBe('');

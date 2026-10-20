@@ -56,6 +56,9 @@ const schema = databaseSchema.extend({
   OIDC_CLIENT_SECRET: optional,
   OIDC_PROVIDER_NAME: optional,
   OIDC_REDIRECT_URI: optionalUrl(['http:', 'https:']),
+  PROMPTBOOK_DATA_DIR: optional,
+  PROMPTBOOK_FILES_QUOTA_GB: integer(20, 1),
+  PROMPTBOOK_FILES_GRACE_DAYS: integer(30, 1),
 });
 
 // The three variables that turn single sign-on on.
@@ -77,6 +80,13 @@ export interface Config {
   // The release this server runs, reported by the health check; "dev" when
   // unset.
   appVersion: string;
+  // The folder the file store keeps images and tracks in (asset-board design
+  // decision 3): /data in the image, ./data in development.
+  dataDir: string;
+  // What each user may store, counted once per content; GiB.
+  filesQuotaGb: number;
+  // How long a project keeps a file its document no longer lists.
+  filesGraceDays: number;
 }
 
 export interface OidcConfig {
@@ -125,6 +135,9 @@ export function loadConfig(env: Env = process.env): Config {
     oidc,
     webDist: values.WEB_DIST ?? null,
     appVersion: values.APP_VERSION ?? 'dev',
+    dataDir: values.PROMPTBOOK_DATA_DIR ?? './data',
+    filesQuotaGb: values.PROMPTBOOK_FILES_QUOTA_GB,
+    filesGraceDays: values.PROMPTBOOK_FILES_GRACE_DAYS,
   };
 }
 

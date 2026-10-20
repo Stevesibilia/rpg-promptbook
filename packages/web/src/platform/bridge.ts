@@ -38,6 +38,11 @@ export const channels = {
 
   filesOpenPdf: 'pb:files:open-pdf',
   filesSave: 'pb:files:save',
+  // The board's images and tracks (asset-board design decision 13).
+  filesPut: 'pb:files:put',
+  filesStatus: 'pb:files:status',
+  // Main to renderer.
+  filesOnStatus: 'pb:files:on-status',
 } as const;
 
 export type Channel = (typeof channels)[keyof typeof channels];
@@ -73,6 +78,26 @@ export interface DeviceUsage {
   bytes: number;
   projects: number;
   localSnapshots: number;
+  // The board's images and tracks on this computer, and their bytes.
+  files: number;
+  fileBytes: number;
+}
+
+// The board's files as main holds them (asset-board design decision 14):
+// the images and tracks stored here and not yet on the server (their
+// thumbnails go with them, uncounted), the downloads in progress, and those
+// the server refused (400, 413, 415 or 507) with its message.
+export interface FilesStatus {
+  waiting: { projectId: string; sha256: string }[];
+  downloading: number;
+  refused: { projectId: string; sha256: string; message: string }[];
+}
+
+// pb:files:put's answer: the type main read from the bytes, and whether the
+// file is on the server already or waits on this computer to be uploaded.
+export interface PutFileResult {
+  mime: string;
+  state: 'uploaded' | 'waiting';
 }
 
 // One REST call through main (design decision 7). The body is JSON text, as
@@ -114,6 +139,11 @@ export interface DesktopProjectStatus {
   downloaded: boolean;
   // Bytes of the encoded document once downloaded, for First sync.
   bytes: number;
+  // The board's images and tracks the document lists that are not on this
+  // computer yet (a download the server answered 404 is not counted), and
+  // the bytes of those that are (asset-board design decision 14).
+  filesMissing: number;
+  fileBytes: number;
   // Made on this device and not on the server yet (D9).
   localOnly: boolean;
   // The server refused its upload (409 or 400): it stays on this device
@@ -224,5 +254,9 @@ export interface PromptbookBridge {
     // A save dialog, then the bytes, or what an /api/ path answers (an
     // export), written to the chosen file. False when the user cancelled.
     save(source: string | Uint8Array, name: string): Promise<boolean>;
+    // A board's image or track kept on this computer and queued for upload.
+    put(projectId: string, sha256: string, bytes: Uint8Array, mime: string): Promise<PutFileResult>;
+    status(): Promise<FilesStatus>;
+    onStatus(cb: (status: FilesStatus) => void): Unsubscribe;
   };
 }

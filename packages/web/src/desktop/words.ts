@@ -17,9 +17,13 @@ const words: Record<DeviceInfo['os'], OsWords> = {
 
 export const osWords = (os: DeviceInfo['os']): OsWords => words[os];
 
-// «38 MB», «4.2 MB», «0.3 MB», «48 kB».
+// «1.3 GB», «38 MB», «4.2 MB», «0.3 MB», «48 kB».
 export function size(bytes: number): string {
   if (bytes < 100_000) return `${Math.max(1, Math.round(bytes / 1000))} kB`;
+  if (bytes >= 1_000_000_000) {
+    const gb = bytes / 1_000_000_000;
+    return `${gb < 10 ? gb.toFixed(1) : Math.round(gb)} GB`;
+  }
   const mb = bytes / 1_000_000;
   return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
 }

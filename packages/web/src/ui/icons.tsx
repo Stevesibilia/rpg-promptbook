@@ -46,6 +46,57 @@ export const WarningIcon = icon(
 export const InspirationIcon = icon(
   <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z" />,
 );
+// The board's: a picture and a note (asset-board design decision 12).
+export const BoardIcon = icon(
+  <>
+    <rect x="3" y="4" width="13" height="11" rx="1.5" />
+    <path d="M3 12l3.5-3 3 2.5 2-1.5L16 13" />
+    <path d="M19 9v9.5" />
+    <circle cx="17" cy="18.5" r="2" />
+    <path d="M19 9l2.5-1" />
+  </>,
+);
+export const ImageIcon = icon(
+  <>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <circle cx="9" cy="10" r="2" />
+    <path d="M21 16l-5-5L5 20" />
+  </>,
+);
+export const MusicIcon = icon(
+  <>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="17" cy="16" r="3" />
+  </>,
+);
+export const CopyIcon = icon(
+  <>
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+  </>,
+);
+export const EditIcon = icon(
+  <>
+    <path d="M4 20h4L19 9l-4-4L4 16z" />
+    <path d="M14 6l4 4" />
+  </>,
+);
+export const HelpIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5" />
+  </>,
+);
+export const TrashIcon = icon(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />);
+export const DropIcon = icon(
+  <>
+    <path d="M12 3v12M7 10l5 5 5-5" />
+    <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+  </>,
+);
+export const PrevIcon = icon(<path d="M15 5l-7 7 7 7" />);
+export const NextIcon = icon(<path d="M9 5l7 7-7 7" />);
 export const LogIcon = icon(<path d="M4 5h16v11H8l-4 4z" />);
 export const HistoryIcon = icon(
   <>

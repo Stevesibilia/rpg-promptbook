@@ -1,6 +1,7 @@
 import { startUrl, SIGNED_IN_PATH } from '../auth/oidc.js';
 import { NoticeError, POPUPS_BLOCKED } from '../editor/pdf/notice.js';
-import { asRelease, type Platform } from './index.js';
+import type { PutFileResult } from './bridge.js';
+import { asRelease, fileUrl, PutFileError, type Platform } from './index.js';
 import { WebSyncRegistry } from './webRegistry.js';
 
 // The browser: exactly what the web client did before the desktop app.
@@ -12,6 +13,38 @@ function blobUrl(blob: Blob): string {
   const url = URL.createObjectURL(blob);
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   return url;
+}
+
+const UNREACHABLE = 'The server cannot be reached.';
+
+// HEAD first: a file the project still links (removed within the grace
+// period, or added from another device) is not sent again. Then the raw
+// bytes, which the server hashes and checks against the name.
+async function putFile(projectId: string, sha256: string, bytes: Uint8Array, mime: string): Promise<PutFileResult> {
+  const url = fileUrl(projectId, sha256);
+  try {
+    const head = await fetch(url, { method: 'HEAD', credentials: 'include' });
+    if (head.ok) return { mime: head.headers.get('content-type') ?? mime, state: 'uploaded' };
+  } catch {
+    throw new PutFileError(0, UNREACHABLE);
+  }
+  let answer: Response;
+  try {
+    answer = await fetch(url, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: bytes as Uint8Array<ArrayBuffer>,
+    });
+  } catch {
+    throw new PutFileError(0, UNREACHABLE);
+  }
+  const data = (await answer.json().catch(() => null)) as { mime?: unknown; message?: unknown } | null;
+  if (!answer.ok) {
+    const message = typeof data?.message === 'string' && data.message ? data.message : null;
+    throw new PutFileError(answer.status, message ?? `The server answered ${answer.status}.`);
+  }
+  return { mime: typeof data?.mime === 'string' ? data.mime : mime, state: 'uploaded' };
 }
 
 export function createWebPlatform(): Platform {
@@ -26,6 +59,8 @@ export function createWebPlatform(): Platform {
     },
     init: async () => {},
     request: (path, init) => fetch(path, init),
+    fileUrl,
+    putFile,
     openSync: () => (registry ??= new WebSyncRegistry()),
 
     // One request for the page's life; the server's `dev` is no release.

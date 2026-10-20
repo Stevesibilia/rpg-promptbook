@@ -7,6 +7,8 @@ const project = (title: string, patch: Partial<DesktopProjectStatus> = {}): Desk
   title,
   downloaded: true,
   bytes: 0,
+  filesMissing: 0,
+  fileBytes: 0,
   localOnly: false,
   refused: false,
   synced: true,
@@ -46,6 +48,19 @@ describe('the sign-out dialog', () => {
       action: 'Sign out and remove',
       danger: false,
     });
+  });
+
+  it('counts the board files not yet uploaded with the changes', () => {
+    expect(signOutTexts(true, pending, 4).warning).toBe(
+      "3 changes not yet on the server: L'Ancora di Sabaoth (2), Il ballo dei Lorenzetti (1), and 4 files not yet uploaded.",
+    );
+    expect(signOutTexts(true, [], 4)).toMatchObject({
+      warning: '4 files not yet uploaded.',
+      action: 'Sign out and remove',
+      danger: true,
+    });
+    expect(signOutTexts(true, [], 1).warning).toBe('1 file not yet uploaded.');
+    expect(signOutTexts(false, [], 4).warning).toBeNull();
   });
 
   it('counts edits, writes kept in memory and projects made here not uploaded', () => {

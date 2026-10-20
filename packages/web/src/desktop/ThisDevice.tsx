@@ -80,7 +80,8 @@ export function ThisDevice() {
           <DiskIcon className="ic" />
           {usage ? (
             <>
-              <b>{size(usage.bytes)}</b> {usage.projects} projects · {usage.localSnapshots} local snapshots
+              <b>{size(usage.bytes)}</b> {usage.projects} projects · {usage.localSnapshots} local snapshots ·{' '}
+              {usage.files} images and tracks
             </>
           ) : (
             '…'

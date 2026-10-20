@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
 // promptbook://app/, the window's origin (desktop-app design decision 2): the
-// web client's build from app/web. A path naming a file there answers it; any
+// web client's build from app/web, and the board's files (fileRoute). A path naming a file there answers it; any
 // other path answers index.html, the single-page app's fallback; a path that
 // leaves the folder, or another host, answers 404. Every answer carries the
 // server's content security policy with connect-src 'self' only.
@@ -18,6 +18,7 @@ export const CSP = [
   "form-action 'self'",
   "frame-ancestors 'self'",
   "img-src 'self' data: blob:",
+  "media-src 'self' blob:",
   "object-src 'none'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "script-src-attr 'none'",
@@ -79,6 +80,26 @@ export function resolveAppPath(root: string, requestUrl: string): string | 'inde
   const file = resolve(base, `.${path}`);
   if (!file.startsWith(base + sep)) return null;
   return file;
+}
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const FILE_PATH = new RegExp(`^/api/projects/(${UUID})/files/([0-9a-f]{64})$`);
+
+// The board's file route (asset-board design decision 14), answered by main
+// before the app's files: the project and the file a request names, 'invalid'
+// for any other path under /api/ (never the single-page app's fallback), or
+// null for the app. Only these two values reach the files store: no part of
+// the path names anything on disk.
+export function fileRoute(requestUrl: string): { projectId: string; sha256: string } | 'invalid' | null {
+  let url: URL;
+  try {
+    url = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== `${SCHEME}:` || url.host !== 'app' || !url.pathname.startsWith('/api/')) return null;
+  const m = FILE_PATH.exec(url.pathname);
+  return m ? { projectId: m[1]!, sha256: m[2]! } : 'invalid';
 }
 
 const headers = (type: string) => ({

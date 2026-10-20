@@ -356,6 +356,7 @@ describe('export', () => {
     );
     const files = unzipSync(response.rawPayload);
     expect(Object.keys(files).filter((path) => !path.endsWith('/')).sort()).toEqual([
+      'Pioggia su- Kenmore Street/board.md',
       'Pioggia su- Kenmore Street/brainstorm-log.md',
       'Pioggia su- Kenmore Street/document.md',
       'Pioggia su- Kenmore Street/inspiration.md',

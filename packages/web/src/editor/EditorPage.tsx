@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
@@ -28,6 +28,7 @@ import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
+import { analysisField } from './analysis/field.js';
 import { jumpTo } from './writes.js';
 import './editor.css';
 import './pdf/pdf.css';
@@ -188,6 +189,48 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     requestAnimationFrame(() => document.querySelector('.inspector .checks')?.scrollIntoView({ block: 'nearest' }));
   };
 
+  // `?scene=S3` (asset-board design decision 12): once the first analysis is
+  // in, the cursor goes to that scene's heading as the outline's jump puts
+  // it, and the parameter is dropped. An unknown id leaves the document at
+  // the top.
+  const [search, setSearch] = useSearchParams();
+  const scene = search.get('scene');
+  useEffect(() => {
+    if (!scene || !view) return;
+    const drop = () =>
+      setSearch(
+        (params) => {
+          const next = new URLSearchParams(params);
+          next.delete('scene');
+          return next;
+        },
+        { replace: true },
+      );
+    let done = false;
+    // False while the analysis is not in yet.
+    const tryJump = (): boolean => {
+      if (done) return true;
+      const analysis = view.state.field(analysisField, false);
+      if (analysis?.checked && !analysis.result) return false;
+      done = true;
+      const item = analysis?.checked
+        ? outlineOf(view.state).find((i) => i.kind === 'scene' && i.id === scene)
+        : undefined;
+      if (item) jumpTo(view, item.head);
+      drop();
+      return true;
+    };
+    if (tryJump()) return;
+    // Not from inside the editor's update: a jump dispatches.
+    const off = updates(() => {
+      if (!done) setTimeout(tryJump);
+    });
+    return () => {
+      done = true;
+      off();
+    };
+  }, [scene, view, updates, setSearch]);
+
   // Read once, when the editor's view is created.
   const extensions = useMemo(
     () => [
@@ -201,6 +244,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     <Shell
       rail="document"
       project={meta.id}
+      category={meta.category}
       focus={focus}
       wideRight={pane}
       crumbs={<ProjectCrumbs meta={meta} />}

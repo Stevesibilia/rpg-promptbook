@@ -19,7 +19,11 @@ export interface AccessTokens {
 export interface ServerRequest {
   method: string;
   headers?: Record<string, string>;
-  body?: string | Uint8Array;
+  // A function makes a stream afresh for each attempt (a file upload).
+  body?: string | Uint8Array | (() => ReadableStream<Uint8Array>);
+  // How long the whole exchange may take, body included; TIMEOUT_MS by default.
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 const TIMEOUT_MS = 30_000;
@@ -43,14 +47,18 @@ export class ServerClient {
   }
 
   private async send(path: string, init: ServerRequest, token: string): Promise<Response> {
+    const timeout = AbortSignal.timeout(init.timeoutMs ?? TIMEOUT_MS);
+    const body = typeof init.body === 'function' ? init.body() : init.body;
     try {
       return await this.fetchImpl(`${this.origin}${path}`, {
         method: init.method,
         headers: { accept: 'application/json', ...init.headers, authorization: `Bearer ${token}` },
-        ...(init.body !== undefined ? { body: init.body } : {}),
+        ...(body !== undefined ? { body: body as RequestInit['body'] } : {}),
+        // A stream is sent as it is read.
+        ...(typeof init.body === 'function' ? { duplex: 'half' } : {}),
         redirect: 'manual',
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+        signal: init.signal ? AbortSignal.any([timeout, init.signal]) : timeout,
+      } as RequestInit);
     } catch (error) {
       throw new OfflineError(error);
     }

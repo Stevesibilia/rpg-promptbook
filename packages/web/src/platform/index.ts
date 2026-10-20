@@ -1,5 +1,5 @@
 import type { SyncRegistry } from '../sync/registry.js';
-import type { PromptbookBridge } from './bridge.js';
+import type { PromptbookBridge, PutFileResult } from './bridge.js';
 import { createDesktopPlatform, type Desktop } from './desktop.js';
 import { createWebPlatform } from './web.js';
 
@@ -33,8 +33,31 @@ export interface Platform {
   // the browser (once), the app's own on the desktop. null when unknown, `dev`
   // or on an error; never rejects.
   releaseVersion(): Promise<string | null>;
+  // The URL an <img> or <audio> loads a board's file from: the same path on
+  // both, served by the server in the browser and by main's protocol on the
+  // desktop (asset-board design decision 13).
+  fileUrl(projectId: string, sha256: string): string;
+  // Stores a board's file for the project: the browser asks HEAD and PUTs it
+  // only when the project does not link it yet (design decision 5's
+  // re-link); the desktop keeps it on disk and queues the upload. Rejects
+  // with a PutFileError.
+  putFile(projectId: string, sha256: string, bytes: Uint8Array, mime: string): Promise<PutFileResult>;
   // The desktop's own state; null in the browser.
   desktop: Desktop | null;
+}
+
+export const fileUrl = (projectId: string, sha256: string) =>
+  `/api/projects/${encodeURIComponent(projectId)}/files/${sha256}`;
+
+// A file that could not be stored, with the message the board shows: the
+// server's, or the network's. `status` is 0 when no answer came.
+export class PutFileError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 // `0.5.1` and `v0.5.1` both read `v0.5.1`; nothing for an empty value, `dev`

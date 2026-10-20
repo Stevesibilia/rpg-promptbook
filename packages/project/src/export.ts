@@ -1,4 +1,5 @@
 import type * as Y from 'yjs';
+import { readDocumentBoard, type FileEntry } from './board.js';
 import {
   readDocument,
   readInspiration,
@@ -106,9 +107,94 @@ export function logMarkdown(entries: readonly LogEntry[]): string {
     .join('\n');
 }
 
+// A name that stays inside its folder on every file system: no separators,
+// reserved characters or control characters, and not empty, "." or "..".
+function fileSafe(name: string): string {
+  const clean = name
+    .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '-')
+    .trim()
+    .replace(/[. ]+$/, '');
+  return clean === '' ? 'file' : clean;
+}
+
+// " (2)", " (3)"… before the extension until the name is free in its folder.
+function freeName(name: string, taken: Set<string>): string {
+  const dot = name.lastIndexOf('.');
+  const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
+  let candidate = name;
+  for (let n = 2; taken.has(candidate.toLowerCase()); n++) candidate = `${stem} (${n})${ext}`;
+  taken.add(candidate.toLowerCase());
+  return candidate;
+}
+
+// Text in a fenced block that no run of backticks inside it can close.
+function fenced(text: string): string {
+  const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}\n${text}\n${fence}`;
+}
+
+export interface ExportFile {
+  // Inside the project's folder: files/<scene id>/<name>, or
+  // files/unmatched/<name>.
+  path: string;
+  // The bytes are in the file store under this name.
+  sha256: string;
+}
+
+// board.md and the list of the files to put beside it (asset-board design
+// decision 16): per appendix row its prompts, who wrote them and when, and
+// the chosen files; every image and track in its scene's folder, the ones in
+// the Unmatched tray in files/unmatched. Thumbnails are not listed.
+export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[] } {
+  const { rows, unmatched } = readDocumentBoard(doc);
+  const taken = new Map<string, Set<string>>();
+  const names = new Map<string, string>();
+  const files: ExportFile[] = [];
+  const place = (file: FileEntry, folder: string) => {
+    const used = taken.get(folder) ?? new Set<string>();
+    taken.set(folder, used);
+    const name = freeName(fileSafe(file.name), used);
+    names.set(file.id, name);
+    files.push({ path: `files/${folder}/${name}`, sha256: file.sha256 });
+  };
+  for (const row of rows) for (const file of [...row.images, ...row.tracks]) place(file, fileSafe(row.sceneId));
+  for (const { file } of unmatched) place(file, 'unmatched');
+
+  const chosen = (id: string | null) => (id === null ? [] : [`Chosen: ${names.get(id) ?? ''}`]);
+  const sections = rows.map((row) => {
+    const lines = [`## ${row.sceneId} · ${oneLine(row.title)}`, '', '### Image', ''];
+    if (row.image) lines.push(fenced(row.image.prompt), '', `${who(row.image.by)} · ${row.image.at}`);
+    else lines.push('No prompt yet.');
+    lines.push(...(row.chosenImage ? ['', ...chosen(row.chosenImage)] : []));
+    lines.push('', '### Music', '');
+    if (row.music) {
+      lines.push(
+        `Title: ${oneLine(row.music.title)}`,
+        '',
+        'Style:',
+        '',
+        fenced(row.music.style),
+        '',
+        'Lyrics:',
+        '',
+        fenced(row.music.lyrics),
+        '',
+        `${who(row.music.by)} · ${row.music.at}`,
+      );
+    } else {
+      lines.push('No prompt yet.');
+    }
+    lines.push(...(row.chosenTrack ? ['', ...chosen(row.chosenTrack)] : []));
+    return `${lines.join('\n')}\n`;
+  });
+  return { markdown: sections.join('\n'), files };
+}
+
 // The files of one project's folder: the document as stored, the to-do list,
 // every seed version newest first, the sources of inspiration, the research,
-// the brainstorm log and the metadata. Snapshots stay on the server.
+// the brainstorm log, the board and the metadata. Snapshots stay on the
+// server; the board's files come from exportBoard.
 export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOptions): Record<string, string> {
   const meta = readMeta(doc);
   const seeds = seedVersions(doc)
@@ -133,6 +219,7 @@ export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOpt
     'inspiration.md': inspirationMarkdown(readInspiration(doc)),
     'research.md': researchMarkdown(readTopics(doc), readNotes(doc)),
     'brainstorm-log.md': logMarkdown(readLog(doc)),
+    'board.md': exportBoard(doc).markdown,
     'project.json': `${JSON.stringify(project, null, 2)}\n`,
   };
 }
@@ -141,7 +228,9 @@ export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOpt
 // systems refuse replaced by "-", made unique among the names already taken
 // with " (2)", " (3)"… Adds the name it returns to `taken`.
 export function exportFolderName(title: string, taken: Set<string>): string {
-  const base = title.replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled';
+  const cleaned = title.replace(/[/\\:*?"<>|\u0000-\u001f]/g, '-').trim();
+  // "." and ".." would climb out of the folder the zip is extracted into.
+  const base = cleaned === '' || /^\.+$/.test(cleaned) ? 'Untitled' : cleaned;
   let name = base;
   for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${base} (${n})`;
   taken.add(name.toLowerCase());

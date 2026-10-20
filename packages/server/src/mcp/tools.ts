@@ -31,6 +31,7 @@ import { withLiveDocument } from '../live.js';
 import { createProject, getProject, listProjects, loadProjectDoc, type ProjectRow } from '../projects.js';
 import { textHash } from '../snapshots.js';
 import { INSUFFICIENT_SCOPE, RateLimited, toToolError } from './errors.js';
+import { registerBoardTools } from './board.js';
 import { addScene, check, locate, MARKDOWN_MAX, replaceSection } from './edits.js';
 import type { McpCaller, McpDeps } from './server.js';
 
@@ -58,6 +59,8 @@ export const TOOL_NAMES = [
   'add_research_topic',
   'get_brainstorm_log',
   'add_brainstorm_entry',
+  'get_board',
+  'set_scene_prompts',
 ] as const;
 
 const READ_LOG_FIRST = 'At the start of a new chat about a project, read its brainstorm log first.';
@@ -66,6 +69,7 @@ export const INSTRUCTIONS = [
   'Promptbook holds the prep of tabletop role-playing games: campaigns, adventures and one-shots.',
   `${READ_LOG_FIRST} At the end of a brainstorm, write one entry with add_brainstorm_entry: the ideas, the decisions, the rejected ideas with why, and the open questions.`,
   'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
+  'For a board’s prompts, read get_board first, then write one scene at a time with set_scene_prompts.',
 ].join('\n');
 
 // What a scene needs so that adding it adds no error, read from the
@@ -103,11 +107,30 @@ interface Hints {
   destructive?: boolean;
 }
 
+type ToolName = (typeof TOOL_NAMES)[number];
+
+// What a group of tools in another file needs of registerTools: the wrapper
+// every tool runs through, the caller's project and document, and the schemas
+// the tools share.
+export interface ToolKit {
+  tool<Shape extends z.ZodRawShape>(
+    name: ToolName,
+    description: string,
+    hints: Hints,
+    shape: Shape,
+    run: (args: z.output<z.ZodObject<Shape>>) => Promise<unknown>,
+  ): void;
+  projectOf(id: string): Promise<ProjectRow>;
+  docOf(project: ProjectRow): Promise<Y.Doc>;
+  write<T>(project: ProjectRow, fn: (doc: Y.Doc) => T): Promise<T>;
+  schemas: { projectId: typeof projectId; requiredText: typeof requiredText; text: typeof text };
+}
+
 export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log, quota }: McpDeps): void {
   // Every tool runs through here: the scope check, one envelope for the
   // answer, one translation of failures.
   const tool = <Shape extends z.ZodRawShape>(
-    name: (typeof TOOL_NAMES)[number],
+    name: ToolName,
     description: string,
     hints: Hints,
     shape: Shape,
@@ -548,4 +571,6 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       return { entry };
     },
   );
+
+  registerBoardTools({ tool, projectOf, docOf, write, schemas: { projectId, requiredText, text } });
 }

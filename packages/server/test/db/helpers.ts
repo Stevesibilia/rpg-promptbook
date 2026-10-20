@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { createUser, type User } from '../../src/accounts/users.js';
 import { buildApp, type AppOptions } from '../../src/app.js';
@@ -21,6 +24,15 @@ export async function seedDesktopClient(on: Queryable): Promise<void> {
 export const ORIGIN = 'http://localhost:8090';
 export const PASSWORD = 'correct horse battery';
 
+// A data folder of its own for each configuration, removed with the apps.
+const dataDirs: string[] = [];
+
+export function tempDataDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'promptbook-data-'));
+  dataDirs.push(dir);
+  return dir;
+}
+
 export function testConfig(overrides: Partial<Config> = {}): Config {
   return {
     databaseUrl: testDatabaseUrl(),
@@ -32,6 +44,9 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     oidc: null,
     webDist: null,
     appVersion: 'dev',
+    dataDir: overrides.dataDir ?? tempDataDir(),
+    filesQuotaGb: 20,
+    filesGraceDays: 30,
     ...overrides,
   };
 }
@@ -49,6 +64,7 @@ export async function startApp(
 
 export async function closeApps(): Promise<void> {
   await Promise.all(open.splice(0).map((app) => app.close()));
+  for (const dir of dataDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 }
 
 export const steve = (password = PASSWORD): Promise<User> =>

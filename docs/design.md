@@ -62,7 +62,9 @@ network.
   - **iPad or phone offline**, if ever needed: wrap the same frontend with
     Capacitor. Not planned.
 - **Server:** Fastify (like gdrarchive) plus Hocuspocus, the Node sync server
-  for Yjs, persisting to Postgres. Images and audio in object storage.
+  for Yjs, persisting to Postgres. Images and audio on a persistent volume,
+  named by their SHA-256 (built 2026-10-20, #26); object storage can replace
+  it behind the same interface.
 - **Auth:** single sign-on through OpenID Connect, Authentik on the homelab,
   like gdrarchive and cronista (decided 2026-10-19, #17). The account is the
   provider's identity, keyed by issuer and subject and created at its first
@@ -401,12 +403,19 @@ protocol; the web client reaches the network and the browser only through
 
 ### Asset board
 
-One row per scene, built from the `visual:`/`mood:` appendix of the prep
-document:
+Built 2026-10-20 (#26, the OpenSpec change `asset-board`): "Images and music"
+in the rail. One row per scene, built from the `visual:`/`mood:` appendix of
+the prep document:
 
 - A Midjourney prompt and a Suno prompt per row, written with the rules of the
   `midjourney-prompts` and `suno-prompts` skills, each with a copy button.
 - A status per asset: wanted, received, chosen.
+- Claude writes the prompts through the connector (`get_board`,
+  `set_scene_prompts`); the user edits them by hand. Prompts are not
+  versioned.
+- Files are stored once per content, reachable only by their owner, and
+  removed 30 days after no document lists them. The desktop app keeps every
+  file of every project and works with the board offline.
 
 ### Intake by filename
 
@@ -419,7 +428,8 @@ Downloads say what they are:
   sets the title in the prompt.
 
 Drop the whole Downloads batch on the board: each file matches its scene.
-Unmatched files go to a tray to assign by hand.
+Unmatched files go to a tray to assign by hand, or to match again once their
+prompt or title is written. Built 2026-10-20 (#26).
 
 ### PDF for the table
 
@@ -527,7 +537,7 @@ and managed from the UI, not in environment variables.
    offline sync, Markdown editor, the format package with validation in the
    editor, `.md` import with the converter from today's notes, MCP connector with the
    brainstorm log, desktop app plus browser access.
-2. Asset board with prompts and intake by filename.
+2. Asset board with prompts and intake by filename. Built 2026-10-20 (#26).
 3. `.cbpack` export.
 4. PDF in the desktop app with Typst: template ported from `stile.css`,
    checked against today's PDFs (Sabaoth first).

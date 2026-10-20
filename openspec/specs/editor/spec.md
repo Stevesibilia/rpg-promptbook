@@ -16,8 +16,9 @@ adventures and one-shots, the ⌘K hint and the sync pill; the outline on the
 left; the prep document in a CodeMirror 6 Markdown editor bound to the
 project's Yjs text, in Spectral, about 70 characters wide; the inspector or
 the PDF preview on the right; the status bar. The rail SHALL hold Projects,
-Document, Inspiration, Research, Brainstorm log and History, and Settings at
-the bottom, as in
+Document, Inspiration, Research, Images and music (adventures and one-shots
+only, as in [docs/mockups/board.html](../../../docs/mockups/board.html)),
+Brainstorm log and History, and Settings at the bottom, as in
 [docs/mockups/connector.html](../../../docs/mockups/connector.html); the
 project entries SHALL be disabled while no project is open. The page SHALL
 NOT show export controls.
@@ -33,6 +34,12 @@ NOT show export controls.
 - **WHEN** the user presses Research in the rail, then Document
 - **THEN** the Research view of the same project opens, then the editor
   again with the same text
+
+#### Scenario: No board for a campaign
+
+- **WHEN** a campaign is open
+- **THEN** the rail shows no Images and music entry, and
+  `/projects/<id>/board` opens the Document view instead
 
 ### Requirement: Live preview
 
@@ -208,3 +215,16 @@ the text after the front matter, and the template's name and version, or
 
 - **WHEN** the user adds an unknown field to a scene
 - **THEN** the error or warning count in the status bar goes up by one
+
+### Requirement: Opening a scene from another view
+
+The Document view SHALL accept a scene id in its address
+(`/projects/<id>?scene=S3`) and open with that scene's heading in view and
+the cursor on it, as the outline's jump does; an unknown id SHALL open the
+document at the top.
+
+#### Scenario: From the board
+
+- **WHEN** the user presses «Open the scene in the document» on the board's
+  S3 row
+- **THEN** the Document view opens with S3's heading in view

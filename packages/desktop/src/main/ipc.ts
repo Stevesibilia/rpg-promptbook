@@ -2,6 +2,7 @@ import { app as electronApp, BrowserWindow, dialog, ipcMain, shell, type IpcMain
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { MAX_FILE_BYTES as MAX_BOARD_FILE_BYTES } from 'promptbook-project';
 import { channels, type BridgeRequestInit, type DeviceInfo } from 'promptbook-web/src/platform/bridge.js';
 import type { App } from './app.js';
 import type { Updater } from './updater.js';
@@ -14,7 +15,9 @@ import { isAppUrl } from './window.js';
 // The handlers behind window.promptbook (desktop-app design decision 3).
 // Every message must come from a frame on promptbook://app/, and every
 // argument is checked before main acts on it: project ids are UUIDs, REST
-// paths start with /api/, updates and files are bytes of a bounded size.
+// paths start with /api/, updates and files are bytes of a bounded size, a
+// board file's hash is 64 hex digits (its bytes are hashed and sniffed again
+// in files.ts).
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const MAX_UPDATE_BYTES = 20 * 1024 * 1024;
@@ -31,6 +34,10 @@ const fail = (what: string): never => {
 export function checkSender(event: IpcMainInvokeEvent): void {
   const url = event.senderFrame?.url;
   if (!url || !isAppUrl(url)) throw new InvalidArgument('Not from the app.');
+}
+
+export function sha256(v: unknown): string {
+  return typeof v === 'string' && /^[0-9a-f]{64}$/.test(v) ? v : fail('sha256');
 }
 
 export function projectId(v: unknown): string {
@@ -150,6 +157,11 @@ export function registerIpc(app: App, updater: Updater): void {
     const error = await shell.openPath(file);
     if (error) throw new Error(error);
   });
+  // The renderer's MIME type is not trusted: main reads it from the bytes.
+  handle(channels.filesPut, (_event, id, sha, data) =>
+    app.putFile(projectId(id), sha256(sha), bytes(data, MAX_BOARD_FILE_BYTES)),
+  );
+  handle(channels.filesStatus, () => app.filesStatus());
   handle(channels.filesSave, async (event, source, name) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = { defaultPath: fileName(name) };
