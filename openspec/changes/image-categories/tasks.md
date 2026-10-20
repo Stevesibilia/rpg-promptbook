@@ -36,8 +36,8 @@ Assisted-by: <agent>/<model-id>
 
 ## 4. End-to-end tests, docs and preview (brief B)
 
-- [ ] 4.1 `e2e/board.spec.ts` (D10's browser flow) and the board steps of `e2e/desktop.spec.ts` (new labels, an NPC added offline reaching the web); `e2e/media.ts` names for every category and an ambiguous one
-- [ ] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.3 Docs: README (image prompts in four categories, the new connector tools); `docs/design.md` (Asset board: categories, a pointer to this change; Intake by filename across categories; CueBard export: one visual folder per category is ready in the model); Prettier on the files touched
+- [x] 4.1 `e2e/board.spec.ts` (D10's browser flow) and the board steps of `e2e/desktop.spec.ts` (new labels, an NPC added offline reaching the web); `e2e/media.ts` names for every category and an ambiguous one
+- [x] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.3 Docs: README (image prompts in four categories, the new connector tools); `docs/design.md` (Asset board: categories, a pointer to this change; Intake by filename across categories; CueBard export: one visual folder per category is ready in the model); Prettier on the files touched
 - [ ] 4.4 Owner preview: a local compose stack from `v0.6.0` (password mode, seeded user, a seeded adventure with an appendix), a board made there with one prompt per scene, files and a chosen image; then the app rebuilt from the branch on the same volumes, so the owner sees the real migration; a locally packaged Mac build (`--dir`) against it; give the owner the URLs, the app path and a folder of sample files named as Midjourney names them for scene, PC, NPC and handout prompts, with one name matching two prompts; then stop and wait for the owner's go
 - [ ] 4.5 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief B

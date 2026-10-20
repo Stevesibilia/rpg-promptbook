@@ -16,7 +16,8 @@ function chunk(type: string, data: Buffer): Buffer {
 
 let shade = 0;
 
-// A 16:9 picture in one colour, a band of another across it.
+// A 16:9 picture in one colour, a band of another across it; `portrait()`
+// for a PC's or an NPC's 2:3.
 export function png(width = 160, height = 90): Buffer {
   shade += 1;
   const [r, g, b] = [(shade * 53) % 256, (shade * 97) % 256, (shade * 151) % 256];
@@ -43,6 +44,8 @@ export function png(width = 160, height = 90): Buffer {
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
+
+export const portrait = () => png(120, 180);
 
 let tone = 0;
 
@@ -73,7 +76,9 @@ export function wav(seconds = 1): Buffer {
 }
 
 // Midjourney's download name: the user, the prompt's first words in lower
-// case joined by underscores and cut, the job's id, the image's number.
+// case joined by underscores and cut, the job's id, the image's number. The
+// same for a prompt of any category; two prompts that start with the same
+// words give a name that matches both.
 export function midjourneyName(prompt: string, n: number, { user = 'e2e', job = randomUUID(), words = 7 } = {}): string {
   const first = prompt
     .replace(/--\S+(\s+\S+)?/g, '')

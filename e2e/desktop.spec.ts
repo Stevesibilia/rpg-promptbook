@@ -15,7 +15,8 @@ import { baseURL, compose, password, username } from './stack.js';
 // client shows it, a local snapshot in History, and both ways of signing out.
 // The board (asset-board design decision 18): images dropped offline stay on
 // this computer across the relaunch, upload once the server is back and show
-// on the web in the same scene; an image added on the web reaches the app.
+// on the web in the same scene; an image added on the web reaches the app;
+// an NPC added offline reaches the web (image-categories design decision 10).
 // Runs the unpackaged app from packages/desktop/dist; in CI under xvfb-run.
 
 const desktop = fileURLToPath(new URL('../packages/desktop/', import.meta.url));
@@ -135,6 +136,7 @@ async function loadedImages(p: Page, sceneId: string): Promise<number> {
 }
 
 const PROMPT = 'A pier at dawn in Messina, fishing boats, cold light --ar 16:9 --v 8.1';
+const NPC = 'Portrait of an old Sicilian fisherman mending nets on the pier --ar 2:3 --v 8.1';
 const APPENDIX = '\n\n## Appendice: immagini e musica\n\n### S1. Il molo\n\nvisual: a pier at dawn, fishing boats\n\nmood: calm, cold wind\n';
 const offlineImages = [1, 2].map((n) => ({ name: midjourneyName(PROMPT, n), mimeType: 'image/png', buffer: png() }));
 
@@ -204,10 +206,10 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   // The board offline: a prompt by hand, then two images dropped, kept here.
   await page.goto(`promptbook://app/projects/${mine.id}/board`);
   const s1 = page.locator('#row-S1');
-  await s1.getByRole('button', { name: 'Write by hand' }).first().click();
-  await page.getByLabel('Midjourney prompt for S1').fill(PROMPT);
-  await s1.getByRole('button', { name: 'Save' }).click();
-  await expect(page.locator('.toast')).toHaveText('Saved.');
+  await s1.getByRole('button', { name: 'Add image prompt' }).click();
+  await page.getByLabel('Midjourney prompt for S1 · prompt 1').fill(PROMPT);
+  await s1.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.locator('.toast')).toHaveText('Added S1 · prompt 1. Copy it into Midjourney.');
   await page.locator('.board input[type=file]').setInputFiles(offlineImages);
   await expect(page.locator('.info.good')).toContainText('2 files added: 2 matched, 0 to assign.', { timeout: 30_000 });
   await expect(s1.locator('.th-i .badge.dev')).toHaveCount(2);
@@ -217,6 +219,14 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   );
   await expect(statusRight()).toHaveText(/^Offline · \d+ changes? on this device · 2 files waiting to upload$/);
   await expect.poll(() => loadedImages(page, 'S1')).toBe(2);
+  // An NPC added offline too.
+  await page.getByRole('tab', { name: /^NPCs/ }).click();
+  await page.getByRole('button', { name: 'Add NPC' }).click();
+  await page.getByLabel('Name').fill('Zu Peppe');
+  await page.getByLabel('Midjourney prompt for the new NPC').fill(NPC);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.locator('.toast')).toHaveText('Added NPC · Zu Peppe. Copy it into Midjourney.');
+  await expect(page.locator('[role=tabpanel]:not([hidden]) .ent .enm')).toHaveText(['Zu Peppe']);
 
   // Quit and start again, still offline.
   await app.close();
@@ -284,6 +294,10 @@ test('back online: the web client has both edits and the new project', async () 
       .locator('.board input[type=file]')
       .setInputFiles([{ name: midjourneyName(PROMPT, 3), mimeType: 'image/png', buffer: png() }]);
     await expect(web.locator('.info.good')).toContainText('1 file added: 1 matched, 0 to assign.', { timeout: 30_000 });
+    // The NPC added offline.
+    await web.getByRole('tab', { name: /^NPCs/ }).click();
+    await expect(web.locator('[role=tabpanel]:not([hidden]) .ent .enm')).toHaveText(['Zu Peppe']);
+    await expect(web.locator('[role=tabpanel]:not([hidden]) .ent .ptext')).toHaveText(NPC);
   } finally {
     await browser.close();
   }
