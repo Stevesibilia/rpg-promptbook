@@ -21,6 +21,8 @@ async function headers(app: FastifyInstance, { config }: { config: Config }) {
         // 'wasm-unsafe-eval'; it allows no JavaScript eval.
         scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
+        // The board's tracks, from the server or an object URL at intake.
+        mediaSrc: ["'self'", 'blob:'],
         upgradeInsecureRequests: https ? [] : null,
       },
     },

@@ -178,6 +178,8 @@ describe('requests are protected by default', () => {
     expect(answers).toEqual(sessionOnly.map((r) => `${r} 401`));
     expect(sessionOnly).toContain('POST /api/oauth/authorize');
     expect(sessionOnly).toContain('GET /api/auth/grants');
+    expect(sessionOnly).toContain('PUT /api/projects/:id/files/:sha256');
+    expect(sessionOnly).toContain('GET /api/projects/:id/files/:sha256');
     expect([...PUBLIC_ROUTES].sort()).toEqual([
       'GET /api/auth/config',
       'GET /api/auth/me',

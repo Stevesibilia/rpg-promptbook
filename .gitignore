@@ -6,3 +6,4 @@ out/
 .env
 test-results/
 playwright-report/
+packages/server/data/
