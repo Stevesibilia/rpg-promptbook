@@ -23,7 +23,7 @@
 - [x] 2.9 `create.ts`: offline and online create through the same path, upload before attach, retry on reconnect, 409/400 left local (D9)
 - [x] 2.10 `snapshots.ts`: per-project timers by `kv['local_snapshots']`, only on changed text, labels, expiry at start and every 24 h; first-sync progress events (D10, D12)
 - [x] 2.11 Unit tests of D17's desktop list: store, router, loopback against a fake AS, offline create upload, local snapshots
-- [ ] 2.12 Checks: `npm run typecheck`, `npm test`, `npm run build -w promptbook-desktop`, the app starts unpackaged against the local stack; hand-back of brief B
+- [x] 2.12 Checks: `npm run typecheck`, `npm test`, `npm run build -w promptbook-desktop`, the app starts unpackaged against the local stack; hand-back of brief B
 
 ## 3. Web client (brief C)
 
