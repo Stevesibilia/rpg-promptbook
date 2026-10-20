@@ -20,7 +20,7 @@
 - [x] 2.3 Db tests `mcp-board.test.ts`: both tools, read scope refused on the write, `unknown_scene`, `no_board`, the limits, a write with document errors, an image-only write leaving the music prompt, the shared-title warning, no snapshot stored, a live Hocuspocus client receiving the board change, rate limiting
 - [x] 2.4 Export (D16): `exportProject` gains `board.md` and the file list with deduplicated names; `routes/transfer.ts` streams one project and everything with `fflate`'s `Zip`, `ZipPassThrough` for files from the blob store, `ZipDeflate` for text
 - [x] 2.5 Tests: `export.test.ts` (`board.md` content and order, `files/S1/…`, `files/unmatched/…`, name collisions, no thumbnails); db test that an export with files streams (heap not growing by the files' size) and the zip lists the files
-- [ ] 2.6 Checks: `npm run typecheck`, `npm test`, `npm run e2e`; hand-back of brief B
+- [x] 2.6 Checks: `npm run typecheck`, `npm test`, `npm run e2e`; hand-back of brief B
 
 ## 3. Web board (brief C)
 
