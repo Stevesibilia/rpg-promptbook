@@ -7,6 +7,8 @@ import { projectPath } from '../project/top.js';
 import { Confirm } from '../ui/Confirm.js';
 import { useToast } from '../ui/Toast.js';
 import { loadDismissed, saveDismissed, showBanner, type Dismissed } from './banner.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
 
 // «at 21:14» today, «on 17 Oct at 21:14» another day.
 function whenOf(iso: string): string {
@@ -25,6 +27,7 @@ export function ClaudeBanner({ projectId }: { projectId: string }) {
   // What went wrong with an undo, for the snapshot it was tried on.
   const [problem, setProblem] = useState<{ id: string; kind: 'changed' | 'gone' } | null>(null);
   const [confirming, setConfirming] = useState<SnapshotRow | null>(null);
+  const offline = useOffline();
   const [toast, showToast] = useToast();
   const alive = useRef(true);
   useEffect(() => {
@@ -90,9 +93,11 @@ export function ClaudeBanner({ projectId }: { projectId: string }) {
                 Compare
               </Link>
               <span className="sep">·</span>
-              <button className="link" onClick={() => setConfirming(shown)}>
-                Undo
-              </button>
+              <NeedsServer>
+                <button className="link" onClick={() => setConfirming(shown)} disabled={offline}>
+                  Undo
+                </button>
+              </NeedsServer>
             </>
           )}
           <span className="spacer" />

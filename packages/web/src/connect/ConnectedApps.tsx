@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, type Grant } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { longDate, snapshotTime } from '../dates.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
 import { platform } from '../platform/index.js';
 import { Confirm } from '../ui/Confirm.js';
 import { useToast } from '../ui/Toast.js';
@@ -20,6 +22,7 @@ export function ConnectedApps() {
   const [revoking, setRevoking] = useState<Grant | null>(null);
   const [resource, setResource] = useState(`${platform.serverOrigin}/api/mcp`);
   const [toast, showToast] = useToast();
+  const offline = useOffline();
   const urlInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -89,9 +92,16 @@ export function ConnectedApps() {
                 <span className="d" role="cell">
                   {g.last_used_at ? snapshotTime(g.last_used_at) : 'never'}
                 </span>
-                <button className="tb danger" onClick={() => setRevoking(g)} aria-label={`Revoke ${name}`}>
-                  Revoke
-                </button>
+                <NeedsServer>
+                  <button
+                    className="tb danger"
+                    onClick={() => setRevoking(g)}
+                    aria-label={`Revoke ${name}`}
+                    disabled={offline}
+                  >
+                    Revoke
+                  </button>
+                </NeedsServer>
               </div>
             );
           })}

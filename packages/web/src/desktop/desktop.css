@@ -179,3 +179,37 @@
 .desktop .warnbox b {
   color: var(--danger);
 }
+
+/* Needs the server */
+.desktop .needs {
+  position: relative;
+  display: inline-flex;
+}
+.desktop .needs:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  white-space: nowrap;
+  z-index: 20;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.desktop .needs-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.desktop .needs-line {
+  font-size: 12px;
+  color: var(--amber);
+  margin: 0 0 8px;
+}
+.desktop a.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

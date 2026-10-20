@@ -4,7 +4,8 @@ import type * as Y from 'yjs';
 import { api, ApiError, exportName, exportUrl, type ProjectRow } from '../api.js';
 import { useDocValue, useProjectDoc } from '../sync/hooks.js';
 import { DeviceLine } from '../desktop/ProjectDevice.js';
-import { useDeviceProject } from '../desktop/useDevice.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useDeviceProject, useOffline } from '../desktop/useDevice.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
@@ -77,6 +78,7 @@ function LivePanel({
 }) {
   const meta = useDocValue(doc, readMeta);
   const [confirm, setConfirm] = useState(false);
+  const offline = useOffline();
   return (
     <div data-testid="panel">
       <div className="rp-h">
@@ -119,12 +121,16 @@ function LivePanel({
       <details className="acc">
         <summary>Actions</summary>
         <div className="body links">
-          <DownloadLink className="tb" href={exportUrl(row.id)} name={exportName(meta.title)}>
-            Export as a Markdown folder…
-          </DownloadLink>
-          <button className="tb danger" onClick={() => setConfirm(true)}>
-            Delete…
-          </button>
+          <NeedsServer>
+            <DownloadLink className="tb" href={exportUrl(row.id)} name={exportName(meta.title)} disabled={offline}>
+              Export as a Markdown folder…
+            </DownloadLink>
+          </NeedsServer>
+          <NeedsServer>
+            <button className="tb danger" onClick={() => setConfirm(true)} disabled={offline}>
+              Delete…
+            </button>
+          </NeedsServer>
         </div>
       </details>
 

@@ -20,7 +20,8 @@ import {
 } from './list.js';
 import { NewProjectDialog } from './NewProjectDialog.js';
 import { DeviceCell } from '../desktop/ProjectDevice.js';
-import { useDeviceProject } from '../desktop/useDevice.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useDeviceProject, useOffline } from '../desktop/useDevice.js';
 import { platform } from '../platform/index.js';
 import { ProjectPanel } from './ProjectPanel.js';
 import { useProjects } from './useProjects.js';
@@ -64,6 +65,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const selectedId = params.get('p');
   const tableRef = useRef<HTMLDivElement>(null);
+  const offline = useOffline();
 
   useEffect(() => {
     try {
@@ -129,15 +131,17 @@ export function ProjectsPage() {
             {list ? `${list.shown} of ${plural(list.total, 'project')}` : ''}
           </p>
           <span className="spacer" />
-          <button
-            className="tb line"
-            onClick={() => setDialog('import')}
-            disabled={!listReady}
-            title={listReady ? undefined : 'Available once the project list has loaded'}
-          >
-            <ImportIcon />
-            Import Markdown
-          </button>
+          <NeedsServer>
+            <button
+              className="tb line"
+              onClick={() => setDialog('import')}
+              disabled={!listReady || offline}
+              title={listReady ? undefined : 'Available once the project list has loaded'}
+            >
+              <ImportIcon />
+              Import Markdown
+            </button>
+          </NeedsServer>
           <button className="tb primary" onClick={() => setDialog('new')}>
             <PlusIcon />
             New project

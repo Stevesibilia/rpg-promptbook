@@ -6,9 +6,12 @@ import { Shell } from '../shell/Shell.js';
 import { categoryLabels, plural } from './list.js';
 import { useProjects } from './useProjects.js';
 import './projects.css';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
 
 // The projects in the bin, each with the day it is removed for good.
 export function BinPage() {
+  const offline = useOffline();
   const { projects, error, refresh } = useProjects({ bin: true });
   const [failure, setFailure] = useState('');
   // Projects whose restore request is on its way.
@@ -67,9 +70,15 @@ export function BinPage() {
               </div>
               <span className="cat">{categoryLabels[p.category]}</span>
               <span className="when">{p.deletedAt ? purgeDate(p.deletedAt) : ''}</span>
-              <button className="tb line" onClick={() => void restore(p.id)} disabled={restoring.has(p.id)}>
-                {restoring.has(p.id) ? 'Restoring…' : 'Restore'}
-              </button>
+              <NeedsServer>
+                <button
+                  className="tb line"
+                  onClick={() => void restore(p.id)}
+                  disabled={restoring.has(p.id) || offline}
+                >
+                  {restoring.has(p.id) ? 'Restoring…' : 'Restore'}
+                </button>
+              </NeedsServer>
             </div>
           ))}
         </div>

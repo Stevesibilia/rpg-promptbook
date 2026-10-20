@@ -5,6 +5,8 @@ import { api, ApiError, exportAllName, exportAllUrl } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
 import { ConnectedApps } from '../connect/ConnectedApps.js';
+import { NeedsServer, NeedsServerGroup } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
 import { platform } from '../platform/index.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
@@ -125,73 +127,75 @@ function TodoTemplates({ settings, onSave }: { settings: Settings; onSave(next: 
           </button>
         ))}
       </div>
-      <div className="card">
-        <ul className="tpl">
-          {items.map((item, i) => (
-            <li
-              key={`${category}-${i}-${item}`}
-              onDragOver={(e) => dragged !== null && e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragged === null || dragged === i) return;
-                const next = [...items];
-                const [moved] = next.splice(dragged, 1);
-                next.splice(i, 0, moved!);
-                setDragged(null);
-                write(next);
-              }}
-            >
-              <span
-                className="grip"
-                draggable
-                title="Drag to reorder"
-                onDragStart={(e) => {
-                  setDragged(i);
-                  e.dataTransfer.effectAllowed = 'move';
-                  e.dataTransfer.setData('text/plain', item);
+      <NeedsServerGroup>
+        <div className="card">
+          <ul className="tpl">
+            {items.map((item, i) => (
+              <li
+                key={`${category}-${i}-${item}`}
+                onDragOver={(e) => dragged !== null && e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragged === null || dragged === i) return;
+                  const next = [...items];
+                  const [moved] = next.splice(dragged, 1);
+                  next.splice(i, 0, moved!);
+                  setDragged(null);
+                  write(next);
                 }}
-                onDragEnd={() => setDragged(null)}
               >
-                ⠿
-              </span>
-              <input
-                className="t"
-                aria-label={`Item ${i + 1}`}
-                defaultValue={item}
-                onBlur={(e) => {
-                  const text = e.target.value.trim();
-                  if (!text) e.target.value = item;
-                  else if (text !== item) write(items.map((t, j) => (j === i ? text : t)));
-                }}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-              <button
-                className="x"
-                title="Remove"
-                aria-label={`Remove ${item}`}
-                onClick={() => write(items.filter((_, j) => j !== i))}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form
-          className="tpl-add"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (adding.trim()) write([...items, adding.trim()]);
-            setAdding('');
-          }}
-        >
-          <input
-            placeholder="+ Add an item"
-            aria-label="New template item"
-            value={adding}
-            onChange={(e) => setAdding(e.target.value)}
-          />
-        </form>
-      </div>
+                <span
+                  className="grip"
+                  draggable
+                  title="Drag to reorder"
+                  onDragStart={(e) => {
+                    setDragged(i);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item);
+                  }}
+                  onDragEnd={() => setDragged(null)}
+                >
+                  ⠿
+                </span>
+                <input
+                  className="t"
+                  aria-label={`Item ${i + 1}`}
+                  defaultValue={item}
+                  onBlur={(e) => {
+                    const text = e.target.value.trim();
+                    if (!text) e.target.value = item;
+                    else if (text !== item) write(items.map((t, j) => (j === i ? text : t)));
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+                <button
+                  className="x"
+                  title="Remove"
+                  aria-label={`Remove ${item}`}
+                  onClick={() => write(items.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+          <form
+            className="tpl-add"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (adding.trim()) write([...items, adding.trim()]);
+              setAdding('');
+            }}
+          >
+            <input
+              placeholder="+ Add an item"
+              aria-label="New template item"
+              value={adding}
+              onChange={(e) => setAdding(e.target.value)}
+            />
+          </form>
+        </div>
+      </NeedsServerGroup>
     </section>
   );
 }
@@ -245,19 +249,21 @@ function AuthorDefaults({ settings, onSave }: { settings: Settings; onSave(next:
         Copied into a new project's front matter (<code>autore</code>, <code>copyright</code>, <code>licenza</code>),
         where each project can change them.
       </p>
-      <div className="card narrow">
-        {field('author', 'Author')}
-        {field('copyright', 'Copyright')}
-        {field('licence', 'Licence', 'An SPDX id, or free text.')}
-        {field(
-          'system',
-          'Default system',
-          <>
-            Pre-fills <code>sistema</code>; leave empty to choose each time.
-          </>,
-          'e.g. Kulthos',
-        )}
-      </div>
+      <NeedsServerGroup>
+        <div className="card narrow">
+          {field('author', 'Author')}
+          {field('copyright', 'Copyright')}
+          {field('licence', 'Licence', 'An SPDX id, or free text.')}
+          {field(
+            'system',
+            'Default system',
+            <>
+              Pre-fills <code>sistema</code>; leave empty to choose each time.
+            </>,
+            'e.g. Kulthos',
+          )}
+        </div>
+      </NeedsServerGroup>
     </section>
   );
 }
@@ -335,15 +341,17 @@ function Account() {
       <section>
         <h2>Account</h2>
         <p className="lead">Your account comes from {provider}. Players have no accounts.</p>
-        <div className="card narrow">
-          {nameField(`Taken from ${provider} at the first sign-in; change it here if you like.`)}
-          {usernameField}
-          <p className="okline">
-            <i />
-            Signed in through {provider}
-            {user.email && ` · ${user.email}`}
-          </p>
-        </div>
+        <NeedsServerGroup>
+          <div className="card narrow">
+            {nameField(`Taken from ${provider} at the first sign-in; change it here if you like.`)}
+            {usernameField}
+            <p className="okline">
+              <i />
+              Signed in through {provider}
+              {user.email && ` · ${user.email}`}
+            </p>
+          </div>
+        </NeedsServerGroup>
       </section>
     );
   }
@@ -352,72 +360,75 @@ function Account() {
     <section>
       <h2>Account</h2>
       <p className="lead">One game master per server. Players have no accounts.</p>
-      <div className="card narrow">
-        {nameField(null)}
-        {usernameField}
-        {changing ? (
-          <form onSubmit={(e) => void changePassword(e)}>
-            <div className="field">
-              <label htmlFor="pw-current">Current password</label>
-              <input
-                id="pw-current"
-                type="password"
-                autoComplete="current-password"
-                value={current}
-                onChange={(e) => setCurrent(e.target.value)}
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pw-next">New password</label>
-              <input
-                id="pw-next"
-                type="password"
-                autoComplete="new-password"
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-                required
-              />
-              <span className="hint">At least 12 characters. Every other session is signed out.</span>
-            </div>
-            <div className="field">
-              <label htmlFor="pw-repeat">New password again</label>
-              <input
-                id="pw-repeat"
-                type="password"
-                autoComplete="new-password"
-                value={repeat}
-                onChange={(e) => setRepeat(e.target.value)}
-                required
-              />
-            </div>
-            <div className="row-acts">
-              <button className="tb primary" type="submit">
-                Change password
-              </button>
-              <button className="tb" type="button" onClick={() => setChanging(false)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button
-            className="tb line"
-            onClick={() => {
-              setChanging(true);
-              setNote(null);
-            }}
-          >
-            Change password…
-          </button>
-        )}
-        {note && <p className={note.ok ? 'ok-note' : 'err'}>{note.text}</p>}
-      </div>
+      <NeedsServerGroup>
+        <div className="card narrow">
+          {nameField(null)}
+          {usernameField}
+          {changing ? (
+            <form onSubmit={(e) => void changePassword(e)}>
+              <div className="field">
+                <label htmlFor="pw-current">Current password</label>
+                <input
+                  id="pw-current"
+                  type="password"
+                  autoComplete="current-password"
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="pw-next">New password</label>
+                <input
+                  id="pw-next"
+                  type="password"
+                  autoComplete="new-password"
+                  value={next}
+                  onChange={(e) => setNext(e.target.value)}
+                  required
+                />
+                <span className="hint">At least 12 characters. Every other session is signed out.</span>
+              </div>
+              <div className="field">
+                <label htmlFor="pw-repeat">New password again</label>
+                <input
+                  id="pw-repeat"
+                  type="password"
+                  autoComplete="new-password"
+                  value={repeat}
+                  onChange={(e) => setRepeat(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="row-acts">
+                <button className="tb primary" type="submit">
+                  Change password
+                </button>
+                <button className="tb" type="button" onClick={() => setChanging(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              className="tb line"
+              onClick={() => {
+                setChanging(true);
+                setNote(null);
+              }}
+            >
+              Change password…
+            </button>
+          )}
+          {note && <p className={note.ok ? 'ok-note' : 'err'}>{note.text}</p>}
+        </div>
+      </NeedsServerGroup>
     </section>
   );
 }
 
 function SyncStorage() {
+  const offline = useOffline();
   return (
     <section>
       <h2>Sync and storage</h2>
@@ -434,9 +445,11 @@ function SyncStorage() {
           One folder per project: the document as <code>document.md</code>, the to-do list and the seed as Markdown, and
           the project's details in <code>project.json</code>.
         </p>
-        <DownloadLink className="tb line" href={exportAllUrl} name={exportAllName()}>
-          Export all projects…
-        </DownloadLink>
+        <NeedsServer>
+          <DownloadLink className="tb line" href={exportAllUrl} name={exportAllName()} disabled={offline}>
+            Export all projects…
+          </DownloadLink>
+        </NeedsServer>
       </div>
     </section>
   );
