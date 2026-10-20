@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import {
   createProjectDoc,
+  projectRow,
   skeletonDocument,
   summarize,
   type CampaignRef,
   type Category,
+  type ProjectRow,
   type Status,
   type Summary,
 } from 'promptbook-project';
@@ -21,26 +23,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const isUuid = (value: string): boolean => UUID.test(value);
 
-// One row of the project list, as the API answers it.
-export interface ProjectRow {
-  id: string;
-  title: string;
-  category: Category;
-  status: Status;
-  campaignId: string | null;
-  system: string;
-  seed: string;
-  todoDone: number;
-  todoTotal: number;
-  nextDue: string | null;
-  scenes: number | null;
-  words: number | null;
-  errors: number | null;
-  warnings: number | null;
-  createdAt: string;
-  editedAt: string;
-  deletedAt: string | null;
-}
+export type { ProjectRow };
 
 interface DbRow {
   id: string;
@@ -62,25 +45,33 @@ interface DbRow {
   deleted_at: Date | null;
 }
 
-const toRow = (r: DbRow): ProjectRow => ({
-  id: r.id,
-  title: r.title,
-  category: r.category,
-  status: r.status,
-  campaignId: r.campaign_id,
-  system: r.system,
-  seed: r.seed,
-  todoDone: r.todo_done,
-  todoTotal: r.todo_total,
-  nextDue: r.next_due,
-  scenes: r.scenes,
-  words: r.words,
-  errors: r.errors,
-  warnings: r.warnings,
-  createdAt: r.created_at.toISOString(),
-  editedAt: r.edited_at.toISOString(),
-  deletedAt: r.deleted_at?.toISOString() ?? null,
-});
+// The join below has already applied the campaign rule, so the row's link is
+// a live campaign or null.
+const toRow = (r: DbRow): ProjectRow =>
+  projectRow(
+    {
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      status: r.status,
+      campaignId: r.campaign_id,
+      system: r.system,
+      seed: r.seed,
+      todoDone: r.todo_done,
+      todoTotal: r.todo_total,
+      nextDue: r.next_due,
+      scenes: r.scenes,
+      words: r.words,
+      errors: r.errors,
+      warnings: r.warnings,
+    },
+    {
+      createdAt: r.created_at.toISOString(),
+      editedAt: r.edited_at.toISOString(),
+      deletedAt: r.deleted_at?.toISOString() ?? null,
+    },
+    r.campaign_id === null ? [] : [{ id: r.campaign_id }],
+  );
 
 // A link to a campaign in the bin, gone or not a campaign reads as
 // stand-alone: the children's rows are not rewritten when their campaign is

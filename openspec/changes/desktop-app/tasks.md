@@ -1,6 +1,6 @@
 ## 1. Server (brief A)
 
-- [ ] 1.1 `packages/project/src/row.ts`: `ProjectRow` and `projectRow(summary, dates, campaigns)` with the server's campaign rule, exported from `index.ts`; the server's `toRow` and the web's `api.ts` type use it (`summarize` and `skeletonDocument` are already in the package: nothing else moves) (design D7)
+- [x] 1.1 `packages/project/src/row.ts`: `ProjectRow` and `projectRow(summary, dates, campaigns)` with the server's campaign rule, exported from `index.ts`; the server's `toRow` and the web's `api.ts` type use it (`summarize` and `skeletonDocument` are already in the package: nothing else moves) (design D7)
 - [ ] 1.2 `migrations/004_desktop.sql`: `oauth_clients.first_party`, `oauth_grants.device_name`, scope check widened to `app`, the seeded `promptbook-desktop` client; `sweepUnusedClients` keeps first-party clients (D8)
 - [ ] 1.3 `oauth/config.ts` `appResource` and scope `app`; authorize validation (app resource and scope only for and always for the first-party client, `device_name` 1 to 80 printable characters); `GET /api/oauth/authorize` answers `first_party`; the approval stores `device_name`; the code exchange issues tokens for the code's resource (D8)
 - [ ] 1.4 Auth hook: a bearer app token without a cookie sets `req.session` with `via: 'app'` and `grantId`; no origin check for it; consent routes and `POST /api/auth/logout` refuse an app session with 403 `cookie_session_required`; `POST /api/auth/password` with an app session ends every cookie session; the route test's classes updated (D8)

@@ -1,4 +1,4 @@
-import type { Category, Settings, Status } from 'promptbook-project';
+import type { Category, ProjectRow, Settings, Status } from 'promptbook-project';
 import type { ConvertReport } from 'promptbook-format';
 
 // A small fetch wrapper for the server's REST API (design decision 7). Every
@@ -19,25 +19,7 @@ export interface User {
 export type AuthConfig = { signIn: 'oidc'; providerName: string; issuerHost: string } | { signIn: 'password' };
 
 // One row of the project list, as GET /api/projects answers it.
-export interface ProjectRow {
-  id: string;
-  title: string;
-  category: Category;
-  status: Status;
-  campaignId: string | null;
-  system: string;
-  seed: string;
-  todoDone: number;
-  todoTotal: number;
-  nextDue: string | null;
-  scenes: number | null;
-  words: number | null;
-  errors: number | null;
-  warnings: number | null;
-  createdAt: string;
-  editedAt: string;
-  deletedAt: string | null;
-}
+export type { ProjectRow };
 
 export interface NewProject {
   category: Category;
