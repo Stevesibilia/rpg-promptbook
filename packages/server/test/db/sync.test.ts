@@ -1,6 +1,7 @@
-import { addTodo, readDocument, readMeta, readTodo, updateTodo } from 'promptbook-project';
+import { addTodo, readDocument, readFiles, readImagePrompts, readMeta, readTodo, updateTodo } from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createUser } from '../../src/accounts/users.js';
+import { loadProjectDoc, storeProjectDoc } from '../../src/projects.js';
 import { DELETED, STORE_FAILED, STORED } from '../../src/sync.js';
 import { db, ORIGIN, PASSWORD, signedIn, startApp, steve } from './helpers.js';
 import { connect, destroyClients, listen, synced, waitFor } from './sync-helpers.js';
@@ -124,6 +125,68 @@ describe('sync between clients', () => {
     updateTodo(a.doc, readTodo(a.doc)[5]!.id, { done: true });
     await waitFor(() => a.stateless.includes(STORED), 'the second store');
     expect(await row()).toMatchObject({ todoDone: 6, todoTotal: 9, status: 'draft' });
+  });
+});
+
+// A board as v0.6 stored it: one image prompt and a chosen image per scene
+// under the board's keys, images naming their scene.
+async function storeV06Board(id: string): Promise<void> {
+  const Y = await import('yjs');
+  const doc = (await loadProjectDoc(db, id))!;
+  doc.transact(() => {
+    const board = doc.getMap<unknown>('board');
+    board.set('S1/image', { prompt: 'collapsed library at night --ar 16:9', by: 'claude', at: '2026-10-19T09:00:00.000Z' });
+    board.set('S1/chosenImage', 'i1');
+    board.set('S1/music', { title: 'Cinque e venti', style: 'dark', lyrics: '[End]', by: 'claude', at: '2026-10-19T09:00:00.000Z' });
+    const image = new Y.Map<unknown>();
+    const fields = {
+      id: 'i1',
+      sha256: 'a'.repeat(64),
+      thumbSha256: null,
+      name: 'steve_collapsed_library.png',
+      kind: 'image',
+      mime: 'image/png',
+      size: 1000,
+      width: 1456,
+      height: 816,
+      duration: null,
+      sceneId: 'S1',
+      matchedBy: 'prompt',
+      addedAt: '2026-10-19T09:00:00.000Z',
+      addedBy: 'user',
+    };
+    for (const [key, value] of Object.entries(fields)) image.set(key, value);
+    doc.getArray('files').push([image]);
+  });
+  await storeProjectDoc(db, id, doc);
+}
+
+describe('migrating a board from before image categories', () => {
+  it('sends the client the migrated board and stores it after the debounce', async () => {
+    await steve();
+    const app = await startApp();
+    const token = await signedIn(app);
+    const id = await newProject(app, token);
+    await storeV06Board(id);
+    const url = await listen(app);
+
+    const a = connect(url, id, { token });
+    await synced(a);
+    // The client never sees the legacy keys.
+    expect([...a.doc.getMap('board').keys()]).toEqual(['S1/music']);
+    expect(readImagePrompts(a.doc)).toMatchObject([
+      { id: 'legacy-S1', sceneId: 'S1', prompt: 'collapsed library at night --ar 16:9', by: 'claude', chosenFileId: 'i1' },
+    ]);
+    expect(readFiles(a.doc)).toMatchObject([{ id: 'i1', promptId: 'legacy-S1' }]);
+
+    // Stored like an edit, without any edit from the client.
+    await waitFor(async () => {
+      const stored = await loadProjectDoc(db, id);
+      return stored !== null && !stored.getMap('board').has('S1/image');
+    }, 'the migrated board to be stored');
+    const stored = (await loadProjectDoc(db, id))!;
+    expect(readImagePrompts(stored).map((p) => [p.id, p.chosenFileId])).toEqual([['legacy-S1', 'i1']]);
+    expect([...stored.getMap('board').keys()]).toEqual(['S1/music']);
   });
 });
 

@@ -110,8 +110,8 @@ filter SHALL keep the cards in that state.
 
 ### Requirement: Prompts come from Claude
 
-While no image prompt in any category has text and no scene has a music
-title, the board SHALL show the card «Prompts come from Claude» on every tab,
+The board SHALL show, while no image prompt in any category has text and no
+scene has a music title, the card «Prompts come from Claude» on every tab,
 saying that Claude writes Midjourney prompts for the scenes, the PCs, the
 NPCs and the handouts and one Suno prompt per scene, with the request «Write
 the image and music prompts for the board of «<project title>», with
@@ -252,8 +252,8 @@ and a tab holding a new file SHALL show a dot.
 
 ### Requirement: Unmatched tray
 
-Files with no prompt or scene, files whose prompt was removed, and files of
-a scene with no appendix row SHALL wait in the tray «Unmatched», pinned
+The tray «Unmatched» SHALL hold files with no prompt or scene, files whose
+prompt was removed, and files of a scene with no appendix row, pinned
 above the tab's content on every tab, with «N files», «Their names match no
 prompt or track title, or more than one prompt.», «Match again» and «How
 matching works». Each file SHALL show its name, its kind and the reason
@@ -439,7 +439,10 @@ author and date, and the music unchanged, on the web, in the desktop app
 offline, and through the connector. The conversion SHALL run on every
 replica without losing an edit made on another, and an image prompt or
 image written later by an older app SHALL join that scene's prompt 1, the
-later prompt text winning.
+later prompt text winning. A prompt 1 that was removed SHALL stay removed,
+even when another replica converted the board at the same time; images an
+older app gives its scene later SHALL wait in Unmatched with «Its prompt was
+removed.».
 
 #### Scenario: Board from v0.6
 
@@ -453,3 +456,10 @@ later prompt text winning.
 - **WHEN** the desktop app, offline, opens that project and edits S3's
   prompt 1 while the server converted it too, and the app comes back online
 - **THEN** S3 has one prompt 1 holding the desktop's edit, on both
+
+#### Scenario: Removed while converted elsewhere
+
+- **WHEN** the user removes S3's prompt 1 on the web while the desktop app,
+  offline, had converted the same board, and the app comes back online
+- **THEN** S3's prompt 1 stays removed on both, and its images wait in
+  Unmatched with «Its prompt was removed.»

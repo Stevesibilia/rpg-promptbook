@@ -272,7 +272,7 @@ describe('image prompts', () => {
     }
   });
 
-  it('removes a prompt: its keys go, its images keep its id and wait in the tray, no file is removed', () => {
+  it('removes a prompt: a tombstone stays, its other keys go, its images wait in the tray, no file is touched', () => {
     const doc = project();
     const s = scene(doc, 'S1', 'collapsed library');
     const keep = scene(doc, 'S1', 'second shot');
@@ -282,7 +282,7 @@ describe('image prompts', () => {
     doc.on('afterTransaction', () => transactions++);
     expect(removeImagePrompt(doc, s.id)).toEqual({ images: 2 });
     expect(transactions).toBe(1);
-    expect([...promptsMap(doc).keys()].some((k) => k.startsWith(`${s.id}/`))).toBe(false);
+    expect([...promptsMap(doc).keys()].filter((k) => k.startsWith(`${s.id}/`))).toEqual([`${s.id}/removed`]);
     expect(readImagePrompts(doc).map((p) => p.id)).toEqual([keep.id]);
     expect(readFiles(doc).map((f) => [f.id, f.promptId]).sort()).toEqual([
       [a!.id, s.id],
@@ -293,14 +293,47 @@ describe('image prompts', () => {
     expect(() => removeImagePrompt(doc, s.id)).toThrow(`No image prompt ${s.id}`);
   });
 
-  it('writes the removed id on a v0.6 image, so a later migration does not take it back', () => {
+  it('removes a v0.6 prompt without writing to its images, which wait in the tray', () => {
     const doc = project();
     promptsMap(doc).set('legacy-S1/def', { category: 'scene', sceneId: 'S1' });
     v06File(doc, { id: 'old', sha256: hash(1), kind: 'image', sceneId: 'S1' });
     expect(readFiles(doc)[0]).toMatchObject({ promptId: 'legacy-S1', sceneId: null });
+    const files = doc.getArray('files').toJSON();
     expect(removeImagePrompt(doc, 'legacy-S1')).toEqual({ images: 1 });
-    const item = doc.getArray<Y.Map<unknown>>('files').get(0);
-    expect([item.get('promptId'), item.get('sceneId')]).toEqual(['legacy-S1', 'S1']);
+    expect(doc.getArray('files').toJSON()).toEqual(files);
+    expect(unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc))).toMatchObject([
+      { file: { id: 'old' }, reason: 'Its prompt was removed.' },
+    ]);
+    // Removed for good: no writer brings it back.
+    expect(() => assignImage(doc, 'old', 'legacy-S1')).toThrow('No image prompt legacy-S1');
+    expect(() => updateImagePrompt(doc, 'legacy-S1', { prompt: 'x' }, 'user')).toThrow('No image prompt legacy-S1');
+  });
+
+  it('does not count removed prompts toward the cap', () => {
+    const doc = project();
+    doc.transact(() => {
+      for (let i = 0; i < CAPS.imagePrompts; i++) {
+        promptsMap(doc).set(`p${i}/def`, { category: 'npc', sceneId: null });
+        promptsMap(doc).set(`p${i}/removed`, true);
+      }
+    });
+    expect(npc(doc, 'One more', 'x').order).toBe(1);
+    expect(readImagePrompts(doc)).toHaveLength(1);
+  });
+
+  it('dates an edit no earlier than a migrated text from a clock running ahead, so the edit reads', () => {
+    const doc = project();
+    const ahead = '2099-01-01T00:00:00.000Z';
+    promptsMap(doc).set('legacy-S1/def', { category: 'scene', sceneId: 'S1' });
+    promptsMap(doc).set('legacy-S1/legacy', { prompt: 'old text', by: 'claude', at: ahead });
+    updateImagePrompt(doc, 'legacy-S1', { prompt: 'new text' }, 'user', AT);
+    expect(readImagePrompts(doc)[0]).toMatchObject({ prompt: 'new text', by: 'user', at: ahead });
+    expect(setFirstScenePrompt(doc, 'S1', 'newer text', 'claude', AT)).toMatchObject({ prompt: 'newer text', at: ahead });
+    expect(readImagePrompts(doc)[0]).toMatchObject({ prompt: 'newer text', by: 'claude' });
+    // A migrated text older than the edit keeps the edit's own date.
+    promptsMap(doc).set('legacy-S1/legacy', { prompt: 'old text', by: 'claude', at: AT });
+    updateImagePrompt(doc, 'legacy-S1', { prompt: 'later text' }, 'user', LATER);
+    expect(readImagePrompts(doc)[0]).toMatchObject({ prompt: 'later text', at: LATER });
   });
 
   it('sets the text of a scene’s first prompt, creating it when the scene has none', () => {

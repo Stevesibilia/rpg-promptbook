@@ -1,5 +1,5 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket, WebSocketStatus } from '@hocuspocus/provider';
-import { readMeta } from 'promptbook-project';
+import { migrateImagePrompts, needsImageMigration, readMeta } from 'promptbook-project';
 import type { DesktopProjectStatus, DesktopSyncStatus, OpenedDoc } from 'promptbook-web/src/platform/bridge.js';
 import * as Y from 'yjs';
 import { COMPACT_AT, type Store, type UpdateOrigin } from './store.js';
@@ -372,6 +372,15 @@ export class SyncEngine {
   open(webContentsId: number, id: string): OpenedDoc {
     const entry = this.entries.get(id);
     if (!entry) return { state: Y.encodeStateAsUpdate(new Y.Doc()), status: 'gone' };
+    // A board from before image categories takes the new shape before the
+    // window sees it, offline too, as main's own change: stored, and sent to
+    // the server and the other windows (image-categories design decision 2).
+    // Should it fail, the window gets the document as stored.
+    try {
+      if (entry.downloaded && needsImageMigration(entry.doc)) this.transact(id, migrateImagePrompts);
+    } catch {
+      // The board then reads as it did before image categories.
+    }
     entry.openBy.set(webContentsId, (entry.openBy.get(webContentsId) ?? 0) + 1);
     return { state: Y.encodeStateAsUpdate(entry.doc), status: entry.downloaded ? 'ready' : 'loading' };
   }

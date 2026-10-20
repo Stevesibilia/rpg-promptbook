@@ -9,6 +9,9 @@ import { authors, isIsoDateTime } from './model.js';
 // safe on every replica at once: every key it writes is one no edit writes
 // (`<id>/def`, written with the same value everywhere, and `<id>/legacy`),
 // so two replicas can migrate, edit before they meet, and keep every edit.
+// A removed legacy prompt (its `<id>/removed`, written only by removal)
+// stays removed: its legacy keys are still cleared, and the images naming
+// its scene wait in the tray.
 // Image files are not written: they reach `legacy-<sceneId>` by their
 // sceneId. Music is not touched.
 
@@ -46,13 +49,39 @@ function legacyScenes(doc: Y.Doc): { keys: Set<string>; images: Set<string> } {
   return { keys, images };
 }
 
+interface Legacy {
+  prompt?: string;
+  by?: string;
+  at?: string;
+  chosen?: string | null;
+}
+
+// The fields of a `legacy` value another replica wrote, typed: anything else
+// in it is dropped, so a hostile value can neither throw nor be copied on.
+function toLegacy(value: unknown): Legacy {
+  const r = record(value);
+  if (!r) return {};
+  return {
+    ...(typeof r.prompt === 'string'
+      ? { prompt: r.prompt, by: oneOf(authors, r.by, 'user'), at: isIsoDateTime(r.at) ? r.at : '' }
+      : {}),
+    ...('chosen' in r ? { chosen: typeof r.chosen === 'string' && r.chosen !== '' ? r.chosen : null } : {}),
+  };
+}
+
+const sameLegacy = (a: Legacy, b: Legacy) =>
+  a.prompt === b.prompt && a.by === b.by && a.at === b.at && a.chosen === b.chosen && 'chosen' in a === 'chosen' in b;
+
 const hasDef = (doc: Y.Doc, sceneId: string) =>
   toPromptDef(promptsOf(doc).get(`${legacyPromptId(sceneId)}/def`)) !== null;
 
-// A legacy key, or an image naming a scene whose legacy prompt has no def.
+const isRemoved = (doc: Y.Doc, sceneId: string) => promptsOf(doc).has(`${legacyPromptId(sceneId)}/removed`);
+
+// A legacy key, or an image naming a scene whose legacy prompt has no def
+// and was never removed.
 export function needsImageMigration(doc: Y.Doc): boolean {
   const { keys, images } = legacyScenes(doc);
-  return keys.size > 0 || [...images].some((sceneId) => !hasDef(doc, sceneId));
+  return keys.size > 0 || [...images].some((sceneId) => !hasDef(doc, sceneId) && !isRemoved(doc, sceneId));
 }
 
 // True when it changed something.
@@ -65,17 +94,24 @@ export function migrateImagePrompts(doc: Y.Doc): boolean {
     const { keys, images } = legacyScenes(doc);
     for (const sceneId of new Set([...keys, ...images])) {
       const id = legacyPromptId(sceneId);
-      // 1. The prompt exists, with the same def on every replica.
-      if (!hasDef(doc, sceneId)) {
+      const removed = isRemoved(doc, sceneId);
+      // 1. The prompt exists, with the same def on every replica, unless it
+      // was removed.
+      if (!removed && !hasDef(doc, sceneId)) {
         prompts.set(`${id}/def`, { category: 'scene', sceneId });
         changed = true;
       }
       if (!keys.has(sceneId)) continue;
-      const old = record(prompts.get(`${id}/legacy`));
-      const next: Record<string, unknown> = { ...old };
+      if (removed) {
+        for (const half of ['image', 'chosenImage'] as const) board.delete(legacyKey(sceneId, half));
+        changed = true;
+        continue;
+      }
+      const old = toLegacy(prompts.get(`${id}/legacy`));
+      const next: Legacy = { ...old };
       // 2. The old text, unless the one already carried over is later.
       const image = record(board.get(legacyKey(sceneId, 'image')));
-      if (image && typeof image.prompt === 'string' && !later(old?.at, image.at)) {
+      if (image && typeof image.prompt === 'string' && !later(old.at, image.at)) {
         next.prompt = image.prompt;
         next.by = oneOf(authors, image.by, 'user');
         next.at = isIsoDateTime(image.at) ? image.at : '';
@@ -88,7 +124,7 @@ export function migrateImagePrompts(doc: Y.Doc): boolean {
         next.chosen = typeof chosen === 'string' && chosen !== '' ? chosen : null;
         if (prompts.has(`${id}/chosen`)) prompts.delete(`${id}/chosen`);
       }
-      if (JSON.stringify(next) !== JSON.stringify(old ?? {})) prompts.set(`${id}/legacy`, next);
+      if (!sameLegacy(next, old)) prompts.set(`${id}/legacy`, next);
       // 4. The legacy keys go.
       for (const half of ['image', 'chosenImage'] as const) board.delete(legacyKey(sceneId, half));
       changed = true;
@@ -99,11 +135,15 @@ export function migrateImagePrompts(doc: Y.Doc): boolean {
 
 // The document itself when it needs nothing, else a migrated copy in memory:
 // for readers that must not write, such as a read-only connector grant or
-// the export.
+// the export. Should the migration fail, the document is read as it is.
 export function migratedView(doc: Y.Doc): Y.Doc {
-  if (!needsImageMigration(doc)) return doc;
-  const copy = new Y.Doc();
-  Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
-  migrateImagePrompts(copy);
-  return copy;
+  try {
+    if (!needsImageMigration(doc)) return doc;
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    migrateImagePrompts(copy);
+    return copy;
+  } catch {
+    return doc;
+  }
 }

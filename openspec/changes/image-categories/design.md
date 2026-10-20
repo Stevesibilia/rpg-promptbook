@@ -160,6 +160,8 @@ imagePrompts  Y.Map, keys "<promptId>/<part>":
   "<id>/order"   number                       absent reads as 0
   "<id>/chosen"  file id | null               the chosen image, once a client chose
   "<id>/legacy"  { prompt, by, at, chosen }   written only by the migration (D2)
+  "<id>/removed" true                         written only by removeImagePrompt; an id with it
+                                              reads as no prompt; never cleared
 files         Y.Array of Y.Map, as today, plus:
   promptId       string | null                images only; null = no prompt
 ```
@@ -178,7 +180,9 @@ files         Y.Array of Y.Map, as today, plus:
   of `prompt` or `legacy`, whichever has the later `at` (`prompt` on a tie
   or an invalid date); the choice is `chosen` when the key is present,
   else `legacy.chosen`; a chosen id that is not an image of that prompt reads
-  as null.
+  as null. A writer that edits a prompt whose `legacy.at` is later than its
+  own date writes `at = legacy.at` (ties read as `prompt`), so an edit always
+  wins over a migrated text from a clock running ahead.
 - **Files.** Images belong to a prompt, tracks to a scene. A file's prompt,
   read: its `promptId` when present; for an image whose `promptId` is null
   or absent and whose `sceneId` is set (as `v0.6.x` wrote it),
@@ -191,7 +195,8 @@ files         Y.Array of Y.Map, as today, plus:
 - **Limits:** prompt text `LIMITS.imagePrompt` (2000), name `LIMITS.name`
   (200, one line, required for pc, npc and handout; the UI fills «New PC»,
   «New NPC», «New Handout» when left empty); `CAPS.imagePrompts` 500 per
-  project (**plan decision**; readers keep the first 500 in order).
+  project (**plan decision**; readers keep the first 500 in order). Removed
+  ids do not count toward the cap.
 - `SCHEMA` stays 1: an older client leaves `imagePrompts` alone, and an
   older document reads it as empty until migrated.
 
@@ -221,11 +226,16 @@ removeFile(doc, fileId): void                                          // unchoo
 addFiles(doc, files): …                                                // NewFile gains promptId (images)
 ```
 
-`removeImagePrompt` deletes every key of the id (including `legacy` and
-`chosen`) and sets `promptId` to that id on each image that resolved to it
-with no `promptId` of its own, so its images read as belonging to a removed
-prompt (the tray, D9) and a later migration does not take them back. Files
-are never removed (O6). `setFirstScenePrompt` writes the text of the scene's
+`removeImagePrompt` writes `<id>/removed`, deletes the id's other keys
+(including `def`, `legacy` and `chosen`) and writes nothing to files: images
+that resolved to the id, by their `promptId` or, for v0.6 images, by their
+`sceneId`, read as belonging to a removed prompt («Its prompt was removed.»,
+the tray, D9), and the migration does not bring it back (D2). Files are never
+removed (O6). **Amended in review of brief A:** a tombstone instead of
+deleting `def`, because a concurrent migration on another replica re-created
+a removed prompt (reviewer probe, client-id order (1,2)); a key written only
+by removal keeps D1's rule that no key is written by both a migration and an
+edit. `setFirstScenePrompt` writes the text of the scene's
 first prompt (lowest order, then id), creating one with a random id when the
 scene has none. `fileHashes` is unchanged. The shape comment in `doc.ts`
 gains `imagePrompts` and `files.promptId`, and marks the two legacy keys.
@@ -249,8 +259,10 @@ migratedView(doc): Y.Doc            // doc itself when nothing to migrate, else 
 For each scene id `X` that has `X/image`, `X/chosenImage`, or an image file
 with `sceneId` `X` and no `promptId`:
 
-1. If `legacy-X/def` is missing, set it to `{ category: 'scene', sceneId: X }`
-   (same value on every replica, so concurrent writes agree). No `order` key.
+1. If `legacy-X/def` is missing and `legacy-X/removed` is absent, set def to
+   `{ category: 'scene', sceneId: X }` (same value on every replica, so
+   concurrent writes agree). No `order` key. For a removed `legacy-X`, steps
+   2 and 3 are skipped; its legacy keys are cleared either way (step 4).
 2. If `X/image` holds a valid `{ prompt, by, at }`: set `legacy-X/legacy` to
    it, unless the `legacy` already there has a later `at`.
 3. If `X/chosenImage` is present: set `legacy-X/legacy.chosen` to its value
@@ -275,9 +287,11 @@ scene, its files and its choice, legacy keys gone.
 `S3/image` after the migration): the migration runs again; the later `at`
 of the old client's text and of the prompt's own text wins (D1's read rule);
 the old client's images join `legacy-S3` by their `sceneId`, beside the
-prompt's other images. If `legacy-S3` was removed meanwhile, step 1 brings it
-back with the old client's text and images, and the images removed with it
-come back too (they name `legacy-S3`): accepted, it needs an older client.
+prompt's other images. A removed `legacy-S3` stays removed: the old client's
+legacy keys are cleared, and its later images of S3 wait in the tray as
+«Its prompt was removed.» (O6: never lost, never silently re-homed).
+**Amended in review of brief A** (see `removeImagePrompt`, D1): before, step 1
+brought a removed prompt back with its images.
 
 **Where it runs** (any replica, any time, safe by construction):
 
@@ -782,8 +796,16 @@ Report it, do not work around it:
   first words and the tools warn (D5); the tray lists the candidates first.
   If the preview shows real Midjourney names collide anyway, report it with
   the names.
-- **A removed `legacy-` prompt can come back** with its images if an older
-  client writes that scene's image prompt or images afterwards (D2).
+- **Two replicas migrating different legacy states** (an older client's
+  newer `S3/image` or `S3/chosenImage` on one side, the earlier one on the
+  other) both write `legacy-S3/legacy`; Yjs keeps one by client id, so the
+  older client's newer text or choice can be lost. Accepted: it needs an
+  older client writing while two newer replicas migrate apart (known limit,
+  review of brief A).
+- **The server's migration counts as an edit:** it is stored like one, and
+  `storeProjectDoc` sets `edited_at = now()`, so the first load of each v0.6
+  project after the upgrade moves it up the projects list once. Accepted, in
+  the release notes (known limit, review of brief A).
 - **Prompts are not versioned** (asset-board D8): a removed prompt's text is
   gone; its images stay in the tray.
 

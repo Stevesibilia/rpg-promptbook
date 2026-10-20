@@ -191,17 +191,41 @@ describe('migrating a v0.6 board', () => {
     expect(prompt(doc, 'legacy-S1')).toMatchObject({ prompt: 'edited later', by: 'claude', at: LATEST });
   });
 
-  it('brings back a removed prompt 1 with its images when an older client writes to its scene', () => {
+  it('keeps a removed prompt 1 removed when an older client writes to its scene: its images wait in the tray', () => {
     const doc = v06Board();
     migrateImagePrompts(doc);
     const old = replica(doc);
     expect(removeImagePrompt(doc, 'legacy-S2')).toEqual({ images: 1 });
     expect(needsImageMigration(doc)).toBe(false);
+    old.getMap<unknown>('board').set('S2/image', { prompt: 'written by v0.6 later', by: 'user', at: LATER });
     v06File(old, { id: 'i8', sha256: hash(8), kind: 'image', sceneId: 'S2' });
     sync(doc, old);
+    expect(needsImageMigration(doc)).toBe(true);
     migrateImagePrompts(doc);
-    expect(prompt(doc, 'legacy-S2')).toMatchObject({ prompt: '' });
-    expect(imagesOf(doc, 'legacy-S2')).toEqual(['i3', 'i8']);
+    expect(needsImageMigration(doc)).toBe(false);
+    expect(prompt(doc, 'legacy-S2')).toBeUndefined();
+    expect(boardKeys(doc)).toEqual(['S1/chosenTrack', 'S1/music']);
+    expect(promptKeys(doc).filter((k) => k.startsWith('legacy-S2/'))).toEqual(['legacy-S2/removed']);
+    const tray = readDocumentBoard(doc).unmatched.map((u) => [u.file.id, u.reason]);
+    expect(tray).toEqual([
+      ['i3', 'Its prompt was removed.'],
+      ['i5', null],
+      ['i8', 'Its prompt was removed.'],
+    ]);
+  });
+
+  it('migrates a legacy value another client wrote with hostile fields without throwing', () => {
+    const doc = v06Board();
+    doc.getMap<unknown>('imagePrompts').set('legacy-S1/legacy', { prompt: 'kept', at: T0, big: 10n, chosen: { not: 'an id' } });
+    expect(() => migrateImagePrompts(doc)).not.toThrow();
+    expect(needsImageMigration(doc)).toBe(false);
+    expect(prompt(doc, 'legacy-S1')).toMatchObject({ prompt: 'collapsed 1900s Sicilian library at night --ar 16:9', chosenFileId: 'i1' });
+    expect(Object.keys(doc.getMap<Record<string, unknown>>('imagePrompts').get('legacy-S1/legacy')!).sort()).toEqual([
+      'at',
+      'by',
+      'chosen',
+      'prompt',
+    ]);
   });
 });
 
@@ -261,6 +285,34 @@ describe.each([
       ]);
     }
     expect(migrateImagePrompts(a)).toBe(false);
+  });
+
+  it('keeps a prompt 1 removed on one replica while the other migrated it at the same time', () => {
+    const base = v06Board();
+    const server = open(base, idA);
+    const desktop = open(base, idB);
+    migrateImagePrompts(server);
+    migrateImagePrompts(desktop);
+    removeImagePrompt(server, 'legacy-S3');
+    sync(server, desktop);
+    for (const doc of [server, desktop]) {
+      expect(prompt(doc, 'legacy-S3')).toBeUndefined();
+      expect(needsImageMigration(doc)).toBe(false);
+      expect(readDocumentBoard(doc).unmatched.map((u) => [u.file.id, u.reason])).toContainEqual(['i4', 'Its prompt was removed.']);
+    }
+    expect(readImagePrompts(server)).toEqual(readImagePrompts(desktop));
+  });
+
+  it('keeps a prompt 1 removed on one replica while the other, not yet migrated, migrates after', () => {
+    const base = v06Board();
+    const server = open(base, idA);
+    const desktop = open(base, idB);
+    migrateImagePrompts(server);
+    removeImagePrompt(server, 'legacy-S3');
+    migrateImagePrompts(desktop);
+    sync(server, desktop);
+    migrateImagePrompts(desktop);
+    for (const doc of [server, desktop]) expect(prompt(doc, 'legacy-S3')).toBeUndefined();
   });
 
   it('keeps a choice made on one replica while the other migrates later', () => {

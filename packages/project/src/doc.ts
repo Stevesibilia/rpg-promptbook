@@ -68,6 +68,7 @@ import {
 //            "<id>/order"   number                          absent reads as 0
 //            "<id>/chosen"  file id | null
 //            "<id>/legacy"  { prompt, by, at, chosen }      written only by the migration
+//            "<id>/removed" true                            written only by removal; never cleared
 //          Flat keys for the same reason as the board's: a migration and an
 //          edit never write the same key, so replicas migrating at once merge.
 //

@@ -2,6 +2,7 @@ import websocket from '@fastify/websocket';
 import { Hocuspocus } from '@hocuspocus/server';
 import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { migrateImagePrompts } from 'promptbook-project';
 import type { WebSocket } from 'ws';
 import * as Y from 'yjs';
 import type { Config } from './config.js';
@@ -137,6 +138,20 @@ export function createSync({ config, db, log }: { config: Config; db: Db; log: F
       if (!row) throw new Error(`No stored document for project ${documentName}.`);
       Y.applyUpdate(document, row.state);
       return document;
+    },
+
+    // A board from before image categories takes the new shape here, not in
+    // onLoadDocument: Hocuspocus 4.7.1 registers its update handler between
+    // the two hooks, so a change made there is never stored, while one made
+    // here is stored like an edit. Clients sync only once both ran
+    // (image-categories design decision 2). A failure leaves the document as
+    // stored rather than closing the project.
+    async afterLoadDocument({ documentName, document }) {
+      try {
+        if (migrateImagePrompts(document)) log.info({ project: documentName }, 'Migrated the board to image categories');
+      } catch (error) {
+        log.error({ err: error, project: documentName }, 'Migrating the board to image categories failed');
+      }
     },
 
     async onStoreDocument(payload) {

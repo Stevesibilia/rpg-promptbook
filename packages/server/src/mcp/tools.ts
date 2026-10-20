@@ -39,7 +39,8 @@ import type { McpCaller, McpDeps } from './server.js';
 // acts as the grant's user, on that user's projects only and never on one in
 // the bin. Write tools need read_write. No tool writes the seed, ticks or
 // removes a to-do item, or deletes anything: those are the user's, in the
-// app.
+// app. The one exception is remove_image_prompt (image-categories design
+// decision 5), which removes an image prompt and never a file.
 
 export const TOOL_NAMES = [
   'list_projects',
@@ -61,6 +62,9 @@ export const TOOL_NAMES = [
   'add_brainstorm_entry',
   'get_board',
   'set_scene_prompts',
+  'add_image_prompt',
+  'update_image_prompt',
+  'remove_image_prompt',
 ] as const;
 
 const READ_LOG_FIRST = 'At the start of a new chat about a project, read its brainstorm log first.';
@@ -69,7 +73,7 @@ export const INSTRUCTIONS = [
   'Promptbook holds the prep of tabletop role-playing games: campaigns, adventures and one-shots.',
   `${READ_LOG_FIRST} At the end of a brainstorm, write one entry with add_brainstorm_entry: the ideas, the decisions, the rejected ideas with why, and the open questions.`,
   'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
-  'For a board’s prompts, read get_board first, then write one scene at a time with set_scene_prompts.',
+  'For a board’s prompts, read get_board first. Image prompts come in four categories: Scenes (any number per scene), PCs, NPCs and Handouts (a name and a prompt each); add them with add_image_prompt, change them with update_image_prompt. Music is one Suno prompt per scene, written with set_scene_prompts.',
 ].join('\n');
 
 // What a scene needs so that adding it adds no error, read from the

@@ -2,6 +2,7 @@ import { Server } from '@hocuspocus/server';
 import type { Socket } from 'node:net';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readFiles, readImagePrompts } from 'promptbook-project';
 import * as Y from 'yjs';
 import { Store } from '../../src/main/store.js';
 import { SyncEngine, type EngineHooks } from '../../src/main/sync.js';
@@ -303,6 +304,59 @@ describe('sync engine', () => {
     engine.uploaded(A);
     await until(async () => (await serverText(A)) === 'Solo qui.');
     await until(() => engine.status().projects[0]!.unsynced === 0);
+  });
+
+  it('migrates a board from before image categories when a window opens it, offline, and syncs it', async () => {
+    const legacy = projectDoc(A, 'Ancora', 'Testo del server.');
+    legacy.transact(() => {
+      const board = legacy.getMap<unknown>('board');
+      board.set('S1/image', { prompt: 'collapsed library at night', by: 'claude', at: '2026-10-19T09:00:00.000Z' });
+      board.set('S1/chosenImage', 'i1');
+      const image = new Y.Map<unknown>();
+      for (const [key, value] of Object.entries({ id: 'i1', sha256: 'a'.repeat(64), kind: 'image', name: 'x.png', sceneId: 'S1' })) {
+        image.set(key, value);
+      }
+      legacy.getArray('files').push([image]);
+    });
+    store.appendUpdate(A, Y.encodeStateAsUpdate(legacy), 'remote');
+    makeEngine();
+    engine.add(A);
+    const rows = store.updateRows(A);
+
+    const opened = new Y.Doc();
+    Y.applyUpdate(opened, engine.open(7, A).state);
+    expect(readImagePrompts(opened)).toMatchObject([
+      { id: 'legacy-S1', prompt: 'collapsed library at night', chosenFileId: 'i1' },
+    ]);
+    expect(readFiles(opened)).toMatchObject([{ id: 'i1', promptId: 'legacy-S1' }]);
+    expect(opened.getMap('board').has('S1/image')).toBe(false);
+    // Stored as main's own change, and counted for the server.
+    expect(store.updateRows(A)).toBe(rows + 1);
+    expect(readImagePrompts(store.loadDoc(A)!).map((p) => p.id)).toEqual(['legacy-S1']);
+    expect(engine.status().projects[0]!.unsynced).toBe(1);
+
+    engine.setActive(true);
+    await until(async () => {
+      const connection = await server.hocuspocus.openDirectConnection(A);
+      let migrated = false;
+      await connection.transact((doc) => {
+        migrated = doc.getMap('imagePrompts').has('legacy-S1/def') && !doc.getMap('board').has('S1/image');
+      });
+      await connection.disconnect();
+      return migrated;
+    });
+  });
+
+  it('writes nothing when a window opens a board that needs no migration', async () => {
+    makeEngine();
+    engine.add(A);
+    engine.setActive(true);
+    await until(() => engine.isDownloaded(A));
+    const rows = store.updateRows(A);
+    engine.open(7, A);
+    engine.open(8, A);
+    expect(store.updateRows(A)).toBe(rows);
+    expect(sent).toEqual([]);
   });
 
   it('compacts every document on close and refuses edits to a project not open', async () => {

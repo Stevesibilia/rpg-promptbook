@@ -14,15 +14,16 @@ Assisted-by: <agent>/<model-id>
 - [x] 1.4 `match.ts` (D3): `MatchPrompt`, `MatchScene`, the new `MatchResult` with `candidates`, `matchFile` over every shown prompt with text, `matchTargets`
 - [x] 1.5 Unit tests `board.test.ts`, `board-migration.test.ts`, `match.test.ts`: every case under `packages/project` in D10, including the two-Y.Doc concurrent migration with edits on both sides in both client-id orders, idempotence, and an older client's late writes
 - [x] 1.6 The callers adapted mechanically so the workspace stays green (D11): `server/src/mcp/board.ts` and `export.ts` on the new rows with today's output, the web board showing each scene's first prompt as today, their existing tests updated to the new API only
+      Note (review of brief A, removed by brief B): in this interim web, a scene with no prompt gets an empty one when an image is assigned to it; two tabs doing so at once create two, and the web shows only the first prompt's images, so the second's are hidden until brief B shows every prompt.
 
 ## 2. Server and desktop hooks, connector, export (brief A)
 
-- [ ] 2.1 `server/src/sync.ts`: `afterLoadDocument` runs `migrateImagePrompts`; db test in `sync.test.ts` that a stored legacy document reaches a client migrated and is stored migrated after the debounce
-- [ ] 2.2 `desktop/src/main/sync.ts`: `SyncEngine.open` migrates a downloaded document that needs it through `transact` before handing its state; unit test in `test/unit/sync.test.ts` (migrated and stored; nothing written when nothing is needed)
-- [ ] 2.3 `server/src/mcp/board.ts` and `tools.ts` (D5): `get_board`'s new output on `migratedView`, `add_image_prompt`, `update_image_prompt`, `remove_image_prompt` with schemas, annotations, descriptions and errors, `set_scene_prompts` on the first scene prompt, migration first in every write, the shared-first-words warning, `TOOL_NAMES` (22) and `INSTRUCTIONS`
-- [ ] 2.4 Db tests `mcp-board.test.ts`: every case under "Server db" in D10, the tools-list count updated in `mcp.test.ts`
-- [ ] 2.5 Export (D6): `exportBoard`'s `board.md` and folders, `routes/transfer.ts` on `migratedView`; tests in `export.test.ts` and `export-files.test.ts`
-- [ ] 2.6 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green (the board e2e adapted only as far as the new `get_board` shape needs); hand-back of brief A with the departures
+- [x] 2.1 `server/src/sync.ts`: `afterLoadDocument` runs `migrateImagePrompts`; db test in `sync.test.ts` that a stored legacy document reaches a client migrated and is stored migrated after the debounce
+- [x] 2.2 `desktop/src/main/sync.ts`: `SyncEngine.open` migrates a downloaded document that needs it through `transact` before handing its state; unit test in `test/unit/sync.test.ts` (migrated and stored; nothing written when nothing is needed)
+- [x] 2.3 `server/src/mcp/board.ts` and `tools.ts` (D5): `get_board`'s new output on `migratedView`, `add_image_prompt`, `update_image_prompt`, `remove_image_prompt` with schemas, annotations, descriptions and errors, `set_scene_prompts` on the first scene prompt, migration first in every write, the shared-first-words warning, `TOOL_NAMES` (22) and `INSTRUCTIONS`
+- [x] 2.4 Db tests `mcp-board.test.ts`: every case under "Server db" in D10, the tools-list count updated in `mcp.test.ts`
+- [x] 2.5 Export (D6): `exportBoard`'s `board.md` and folders, `routes/transfer.ts` on `migratedView`; tests in `export.test.ts` and `export-files.test.ts`
+- [x] 2.6 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green (the board e2e adapted only as far as the new `get_board` shape needs); hand-back of brief A with the departures
 
 ## 3. Web board (brief B)
 

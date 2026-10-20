@@ -234,8 +234,8 @@ export function readBoard(doc: Y.Doc): Map<string, BoardEntry> {
 // sit under flat keys "<id>/<part>", so a migration and an edit never write
 // the same key and two edits of different fields merge.
 
-const PROMPT_KEY = /^([^/]+)\/(def|prompt|name|order|chosen|legacy)$/;
-type PromptPart = 'def' | 'prompt' | 'name' | 'order' | 'chosen' | 'legacy';
+const PROMPT_KEY = /^([^/]+)\/(def|prompt|name|order|chosen|legacy|removed)$/;
+type PromptPart = 'def' | 'prompt' | 'name' | 'order' | 'chosen' | 'legacy' | 'removed';
 
 const partKey = (id: string, part: PromptPart) => `${id}/${part}`;
 
@@ -286,7 +286,7 @@ const byOrder = (a: ImagePromptEntry, b: ImagePromptEntry): number =>
   a.order !== b.order ? a.order - b.order : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 // Every valid prompt, past the cap too, ordered by order then id. Keys of an
-// id with no valid def are left alone and never shown.
+// id with no valid def, or removed, are left alone and never shown.
 function allPrompts(doc: Y.Doc, files: readonly FileEntry[]): ImagePromptEntry[] {
   const map = promptsOf(doc);
   const parts = new Map<string, Partial<Record<PromptPart, unknown>>>();
@@ -300,7 +300,7 @@ function allPrompts(doc: Y.Doc, files: readonly FileEntry[]): ImagePromptEntry[]
   const prompts: ImagePromptEntry[] = [];
   for (const [id, p] of parts) {
     const def = toPromptDef(p.def);
-    if (!def) continue;
+    if (!def || 'removed' in p) continue;
     const text = textOf(toText(p.prompt), toText(p.legacy));
     const chosen = storedChoice(map, id);
     prompts.push({
@@ -323,8 +323,17 @@ export function readImagePrompts(doc: Y.Doc): ImagePromptEntry[] {
   return allPrompts(doc, readFiles(doc)).slice(0, CAPS.imagePrompts);
 }
 
+// A prompt's def, while the prompt exists: not removed.
 const validDef = (doc: Y.Doc, id: string): PromptDef | null =>
-  isId(id) ? toPromptDef(promptsOf(doc).get(partKey(id, 'def'))) : null;
+  isId(id) && !promptsOf(doc).has(partKey(id, 'removed')) ? toPromptDef(promptsOf(doc).get(partKey(id, 'def'))) : null;
+
+// The date a writer gives an edited text: never earlier than the migrated
+// text's, which may come from a clock running ahead, so that the edit always
+// reads as the text (a tie reads as `prompt`).
+function editedAt(doc: Y.Doc, id: string, at: string): string {
+  const legacy = toText(promptsOf(doc).get(partKey(id, 'legacy')));
+  return legacy && legacy.at !== '' && Date.parse(legacy.at) > Date.parse(at) ? legacy.at : at;
+}
 
 // Writers, each one transaction. They check the limits of LIMITS and throw;
 // the callers check first.
@@ -402,27 +411,26 @@ export function updateImagePrompt(
     if (patch.name !== undefined && def.category === 'scene') throw new Error('name: a scene prompt has none');
     const map = promptsOf(doc);
     if (patch.prompt !== undefined) {
-      map.set(partKey(id, 'prompt'), { prompt: patch.prompt, by: oneOf(authors, by, 'user'), at });
+      map.set(partKey(id, 'prompt'), { prompt: patch.prompt, by: oneOf(authors, by, 'user'), at: editedAt(doc, id, at) });
     }
     if (patch.name !== undefined && map.get(partKey(id, 'name')) !== patch.name) map.set(partKey(id, 'name'), patch.name);
   });
 }
 
-// Takes a prompt off the board (O6): every key of its id goes, and its images
-// wait in the Unmatched tray. An image that belonged to it through its scene
-// (v0.6) gets the id written, so it reads as the removed prompt's and a later
-// migration does not take it back. No file is removed.
+// Takes a prompt off the board (O6): its id gets `removed`, a key only this
+// writer writes and nothing clears, and its other keys go. Deleting the def
+// alone would not do: another replica migrating the same v0.6 board writes
+// its own def, which could win. Its images, v0.6 ones naming its scene too,
+// wait in the Unmatched tray as a removed prompt's; no file is written or
+// removed. Removed ids do not count toward CAPS.imagePrompts.
 export function removeImagePrompt(doc: Y.Doc, id: string): { images: number } {
   let images = 0;
   doc.transact(() => {
     if (!validDef(doc, id)) throw new Error(`No image prompt ${id}`);
-    for (const item of validFiles(doc)) {
-      if (item.get('kind') !== 'image' || promptIdOf(item) !== id) continue;
-      images += 1;
-      if (nullableStr(item.get('promptId')) === null) item.set('promptId', id);
-    }
+    images = readFiles(doc).filter((f) => f.kind === 'image' && f.promptId === id).length;
     const map = promptsOf(doc);
-    for (const key of [...map.keys()]) if (key.startsWith(`${id}/`)) map.delete(key);
+    map.set(partKey(id, 'removed'), true);
+    for (const key of [...map.keys()]) if (key.startsWith(`${id}/`) && key !== partKey(id, 'removed')) map.delete(key);
   });
   return { images };
 }
@@ -447,8 +455,9 @@ export function setFirstScenePrompt(
       return;
     }
     const author = oneOf(authors, by, 'user');
-    promptsOf(doc).set(partKey(first.id, 'prompt'), { prompt, by: author, at });
-    entry = { ...first, prompt, by: author, at };
+    const dated = editedAt(doc, first.id, at);
+    promptsOf(doc).set(partKey(first.id, 'prompt'), { prompt, by: author, at: dated });
+    entry = { ...first, prompt, by: author, at: dated };
   });
   return entry;
 }

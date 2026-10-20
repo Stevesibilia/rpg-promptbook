@@ -11,11 +11,12 @@ import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance } from 'fastify';
 import { strFromU8, unzipSync } from 'fflate';
 import { addFiles, chooseImage, readFiles, setFirstScenePrompt, type NewFile } from 'promptbook-project';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { describe, expect, it } from 'vitest';
 import { createUser } from '../../src/accounts/users.js';
 import { openBlobStore } from '../../src/files/blobs.js';
 import { setDocumentText, withLiveDocument } from '../../src/live.js';
+import { loadProjectDoc, storeProjectDoc } from '../../src/projects.js';
 import { db, ORIGIN, PASSWORD, signedIn, startApp, steve, tempDataDir } from './helpers.js';
 
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -138,8 +139,8 @@ describe('exporting a project with files', () => {
         'board.md',
         'brainstorm-log.md',
         'document.md',
-        'files/S1/la casa cede (1).mp3',
-        'files/S1/steve_a_library.png',
+        'files/scenes/S1/music/la casa cede (1).mp3',
+        'files/scenes/S1/1/steve_a_library.png',
         'files/unmatched/perduta.mp3',
         'inspiration.md',
         'project.json',
@@ -150,13 +151,38 @@ describe('exporting a project with files', () => {
         .map((name) => `${folder}/${name}`)
         .sort(),
     );
-    expect(Buffer.from(zip[`${folder}/files/S1/steve_a_library.png`]!).equals(a)).toBe(true);
-    expect(Buffer.from(zip[`${folder}/files/S1/la casa cede (1).mp3`]!).equals(b)).toBe(true);
+    expect(Buffer.from(zip[`${folder}/files/scenes/S1/1/steve_a_library.png`]!).equals(a)).toBe(true);
+    expect(Buffer.from(zip[`${folder}/files/scenes/S1/music/la casa cede (1).mp3`]!).equals(b)).toBe(true);
     expect(Buffer.from(zip[`${folder}/files/unmatched/perduta.mp3`]!).equals(c)).toBe(true);
     const board = strFromU8(zip[`${folder}/board.md`]!);
     expect(board).toContain('a library --ar 16:9 --v 8.1');
     expect(board).toContain('Chosen: steve_a_library.png');
     expect(strFromU8(zip[`${folder}/document.md`]!)).toBe(DOCUMENT);
+  });
+
+  it('exports a board from before image categories as each scene’s prompt 1, and leaves the stored document as it is', async () => {
+    const s = await setup();
+    const hash = await upload(s, s.project, png(4000));
+    const doc = (await loadProjectDoc(db, s.project))!;
+    doc.transact(() => {
+      doc.getMap<unknown>('board').set('S1/image', { prompt: 'a library --ar 16:9 --v 8.1', by: 'claude', at: '2026-10-19T09:00:00.000Z' });
+      doc.getMap<unknown>('board').set('S1/chosenImage', 'i1');
+      const image = new Y.Map<unknown>();
+      const { promptId: _, ...fields } = { ...entry(hash, 'steve_a_library.png'), id: 'i1', sceneId: 'S1', addedAt: '2026-10-19T09:00:00.000Z' };
+      for (const [key, value] of Object.entries(fields)) image.set(key, value);
+      doc.getArray('files').push([image]);
+    });
+    await storeProjectDoc(db, s.project, doc);
+    const before = await db.queryOne<{ state: Buffer }>('select state from project_docs where project_id = $1', [s.project]);
+    expect(s.app.sync.liveDocument(s.project)).toBeNull();
+    const { zip } = await exportOf(s, `/api/projects/${s.project}/export`);
+    const folder = "L'Ancora di Sabaoth";
+    expect(Buffer.from(zip[`${folder}/files/scenes/S1/1/steve_a_library.png`]!).length).toBe(4000);
+    const board = strFromU8(zip[`${folder}/board.md`]!);
+    expect(board).toContain('### Image prompt 1\n\n```\na library --ar 16:9 --v 8.1\n```');
+    expect(board).toContain('Chosen: steve_a_library.png');
+    const after = await db.queryOne<{ state: Buffer }>('select state from project_docs where project_id = $1', [s.project]);
+    expect(after!.state.equals(before!.state)).toBe(true);
   });
 
   it('exports every project in its own folder, files included', async () => {
@@ -172,8 +198,8 @@ describe('exporting a project with files', () => {
     }
     const { response, zip } = await exportOf(s);
     expect(response.headers['content-disposition']).toMatch(/promptbook-\d{4}-\d\d-\d\d\.zip/);
-    expect(Buffer.from(zip["L'Ancora di Sabaoth/files/S1/image.png"]!).length).toBe(4000);
-    expect(Buffer.from(zip['La fiera/files/S1/image.png']!).length).toBe(5000);
+    expect(Buffer.from(zip["L'Ancora di Sabaoth/files/scenes/S1/1/image.png"]!).length).toBe(4000);
+    expect(Buffer.from(zip['La fiera/files/scenes/S1/1/image.png']!).length).toBe(5000);
   });
 
   it('keeps a name with accents and a name that would climb out of its folder', async () => {
@@ -184,8 +210,8 @@ describe('exporting a project with files', () => {
     );
     const { zip } = await exportOf(s);
     expect(Object.keys(zip).filter((n) => n.includes('/files/')).sort()).toEqual([
-      "L'Ancora di Sabaoth/files/S1/..-..-escape.png",
-      "L'Ancora di Sabaoth/files/S1/città è già.png",
+      "L'Ancora di Sabaoth/files/scenes/S1/1/..-..-escape.png",
+      "L'Ancora di Sabaoth/files/scenes/S1/1/città è già.png",
     ]);
   });
 
@@ -199,7 +225,7 @@ describe('exporting a project with files', () => {
     await withLiveDocument(s.app.sync, s.project, s.userId, (doc) => addEntries(doc, [entry(hash, 'stolen.png')]));
     const { zip } = await exportOf(s);
     expect(Object.keys(zip).some((n) => n.includes('stolen'))).toBe(false);
-    expect(strFromU8(zip["L'Ancora di Sabaoth/files-missing.txt"]!)).toBe('files/S1/stolen.png\n');
+    expect(strFromU8(zip["L'Ancora di Sabaoth/files-missing.txt"]!)).toBe('files/scenes/S1/1/stolen.png\n');
   });
 
   it('leaves out a linked file whose bytes are gone, says so, and goes on', async () => {
@@ -213,9 +239,9 @@ describe('exporting a project with files', () => {
     unlinkSync(join(s.dataDir, 'files', hashes[0]!.slice(0, 2), hashes[0]!));
     const { zip } = await exportOf(s);
     const folder = "L'Ancora di Sabaoth";
-    expect(zip[`${folder}/files/S1/gone.png`]).toBeUndefined();
-    expect(Buffer.from(zip[`${folder}/files/S1/kept.png`]!).equals(kept)).toBe(true);
-    expect(strFromU8(zip[`${folder}/files-missing.txt`]!)).toBe('files/S1/gone.png\n');
+    expect(zip[`${folder}/files/scenes/S1/1/gone.png`]).toBeUndefined();
+    expect(Buffer.from(zip[`${folder}/files/scenes/S1/1/kept.png`]!).equals(kept)).toBe(true);
+    expect(strFromU8(zip[`${folder}/files-missing.txt`]!)).toBe('files/scenes/S1/1/gone.png\n');
   });
 
   it('refuses another user’s project and a project in the bin, and asks for a session', async () => {
@@ -316,7 +342,7 @@ describe('a large export', () => {
     const zip = unzipSync(new Uint8Array(readFileSync(out)));
     rmSync(out, { force: true });
     const names = Object.keys(zip).filter((n) => n.includes('/files/')).sort();
-    expect(names).toEqual([0, 1, 2].map((k) => `L'Ancora di Sabaoth/files/S1/track ${k}.mp3`));
+    expect(names).toEqual([0, 1, 2].map((k) => `L'Ancora di Sabaoth/files/scenes/S1/music/track ${k}.mp3`));
     for (let k = 0; k < FILES; k++) expect(sha(zip[names[k]!]!)).toBe(hashes[k]);
   });
 });

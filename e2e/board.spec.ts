@@ -48,7 +48,7 @@ test('Claude writes the prompts, the drop finds each file its scene, and the boa
   // Prompts through the connector.
   const board = await claude.tool('get_board', { projectId: id });
   expect(board.appendix).toBe(true);
-  expect(board.rows.map((r: { sceneId: string }) => r.sceneId)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5']);
+  expect(board.scenes.map((r: { sceneId: string }) => r.sceneId)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5']);
   await claude.tool('set_scene_prompts', {
     projectId: id,
     sceneId: 'S1',
@@ -166,7 +166,7 @@ test('Claude writes the prompts, the drop finds each file its scene, and the boa
   await expect(s1Thumbs).toHaveCount(3);
   expect(uploads.length).toBe(before);
 
-  // The export holds board.md and the files, by scene.
+  // The export holds board.md and the files, by scene and prompt.
   await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
   const exported = await page.request.get(`/api/projects/${id}/export`);
   expect(exported.status()).toBe(200);
@@ -178,10 +178,10 @@ test('Claude writes the prompts, the drop finds each file its scene, and the boa
   expect(md).toContain('## S1 · La casa che cede');
   expect(md).toContain(S1_IMAGE);
   expect(md).toContain('Chosen: ');
-  const s1Files = names.filter((n) => /(^|\/)files\/S1\//.test(n));
+  const s1Files = names.filter((n) => /(^|\/)files\/scenes\/S1\//.test(n));
   expect(s1Files).toHaveLength(3);
-  expect(names.filter((n) => /(^|\/)files\/S4\//.test(n))).toHaveLength(2);
-  expect(names.some((n) => n.endsWith(`files/S2/${untitled.name}`))).toBe(true);
+  expect(names.filter((n) => /(^|\/)files\/scenes\/S4\//.test(n))).toHaveLength(2);
+  expect(names.some((n) => n.endsWith(`files/scenes/S2/music/${untitled.name}`))).toBe(true);
   const original = s1.find((f) => s1Files.some((n) => n.endsWith(`/${f.name}`)))!;
   expect(Buffer.from(zip[s1Files.find((n) => n.endsWith(`/${original.name}`))!]!).equals(original.buffer)).toBe(true);
 });
