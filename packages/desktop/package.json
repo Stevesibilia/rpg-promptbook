@@ -1,0 +1,103 @@
+{
+  "name": "promptbook-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The RPG Promptbook desktop app: the web client in Electron, with every project on this computer.",
+  "homepage": "https://github.com/Stevesibilia/rpg-promptbook",
+  "author": {
+    "name": "Stefano Sibilia",
+    "email": "24303019+Stevesibilia@users.noreply.github.com"
+  },
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "electron .",
+    "test": "vitest run",
+    "prove": "playwright test -c test/stack/playwright.config.ts",
+    "icon": "node scripts/icon.mjs",
+    "package": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "^4.7.1",
+    "@hocuspocus/server": "^4.7.1",
+    "@types/node": "^26.6.5",
+    "electron": "44.9.1",
+    "electron-builder": "26.15.3",
+    "electron-updater": "6.8.9",
+    "esbuild": "0.28.2",
+    "promptbook-format": "^0.0.0",
+    "promptbook-project": "^0.0.0",
+    "promptbook-web": "^0.0.0",
+    "vitest": "^5.0.5",
+    "yjs": "^13.6.33"
+  },
+  "build": {
+    "appId": "eu.siberio.rpg-promptbook",
+    "productName": "Promptbook",
+    "artifactName": "RPG-Promptbook-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "!dist/types/**",
+      "app/**"
+    ],
+    "npmRebuild": false,
+    "publish": {
+      "provider": "github",
+      "owner": "Stevesibilia",
+      "repo": "rpg-promptbook"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office",
+      "maintainer": "Stefano Sibilia <24303019+Stevesibilia@users.noreply.github.com>"
+    }
+  }
+}

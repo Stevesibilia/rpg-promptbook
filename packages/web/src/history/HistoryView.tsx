@@ -8,10 +8,35 @@ import { projectPath } from '../project/top.js';
 import { useDocValue } from '../sync/hooks.js';
 import { Confirm } from '../ui/Confirm.js';
 import { useToast } from '../ui/Toast.js';
+import {
+  DeviceHint,
+  matchesSource,
+  OfflineLine,
+  SourceFilterBar,
+  SourceTag,
+  type SourceFilter,
+} from '../desktop/HistorySources.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
+import { platform } from '../platform/index.js';
 import { diffRows } from './diff.js';
 import { kindClasses, kindLabels, snapshotKept, snapshotTitle, wordCount } from './labels.js';
 import { useSnapshots } from './useSnapshots.js';
 import { documentWords } from './words.js';
+
+// On the desktop, a server snapshot is restored, undone or deleted only
+// online; this device's are always at hand.
+const serverOnly = (s: SnapshotRow, offline: boolean) => offline && s.source !== 'device';
+
+// The chip of a snapshot's kind; the desktop's hourly ones have none.
+function Chip({ snapshot }: { snapshot: SnapshotRow }) {
+  if (!kindLabels[snapshot.kind]) return null;
+  return <span className={`who-chip ${kindClasses[snapshot.kind]}`}>{kindLabels[snapshot.kind]}</span>;
+}
+
+function MaybeNeedsServer({ when, children }: { when: boolean; children: React.ReactNode }) {
+  return when ? <NeedsServer>{children}</NeedsServer> : <>{children}</>;
+}
 
 function useAlive() {
   const alive = useRef(true);
@@ -104,8 +129,12 @@ function SnapshotList({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<SnapshotRow | null>(null);
+  const [source, setSource] = useState<SourceFilter>('all');
   const navigate = useNavigate();
   const alive = useAlive();
+  const desktop = platform.kind === 'desktop';
+  const offline = useOffline();
+  const shown = list.snapshots?.filter((s) => matchesSource(s, source)) ?? null;
 
   async function save() {
     const label = name.trim();
@@ -114,11 +143,11 @@ function SnapshotList({
     setSaving(true);
     setError(null);
     try {
-      await api.createSnapshot(projectId, label);
+      const { snapshot } = await api.createSnapshot(projectId, label);
       if (!alive.current) return;
       setName('');
       list.refresh();
-      onToast('Snapshot saved.');
+      onToast(snapshot.source === 'device' ? 'Snapshot saved on this device.' : 'Snapshot saved.');
     } catch (e) {
       if (alive.current) setError(e instanceof ApiError ? e.message : 'The snapshot could not be saved.');
     } finally {
@@ -142,6 +171,7 @@ function SnapshotList({
         <h1>History</h1>
         <p className="lead">Snapshots of the prep document. Restoring never loses the current text.</p>
       </div>
+      {desktop && offline && <OfflineLine />}
       <div className="card row snap-save">
         <b style={{ marginRight: 4 }}>Save snapshot</b>
         <input
@@ -164,10 +194,12 @@ function SnapshotList({
           </span>
         )}
       </div>
-      <div className="snap" role="table" aria-label="Snapshots">
+      {desktop && <SourceFilterBar value={source} onChange={setSource} />}
+      <div className={`snap${desktop ? ' sources' : ''}`} role="table" aria-label="Snapshots">
         <div className="sr th" role="row">
           <span>When</span>
           <span>Snapshot</span>
+          {desktop && <span>Source</span>}
           <span style={{ textAlign: 'right' }}>Words</span>
           <span />
         </div>
@@ -176,6 +208,7 @@ function SnapshotList({
           <span className="k">
             <b>Current text</b>
           </span>
+          {desktop && <span />}
           <span className="w">{wordCount(words)}</span>
           <span className="a" />
         </div>
@@ -185,15 +218,16 @@ function SnapshotList({
             {list.error}
           </div>
         )}
-        {list.snapshots?.length === 0 && <div className="sr none">No snapshots yet.</div>}
-        {list.snapshots?.map((s) => (
+        {shown?.length === 0 && <div className="sr none">No snapshots yet.</div>}
+        {shown?.map((s) => (
           <div className="sr" role="row" key={s.id}>
             <span className="when">{snapshotTime(s.createdAt)}</span>
             <span className="k">
-              <span className={`who-chip ${kindClasses[s.kind]}`}>{kindLabels[s.kind]}</span>
+              <Chip snapshot={s} />
               <b>{snapshotTitle(s)}</b>
               <div className="meta">{snapshotKept(s)}</div>
             </span>
+            {desktop && <SourceTag source={s.source} />}
             <span className="w">{wordCount(s.words)}</span>
             <span className="a">
               <button
@@ -202,19 +236,27 @@ function SnapshotList({
               >
                 Compare
               </button>
-              <button className="tb sm line" onClick={() => onRestore(s)}>
-                Restore
-              </button>
-              {s.kind === 'user' && (
-                <button className="tb sm danger" onClick={() => setDeleting(s)}>
-                  Delete
+              <MaybeNeedsServer when={serverOnly(s, offline)}>
+                <button className="tb sm line" onClick={() => onRestore(s)} disabled={serverOnly(s, offline)}>
+                  Restore
                 </button>
+              </MaybeNeedsServer>
+              {s.kind === 'user' && (
+                <MaybeNeedsServer when={serverOnly(s, offline)}>
+                  <button className="tb sm danger" onClick={() => setDeleting(s)} disabled={serverOnly(s, offline)}>
+                    Delete
+                  </button>
+                </MaybeNeedsServer>
               )}
             </span>
           </div>
         ))}
       </div>
-      <p className="hint">Claude's snapshots are kept 30 days; yours until you delete them.</p>
+      {desktop ? (
+        <DeviceHint />
+      ) : (
+        <p className="hint">Claude's snapshots are kept 30 days; yours until you delete them.</p>
+      )}
       {deleting && (
         <Confirm
           title="Delete this snapshot?"
@@ -246,6 +288,7 @@ function Compare({
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const offline = useOffline();
   // The view is keyed by the snapshot's id, so one answer only ever reaches
   // it; `alive` drops the answer of a view already left.
   const alive = useAlive();
@@ -283,7 +326,8 @@ function Compare({
         <>
           <div className="card row" style={{ justifyContent: 'space-between' }}>
             <span>
-              <span className={`who-chip ${kindClasses[snapshot.kind]}`}>{kindLabels[snapshot.kind]}</span>
+              {platform.kind === 'desktop' && <SourceTag source={snapshot.source} />}
+              <Chip snapshot={snapshot} />
               {snapshotTitle(snapshot)}
             </span>
             <span className="row">
@@ -291,9 +335,15 @@ function Compare({
                 <span className="plus">+{diff.added}</span> · <span className="minus">−{diff.removed}</span> lines ·
                 unified
               </span>
-              <button className="tb primary" onClick={() => onRestore(snapshot)}>
-                Restore this version
-              </button>
+              <MaybeNeedsServer when={serverOnly(snapshot, offline)}>
+                <button
+                  className="tb primary"
+                  onClick={() => onRestore(snapshot)}
+                  disabled={serverOnly(snapshot, offline)}
+                >
+                  Restore this version
+                </button>
+              </MaybeNeedsServer>
             </span>
           </div>
           {diff.rows.length === 0 ? (

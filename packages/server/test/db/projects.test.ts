@@ -188,6 +188,7 @@ describe('the bin', () => {
       oauthCodes: 0,
       oauthTokens: 0,
       oauthRegistrations: 0,
+      oauthGrants: 0,
     });
     expect(await db.query('select state from oidc_logins')).toEqual([{ state: 'live' }]);
     expect((await list(true)).map((p) => p.id)).toEqual([recent.id]);

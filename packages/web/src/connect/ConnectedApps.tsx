@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, type Grant } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { longDate, snapshotTime } from '../dates.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useOffline } from '../desktop/useDevice.js';
+import { platform } from '../platform/index.js';
 import { Confirm } from '../ui/Confirm.js';
 import { useToast } from '../ui/Toast.js';
 import { hostOf } from '../inspiration/links.js';
+import { grantName } from './consent.js';
 import './connect.css';
 
-const access = { read: 'Read only', read_write: 'Read and edit' } as const;
+const access = { read: 'Read only', read_write: 'Read and edit', app: 'Desktop app' } as const;
 
 // Settings, Connected apps (connector design decision 8): the apps the user
 // allowed, Revoke, and how to connect Claude.
@@ -16,8 +20,9 @@ export function ConnectedApps() {
   const [grants, setGrants] = useState<Grant[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [revoking, setRevoking] = useState<Grant | null>(null);
-  const [resource, setResource] = useState(`${window.location.origin}/api/mcp`);
+  const [resource, setResource] = useState(`${platform.serverOrigin}/api/mcp`);
   const [toast, showToast] = useToast();
+  const offline = useOffline();
   const urlInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,13 +72,15 @@ export function ConnectedApps() {
           {grants.length === 0 && <div className="ar none">No connected apps.</div>}
           {grants.map((g) => {
             const site = g.client_uri ? hostOf(g.client_uri) : '';
+            const name = grantName(g);
             return (
               <div className="ar" role="row" key={g.id} data-id={g.id}>
                 <span className="nm" role="cell">
                   <span className="avatar cl">{g.client_name.trim().charAt(0).toUpperCase() || '?'}</span>
                   <span>
-                    <b>{g.client_name}</b>
-                    <small>{site || 'no site given'}</small>
+                    <b>{name}</b>
+                    {/* The desktop app is Promptbook's own: no site to show. */}
+                    {!g.first_party && <small>{site || 'no site given'}</small>}
                   </span>
                 </span>
                 <span className="d" role="cell">
@@ -85,9 +92,16 @@ export function ConnectedApps() {
                 <span className="d" role="cell">
                   {g.last_used_at ? snapshotTime(g.last_used_at) : 'never'}
                 </span>
-                <button className="tb danger" onClick={() => setRevoking(g)} aria-label={`Revoke ${g.client_name}`}>
-                  Revoke
-                </button>
+                <NeedsServer>
+                  <button
+                    className="tb danger"
+                    onClick={() => setRevoking(g)}
+                    aria-label={`Revoke ${name}`}
+                    disabled={offline}
+                  >
+                    Revoke
+                  </button>
+                </NeedsServer>
               </div>
             );
           })}
@@ -119,18 +133,24 @@ export function ConnectedApps() {
       </div>
       {revoking && (
         <Confirm
-          title={`Revoke ${revoking.client_name}?`}
+          title={`Revoke ${grantName(revoking)}?`}
           action="Revoke"
           danger
-          note="To use it again, connect it from claude.ai and allow it on the authorize page."
+          note={
+            revoking.first_party
+              ? 'To sync it again, sign in from Promptbook on that computer.'
+              : 'To use it again, connect it from claude.ai and allow it on the authorize page.'
+          }
           onClose={() => setRevoking(null)}
           onConfirm={async () => {
             await api.revokeGrant(revoking.id);
             setGrants((list) => list?.filter((g) => g.id !== revoking.id) ?? null);
-            showToast(`${revoking.client_name} revoked.`);
+            showToast(`${grantName(revoking)} revoked.`);
           }}
         >
-          It loses access to your projects at once, in every chat.
+          {revoking.first_party
+            ? 'It stops syncing with your projects at once.'
+            : 'It loses access to your projects at once, in every chat.'}
         </Confirm>
       )}
       {toast}

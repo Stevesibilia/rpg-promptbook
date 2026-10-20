@@ -1,0 +1,173 @@
+name: Desktop
+
+# The desktop app's installers (desktop-app design decision 16). A release
+# tag v* on main builds them on Mac, Windows and Linux at the tag's version
+# and creates the GitHub Release with them and the update manifests; the
+# server still deploys from the GitLab mirror (mirror.yml). A pull request
+# that touches the packages builds an unpacked Linux app, so a packaging
+# break shows there. A manual run builds all three without releasing.
+# Nothing is signed but the Mac app's ad-hoc signature.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/desktop.yml'
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A release builds to the end; a pull request's newer push replaces its run.
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package-check:
+    name: Package (Linux, unpacked)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w promptbook-web
+      - run: npm run build -w promptbook-desktop
+      - run: npx electron-builder --linux --x64 --dir --publish never
+        working-directory: packages/desktop
+
+  # The version every build takes: the tag's, once the tag is known to be on
+  # main; on a manual run, the repository's.
+  version:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A release is a tag on a commit of main, as in mirror.yml. Anything
+      # else stops here and nothing is built.
+      - name: Check the tag is on main
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! git merge-base --is-ancestor "refs/tags/$TAG" origin/main; then
+            echo "::error::Tag $TAG is not on main. Tag a commit that main contains."
+            exit 1
+          fi
+
+      - name: Read the version
+        id: version
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          if [ -n "$TAG" ]; then
+            version="${TAG#v}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Tag $TAG is not vX.Y.Z."
+              exit 1
+            fi
+          else
+            version=$(node -p "require('./packages/desktop/package.json').version")
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building Promptbook $version"
+
+  build:
+    needs: version
+    name: Build (${{ matrix.label }})
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One job for both Mac architectures: no native module, so one
+          # latest-mac.yml lists both and no manifest merge is needed.
+          - os: macos-latest
+            label: Mac
+            artifact: desktop-mac
+            args: --mac --arm64 --x64
+          - os: windows-latest
+            label: Windows
+            artifact: desktop-windows
+            args: --win --x64
+          - os: ubuntu-latest
+            label: Linux
+            artifact: desktop-linux
+            args: --linux --x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w promptbook-web
+      - run: npm run build -w promptbook-desktop
+      - name: Set the version
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: npm version "$VERSION" --no-git-tag-version --allow-same-version -w promptbook-desktop
+      - name: Package
+        shell: bash
+        working-directory: packages/desktop
+        run: npx electron-builder ${{ matrix.args }} --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.zip
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.AppImage
+            packages/desktop/release/*.deb
+            packages/desktop/release/*.blockmap
+            packages/desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+  # The GitHub Release for the tag, with generated notes, made once every
+  # platform has built: a draft first, so the latest release never lacks its
+  # installers or update manifests, then every file (replacing any left by an
+  # earlier run of the same tag), then published. A manual run, even on a
+  # tag, releases nothing.
+  release:
+    needs: [version, build]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          path: release
+          merge-multiple: true
+      - name: Create the release and upload the installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -l release
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --draft --generate-notes --verify-tag
+          fi
+          gh release upload "$TAG" release/* --clobber
+          gh release edit "$TAG" --draft=false

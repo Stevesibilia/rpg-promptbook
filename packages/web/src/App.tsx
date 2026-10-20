@@ -1,24 +1,22 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, setUnauthorizedHandler, type User } from './api.js';
 import { announceSignedIn, onSignedInElsewhere } from './auth/channel.js';
+import { AppRoutes } from './AppRoutes.js';
 import { AuthContext, type Auth } from './auth/context.js';
-import { SIGNED_IN_PATH, singleFlight } from './auth/oidc.js';
-import { SignedInPage } from './auth/SignedInPage.js';
+import { singleFlight } from './auth/oidc.js';
 import { SignInPage } from './auth/SignInPage.js';
-import { AuthorizePage } from './connect/AuthorizePage.js';
-import { BinPage } from './projects/BinPage.js';
-import { ProjectsPage } from './projects/ProjectsPage.js';
-import { SettingsPage } from './settings/SettingsPage.js';
 import { SignInDialog } from './shell/SignInDialog.js';
+import { DesktopApp } from './desktop/DesktopApp.js';
+import { platform } from './platform/index.js';
 import { registry } from './sync/registry.js';
-
-// CodeMirror loads with the first project page, not with the list.
-const ProjectPage = lazy(() => import('./project/ProjectPage.js').then((m) => ({ default: m.ProjectPage })));
 
 type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'signed-in'; user: User };
 
 export function App() {
+  return platform.kind === 'desktop' ? <DesktopApp /> : <WebApp />;
+}
+
+function WebApp() {
   const [session, setSession] = useState<Session>({ state: 'loading' });
   const [dialog, setDialog] = useState(false);
   const current = useRef(session);
@@ -111,22 +109,7 @@ export function App() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <Routes>
-        <Route path="/" element={<ProjectsPage />} />
-        <Route path="/bin" element={<BinPage />} />
-        <Route path="/settings/:section?" element={<SettingsPage />} />
-        <Route path={SIGNED_IN_PATH} element={<SignedInPage />} />
-        <Route path="/authorize" element={<AuthorizePage />} />
-        <Route
-          path="/projects/:id/:view?"
-          element={
-            <Suspense fallback={null}>
-              <ProjectPage />
-            </Suspense>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AppRoutes />
       {dialog && (
         <SignInDialog
           username={auth.user.username}

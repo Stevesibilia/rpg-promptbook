@@ -1,8 +1,10 @@
 // The sync pill's state, reduced from what each open project's provider
 // reports (design decision 9). Pure, so it is tested without a server.
 
-// Worst first: with several projects open, the first one met wins.
-export const syncStates = ['signed-out', 'not-saved', 'reconnecting', 'syncing', 'synced'] as const;
+// Worst first: with several projects open, the first one met wins. The
+// browser never reports local; the desktop app never reports reconnecting
+// (desktop-app design decision 11).
+export const syncStates = ['signed-out', 'not-saved', 'reconnecting', 'local', 'syncing', 'synced'] as const;
 export type SyncState = (typeof syncStates)[number];
 
 export interface ProviderSnapshot {
@@ -16,14 +18,18 @@ export interface ProviderSnapshot {
   unsynced: number;
   // The server refused the document because the session ended.
   signedOut: boolean;
-  // A store-failed message came with no stored message after it.
+  // A store-failed message came with no stored message after it; on the
+  // desktop, a disk write failed.
   storeFailed: boolean;
+  // The desktop app: changes made while disconnected are kept on this
+  // device, so disconnected reads as local, not reconnecting.
+  onDevice?: boolean;
 }
 
 export function providerState(p: ProviderSnapshot): SyncState {
   if (p.signedOut) return 'signed-out';
   if (p.storeFailed) return 'not-saved';
-  if (!p.connected) return 'reconnecting';
+  if (!p.connected) return p.onDevice ? 'local' : 'reconnecting';
   if (!p.synced || p.unsynced > 0) return 'syncing';
   return 'synced';
 }
@@ -68,6 +74,7 @@ export const stateLabels: Record<SyncState, string> = {
   'signed-out': 'Sign in to sync',
   'not-saved': 'Not saved',
   reconnecting: 'Reconnecting…',
+  local: 'On this device only',
   syncing: 'Syncing…',
   synced: 'Synced',
 };

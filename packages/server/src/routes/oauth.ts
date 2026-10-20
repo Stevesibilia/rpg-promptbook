@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { requireSession } from '../accounts/auth.js';
+import { requireCookieSession, requireSession } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
@@ -13,15 +13,17 @@ import {
   type OAuthClient,
 } from '../oauth/clients.js';
 import {
+  APP_SCOPE,
   MCP_PATH,
   OAUTH_SCOPES,
   oauthConfig,
   parseScopeParameter,
   scopeWithin,
+  type GrantScope,
   type OAuthConfig,
   type OAuthScope,
 } from '../oauth/config.js';
-import { createGrant, listGrants, revokeGrant } from '../oauth/grants.js';
+import { countPendingFirstPartyGrants, createGrant, listGrants, revokeGrant } from '../oauth/grants.js';
 import {
   issueCode,
   issueTokens,
@@ -31,9 +33,12 @@ import {
   sweepExpired,
   TokenError,
 } from '../oauth/tokens.js';
+import type { Sync } from '../sync.js';
 
-// The authorization server for the MCP endpoint and nothing else (connector
-// design decisions 7 to 9, ported from gdrarchive). Three kinds of route,
+// The authorization server for the MCP endpoint (connector design decisions 7
+// to 9, ported from gdrarchive), and for the desktop app, a first-party client
+// that gets the app resource and nothing else (desktop-app design decision
+// 8). Three kinds of route,
 // each with its own relation to the session cookie:
 // - the well-known metadata, public, outside /api;
 // - registration, token and revocation, called by programs from anywhere,
@@ -43,6 +48,11 @@ import {
 
 // A token or registration request is a handful of short parameters.
 const SMALL_BODY_LIMIT = 8 * 1024;
+
+// The desktop app is approved without a click, so any page can start its
+// sign-in: past this many unfinished ones in the window, approvals wait.
+const PENDING_FIRST_PARTY_MAX = 10;
+const PENDING_FIRST_PARTY_WINDOW_MS = 600_000;
 
 // RFC 6749 section 5.2's error shape, and no-store on every answer of these
 // endpoints so no proxy keeps a token response.
@@ -86,10 +96,17 @@ const authorizeQuery = z.object({
   scope: z.string().max(256).optional(),
   // Opaque here: handed back to the client exactly as it came.
   state: z.string().max(2048).optional(),
+  // The first-party client's computer, for Connected apps.
+  device_name: z.string().max(400).optional(),
 });
 type AuthorizeQuery = z.output<typeof authorizeQuery>;
 
-const approveBody = authorizeQuery.extend({ granted_scope: z.enum(OAUTH_SCOPES) });
+const approveBody = authorizeQuery.extend({ granted_scope: z.enum([...OAUTH_SCOPES, APP_SCOPE]) });
+
+// 1 to 80 characters, none of them a control or format character, and not
+// only spaces.
+const DEVICE_NAME = /^[^\p{C}]{1,80}$/u;
+const isDeviceName = (value: string) => DEVICE_NAME.test(value) && value.trim() !== '';
 
 const registrationBody = z.object({
   client_name: z.string().trim().min(1, 'is required').max(200),
@@ -106,7 +123,9 @@ const registrationBody = z.object({
 interface ValidatedRequest {
   client: OAuthClient;
   query: AuthorizeQuery;
-  requestedScopes: OAuthScope[];
+  requestedScopes: GrantScope[];
+  // The first-party client's computer; null for every other client.
+  deviceName: string | null;
 }
 
 // The consent page's view of a request.
@@ -117,10 +136,12 @@ export interface ConsentRequest {
   client_host: string | null;
   redirect_host: string;
   loopback_only: boolean;
-  requested_scopes: OAuthScope[];
+  requested_scopes: GrantScope[];
+  // The desktop app: the page approves at once, with no question.
+  first_party: boolean;
 }
 
-export async function oauthRoutes(app: FastifyInstance, { config, db }: { config: Config; db: Db }) {
+export async function oauthRoutes(app: FastifyInstance, { config, db, sync }: { config: Config; db: Db; sync: Sync }) {
   const oauth: OAuthConfig = oauthConfig(config.publicOrigin);
 
   // Everything a request must satisfy before anyone is shown anything or any
@@ -144,14 +165,23 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     if (query.code_challenge_method !== 'S256') {
       throw new AppError(400, 'invalid_request', 'This server accepts the S256 PKCE method only.');
     }
-    if (query.resource !== oauth.resource) {
-      throw new AppError(
+    const wrongTarget = () =>
+      new AppError(
         400,
         'invalid_target',
         `This server issues tokens for ${oauth.resource} only, and the request named something else.`,
       );
+    const forApp = query.resource === oauth.appResource;
+    if (!forApp && query.resource !== oauth.resource) throw wrongTarget();
+    let requestedScopes: GrantScope[] | null;
+    if (forApp) {
+      if (query.scope !== APP_SCOPE) {
+        throw new AppError(400, 'invalid_scope', `The app resource takes the scope ${APP_SCOPE} and nothing else.`);
+      }
+      requestedScopes = [APP_SCOPE];
+    } else {
+      requestedScopes = parseScopeParameter(query.scope);
     }
-    const requestedScopes = parseScopeParameter(query.scope);
     if (!requestedScopes) {
       throw new AppError(400, 'invalid_scope', `The scopes this server supports are ${OAUTH_SCOPES.join(' and ')}.`);
     }
@@ -170,7 +200,20 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
         'That redirect URI is not one the client registered, so you will not be sent to it.',
       );
     }
-    return { client, query, requestedScopes };
+    // The app resource is the first-party client's and only that client's,
+    // and it gets nothing else.
+    if (client.firstParty !== forApp) {
+      if (!client.firstParty) throw wrongTarget();
+      throw new AppError(400, 'invalid_target', `${client.clientName} signs in for ${oauth.appResource} only.`);
+    }
+    let deviceName: string | null = null;
+    if (client.firstParty) {
+      if (query.device_name === undefined || !isDeviceName(query.device_name)) {
+        throw new AppError(400, 'invalid_request', 'The device name must be 1 to 80 printable characters.');
+      }
+      deviceName = query.device_name;
+    }
+    return { client, query, requestedScopes, deviceName };
   }
 
   // Where the browser goes, built here from the validated redirect URI, never
@@ -249,10 +292,10 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     }
   });
 
-  // Consent, for the /authorize page: session only, same origin.
+  // Consent, for the /authorize page: a cookie session only, same origin.
 
   app.get('/api/oauth/authorize', async (req): Promise<ConsentRequest> => {
-    requireSession(req);
+    requireCookieSession(req);
     const validated = await validateRequest(req.query);
     return {
       client_name: validated.client.clientName,
@@ -260,13 +303,14 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
       redirect_host: new URL(validated.query.redirect_uri).host,
       loopback_only: isLoopbackOnlyClient(validated.client),
       requested_scopes: validated.requestedScopes,
+      first_party: validated.client.firstParty,
     };
   });
 
   // Allow: the grant, a code, and where to send the browser. Every check runs
   // again rather than trusting what the page was shown.
   app.post('/api/oauth/authorize', async (req) => {
-    const { user } = requireSession(req);
+    const { user } = requireCookieSession(req);
     const parsed = approveBody.safeParse(req.body ?? {});
     if (!parsed.success) throw new AppError(400, 'invalid_request', 'The approval is missing or malformed.');
     const body = parsed.data;
@@ -279,7 +323,14 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
       );
     }
     const code = await db.withTransaction(async (tx) => {
-      const grantId = await createGrant(tx, user.id, validated.client.id, body.granted_scope);
+      if (validated.client.firstParty) {
+        // One approval at a time per user, so a burst cannot all count first.
+        await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-first-party:' || $1, 0))", [user.id]);
+        if ((await countPendingFirstPartyGrants(tx, user.id, PENDING_FIRST_PARTY_WINDOW_MS)) >= PENDING_FIRST_PARTY_MAX) {
+          throw new AppError(429, 'too_many_requests', 'Too many desktop sign-ins at once: wait a few minutes and try again.');
+        }
+      }
+      const grantId = await createGrant(tx, user.id, validated.client.id, body.granted_scope, validated.deviceName);
       return issueCode(tx, grantId, {
         redirectUri: validated.query.redirect_uri,
         codeChallenge: validated.query.code_challenge,
@@ -292,7 +343,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
   // Deny: nothing recorded, the client told at its redirect URI, which had
   // to be valid like an approval's.
   app.post('/api/oauth/authorize/deny', async (req) => {
-    requireSession(req);
+    requireCookieSession(req);
     const validated = await validateRequest(req.body);
     return redirectTo(validated, { error: 'access_denied', state: validated.query.state });
   });
@@ -330,21 +381,25 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
           if (!code || !redirectUri || !clientId || !codeVerifier) {
             throw new TokenError('invalid_request', 'code, redirect_uri, client_id and code_verifier are all required.');
           }
-          const { grantId, scope: granted } = await redeemCode(db, {
+          const redeemed = await redeemCode(db, {
             code,
             clientId,
             redirectUri,
             codeVerifier,
-            // One resource here: a client that names none means it.
-            resource: formField(req.body, 'resource') ?? oauth.resource,
+            resource: formField(req.body, 'resource'),
           });
-          const issued = await issueTokens(db, grantId, oauth.resource);
+          // The authorize checks already bind the app resource to the
+          // first-party client; checked again before anything is issued.
+          if ((redeemed.resource === oauth.appResource) !== redeemed.firstParty) {
+            throw new TokenError('invalid_grant', 'That authorization code is not valid.');
+          }
+          const issued = await issueTokens(db, redeemed.grantId, redeemed.resource);
           return reply.header('cache-control', 'no-store').send({
             access_token: issued.accessToken,
             token_type: 'Bearer',
             expires_in: issued.expiresIn,
             refresh_token: issued.refreshToken,
-            scope: granted,
+            scope: redeemed.scope,
           });
         }
         if (grantType === 'refresh_token') {
@@ -370,6 +425,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
         throw new TokenError('unsupported_grant_type', 'This server supports authorization_code and refresh_token.');
       } catch (error) {
         if (error instanceof TokenError) {
+          if (error.revokedGrantId) sync.closeGrants([error.revokedGrantId]);
           // The grant type and the code, nothing else of this body.
           req.log.warn({ grant_type: grantType, code: error.code }, 'OAuth token request refused');
           return sendOAuthError(reply, 400, error.code, error.message);
@@ -384,7 +440,8 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
         return sendOAuthError(reply, 400, 'invalid_request', 'The revocation request must be form-encoded.');
       }
       const presented = formField(req.body, 'token');
-      if (presented) await revokeByTokenValue(db, presented);
+      const revoked = presented ? await revokeByTokenValue(db, presented) : null;
+      if (revoked) sync.closeGrants([revoked]);
       return reply.code(200).header('cache-control', 'no-store').send({});
     });
   });
@@ -400,6 +457,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     const { user } = requireSession(req);
     const { id } = req.params as { id: string };
     await revokeGrant(db, user.id, id);
+    sync.closeGrants([id]);
     return reply.code(204).send();
   });
 }

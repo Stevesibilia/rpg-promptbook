@@ -17,12 +17,25 @@ NOT appear. The rail's Inspiration, Research, Brainstorm log and History
 entries SHALL appear as
 [docs/mockups/connector.html](../../../docs/mockups/connector.html) shows
 them, enabled only while a project is open. The ⌘K hint SHALL appear only on
-the project page, where the command palette exists.
+the project page, where the command palette exists. In the desktop app the
+same client SHALL follow
+[docs/mockups/desktop.html](../../../docs/mockups/desktop.html) and the
+desktop parts of `projects.html`: the desktop sign-in and first sync
+screens, the device column in the list, the desktop sync states, the update
+strip, and the shortcut hint as Ctrl K outside the Mac. One web build SHALL
+serve the browser and the desktop app, and the browser's behaviour SHALL NOT
+change.
 
 #### Scenario: Fonts offline from the internet
 
 - **WHEN** the app is opened on a network with no internet access
 - **THEN** every font loads from the app's own origin
+
+#### Scenario: Browser unchanged
+
+- **WHEN** the web client runs in a browser after this change
+- **THEN** it shows no desktop screen, state or setting, and the existing
+  end-to-end tests pass unchanged
 
 ### Requirement: Sign-in page
 
@@ -129,6 +142,10 @@ templates (read-only description of both skeletons), Author and licence
 password), Connected apps (the apps the user allowed, as the connector
 capability defines), Sync and storage (the server address and Export all
 projects), and Appearance (Dark, Light, System, remembered in the browser).
+In the desktop app Settings SHALL also have This device, after Sync and
+storage, as the desktop-app capability defines; Sync and storage SHALL show
+the server the app syncs with and the lead «Projects live on this device and
+sync with the server when online.» instead of the browser's.
 
 #### Scenario: Template edit is saved
 
@@ -141,3 +158,9 @@ projects), and Appearance (Dark, Light, System, remembered in the browser).
 - **WHEN** the user opens Settings and presses Connected apps
 - **THEN** the address is `/settings/apps` and the section lists the user's
   approved apps and how to connect Claude
+
+#### Scenario: This device only on the desktop
+
+- **WHEN** the user opens Settings in the browser
+- **THEN** there is no This device section, and `/settings/device` shows
+  To-do templates

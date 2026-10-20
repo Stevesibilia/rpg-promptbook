@@ -28,6 +28,29 @@ describe('providerState', () => {
   });
 });
 
+describe('the desktop state local', () => {
+  const desk: ProviderSnapshot = { ...synced, onDevice: true };
+
+  it('reads offline on the desktop as local, never as reconnecting', () => {
+    expect(providerState({ ...desk, connected: false, unsynced: 3 })).toBe('local');
+    expect(providerState({ ...desk, connected: false })).toBe('local');
+    expect(providerState(desk)).toBe('synced');
+  });
+
+  it('ranks local after reconnecting and not saved, before syncing', () => {
+    const offline = { ...desk, id: 'b', connected: false, unsynced: 2 };
+    expect(overallState([desk, offline])).toBe('local');
+    expect(overallState([{ ...desk, synced: false }, offline])).toBe('local');
+    expect(overallState([{ ...desk, storeFailed: true }, offline])).toBe('not-saved');
+    expect(overallState([offline], true)).toBe('signed-out');
+    expect(overallState([offline, { ...synced, id: 'c', connected: false }])).toBe('reconnecting');
+  });
+
+  it('lists the changes kept on the device as pending', () => {
+    expect(pendingChanges([{ ...desk, connected: false, unsynced: 2 }])).toEqual([{ id: 'a', title: 'A', changes: 2 }]);
+  });
+});
+
 describe('overallState', () => {
   it('is synced with nothing open', () => {
     expect(overallState([])).toBe('synced');

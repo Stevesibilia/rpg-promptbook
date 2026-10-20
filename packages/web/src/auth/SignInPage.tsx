@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { User } from '../api.js';
+import { platform } from '../platform/index.js';
 import { useAuthConfig } from './config.js';
 import { failureMessage, signInFailure, startUrl, withoutSignIn } from './oidc.js';
 import { SignInForm } from './SignInForm.js';
@@ -17,6 +18,8 @@ export function Brand() {
     </div>
   );
 }
+
+const serverHostname = () => new URL(platform.serverOrigin).hostname;
 
 // Shown without a session, at whatever address was asked for: once signed in,
 // the app renders that address, so a deep link opens where it pointed. With
@@ -59,7 +62,7 @@ export function SignInPage({ onSignedIn }: { onSignedIn(user: User): void }) {
           <>
             <SignInForm onSignedIn={onSignedIn} />
             <div className="foot">
-              {window.location.hostname} · no sign-up: the game master's account is created on the server.
+              {serverHostname()} · no sign-up: the game master's account is created on the server.
             </div>
           </>
         )}
@@ -72,8 +75,7 @@ export function SignInPage({ onSignedIn }: { onSignedIn(user: User): void }) {
             )}
             <ProviderButton providerName={config.config.providerName} />
             <div className="foot">
-              {window.location.hostname} · accounts come from {config.config.issuerHost}. The first sign-in creates
-              yours.
+              {serverHostname()} · accounts come from {config.config.issuerHost}. The first sign-in creates yours.
             </div>
           </>
         )}
@@ -86,6 +88,7 @@ export function SignInPage({ onSignedIn }: { onSignedIn(user: User): void }) {
 // of an earlier failure.
 function ProviderButton({ providerName }: { providerName: string }) {
   const [leaving, setLeaving] = useState(false);
+  const here = useLocation();
 
   // Back from the provider with the browser's back button, the page may come
   // from the back-forward cache as it was left: disabled.
@@ -101,7 +104,7 @@ function ProviderButton({ providerName }: { providerName: string }) {
       disabled={leaving}
       onClick={() => {
         setLeaving(true);
-        window.location.href = startUrl(window.location.pathname + withoutSignIn(window.location.search));
+        window.location.assign(startUrl(here.pathname + withoutSignIn(here.search)));
       }}
     >
       Sign in with {providerName}

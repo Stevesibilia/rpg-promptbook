@@ -1,9 +1,12 @@
-import type { Category, Settings, Status } from 'promptbook-project';
+import { exportFolderName, type Category, type ProjectRow, type Settings, type Status } from 'promptbook-project';
 import type { ConvertReport } from 'promptbook-format';
+import { platform } from './platform/index.js';
 
 // A small fetch wrapper for the server's REST API (design decision 7). Every
 // call sends the session cookie; a 401 from a signed-in page means the
-// session ended, which the shell shows as Sign in to sync.
+// session ended, which the shell shows as Sign in to sync. On the desktop the
+// same calls go to main's router through the platform (desktop-app design
+// decisions 6 and 7), which answers 503 offline for what needs the server.
 
 export interface User {
   id: string;
@@ -19,25 +22,7 @@ export interface User {
 export type AuthConfig = { signIn: 'oidc'; providerName: string; issuerHost: string } | { signIn: 'password' };
 
 // One row of the project list, as GET /api/projects answers it.
-export interface ProjectRow {
-  id: string;
-  title: string;
-  category: Category;
-  status: Status;
-  campaignId: string | null;
-  system: string;
-  seed: string;
-  todoDone: number;
-  todoTotal: number;
-  nextDue: string | null;
-  scenes: number | null;
-  words: number | null;
-  errors: number | null;
-  warnings: number | null;
-  createdAt: string;
-  editedAt: string;
-  deletedAt: string | null;
-}
+export type { ProjectRow };
 
 export interface NewProject {
   category: Category;
@@ -62,7 +47,8 @@ export interface ImportResult {
   imagesNotImported: number;
 }
 
-export type SnapshotKind = 'claude' | 'user' | 'restore';
+// hourly: taken on the desktop while editing (desktop-app design decision 12).
+export type SnapshotKind = 'claude' | 'user' | 'restore' | 'hourly';
 
 // A snapshot of the prep document, as GET /api/projects/:id/snapshots lists it.
 export interface SnapshotRow {
@@ -77,6 +63,8 @@ export interface SnapshotRow {
   createdAt: string;
   // Null for the user's own.
   expiresAt: string | null;
+  // On the desktop: kept on the server, or on this device.
+  source?: 'server' | 'device';
 }
 
 export interface Snapshot extends SnapshotRow {
@@ -84,6 +72,8 @@ export interface Snapshot extends SnapshotRow {
 }
 
 export type OAuthScope = 'read' | 'read_write';
+// What a grant carries: a connector's scope, or app for the desktop app.
+export type GrantScope = OAuthScope | 'app';
 
 // An authorization request as the server validated it, for the consent page.
 export interface ConsentRequest {
@@ -92,7 +82,9 @@ export interface ConsentRequest {
   client_host: string | null;
   redirect_host: string;
   loopback_only: boolean;
-  requested_scopes: OAuthScope[];
+  requested_scopes: GrantScope[];
+  // The desktop app: approved at once, with no question.
+  first_party: boolean;
 }
 
 // An app the user allowed, as GET /api/auth/grants lists it.
@@ -100,7 +92,10 @@ export interface Grant {
   id: string;
   client_name: string;
   client_uri: string | null;
-  scope: OAuthScope;
+  scope: GrantScope;
+  // The desktop app's grant, and the computer it was made on.
+  first_party: boolean;
+  device_name: string | null;
   created_at: string;
   last_used_at: string | null;
 }
@@ -130,7 +125,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   let response: Response;
   try {
-    response = await fetch(path, init);
+    response = await platform.request(path, init);
   } catch {
     throw new ApiError(0, 'network', 'The server cannot be reached.');
   }
@@ -189,7 +184,7 @@ export const api = {
   // The consent page sends the request's parameters back as it received them;
   // the server builds the address the browser goes to.
   consentRequest: (params: URLSearchParams) => request<ConsentRequest>('GET', `/api/oauth/authorize?${params}`),
-  approve: (params: Record<string, string>, grantedScope: OAuthScope) =>
+  approve: (params: Record<string, string>, grantedScope: GrantScope) =>
     request<{ redirect_to: string }>('POST', '/api/oauth/authorize', { ...params, granted_scope: grantedScope }),
   deny: (params: Record<string, string>) =>
     request<{ redirect_to: string }>('POST', '/api/oauth/authorize/deny', params),
@@ -203,3 +198,7 @@ const snapshotsPath = (projectId: string) => `/api/projects/${encodeURIComponent
 
 export const exportUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/export`;
 export const exportAllUrl = '/api/export';
+
+// The names the server gives the exports, for the desktop's save dialog.
+export const exportName = (title: string) => `${exportFolderName(title, new Set())}.zip`;
+export const exportAllName = () => `promptbook-${new Date().toISOString().slice(0, 10)}.zip`;

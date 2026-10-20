@@ -4,7 +4,10 @@ import fp from 'fastify-plugin';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
-import { resolveSession, type Session } from './sessions.js';
+import { APP_SCOPE, oauthConfig } from '../oauth/config.js';
+import { verifyAccessToken } from '../oauth/tokens.js';
+import { resolveSession, type CookieSession, type Session } from './sessions.js';
+import { findUserById } from './users.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -41,6 +44,17 @@ export const OAUTH_ROUTES = new Set([
   'GET /api/mcp',
   'HEAD /api/mcp',
   'DELETE /api/mcp',
+]);
+
+// Session routes that act for the browser itself, so the desktop app's token
+// cannot use them (desktop-app design decision 8): consent, which would let
+// the app approve clients without a click, and sign-out, which the app does
+// by revoking its grant.
+export const COOKIE_SESSION_ROUTES = new Set([
+  'GET /api/oauth/authorize',
+  'POST /api/oauth/authorize',
+  'POST /api/oauth/authorize/deny',
+  'POST /api/auth/logout',
 ]);
 
 // The paths any origin may call without credentials, as concrete paths: a
@@ -101,17 +115,57 @@ export function requireSession(req: FastifyRequest): Session {
   return req.session;
 }
 
+const cookieSessionRequired = () =>
+  new AppError(403, 'cookie_session_required', 'This needs a session in the browser, not the desktop app’s token.');
+
+// For the routes of COOKIE_SESSION_ROUTES, which the hook already refuses to
+// an app session.
+export function requireCookieSession(req: FastifyRequest): CookieSession {
+  const session = requireSession(req);
+  if (session.via !== 'cookie' || session.tokenHash === null) throw cookieSessionRequired();
+  return session as CookieSession;
+}
+
+// The value of an Authorization: Bearer header, or null.
+export function bearerToken(req: FastifyRequest): string | null {
+  const header = req.headers.authorization;
+  if (typeof header !== 'string') return null;
+  return /^Bearer\s+(\S+)$/i.exec(header.trim())?.[1] ?? null;
+}
+
+// The desktop app's session: a live access token issued for the app
+// resource, under a grant with the app scope, and its grant's user. Null for
+// every other token alike, an MCP one included, so it answers as no
+// credential.
+async function resolveAppSession(db: Db, value: string, appResource: string): Promise<Session | null> {
+  const caller = await verifyAccessToken(db, value, appResource);
+  if (!caller || caller.scope !== APP_SCOPE) return null;
+  const user = await findUserById(db, caller.userId);
+  return user ? { tokenHash: null, user, via: 'app', grantId: caller.grantId } : null;
+}
+
 async function plugin(app: FastifyInstance, { config, db }: { config: Config; db: Db }) {
   await app.register(cookie);
+  const { appResource } = oauthConfig(config.publicOrigin);
 
   // onRequest rather than preHandler, so the origin rule covers sign-in too:
   // a cross-site post that signs the victim into another account is a real
   // attack, and it happens before there is any session.
   app.addHook('onRequest', async (req, reply) => {
     if (isOAuthRoute(req)) return;
-    assertSameOrigin(req, config.publicOrigin);
-
     const token = req.cookies[SESSION_COOKIE];
+
+    // The desktop app: an API request with no cookie and the app's bearer
+    // token. A page cannot make a browser send that header cross-site, so
+    // such a request skips the origin rule, and only that.
+    const bearer = !token && isApiUrl(req.url) ? bearerToken(req) : null;
+    if (bearer) {
+      const session = await resolveAppSession(db, bearer, appResource);
+      if (session) req.session = session;
+    }
+    if (req.session?.via !== 'app') assertSameOrigin(req, config.publicOrigin);
+    if (req.session?.via === 'app' && COOKIE_SESSION_ROUTES.has(routeKey(req))) throw cookieSessionRequired();
+
     if (token) {
       const session = await resolveSession(db, token);
       if (session) req.session = session;

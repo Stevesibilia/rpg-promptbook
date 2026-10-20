@@ -1,0 +1,12 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../../../..",
+    "outDir": "../../dist/types/stack",
+    "tsBuildInfoFile": "../../dist/types/stack.tsbuildinfo",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": [".", "../../../../e2e/stack.ts", "../../../../e2e/global-setup.ts", "../../../../e2e/issuer/*.ts"],
+  "references": [{ "path": "../../../web" }]
+}

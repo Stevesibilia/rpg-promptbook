@@ -2,10 +2,21 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { createUser, type User } from '../../src/accounts/users.js';
 import { buildApp, type AppOptions } from '../../src/app.js';
 import type { Config } from '../../src/config.js';
-import { createDb } from '../../src/db.js';
+import { createDb, type Queryable } from '../../src/db.js';
 import { testDatabaseUrl } from './guard.js';
 
 export const db = createDb(testDatabaseUrl());
+
+// The first-party client as migration 004 seeds it, for the tests that need
+// it after the truncation every test starts with (migrations.test.ts checks
+// the two agree).
+export async function seedDesktopClient(on: Queryable): Promise<void> {
+  await on.query(
+    `insert into oauth_clients (client_id, kind, client_name, redirect_uris, first_party)
+     values ('promptbook-desktop', 'registered', 'Promptbook desktop', '["http://127.0.0.1/callback"]', true)
+     on conflict (client_id) do nothing`,
+  );
+}
 
 export const ORIGIN = 'http://localhost:8090';
 export const PASSWORD = 'correct horse battery';

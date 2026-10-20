@@ -11,6 +11,9 @@
     { "path": "./packages/server/test" },
     { "path": "./packages/web" },
     { "path": "./packages/web/test" },
+    { "path": "./packages/desktop" },
+    { "path": "./packages/desktop/test" },
+    { "path": "./packages/desktop/test/stack" },
     { "path": "./e2e" }
   ]
 }

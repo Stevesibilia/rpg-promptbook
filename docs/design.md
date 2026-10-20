@@ -156,9 +156,10 @@ The rest is proposed, reusing what gdrarchive and CueBard already solved:
   the browser can make PDFs too while online.
 - **Desktop:** Electron, built with electron-builder for Mac, Windows and
   Linux, updated with electron-updater from GitHub Releases, the same pipeline
-  as CueBard. Projects stored on disk in SQLite (`better-sqlite3`, in the main
+  as CueBard. Projects stored on disk in SQLite (`node:sqlite`, in the main
   process), assets as files in the app's data folder. Login through the system
   browser (PKCE, loopback redirect); tokens kept with Electron's `safeStorage`.
+  Built in #6; the decisions are below under Desktop app.
 - **Tests:** vitest; Playwright for the browser and for Electron.
 - **Workflow:** openspec and the architect/implementer split, as in gdrarchive.
 
@@ -364,7 +365,39 @@ restores it. After a Claude edit the Document view shows a banner with
 Compare and Undo. Undo puts back only the part Claude replaced, while that
 part is unchanged; otherwise History restores the whole document.
 
-The desktop app's local snapshots come with #6.
+The desktop app also takes local snapshots (Desktop app, below).
+
+### Desktop app
+
+**Built** (2026-10-20, #6; the full design is in the `desktop-app` change of
+`openspec/`). `packages/desktop` is an Electron 44 shell whose window shows
+the web client's own build, served from a privileged `promptbook://app/`
+protocol; the web client reaches the network and the browser only through
+`packages/web/src/platform/`, so one build serves both.
+
+- **Main owns data and network.** Every project of the account is on disk
+  in SQLite, one database per account under the app's data folder, and kept
+  in sync in the background with one Hocuspocus provider per project, open
+  or not. The renderer does no network and never sees a token; REST goes
+  through a router in main that answers the list, settings and snapshots
+  from the store and forwards the rest with the bearer token.
+- **`node:sqlite` instead of `better-sqlite3`:** it runs inside Electron's
+  Node with no native module to rebuild per operating system and Electron
+  version.
+- **Sign-in** through the system browser to the server's OAuth authorization
+  server (from #4), as a first-party native client with an app resource;
+  a signed-in browser skips the consent page, and Connected apps lists the
+  computer by name. The refresh token is kept with `safeStorage`, in memory
+  only on Linux without a keyring.
+- **Offline:** edit any project and create new ones; a project made offline
+  is uploaded with its id and Yjs state on reconnect. Local snapshots every
+  hour (or 15 minutes, or off), kept on the device and listed in History
+  beside the server's.
+- **Releases:** a `v*` tag on `main` builds unsigned installers (Mac dmg and
+  zip for arm64 and x64 with an ad-hoc signature, Windows NSIS x64, Linux
+  AppImage and deb x64) and creates the GitHub Release. Windows and the
+  AppImage update themselves; the Mac (Squirrel.Mac refuses unsigned updates)
+  and the deb package are told of a new version and open the release page.
 
 ### Asset board
 

@@ -4,13 +4,26 @@ import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
-import { binProject, createProject, getProject, listProjects, restoreProject } from '../projects.js';
+import {
+  binProject,
+  createProject,
+  createWithId,
+  getProject,
+  insertProject,
+  listProjects,
+  readUploadedState,
+  restoreProject,
+} from '../projects.js';
 import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 
 export const NOT_FOUND = () => new AppError(404, 'not_found', 'Not found.');
 
 const title = z.string().trim().min(1, 'is required').max(200);
+
+// A project id chosen by the desktop app, in lower case as Postgres writes a
+// uuid: an upper-case one would name the same row and another document.
+const chosenId = z.uuid().regex(/^[0-9a-f-]+$/, 'must be in lower case');
 
 const createBody = z.object({
   category: z.enum(categories),
@@ -20,7 +33,18 @@ const createBody = z.object({
   system: z.string().trim().max(200).optional(),
   status: z.enum(statuses).default('draft'),
   seed: z.string().max(10_000).default(''),
+  // Chosen by the desktop app, which made the project on the device.
+  id: chosenId.optional(),
 });
+
+// The desktop app's upload of a project made on the device (desktop-app
+// design decision 9): its id and its document, base64. Every other field is
+// in the document. The state's size is checked once decoded, against
+// MAX_STATE_BYTES, within the route's body limit.
+const uploadBody = z.object({ id: chosenId, state: z.string() });
+
+// Room for the largest state in base64 and the JSON around it.
+const UPLOAD_BODY_LIMIT = 8 * 1024 * 1024;
 
 export async function projectsRoutes(app: FastifyInstance, { db, sync }: { db: Db; sync: Sync }) {
   app.get('/api/projects', async (req) => {
@@ -29,11 +53,23 @@ export async function projectsRoutes(app: FastifyInstance, { db, sync }: { db: D
     return { projects: await listProjects(db, user.id, { bin: bin === '1' }) };
   });
 
-  // A new project from the user's templates.
-  app.post('/api/projects', async (req, reply) => {
+  // A new project from the user's templates, or the desktop app's upload of
+  // one it made on the device. 201 when it is new; 200 when the owner sends
+  // an id again, which changes nothing.
+  app.post('/api/projects', { bodyLimit: UPLOAD_BODY_LIMIT }, async (req, reply) => {
     const { user } = requireSession(req);
-    const project = await createProject(db, user.id, parseBody(createBody, req.body));
-    return reply.code(201).send({ project });
+    if ((req.body as { state?: unknown } | null)?.state !== undefined) {
+      const { id, state } = parseBody(uploadBody, req.body);
+      const doc = readUploadedState(id, state);
+      const { project, created } = await createWithId(db, user.id, id, () =>
+        db.withTransaction((tx) => insertProject(tx, user.id, doc, { uploaded: true })),
+      );
+      return reply.code(created ? 201 : 200).send({ project });
+    }
+    const { id, ...input } = parseBody(createBody, req.body);
+    if (id === undefined) return reply.code(201).send({ project: await createProject(db, user.id, input) });
+    const { project, created } = await createWithId(db, user.id, id, () => createProject(db, user.id, input, id));
+    return reply.code(created ? 201 : 200).send({ project });
   });
 
   // To the bin; whoever has it open is told and disconnected.

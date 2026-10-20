@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { addSeedVersion, readMeta, seedVersions } from 'promptbook-project';
 import type * as Y from 'yjs';
-import { api, ApiError, exportUrl, type ProjectRow } from '../api.js';
+import { api, ApiError, exportName, exportUrl, type ProjectRow } from '../api.js';
 import { useDocValue, useProjectDoc } from '../sync/hooks.js';
+import { DeviceLine } from '../desktop/ProjectDevice.js';
+import { NeedsServer } from '../desktop/NeedsServer.js';
+import { useDeviceProject, useOffline } from '../desktop/useDevice.js';
+import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
 import { categoryLabels, statusLabels } from './list.js';
@@ -23,6 +27,7 @@ export function ProjectPanel({
   onDeleted(): void;
 }) {
   const { doc, status } = useProjectDoc(row.id);
+  const device = useDeviceProject(row.id);
   if (status === 'gone') return <p className="panel-note">This project is in the bin.</p>;
   if (!doc || status === 'loading') {
     return (
@@ -35,11 +40,27 @@ export function ProjectPanel({
             {statusLabels[row.status]}
           </span>
         </div>
-        <p className="loading">Opening…</p>
+        {device && !device.downloaded ? (
+          <>
+            <p className="loading">Downloading…</p>
+            <div className="open">
+              <button className="tb primary" disabled title="Not on this device yet">
+                Open
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="loading">Opening…</p>
+        )}
       </div>
     );
   }
-  return <LivePanel doc={doc} row={row} campaigns={campaigns} onOpen={onOpen} onDeleted={onDeleted} />;
+  return (
+    <>
+      <LivePanel doc={doc} row={row} campaigns={campaigns} onOpen={onOpen} onDeleted={onDeleted} />
+      {device && <DeviceLine device={device} />}
+    </>
+  );
 }
 
 function LivePanel({
@@ -57,6 +78,7 @@ function LivePanel({
 }) {
   const meta = useDocValue(doc, readMeta);
   const [confirm, setConfirm] = useState(false);
+  const offline = useOffline();
   return (
     <div data-testid="panel">
       <div className="rp-h">
@@ -99,12 +121,16 @@ function LivePanel({
       <details className="acc">
         <summary>Actions</summary>
         <div className="body links">
-          <a className="tb" href={exportUrl(row.id)} download>
-            Export as a Markdown folder…
-          </a>
-          <button className="tb danger" onClick={() => setConfirm(true)}>
-            Delete…
-          </button>
+          <NeedsServer>
+            <DownloadLink className="tb" href={exportUrl(row.id)} name={exportName(meta.title)} disabled={offline}>
+              Export as a Markdown folder…
+            </DownloadLink>
+          </NeedsServer>
+          <NeedsServer>
+            <button className="tb danger" onClick={() => setConfirm(true)} disabled={offline}>
+              Delete…
+            </button>
+          </NeedsServer>
         </div>
       </details>
 

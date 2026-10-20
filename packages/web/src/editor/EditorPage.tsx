@@ -7,6 +7,8 @@ import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
+import { useWindowTitle } from '../desktop/title.js';
+import { platform } from '../platform/index.js';
 import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
@@ -22,7 +24,6 @@ import { usePdfOptions } from './pdf/options.js';
 import { pdfFileName } from './pdf/pages.js';
 import { PdfPane } from './pdf/PdfPane.js';
 import { PdfReview } from './pdf/PdfReview.js';
-import { NoticeError, POPUPS_BLOCKED } from './pdf/notice.js';
 import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
@@ -33,19 +34,12 @@ import './pdf/pdf.css';
 
 const label = (id: Parameters<typeof shortcut>[0]) => `${shortcut(id).label} (${keyLabel(shortcut(id).keys)})`;
 
-// The PDF's bytes as a URL of this page, let go once the browser had time to
-// use it.
-function pdfUrl(bytes: Uint8Array): string {
-  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }));
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  return url;
-}
-
 // The live project page (design decisions 1 and 11): the top bar with its
 // toggles, the outline, the editor, the inspector or the PDF preview, and the
 // status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
+  useWindowTitle(meta.title);
   const checked = meta.category !== 'campaign';
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
@@ -99,26 +93,17 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   };
   const savePdf = async () => {
     if (!pdf) return;
-    const link = document.createElement('a');
-    link.href = pdfUrl(await pdf.pdf());
-    link.download = pdfFileName(meta.title);
-    link.click();
+    const bytes = await pdf.pdf();
+    await platform.download(
+      new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }),
+      pdfFileName(meta.title),
+    );
   };
-  // The PDF in a tab of its own, where the browser's viewer prints it. The
-  // tab is opened at the click, before the build, or the browser may block
-  // it; a blocked or closed tab is never opened again after the build.
+  // The PDF where it can be printed: in the browser a tab of its own, opened
+  // at the click, before the build (platform/web.ts).
   const printPdf = async () => {
     if (!pdf) return;
-    const tab = window.open('', '_blank');
-    if (!tab) throw new NoticeError(POPUPS_BLOCKED);
-    try {
-      const bytes = await pdf.pdf();
-      if (tab.closed) throw new NoticeError(POPUPS_BLOCKED);
-      tab.location.href = pdfUrl(bytes);
-    } catch (error) {
-      tab.close();
-      throw error;
-    }
+    await platform.openPdf(() => pdf.pdf(), pdfFileName(meta.title));
   };
   const toggleInspector = () => {
     if (pane) {
@@ -135,28 +120,31 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   // While the review is open, only Escape, ⌘⇧P, ⌘K and its own keys act;
   // the editor's other shortcuts are swallowed.
   const swallowed = () => {};
-  const handlers: ShortcutHandlers = review !== null ? {
-    outline: swallowed,
-    inspector: swallowed,
-    focus: swallowed,
-    syntax: swallowed,
-    nextProblem: swallowed,
-    previousProblem: swallowed,
-    palette: () => setDialog('palette'),
-    pdfReview: closeReview,
-    escape: closeReview,
-  } : {
-    outline: () => setOutline((open) => !open),
-    inspector: toggleInspector,
-    focus: () => setFocus((on) => !on),
-    nextProblem: toProblem(nextDiagnostic),
-    previousProblem: toProblem(previousDiagnostic),
-    syntax: () => setDialog('syntax'),
-    palette: () => setDialog('palette'),
-    ...(checked ? { pdfReview: () => openReview() } : {}),
-    // Left alone outside focus mode, so Escape keeps its other uses.
-    ...(focus ? { escape: () => setFocus(false) } : {}),
-  };
+  const handlers: ShortcutHandlers =
+    review !== null
+      ? {
+          outline: swallowed,
+          inspector: swallowed,
+          focus: swallowed,
+          syntax: swallowed,
+          nextProblem: swallowed,
+          previousProblem: swallowed,
+          palette: () => setDialog('palette'),
+          pdfReview: closeReview,
+          escape: closeReview,
+        }
+      : {
+          outline: () => setOutline((open) => !open),
+          inspector: toggleInspector,
+          focus: () => setFocus((on) => !on),
+          nextProblem: toProblem(nextDiagnostic),
+          previousProblem: toProblem(previousDiagnostic),
+          syntax: () => setDialog('syntax'),
+          palette: () => setDialog('palette'),
+          ...(checked ? { pdfReview: () => openReview() } : {}),
+          // Left alone outside focus mode, so Escape keeps its other uses.
+          ...(focus ? { escape: () => setFocus(false) } : {}),
+        };
   const latest = useRef(handlers);
   latest.current = handlers;
   useShortcuts(handlers);

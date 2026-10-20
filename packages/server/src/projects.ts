@@ -1,17 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import {
   createProjectDoc,
+  isCategory,
+  projectRow,
   skeletonDocument,
   summarize,
   type CampaignRef,
   type Category,
+  type ProjectRow,
   type Status,
   type Summary,
 } from 'promptbook-project';
 import * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
-import { sweepExpired } from './oauth/tokens.js';
+import { sweepUnfinishedFirstPartyGrants } from './oauth/grants.js';
+import { sweepExpired, tokenLifetimes } from './oauth/tokens.js';
 import { getSettings } from './routes/settings.js';
 
 // The projects table and the stored documents. The document is the source;
@@ -21,26 +25,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const isUuid = (value: string): boolean => UUID.test(value);
 
-// One row of the project list, as the API answers it.
-export interface ProjectRow {
-  id: string;
-  title: string;
-  category: Category;
-  status: Status;
-  campaignId: string | null;
-  system: string;
-  seed: string;
-  todoDone: number;
-  todoTotal: number;
-  nextDue: string | null;
-  scenes: number | null;
-  words: number | null;
-  errors: number | null;
-  warnings: number | null;
-  createdAt: string;
-  editedAt: string;
-  deletedAt: string | null;
-}
+export type { ProjectRow };
 
 interface DbRow {
   id: string;
@@ -62,25 +47,33 @@ interface DbRow {
   deleted_at: Date | null;
 }
 
-const toRow = (r: DbRow): ProjectRow => ({
-  id: r.id,
-  title: r.title,
-  category: r.category,
-  status: r.status,
-  campaignId: r.campaign_id,
-  system: r.system,
-  seed: r.seed,
-  todoDone: r.todo_done,
-  todoTotal: r.todo_total,
-  nextDue: r.next_due,
-  scenes: r.scenes,
-  words: r.words,
-  errors: r.errors,
-  warnings: r.warnings,
-  createdAt: r.created_at.toISOString(),
-  editedAt: r.edited_at.toISOString(),
-  deletedAt: r.deleted_at?.toISOString() ?? null,
-});
+// The join below has already applied the campaign rule, so the row's link is
+// a live campaign or null.
+const toRow = (r: DbRow): ProjectRow =>
+  projectRow(
+    {
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      status: r.status,
+      campaignId: r.campaign_id,
+      system: r.system,
+      seed: r.seed,
+      todoDone: r.todo_done,
+      todoTotal: r.todo_total,
+      nextDue: r.next_due,
+      scenes: r.scenes,
+      words: r.words,
+      errors: r.errors,
+      warnings: r.warnings,
+    },
+    {
+      createdAt: r.created_at.toISOString(),
+      editedAt: r.edited_at.toISOString(),
+      deletedAt: r.deleted_at?.toISOString() ?? null,
+    },
+    r.campaign_id === null ? [] : [{ id: r.campaign_id }],
+  );
 
 // A link to a campaign in the bin, gone or not a campaign reads as
 // stand-alone: the children's rows are not rewritten when their campaign is
@@ -142,9 +135,23 @@ const summaryParams = (s: Summary) => [
 ];
 
 // A new project's row and document. The category column is written here
-// only: the category is fixed at creation, so no summary rewrites it.
-export async function insertProject(tx: Queryable, ownerId: string, doc: Y.Doc): Promise<void> {
-  const summary = summarize(doc, { campaigns: await campaignsOf(tx, ownerId, { includeBin: true }) });
+// only: the category is fixed at creation, so no summary rewrites it. An
+// uploaded document (readUploadedState) is summarised here and nowhere else,
+// so a part that does not read refuses it as invalid_state.
+export async function insertProject(
+  tx: Queryable,
+  ownerId: string,
+  doc: Y.Doc,
+  { uploaded = false }: { uploaded?: boolean } = {},
+): Promise<void> {
+  const campaigns = await campaignsOf(tx, ownerId, { includeBin: true });
+  let summary: Summary;
+  try {
+    summary = summarize(doc, { campaigns });
+  } catch (error) {
+    if (uploaded) throw invalidState('is not a project document.');
+    throw error;
+  }
   await tx.query(
     `insert into projects (id, owner_id, category, title, status, campaign_id, system, seed,
                            todo_done, todo_total, next_due, scenes, words, errors, warnings)
@@ -183,10 +190,15 @@ export interface NewProject {
 
 // A new project from the user's templates: the category's to-do list and the
 // skeleton document with the settings' defaults in its front matter. Shared
-// by the REST route and the connector's create_project.
-export async function createProject(db: Db, ownerId: string, input: NewProject): Promise<ProjectRow> {
+// by the REST route and the connector's create_project. The id is the
+// desktop app's when it chose one (createWithId).
+export async function createProject(
+  db: Db,
+  ownerId: string,
+  input: NewProject,
+  id: string = randomUUID(),
+): Promise<ProjectRow> {
   const settings = await getSettings(db, ownerId);
-  const id = randomUUID();
   await db.withTransaction(async (tx) => {
     const campaign = campaignFor(input.category, input.campaignId, await campaignsOf(tx, ownerId));
     const system = input.system ?? settings.system;
@@ -211,6 +223,66 @@ export async function createProject(db: Db, ownerId: string, input: NewProject):
     await insertProject(tx, ownerId, doc);
   });
   return (await getProject(db, ownerId, id))!;
+}
+
+// The largest document state the desktop app may upload. No document size
+// limit exists anywhere else, so this is the one (desktop-app design
+// decision 9).
+export const MAX_STATE_BYTES = 5 * 1024 * 1024;
+
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+const invalidState = (why: string) => new AppError(400, 'invalid_state', `state: ${why}`);
+
+// A project document as the desktop app uploads it, base64 of a Yjs update,
+// checked to carry a project's meta with this id before anything is stored;
+// insertProject's summary, the one pass over the whole document, checks the
+// rest. The document's own front matter, to-do list and the rest are the
+// user's, as any edit over sync would be.
+export function readUploadedState(id: string, state: string): Y.Doc {
+  if (state.length % 4 !== 0 || !BASE64.test(state)) throw invalidState('is not base64.');
+  const bytes = Buffer.from(state, 'base64');
+  if (bytes.length > MAX_STATE_BYTES) throw invalidState(`is larger than ${MAX_STATE_BYTES / 1024 / 1024} MB.`);
+  const doc = new Y.Doc();
+  let meta: { id: unknown; category: unknown };
+  try {
+    Y.applyUpdate(doc, bytes);
+    const map = doc.getMap<unknown>('meta');
+    meta = { id: map.get('id'), category: map.get('category') };
+  } catch {
+    throw invalidState('is not a project document.');
+  }
+  if (!isCategory(meta.category)) throw invalidState('is not a project document.');
+  if (meta.id !== id) throw invalidState('is the document of another project id.');
+  return doc;
+}
+
+const UNIQUE_VIOLATION = '23505';
+
+// Creates a project with the id the desktop app chose, from its uploaded
+// document or else from the templates. The same id sent again by its owner
+// (a retry after a lost answer) answers the project as it is and changes
+// nothing; the provider then sends anything newer. An id another user has
+// is refused.
+export async function createWithId(
+  db: Db,
+  ownerId: string,
+  id: string,
+  create: () => Promise<unknown>,
+): Promise<{ project: ProjectRow; created: boolean }> {
+  for (let attempt = 0; ; attempt++) {
+    const existing = await db.queryOne<{ owner_id: string }>('select owner_id from projects where id = $1', [id]);
+    if (existing) {
+      if (existing.owner_id !== ownerId) throw new AppError(409, 'id_taken', 'id: is taken.');
+      return { project: (await getProject(db, ownerId, id))!, created: false };
+    }
+    try {
+      await create();
+      return { project: (await getProject(db, ownerId, id))!, created: true };
+    } catch (error) {
+      // Two uploads of one id at once: the second finds the first's row.
+      if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION || attempt > 0) throw error;
+    }
+  }
 }
 
 // Writes a document's state and its summary in one transaction. A project
@@ -279,13 +351,14 @@ export interface Purged {
   oauthCodes: number;
   oauthTokens: number;
   oauthRegistrations: number;
+  oauthGrants: number;
 }
 
 // Removes projects in the bin for more than 30 days, with their documents
 // and snapshots, sign-in failures older than a day, expired single sign-on
 // handshakes, Claude and restore snapshots older than 30 days, expired OAuth
-// codes and tokens, and registration counts older than a day. Answers what it
-// removed.
+// codes and tokens, registration counts older than a day, and the desktop
+// app's sign-ins that never finished. Answers what it removed.
 export async function purge(db: Queryable): Promise<Purged> {
   const projects = await db.query(
     `delete from projects where deleted_at < now() - make_interval(days => $1) returning id`,
@@ -301,6 +374,7 @@ export async function purge(db: Queryable): Promise<Purged> {
   const registrations = await db.query(
     `delete from oauth_registrations where at < now() - interval '1 day' returning id`,
   );
+  const grants = await sweepUnfinishedFirstPartyGrants(db, tokenLifetimes.CODE_TTL_MS);
   return {
     projects: projects.length,
     loginFailures: failures.length,
@@ -309,5 +383,6 @@ export async function purge(db: Queryable): Promise<Purged> {
     oauthCodes: oauth.codes,
     oauthTokens: oauth.tokens,
     oauthRegistrations: registrations.length,
+    oauthGrants: grants,
   };
 }

@@ -77,6 +77,7 @@ export {
   type TodoItem,
   type TopicState,
 } from './model.js';
+export { projectRow, type ProjectRow, type RowDates } from './row.js';
 export { defaultSettings, type Settings } from './settings.js';
 export { formatOf, skeletonDocument, type SkeletonInput } from './skeleton.js';
 export { countWords, summarize, type SummarizeOptions, type Summary } from './summary.js';

@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../dist/types/test",
+    "tsBuildInfoFile": "../dist/types/test.tsbuildinfo",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["."],
+  "exclude": ["stack"],
+  "references": [{ "path": ".." }, { "path": "../../project" }, { "path": "../../web" }]
+}

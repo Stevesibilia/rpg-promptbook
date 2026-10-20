@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook: desktop app mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Same tokens as editor.html, projects.html and connector.html (gdrarchive's Emerald look). */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff;
+  --desk: #0a0e0c;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--desk); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus { outline: none; border-color: var(--primary); }
+a { color: var(--primary); text-decoration: none; cursor: pointer; } a:hover { text-decoration: underline; }
+code { font: 12.5px var(--mono); }
+[hidden] { display: none !important; }
+
+/* The OS window around the app (new in this mockup) */
+.stage { position: fixed; inset: 0; display: grid; place-items: center; padding: 18px 18px 18px 330px; }
+body.lmin .stage { padding-left: 18px; }
+.window { position: relative; width: min(1280px, 100%); height: min(820px, 100%); display: flex; flex-direction: column; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+body.os-win .window { border-radius: 8px; } body.os-lin .window { border-radius: 12px 12px 4px 4px; }
+.wt { height: 32px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; position: relative; user-select: none;
+  background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.wt .ttl { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+body.os-win .wt { padding-right: 0; } body.os-win .wt .ttl { position: static; text-align: left; display: flex; gap: 8px; align-items: center; }
+.wi { display: none; width: 16px; height: 16px; border-radius: 3px; background: color-mix(in srgb, var(--primary) 25%, var(--surface)); color: var(--primary); font: 700 11px/16px var(--display); text-align: center; }
+body.os-win .wi { display: inline-block; }
+.tl { display: flex; gap: 8px; } .tl i { width: 12px; height: 12px; border-radius: 50%; }
+.tl i:nth-child(1) { background: #ff5f57; } .tl i:nth-child(2) { background: #febc2e; } .tl i:nth-child(3) { background: #28c840; }
+.wc { margin-left: auto; display: flex; align-self: stretch; }
+.wc i { width: 46px; display: grid; place-items: center; font: normal 12px var(--font); color: var(--muted); }
+.wc i:last-child:hover { background: #c42b1c; color: #fff; }
+body.os-lin .wc { align-self: center; gap: 8px; } body.os-lin .wc i { width: 22px; height: 22px; border-radius: 50%; background: var(--hover); font-size: 10px; }
+body.os-mac .wc, body:not(.os-mac) .tl { display: none; }
+
+/* App grid, as projects.html, inside the window */
+.app { flex: 1; min-height: 0; display: grid; grid-template-rows: 44px auto 1fr 26px; grid-template-columns: 48px 1fr; }
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+.crumbs b { color: var(--text); font-weight: 600; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.sync.local i { background: var(--amber); } .sync.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.sync.out i { background: var(--faint); } .sync.out { color: var(--text); border-color: var(--amber); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.red { background: var(--danger); color: #fff; font-weight: 600; }
+.tb.sm { padding: 3px 8px; font-size: 12.5px; }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); color: var(--text); }
+.avatar.off { background: var(--surface-2); color: var(--faint); border: 1px dashed var(--border); }
+
+/* Sync popover (projects.html) */
+.pop { display: none; position: absolute; top: 40px; right: 70px; width: 330px; z-index: 30; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.4); padding: 12px 14px; }
+.pop.on { display: block; }
+.pop h4 { margin: 0 0 2px; font: 600 15px var(--font); display: flex; gap: 8px; align-items: center; }
+.pop h4 i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.pop .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+.kv { display: grid; grid-template-columns: 96px 1fr; gap: 4px 10px; font-size: 12.5px; margin: 0 0 10px; }
+.kv dt { color: var(--faint); } .kv dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pend { list-style: none; margin: 0 0 10px; padding: 0; font-size: 12.5px; border-top: 1px solid var(--border); }
+.pend li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.pend li span:last-child { color: var(--amber); }
+.pop .acts { display: flex; gap: 8px; }
+.pop .keep { font-size: 12px; color: var(--faint); margin: 8px 0 0; }
+
+/* Strips under the top bar: alert (projects.html) and update bar (new) */
+.strips { grid-column: 1 / -1; }
+.alert { display: none; align-items: center; gap: 10px; padding: 7px 14px; background: color-mix(in srgb, var(--amber) 13%, var(--surface)); border-bottom: 1px solid var(--amber); }
+.alert.on { display: flex; } .alert b { color: var(--amber); }
+.alert.upd { background: color-mix(in srgb, var(--info) 12%, var(--surface)); border-color: color-mix(in srgb, var(--info) 55%, transparent); }
+.alert.upd b { color: var(--info); font-weight: 600; } .alert .q { font-size: 12px; color: var(--faint); }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 3 / 5; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail.noproj .pj { opacity: .35; }
+.rail .bottom { margin-top: auto; margin-bottom: 8px; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9; background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+
+/* Center */
+.center { grid-column: 2; grid-row: 3; overflow: auto; min-width: 0; }
+.view { display: none; } .view.on { display: block; }
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 80px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { padding: 5px 11px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.hint { font-size: 12px; color: var(--faint); margin-top: 8px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Project table (projects.html) */
+.tbl { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.tr { display: grid; grid-template-columns: minmax(0, 1fr) 104px 116px 150px 110px 34px; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.tr:last-child { border-bottom: 0; } .tr:hover { background: var(--hover); }
+.tr.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding-top: 7px; padding-bottom: 7px; }
+.tr.child .ti { padding-left: 22px; position: relative; }
+.tr.child .ti::before { content: ''; position: absolute; left: 7px; top: -2px; bottom: 50%; width: 9px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.ti b { font-weight: 600; display: block; } .ti .meta { font-size: 12px; color: var(--faint); }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); justify-self: start; }
+.st { font-size: 12px; display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+.st i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.st.prog { color: var(--amber); } .st.prog i { background: var(--amber); }
+.prog-cell { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--muted); }
+.mini-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; min-width: 40px; }
+.mini-bar i { display: block; height: 100%; background: var(--primary); transition: width .3s; }
+.when { font-size: 12px; color: var(--faint); }
+.dev { display: grid; place-items: center; color: var(--faint); } .dev .ic { width: 15px; height: 15px; } .dev.up { color: var(--amber); }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint); background: var(--surface); border-top: 1px solid var(--border); }
+.status .r { margin-left: auto; } .status .a { color: var(--amber); }
+.upi { display: inline-flex; gap: 8px; align-items: center; color: var(--info); } .upi .mini-bar { width: 70px; flex: none; } .upi .mini-bar i { background: var(--info); }
+
+/* History (connector.html) */
+.info { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 8px 12px; margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+.info .ic { color: var(--amber); width: 16px; height: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.snap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.sr { display: grid; grid-template-columns: 120px minmax(0,1fr) 112px 64px 170px; gap: 12px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.sr:last-child { border-bottom: 0; }
+.sr.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding-top: 7px; padding-bottom: 7px; }
+.sr .when { font: 12.5px var(--mono); color: var(--muted); }
+.sr .k b { font-weight: 600; } .sr .k .meta { font-size: 12px; color: var(--faint); }
+.sr .w { font: 12px var(--mono); color: var(--faint); text-align: right; }
+.sr .a { display: flex; gap: 6px; justify-content: flex-end; }
+.sr.now { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+.who-chip { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px solid; margin-right: 6px; vertical-align: 1px; }
+.who-chip.cl { color: var(--info); } .who-chip.you { color: var(--primary); } .who-chip.rs { color: var(--amber); }
+.src { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; padding: 1px 8px 1px 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); justify-self: start; white-space: nowrap; }
+.src .ic { width: 13px; height: 13px; } .src.srv .ic { color: var(--info); } .src.dev .ic { color: var(--primary); }
+.diff { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); font: 12.5px/1.65 var(--mono); }
+.dl { display: grid; grid-template-columns: 38px 38px 18px 1fr; }
+.dl .n { color: var(--faint); text-align: right; padding-right: 8px; user-select: none; } .dl .t { white-space: pre-wrap; padding-right: 12px; }
+.dl.add { background: color-mix(in srgb, var(--primary) 15%, transparent); } .dl.add .g { color: var(--primary); }
+.dl.del { background: color-mix(in srgb, var(--danger) 14%, transparent); } .dl.del .g { color: var(--danger); }
+.dl.hunk { background: var(--surface-2); color: var(--info); }
+
+/* Settings (projects.html) */
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); display: flex; justify-content: space-between; }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set nav small { font-size: 11px; color: var(--faint); }
+.set section { display: none; max-width: 600px; } .set section.on { display: block; }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { margin-top: 0; }
+.pathrow { display: flex; gap: 8px; } .pathrow input { flex: 1; font: 12.5px var(--mono); }
+.usage { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); } .usage b { color: var(--text); font: 600 17px var(--display); }
+
+/* Modals, toast, full pages: inside the window */
+.scrim { display: none; position: absolute; inset: 0; z-index: 40; background: rgba(5,10,8,.62); align-items: flex-start; justify-content: center; padding-top: 12vh; }
+.scrim.on { display: flex; }
+.modal { width: min(460px, calc(100% - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 16px 18px; } .modal .mb p { margin: 0 0 10px; } .modal .mb p.m { color: var(--muted); margin: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); }
+.modal .mf .note { margin-right: auto; font-size: 12.5px; }
+.notes { margin: 0; padding-left: 18px; } .notes li { margin: 4px 0; } .notes b { font-weight: 600; }
+.chk { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; } .chk input { accent-color: var(--danger); padding: 0; }
+.warnbox { border: 1px solid var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); border-radius: var(--radius); padding: 8px 10px; font-size: 13px; margin-bottom: 10px; }
+.warnbox b { color: var(--danger); }
+.toast { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 45; background: var(--text); color: var(--bg);
+  padding: 8px 14px; border-radius: var(--radius); font-size: 13px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.toast.on { display: block; }
+.full { display: none; position: absolute; inset: 32px 0 0; z-index: 35; background: var(--bg); place-items: center; padding: 16px; overflow: auto; }
+.full.on { display: grid; }
+.auth { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 22px; }
+.auth .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.auth .brand .logo { width: 40px; height: 40px; border-radius: 9px; background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); font-size: 22px; }
+.auth .brand b { font: 700 24px var(--display); letter-spacing: .02em; display: block; line-height: 1; }
+.auth .brand span { font-size: 12px; color: var(--faint); }
+.auth h3 { font: 700 22px var(--display); letter-spacing: .02em; margin: 0 0 10px; }
+.auth p { color: var(--muted); margin: 0 0 14px; }
+.auth .wide { width: 100%; justify-content: center; padding: 8px 10px; }
+.auth .btns { display: flex; gap: 8px; } .auth .btns .tb { flex: 1; justify-content: center; padding: 8px 10px; }
+.auth .foot { margin-top: 16px; font-size: 12px; color: var(--faint); text-align: center; }
+.auth .demo { margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--faint); text-align: center; }
+.auth .as { display: none; } .auth[data-st="sign"] .as.sign, .auth[data-st="wait"] .as.wait, .auth[data-st="fail"] .as.fail { display: block; }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--primary); animation: rot 1.4s linear infinite; margin: 4px auto 14px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.bad { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 10px; color: var(--danger); border: 2px solid var(--danger); font: 700 18px var(--font); }
+.good { color: var(--primary); border-color: var(--primary); }
+.bar { height: 6px; border-radius: 3px; background: var(--border); margin: 2px 0 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); transition: width .3s; }
+.dlist { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.dlist li { display: grid; grid-template-columns: 1fr 70px 18px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.dlist li span:nth-child(2) { font: 11.5px var(--mono); color: var(--faint); text-align: right; }
+.dlist .okc { color: var(--primary); } .dlist .now { color: var(--info); }
+
+/* Browser window for the "Browser tab" screen */
+.btab { display: flex; gap: 8px; align-items: center; height: 26px; margin-top: 6px; align-self: flex-end; padding: 0 12px; border-radius: 8px 8px 0 0; background: var(--bg); color: var(--text); font-size: 12.5px; }
+.btab .logo { width: 16px; height: 16px; font-size: 11px; border-radius: 3px; background: color-mix(in srgb, var(--primary) 25%, var(--surface)); }
+.urlbar { display: flex; gap: 10px; align-items: center; padding: 6px 12px; background: var(--bg); border-bottom: 1px solid var(--border); color: var(--faint); }
+.urlbar .url { flex: 1; padding: 4px 12px; border-radius: 999px; background: var(--surface-2); font: 12.5px var(--mono); color: var(--muted); }
+.bpage { flex: 1; display: grid; place-items: center; padding: 16px; }
+
+/* Notes for the reviewer (projects.html) */
+.legend { position: fixed; left: 18px; top: 18px; z-index: 50; width: 290px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px rgba(0,0,0,.4); max-height: calc(100vh - 36px); overflow: auto; }
+.legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
+.legend ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); } .legend li { margin: 3px 0; }
+.legend .lrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.legend .lrow button { font-size: 11.5px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.legend .lrow button.on { border-color: var(--primary); color: var(--primary); }
+.legend .lab { font: 600 10.5px var(--font); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.legend.min ul, .legend.min .lrow, .legend.min .lab { display: none; }
+.legend .new { font: 600 9.5px var(--font); padding: 0 4px; border-radius: 3px; background: var(--info); color: #08121f; vertical-align: 1px; }
+
+@media (max-width: 1100px) {
+  .tr { grid-template-columns: minmax(0, 1fr) 116px 140px 34px; } .tr .c-cat, .tr .c-when { display: none; }
+  .sr { grid-template-columns: 100px minmax(0,1fr) 104px 150px; } .sr .w { display: none; }
+}
+</style>
+</head>
+<body class="os-mac">
+<div class="stage">
+
+<!-- APP WINDOW -->
+<div class="window" id="appWin">
+  <div class="wt"><span class="tl"><i></i><i></i><i></i></span><span class="ttl"><span class="wi">P</span><span id="winTitle">Promptbook</span></span><span class="wc"><i>─</i><i>☐</i><i>✕</i></span></div>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="logo" title="Promptbook">P</div>
+      <div class="crumbs" id="crumbs"><b>Projects</b></div>
+      <div class="spacer"></div>
+      <button class="sync" id="sync" title="Sync status: click for details"><i></i><span>Synced</span></button>
+      <span class="kbd" id="kbd" title="Command palette">⌘K</span>
+      <button class="avatar" id="who" title="Signed in as Stefano">S</button>
+
+      <div class="pop" id="pop">
+        <h4><i id="popDot"></i><span id="popTitle">Synced</span></h4>
+        <div class="sub" id="popSub"></div>
+        <dl class="kv">
+          <dt>Server</dt><dd>promptbook.siberio.eu</dd>
+          <dt>Account</dt><dd id="popAcc">Stefano · single sign-on</dd>
+          <dt>Last sync</dt><dd id="popLast">12:41, a minute ago</dd>
+          <dt>On this device</dt><dd>12 projects · 38 MB</dd>
+        </dl>
+        <ul class="pend" id="popPend"></ul>
+        <div class="acts" id="popActs"></div>
+        <p class="keep" id="popKeep" hidden>You can keep working: changes stay on this device until you sign in.</p>
+      </div>
+    </header>
+
+    <div class="strips">
+      <div class="alert" id="alert">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--amber)"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>
+        <span id="alertText"><b>Signed out.</b> Sync is paused. Keep working: changes stay on this device until you sign in.</span>
+        <span class="spacer"></span><button class="tb line" data-sc="wait">Sign in…</button>
+      </div>
+      <div class="alert upd" id="upbar">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--info)"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        <span id="upText"></span><a id="upNew">What's new</a>
+        <span class="spacer"></span><span class="q" id="upHint"></span>
+        <button class="tb primary" id="upGo"></button><button class="tb" id="upLater">Later</button>
+      </div>
+    </div>
+
+    <nav class="rail noproj" id="rail">
+      <button data-v="projects" data-tip="Projects"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+      <button class="pj" data-tip="Document"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+      <button class="pj" data-tip="Inspiration"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+      <button class="pj" data-tip="Research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+      <button class="pj" data-tip="Brainstorm log"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+      <button class="pj" data-v="history" data-tip="History"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+      <button class="bottom" data-v="settings" data-tip="Settings and templates"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+    </nav>
+
+    <main class="center">
+      <!-- PROJECTS (projects.html, trimmed) -->
+      <section class="view on" id="v-projects"><div class="pane">
+        <div class="head"><h1>Projects</h1><p class="lead">6 of 12 projects</p><span class="spacer"></span>
+          <button class="tb line"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>Import Markdown</button>
+          <button class="tb primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New project</button></div>
+        <div class="tbl" id="tbl"></div>
+        <p class="hint">Complete projects are hidden by the status filter. Filters, panel and dialogs as in projects.html.</p>
+      </div></section>
+
+      <!-- HISTORY (connector.html, with two sources) -->
+      <section class="view" id="v-history"><div class="pane">
+        <div id="histList">
+          <div class="head"><h1>History</h1><p class="lead">Snapshots of the prep document. Restoring never loses the current text.</p></div>
+          <div class="info" id="offLine"><svg class="ic" viewBox="0 0 24 24"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5-2.7M19 13a10 10 0 0 0-2.2-1.6M12 20h.01"/></svg>Offline. Server snapshots are shown as of 10:05; new ones appear when you are back online.</div>
+          <div class="card row"><b style="margin-right:4px">Save snapshot</b><input id="snapName" placeholder="Name, e.g. before the read-through" style="flex:1;min-width:200px"><button class="tb primary" id="snapSave">Save snapshot</button></div>
+          <div class="row" style="margin-bottom:10px"><div class="seg" id="srcSeg"><button class="on" data-f="">All</button><button data-f="srv">Server</button><button data-f="dev">This device</button></div></div>
+          <div class="snap" id="snaps"></div>
+          <p class="hint">Server: Claude's snapshots are kept 30 days, yours until you delete them. This device: every hour while you edit, kept 7 days (<a data-sc="settings">Settings → This device</a>).</p>
+        </div>
+        <div id="histDiff" hidden>
+          <div class="head"><button class="tb line" id="diffBack">← History</button><h1>Compare</h1><p class="lead" id="diffLead"></p></div>
+          <div class="card row" style="justify-content:space-between">
+            <span id="diffWhat"></span>
+            <span class="row"><span style="font-size:12px;color:var(--faint)"><span style="color:var(--primary)">+4</span> · <span style="color:var(--danger)">−1</span> lines · unified</span><button class="tb primary" id="diffRestore">Restore this version</button></span>
+          </div>
+          <div class="diff" id="diff"></div>
+        </div>
+      </div></section>
+
+      <!-- SETTINGS → THIS DEVICE -->
+      <section class="view" id="v-settings"><div class="pane">
+        <div class="head"><h1>Settings</h1></div>
+        <div class="set">
+          <nav id="setNav">
+            <button data-s="x">To-do templates</button><button data-s="x">Document templates</button><button data-s="x">Author and licence</button>
+            <button data-s="x">Account</button><button data-s="x">Sync and storage</button>
+            <button class="on" data-s="dev">This device <small>desktop</small></button><button data-s="x">Appearance</button>
+          </nav>
+          <div>
+            <section data-s="x"><div class="card" style="color:var(--muted)">Unchanged: see projects.html. Data folder and Local snapshots moved from Sync and storage to This device; the device sign-out moved from Account.</div></section>
+            <section class="on" data-s="dev">
+              <h2>This device</h2>
+              <p class="lead">Projects live on <span data-os="comp">this Mac</span> and sync with promptbook.siberio.eu when online.</p>
+              <div class="card">
+                <div class="field"><label>Data folder</label>
+                  <div class="pathrow"><input id="folder" value="~/Library/Application Support/Promptbook" readonly><button class="tb line" id="showFolder"><span data-os="show">Show in Finder</span></button></div></div>
+                <div class="usage"><svg class="ic" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><b>38 MB</b> 12 projects · 214 local snapshots</div>
+              </div>
+              <div class="card">
+                <div class="field"><label>Local snapshots</label><select><option>Every hour while editing, keep 7 days</option><option>Every 15 minutes, keep 2 days</option><option>Off</option></select>
+                  <span class="hint">Taken on this device, next to the server's. They show up in History tagged "This device".</span></div>
+              </div>
+              <div class="card row">
+                <span style="flex:1"><b>Version</b> <code>0.5.0</code><span class="hint" style="display:block;margin:2px 0 0" id="verHint"></span></span>
+                <button class="tb line" id="checkUp">Check for updates</button>
+              </div>
+              <div class="card row">
+                <span style="flex:1"><b>Sign out</b><span class="hint" style="display:block;margin:2px 0 0">Signed in as Stefano on promptbook.siberio.eu since 18 Oct.</span></span>
+                <button class="tb line" id="bOut">Sign out…</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div></section>
+    </main>
+
+    <footer class="status">
+      <span id="sbWhere">6 of 12 projects</span><span id="sbDev">All on this device</span>
+      <span class="upi" id="sbUp" hidden></span>
+      <span class="r" id="sbSync">Synced 12:41 · promptbook.siberio.eu</span>
+    </footer>
+  </div>
+
+  <!-- SIGN IN, IN BROWSER, FAILED -->
+  <div class="full" id="fAuth">
+    <div class="auth" id="auth" data-st="sign">
+      <div class="brand"><div class="logo">P</div><div><b>Promptbook</b><span>RPG Promptbook</span></div></div>
+      <div class="as sign">
+        <div class="field"><label>Server</label><input value="https://promptbook.siberio.eu"><span class="hint">Needed once. After the first sync Promptbook works offline with no time limit.</span></div>
+        <button class="tb primary wide" data-sc="wait"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>Continue with single sign-on</button>
+        <div class="foot">Opens the server's sign-in page in your default browser, then comes back here.</div>
+      </div>
+      <div class="as wait">
+        <h3>Finish signing in in your browser</h3>
+        <div class="spin"></div>
+        <p>Promptbook opened promptbook.siberio.eu in your default browser. Come back here when it says you are signed in.</p>
+        <div class="btns"><button class="tb line" id="again">Open the browser again</button><button class="tb" data-sc="signin">Cancel</button></div>
+        <div class="demo">Mockup: <a data-sc="first">simulate success</a> · <a data-sc="fail">simulate failure</a> · <a data-sc="tab">see the browser tab</a></div>
+      </div>
+      <div class="as fail">
+        <div class="bad">!</div>
+        <h3 style="text-align:center">Sign-in did not finish</h3>
+        <p style="text-align:center">The browser window was closed, or it took more than 5 minutes.</p>
+        <div class="btns"><button class="tb line" data-sc="signin">Change server</button><button class="tb primary" data-sc="wait">Try again</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRST SYNC (projects.html) -->
+  <div class="full" id="fFirst">
+    <div class="auth" style="width:min(460px,100%)">
+      <div class="brand"><div class="logo">P</div><div><b>Downloading your projects</b><span>First sync on <span data-os="comp">this Mac</span> · 4.2 MB</span></div></div>
+      <div class="bar"><i id="dlBar" style="width:58%"></i></div>
+      <ul class="dlist" id="dlist"></ul>
+      <div style="display:flex;margin-top:16px"><span class="spacer"></span><button class="tb line" data-sc="projects">Start with what is downloaded</button></div>
+      <div class="foot">Downloaded projects open at once; the rest keep coming in the background.</div>
+    </div>
+  </div>
+
+  <!-- WHAT'S NEW -->
+  <div class="scrim" id="mNew"><div class="modal">
+    <div class="mh"><h3>What's new in 0.6.0</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb"><ul class="notes">
+      <li><b>History</b> shows the snapshots taken on this device next to the server's.</li>
+      <li><b>Sign out</b> can also remove the projects from this computer.</li>
+      <li><b>PDF</b>: scene numbers in the table of contents.</li>
+      <li>Fixed: the outline lost its place after an import.</li>
+    </ul></div>
+    <div class="mf"><a class="note" id="relLink">Full release notes on GitHub</a><button class="tb line" data-close>Close</button></div>
+  </div></div>
+
+  <!-- SIGN OUT -->
+  <div class="scrim" id="mOut"><div class="modal">
+    <div class="mh"><h3>Sign out?</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb">
+      <p>Promptbook stops syncing with promptbook.siberio.eu. Your projects stay on <span data-os="comp">this Mac</span> and you can keep working on them.</p>
+      <label class="chk"><input type="checkbox" id="outRm"> Also remove the projects from this computer</label>
+      <div class="warnbox" id="outWarn" hidden><b>Changes not yet on the server would be lost.</b><br>3 changes not yet on the server: L'Ancora di Sabaoth (2), Il ballo dei Lorenzetti (1).</div>
+      <p class="m" id="outNote">Sign in again to sync. Nothing is downloaded twice.</p>
+    </div>
+    <div class="mf"><button class="tb line" data-close>Cancel</button><button class="tb primary" id="outGo">Sign out</button></div>
+  </div></div>
+
+  <!-- CONFIRM (connector.html) -->
+  <div class="scrim" id="confirm"><div class="modal">
+    <div class="mh"><h3 id="cTitle">Restore?</h3><button class="tb" data-close>✕</button></div>
+    <div class="mb"><p id="cText"></p><p class="m" id="cNote"></p></div>
+    <div class="mf"><button class="tb line" data-close>Cancel</button><button class="tb primary" id="cOk">OK</button></div>
+  </div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- BROWSER WINDOW: the tab the user lands in -->
+<div class="window" id="browser" hidden>
+  <div class="wt" style="padding-bottom:0"><span class="tl"><i></i><i></i><i></i></span>
+    <span class="btab"><span class="logo">P</span>Promptbook</span><span class="wc"><i>─</i><i>☐</i><i>✕</i></span></div>
+  <div class="urlbar"><span>←</span><span>→</span><span class="url">🔒 promptbook.siberio.eu/desktop/signed-in</span></div>
+  <div class="bpage">
+    <div class="auth" style="text-align:center">
+      <div class="brand" style="justify-content:center"><div class="logo">P</div><div style="text-align:left"><b>Promptbook</b><span>RPG Promptbook</span></div></div>
+      <div class="bad good">✓</div>
+      <h3>Signed in</h3>
+      <p>Signed in to Promptbook on this computer. You can close this tab.</p>
+      <div class="foot">promptbook.siberio.eu · Stefano · single sign-on</div>
+      <div class="demo">Mockup: <a data-sc="first">back to the app</a></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="legend" id="legend">
+  <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
+  <div class="lab">Platform</div>
+  <div class="lrow" id="osSw"><button class="on" data-os-set="mac">Mac</button><button data-os-set="win">Windows</button><button data-os-set="lin">Linux</button></div>
+  <div class="lab">Screen</div>
+  <div class="lrow" id="screens">
+    <button data-sc="signin" class="on">Sign in</button><button data-sc="wait">In browser</button><button data-sc="fail">Sign-in failed</button><button data-sc="tab">Browser tab</button>
+    <button data-sc="first">First sync</button><button data-sc="signedout">Signed out</button><button data-sc="update">Update</button>
+    <button data-sc="history">History</button><button data-sc="settings">This device</button>
+  </div>
+  <div class="lab">History</div>
+  <div class="lrow" id="netSw"><button class="on" data-net="off">Offline</button><button data-net="on">Online</button></div>
+  <div class="lab">Sign-out dialog</div>
+  <div class="lrow" id="unsSw"><button class="on" data-uns="3">3 unsynced changes</button><button data-uns="0">All synced</button></div>
+  <ul>
+    <li><b>Sign in</b>: the desktop sign-in of projects.html, server prefilled; one button, <b>Continue with single sign-on</b>, replaces "Sign in with your browser". <span class="new">new</span> wording only.</li>
+    <li><b>In browser</b> <span class="new">new</span>: waiting step with spinner, Open the browser again, Cancel. Mockup links simulate success or failure.</li>
+    <li><b>Sign-in failed</b> <span class="new">new</span>: browser closed or more than 5 minutes; Try again.</li>
+    <li><b>Browser tab</b> <span class="new">new</span>: the page the browser shows once signed in, in the web client's look.</li>
+    <li><b>First sync</b>: copied from projects.html; the bar fills, then Projects.</li>
+    <li><b>Signed out</b>: pill state, wording and amber strip from projects.html. <span class="new">new</span>: Sign in in the popover goes straight to the browser step.</li>
+    <li><b>Update</b> <span class="new">new</span>: Windows and Linux (AppImage) download in the status bar, then the blue strip offers Restart now; Later installs on quit. Mac builds are unsigned and cannot update themselves: Download opens the GitHub release page. What's new opens the release notes.</li>
+    <li><b>History</b>: list, Save snapshot, Compare and Restore from connector.html. <span class="new">new</span>: Source column (Server, This device), source filter, offline line.</li>
+    <li><b>This device</b> <span class="new">new</span>: desktop-only Settings section; gathers Data folder and Local snapshots (from Sync and storage in projects.html), version and update check, and sign-out with the optional removal.</li>
+    <li><b>Not saved (disk)</b>: already designed in projects.html (desktop sync state "Not saved" and its red strip), not repeated here.</li>
+    <li>The platform switch changes the title bar, the update flow and the computer's name, folder and file manager.</li>
+  </ul>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+let os = 'mac', offline = true, unsynced = 3, cur = 'signin', outReason = 'The session ended.';
+const OS = {
+  mac: { comp: 'this Mac', folder: '~/Library/Application Support/Promptbook', show: 'Show in Finder', fm: 'Finder' },
+  win: { comp: 'this PC', folder: 'C:\\Users\\Stefano\\AppData\\Roaming\\Promptbook', show: 'Show in Explorer', fm: 'Explorer' },
+  lin: { comp: 'this computer', folder: '~/.config/Promptbook', show: 'Show in Files', fm: 'Files' },
+};
+
+/* Toast and confirm (connector.html) */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3400); }
+let onOk = null;
+function ask(title, text, note, okLabel, cb) {
+  $('#cTitle').textContent = title; $('#cText').textContent = text; $('#cNote').textContent = note || '';
+  $('#cOk').textContent = okLabel; onOk = cb; $('#confirm').classList.add('on');
+}
+$('#cOk').onclick = () => { $('#confirm').classList.remove('on'); if (onOk) onOk(); };
+$$('[data-close]').forEach(b => b.onclick = () => b.closest('.scrim').classList.remove('on'));
+$$('.scrim').forEach(s => s.onclick = e => { if (e.target === s) s.classList.remove('on'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { $$('.scrim').forEach(s => s.classList.remove('on')); $('#pop').classList.remove('on'); } });
+
+/* Platform */
+function setOS(o) {
+  os = o; document.body.className = 'os-' + o + ($('#legend').classList.contains('min') ? ' lmin' : '');
+  $$('[data-os]').forEach(e => e.textContent = OS[o][e.dataset.os]);
+  $('#folder').value = OS[o].folder;
+  $('#kbd').textContent = o === 'mac' ? '⌘K' : 'Ctrl K';
+  $('#verHint').textContent = o === 'mac' ? 'New versions are downloaded from GitHub: this build cannot update itself.' : 'Updates download by themselves and install when you restart.';
+  $$('#osSw button').forEach(b => b.classList.toggle('on', b.dataset.osSet === o));
+  if (cur === 'update') update('start');
+}
+$$('#osSw button').forEach(b => b.onclick = () => setOS(b.dataset.osSet));
+$('#showFolder').onclick = () => toast(`Opened the data folder in ${OS[os].fm}.`);
+
+/* Projects table (projects.html rows) */
+const projects = [
+  ['Blacksad - Il Continentale', 'Campaign', 'Not The End · 2 sessions played', 3, 5, '2 h ago', 0, 0],
+  ['Il ballo dei Lorenzetti', 'Adventure', 'Not The End · 3 scenes', 0, 9, '20 min ago', 1, 1],
+  ['Cronaca del Gabbiano', 'Campaign', 'Historia · 2 sessions played', 1, 3, 'yesterday', 0, 0],
+  ['Le ali di Ca’ Malamocco', 'Adventure', 'Historia · 6 scenes · 1 warning', 4, 9, 'yesterday', 0, 1],
+  ['L’Ancora di Sabaoth', 'One-shot', 'Kulthos · 5 scenes · 1 error, 3 warnings', 5, 9, 'today 12:40', 2, 0],
+  ['Il pozzo di Ganzirri', 'One-shot', 'Kulthos · imported from Joplin', 0, 4, '3 days ago', 0, 0],
+];
+$('#tbl').innerHTML = `<div class="tr th"><span>Title</span><span class="c-cat">Category</span><span>Status</span><span>To-do</span><span class="c-when">Edited</span><span></span></div>` +
+  projects.map(([t, c, m, n, tot, w, up, child]) => `<div class="tr${child ? ' child' : ''}"><div class="ti"><b>${t}</b><div class="meta">${m}</div></div>
+    <span class="cat c-cat">${c}</span><span class="st ${n ? 'prog' : ''}"><i></i>${n ? 'In progress' : 'Draft'}</span>
+    <span class="prog-cell"><span class="mini-bar"><i style="width:${n / tot * 100}%"></i></span>${n}/${tot}</span><span class="when c-when">${w}</span>
+    ${up ? `<span class="dev up" title="${up} ${up > 1 ? 'changes' : 'change'} waiting to sync"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19V7M7 12l5-5 5 5"/></svg></span>` : '<span class="dev" title="On this device, synced"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>'}</div>`).join('');
+
+/* Sync pill and popover (projects.html, desktop states used here) */
+const pendList = [['L’Ancora di Sabaoth', '2 changes'], ['Il ballo dei Lorenzetti', '1 change']];
+const SY = {
+  ok: ['', 'Synced', 'Every change is on the server.', [], 'var(--primary)'],
+  local: ['local', 'On this device only', 'Offline since 10:05. Everything is saved here and goes to the server when you are back online.', pendList, 'var(--amber)'],
+  out: ['out', 'Sign in to sync', '', pendList, 'var(--faint)'],
+};
+function setSync(k) {
+  const [cls, label, sub, pend, dot] = SY[k];
+  $('#sync').className = 'sync ' + cls; $('#sync span').textContent = label;
+  $('#popTitle').textContent = label; $('#popDot').style.background = dot;
+  $('#popSub').textContent = k === 'out' ? outReason : sub;
+  $('#popPend').innerHTML = pend.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
+  $('#popPend').hidden = !pend.length;
+  $('#popAcc').textContent = k === 'out' ? 'Stefano · signed out' : 'Stefano · single sign-on';
+  $('#popLast').textContent = k === 'ok' ? '12:41, a minute ago' : '10:05, today';
+  $('#popActs').innerHTML = k === 'out'
+    ? '<button class="tb primary" data-sc="wait">Sign in</button><button class="tb line" id="popFolder">Show data folder</button>'
+    : '<button class="tb line">Sync now</button><button class="tb line" id="popFolder">Show data folder</button><span class="spacer"></span><button class="tb" id="popOut">Sign out</button>';
+  $('#popKeep').hidden = k !== 'out';
+  $('#popFolder').onclick = () => toast(`Opened the data folder in ${OS[os].fm}.`);
+  if ($('#popOut')) $('#popOut').onclick = openSignOut;
+  $('#who').className = 'avatar' + (k === 'out' ? ' off' : '');
+  $('#alert').classList.toggle('on', k === 'out');
+  $('#sbSync').innerHTML = { ok: 'Synced 12:41 · promptbook.siberio.eu', local: '<span class="a">Offline · 3 changes on this device</span>', out: '<span class="a">Signed out · sync paused</span>' }[k];
+}
+$('#sync').onclick = e => { e.stopPropagation(); $('#pop').classList.toggle('on'); };
+$('#who').onclick = e => { e.stopPropagation(); $('#pop').classList.toggle('on'); };
+$('#pop').onclick = e => { e.stopPropagation(); const b = e.target.closest('[data-sc]'); if (b) screen(b.dataset.sc); };
+document.addEventListener('click', () => $('#pop').classList.remove('on'));
+
+/* Views inside the app */
+function view(v) {
+  $$('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
+  $$('#rail [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('#rail').classList.toggle('noproj', v !== 'history');
+  $('#crumbs').innerHTML = { projects: '<b>Projects</b>', history: "<span>Kulthos</span><span>›</span><span>L'Ancora di Sabaoth</span><span>›</span><b>History</b>", settings: '<b>Settings</b>' }[v];
+  $('#winTitle').textContent = v === 'history' ? "L'Ancora di Sabaoth · Promptbook" : 'Promptbook';
+  $('#sbWhere').textContent = { projects: '6 of 12 projects', history: 'History · 3 412 words', settings: 'Settings' }[v];
+  if (v === 'history') { showDiff(false); drawSnaps(); }
+}
+$$('#rail [data-v]').forEach(b => b.onclick = () => screen(b.dataset.v === 'projects' ? 'projects' : b.dataset.v));
+
+/* Screens */
+function screen(s) {
+  cur = s;
+  $('#appWin').hidden = s === 'tab'; $('#browser').hidden = s !== 'tab';
+  const st = { signin: 'sign', wait: 'wait', fail: 'fail' }[s];
+  $('#fAuth').classList.toggle('on', !!st); if (st) $('#auth').dataset.st = st;
+  $('#fFirst').classList.toggle('on', s === 'first');
+  $$('.scrim').forEach(x => x.classList.remove('on'));
+  if (s === 'first') runFirst();
+  const v = { projects: 'projects', signedout: 'projects', update: 'projects', history: 'history', settings: 'settings' }[s];
+  if (v) view(v);
+  else $('#winTitle').textContent = 'Promptbook';
+  if (s !== 'signedout') outReason = 'The session ended.';
+  setSync(s === 'signedout' ? 'out' : s === 'history' && offline ? 'local' : 'ok');
+  $('#pop').classList.toggle('on', s === 'signedout');
+  update(s === 'update' ? 'start' : 'off');
+  $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === s));
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-sc]'); if (!b || b.closest('#screens')) return;
+  screen(b.dataset.sc);
+});
+$$('#screens button').forEach(b => b.onclick = e => { e.stopPropagation(); screen(b.dataset.sc); });
+$('#again').onclick = () => toast('Opened promptbook.siberio.eu in your browser again.');
+
+/* First sync */
+const dl = [['L’Ancora di Sabaoth', '1.4 MB'], ['Blacksad - Il Continentale', '0.6 MB'], ['Il ballo dei Lorenzetti', '0.3 MB'], ['Le ali di Ca’ Malamocco', '0.8 MB'], ['Cronaca del Gabbiano', '0.5 MB'], ['Apocrypha', '0.4 MB'], ['Il pozzo di Ganzirri', '0.2 MB']];
+let firstT;
+function runFirst() {
+  clearInterval(firstT); let n = 3;
+  const draw = () => {
+    $('#dlist').innerHTML = dl.map(([t, m], i) => `<li><span>${t}</span><span>${m}</span><span class="${i < n ? 'okc' : i === n ? 'now' : ''}">${i < n ? '✓' : i === n ? '↓' : ''}</span></li>`).join('');
+    $('#dlBar').style.width = Math.min(100, 20 + n * 13) + '%';
+  };
+  draw();
+  firstT = setInterval(() => { n++; draw(); if (n > dl.length) { clearInterval(firstT); setTimeout(() => { if (cur === 'first') screen('projects'); }, 500); } }, 900);
+}
+
+/* Update */
+let upT;
+function update(st) {
+  clearInterval(upT);
+  const bar = $('#upbar'), item = $('#sbUp');
+  bar.classList.remove('on'); item.hidden = true;
+  if (st === 'off') return;
+  if (st === 'later') {
+    item.hidden = false;
+    item.innerHTML = os === 'mac' ? '<a id="upAgain">Promptbook 0.6.0 is available</a>' : 'Promptbook 0.6.0 installs when you quit';
+    if ($('#upAgain')) $('#upAgain').onclick = () => update('start');
+    return;
+  }
+  if (os === 'mac') {
+    $('#upText').innerHTML = '<b>Promptbook 0.6.0 is available.</b>';
+    $('#upHint').textContent = 'Download it, then replace the app in Applications.';
+    $('#upGo').innerHTML = '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>Download';
+    bar.classList.add('on'); return;
+  }
+  if (st === 'start') {
+    let p = 62; item.hidden = false;
+    const draw = () => item.innerHTML = `<span class="mini-bar"><i style="width:${p}%"></i></span>Downloading Promptbook 0.6.0 · ${p}%`;
+    draw();
+    upT = setInterval(() => { p += 6; if (p >= 100) update('ready'); else draw(); }, 500);
+    return;
+  }
+  $('#upText').innerHTML = '<b>Promptbook 0.6.0 is ready.</b> Restart to update.';
+  $('#upHint').textContent = 'Open projects come back as you left them.';
+  $('#upGo').textContent = 'Restart now';
+  bar.classList.add('on');
+}
+$('#upGo').onclick = () => {
+  if (os === 'mac') { toast('Opened the Promptbook 0.6.0 release page on GitHub in your browser.'); return; }
+  update('off'); toast('Restarting… Promptbook 0.6.0 opens where you left off.');
+};
+$('#upLater').onclick = () => update('later');
+$('#upNew').onclick = () => $('#mNew').classList.add('on');
+$('#relLink').onclick = () => toast('Opened the release notes on GitHub in your browser.');
+$('#checkUp').onclick = () => { $('#checkUp').textContent = 'Checking…'; setTimeout(() => { $('#checkUp').textContent = 'Check for updates'; screen('update'); }, 900); };
+
+/* History with two sources */
+const snaps = [
+  { id: 'now', when: 'Now', kind: 'Current text', words: 3412 },
+  { id: 'd1', src: 'dev', when: 'Today 12:00', kind: 'Hourly, while editing', words: 3405, meta: 'kept until 27 Oct' },
+  { id: 'd2', src: 'dev', when: 'Today 11:00', kind: 'Hourly, while editing', words: 3398, meta: 'kept until 27 Oct' },
+  { id: 's1', src: 'srv', who: 'cl', when: 'Today 09:14', kind: "Before Claude's edit: S3 Il cordone di Donato", words: 3380, meta: 'kept until 19 Nov' },
+  { id: 'd3', src: 'dev', when: '19 Oct 22:00', kind: 'Hourly, while editing', words: 3301, meta: 'kept until 26 Oct' },
+  { id: 's3', src: 'srv', who: 'you', when: '17 Oct 22:40', kind: 'Saved by you: before playtest', words: 3251, meta: 'kept until you delete it' },
+  { id: 's2', src: 'srv', who: 'rs', when: '16 Oct 18:02', kind: 'Before restore', words: 3190, meta: 'made when you restored the snapshot of 14 Oct' },
+];
+const whoLab = { cl: 'Claude', you: 'You', rs: 'Restore' };
+const srcTag = s => s === 'srv'
+  ? '<span class="src srv"><svg class="ic" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z"/></svg>Server</span>'
+  : '<span class="src dev"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>This device</span>';
+let srcF = '';
+function drawSnaps() {
+  $('#offLine').hidden = !offline;
+  $('#snaps').innerHTML = '<div class="sr th"><span>When</span><span>Snapshot</span><span>Source</span><span style="text-align:right">Words</span><span></span></div>';
+  snaps.filter(s => s.id === 'now' || !srcF || s.src === srcF).forEach(s => {
+    const r = document.createElement('div'); r.className = 'sr' + (s.id === 'now' ? ' now' : '');
+    r.innerHTML = `<span class="when"></span><span class="k">${s.who ? `<span class="who-chip ${s.who}">${whoLab[s.who]}</span>` : ''}<b></b>${s.meta ? '<div class="meta"></div>' : ''}</span>
+      ${s.src ? srcTag(s.src) : '<span></span>'}<span class="w">${String(s.words).replace(/\B(?=(\d{3})+$)/g, ' ')}</span>
+      <span class="a">${s.id === 'now' ? '' : '<button class="tb sm line" data-c>Compare</button><button class="tb sm line" data-r>Restore</button>'}</span>`;
+    r.querySelector('.when').textContent = s.when; r.querySelector('b').textContent = s.kind;
+    if (s.meta) r.querySelector('.meta').textContent = s.meta;
+    if (s.id !== 'now') { r.querySelector('[data-c]').onclick = () => openDiff(s.id); r.querySelector('[data-r]').onclick = () => confirmRestore(s); }
+    $('#snaps').appendChild(r);
+  });
+}
+$$('#srcSeg button').forEach(b => b.onclick = () => { srcF = b.dataset.f; $$('#srcSeg button').forEach(x => x.classList.toggle('on', x === b)); drawSnaps(); });
+const newSnap = (kind, who, meta) => ({ id: 'n' + Date.now(), src: offline ? 'dev' : 'srv', who, when: 'Today 12:46', kind, words: 3412, meta: offline ? meta + ' · goes to the server when you are back online' : meta });
+$('#snapSave').onclick = () => {
+  snaps.splice(1, 0, newSnap('Saved by you: ' + ($('#snapName').value.trim() || 'untitled'), 'you', 'kept until you delete it'));
+  $('#snapName').value = ''; drawSnaps(); toast(offline ? 'Snapshot saved on this device.' : 'Snapshot saved.');
+};
+function confirmRestore(s) {
+  ask('Restore this version?', `The document goes back to the snapshot of ${s.when}: «${s.kind}».`, 'The current text is saved as a snapshot first.', 'Restore', () => restore(s));
+}
+function restore(s) {
+  snaps.splice(1, 0, newSnap('Before restore', 'rs', 'made when you restored the snapshot of ' + s.when));
+  showDiff(false); drawSnaps();
+  toast(`Restored the snapshot of ${s.when}. The text before it is in History as «Before restore».`);
+}
+let diffSnap = null;
+function showDiff(on) { $('#histDiff').hidden = !on; $('#histList').hidden = on; }
+$('#diffBack').onclick = () => showDiff(false);
+$('#diffRestore').onclick = () => confirmRestore(diffSnap);
+const diffLines = [
+  ['h', '', '', '@@ S3. Il cordone di Donato @@'],
+  [' ', 128, 128, '### S3. Il cordone di Donato'],
+  [' ', 129, 129, '**Luogo e momento:** via Garibaldi, fra le macerie, a mezzogiorno.'],
+  [' ', 130, 130, '**In gioco:** passare il cordone prima che Salvi arrivi a Torre Faro.'],
+  ['+', '', 131, ''],
+  ['+', '', 132, '> [!leggi]'],
+  ['+', '', 133, '> I soldati hanno teso una corda fra due lampioni piegati. Dietro, il tenente Donato fuma senza guardarvi: «Nessuno passa. Ordini del Re.»'],
+  [' ', 131, 134, ''],
+  [' ', 132, 135, '**Cosa succede da sé**'],
+  ['-', 133, '', '- Donato non lascia passare nessuno.'],
+  ['+', '', 136, '- Donato non lascia passare nessuno, ma ascolta chi ha visto Salvi con i propri occhi.'],
+  [' ', 134, 137, '- I Quieti si muovono fra le macerie, in silenzio.'],
+];
+function openDiff(id) {
+  diffSnap = snaps.find(s => s.id === id) || snaps[1];
+  $('#diffLead').textContent = `Snapshot of ${diffSnap.when} → now`;
+  $('#diffWhat').innerHTML = srcTag(diffSnap.src) + ' ' + (diffSnap.who ? `<span class="who-chip ${diffSnap.who}">${whoLab[diffSnap.who]}</span>` : '') + '<span></span>';
+  $('#diffWhat span:last-child').textContent = diffSnap.kind;
+  $('#diff').innerHTML = '';
+  diffLines.forEach(([g, a, b, t]) => {
+    const d = document.createElement('div'); d.className = 'dl' + ({ '+': ' add', '-': ' del', h: ' hunk' }[g] || '');
+    d.innerHTML = `<span class="n">${a}</span><span class="n">${b}</span><span class="g">${g === 'h' ? '' : g === '-' ? '−' : g}</span><span class="t"></span>`;
+    d.querySelector('.t').textContent = t; $('#diff').appendChild(d);
+  });
+  showDiff(true);
+}
+$$('#netSw button').forEach(b => b.onclick = () => {
+  offline = b.dataset.net === 'off'; $$('#netSw button').forEach(x => x.classList.toggle('on', x === b));
+  if (cur === 'history') { setSync(offline ? 'local' : 'ok'); drawSnaps(); } else screen('history');
+});
+
+/* Settings and sign out */
+$$('#setNav button').forEach(b => b.onclick = () => {
+  $$('#setNav button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.set section').forEach(s => s.classList.toggle('on', s.dataset.s === b.dataset.s));
+});
+function openSignOut() { $('#pop').classList.remove('on'); $('#outRm').checked = false; outState(); $('#mOut').classList.add('on'); }
+function outState() {
+  const rm = $('#outRm').checked, warn = rm && unsynced > 0;
+  $('#outWarn').hidden = !warn;
+  $('#outNote').textContent = !rm ? 'Sign in again to sync. Nothing is downloaded twice.' : warn ? 'Cancel, then sync when you are online, to keep them.' : 'Everything is on the server: signing in again downloads it.';
+  $('#outGo').textContent = rm ? 'Sign out and remove' : 'Sign out';
+  $('#outGo').className = 'tb ' + (warn ? 'red' : 'primary');
+}
+$('#bOut').onclick = openSignOut;
+$('#outRm').onchange = outState;
+$('#outGo').onclick = () => {
+  const rm = $('#outRm').checked;
+  screen(rm ? 'signin' : 'signedout');
+  if (!rm) { outReason = 'You signed out.'; setSync('out'); }
+  toast(rm ? `Signed out. The projects were removed from ${OS[os].comp}.` : `Signed out. Your projects stay on ${OS[os].comp}.`);
+};
+$$('#unsSw button').forEach(b => b.onclick = () => { unsynced = +b.dataset.uns; $$('#unsSw button').forEach(x => x.classList.toggle('on', x === b)); screen('settings'); openSignOut(); });
+
+$('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); document.body.classList.toggle('lmin', l.classList.contains('min')); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
+setOS('mac'); screen('signin');
+</script>
+</body>
+</html>

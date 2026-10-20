@@ -1,5 +1,6 @@
 import { validateHostHeader } from '@modelcontextprotocol/server';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
+import { bearerToken } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { WriteQuota } from '../mcp/quota.js';
@@ -15,12 +16,6 @@ import type { Sync } from '../sync.js';
 // it act.
 
 const MCP_BODY_LIMIT = 1024 * 1024;
-
-function bearerToken(req: FastifyRequest): string | null {
-  const header = req.headers.authorization;
-  if (typeof header !== 'string') return null;
-  return /^Bearer\s+(\S+)$/i.exec(header.trim())?.[1] ?? null;
-}
 
 // The 401 that tells a client where to start. invalid_token only when a
 // token was sent (RFC 6750): refresh, or start over. Why a token failed is
@@ -66,7 +61,9 @@ export async function mcpRoutes(app: FastifyInstance, { config, db, sync }: { co
     const presented = bearerToken(req);
     if (!presented) return challenge(reply, oauth.resourceMetadataUrl, false);
     const caller = await verifyAccessToken(db, presented, oauth.resource);
-    if (!caller) return challenge(reply, oauth.resourceMetadataUrl, true);
+    // An app token is bound to the app resource and fails above; its scope
+    // is refused here too, so no app grant ever reaches a tool.
+    if (!caller || caller.scope === 'app') return challenge(reply, oauth.resourceMetadataUrl, true);
 
     const extra: McpCaller = {
       userId: caller.userId,
