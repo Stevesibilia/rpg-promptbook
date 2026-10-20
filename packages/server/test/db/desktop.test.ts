@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { readDocument } from 'promptbook-project';
+import { createProjectDoc, readDocument, skeletonDocument } from 'promptbook-project';
+import * as Y from 'yjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hashToken } from '../../src/accounts/sessions.js';
 import { createUser } from '../../src/accounts/users.js';
@@ -400,4 +401,166 @@ describe('/sync with the desktop app’s token', () => {
       expect((await refresh()).statusCode).toBe(200);
       expect((await refresh()).json()).toMatchObject({ error: 'invalid_grant' });
     }));
+});
+
+describe('a project made on the device, uploaded', () => {
+  const ID = '6f1c0a52-3b8e-4c1d-9a57-2d0e7f1b9c11';
+
+  function offlineDoc(overrides: { id?: string; campaignId?: string | null; document?: string } = {}): Y.Doc {
+    return createProjectDoc({
+      id: overrides.id ?? ID,
+      title: 'Scritto in treno',
+      category: 'one-shot',
+      status: 'draft',
+      campaignId: overrides.campaignId ?? null,
+      system: 'Kulthos',
+      todo: ['Scrivere le scene', 'Rilettura'],
+      document:
+        overrides.document ??
+        skeletonDocument('one-shot', {
+          title: 'Scritto in treno',
+          system: 'Kulthos',
+          campaignTitle: null,
+          author: 'Stefano',
+          copyright: '',
+          licence: '',
+        }),
+      createdAt: '2026-10-20T07:00:00.000Z',
+    });
+  }
+
+  const encode = (doc: Y.Doc) => Buffer.from(Y.encodeStateAsUpdate(doc)).toString('base64');
+
+  async function upload(app: FastifyInstance, token: string, body: Record<string, unknown>) {
+    return app.inject({ method: 'POST', url: '/api/projects', headers: bearer(token), payload: body });
+  }
+
+  const storedState = async (id: string) =>
+    (await db.queryOne<{ state: Buffer }>('select state from project_docs where project_id = $1', [id]))?.state;
+
+  it('stores the document with its id and answers 201 with its row, which the web lists', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const doc = offlineDoc();
+    doc.getText('document').insert(0, 'Scritto offline.\n');
+    const response = await upload(app, access_token, { id: ID, state: encode(doc), title: 'Ignored', category: 'campaign' });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().project).toMatchObject({
+      id: ID,
+      title: 'Scritto in treno',
+      category: 'one-shot',
+      system: 'Kulthos',
+      todoDone: 0,
+      todoTotal: 2,
+      deletedAt: null,
+    });
+    const listed = await app.inject({ url: '/api/projects', headers: cookie(session) });
+    expect(listed.json().projects).toEqual([response.json().project]);
+    const stored = new Y.Doc();
+    Y.applyUpdate(stored, (await storedState(ID))!);
+    expect(readDocument(stored)).toBe(readDocument(doc));
+  });
+
+  it('answers 200 with the project as it is when its owner sends the id again, and stores nothing new', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const doc = offlineDoc();
+    const first = await upload(app, access_token, { id: ID, state: encode(doc) });
+    expect(first.statusCode).toBe(201);
+    const state = await storedState(ID);
+    doc.getText('document').insert(0, 'Più tardi.\n');
+    const again = await upload(app, access_token, { id: ID, state: encode(doc) });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().project).toEqual(first.json().project);
+    expect(await storedState(ID)).toEqual(state);
+    expect(await db.query('select id from projects')).toEqual([{ id: ID }]);
+  });
+
+  it('refuses an id another user has with 409, and leaves their project alone', async () => {
+    const { app, session } = await setup();
+    await createUser(db, { username: 'anna', password: PASSWORD, displayName: 'Anna' });
+    const annas = await desktopSignIn(app, await signedIn(app, 'anna'));
+    expect((await upload(app, annas.access_token, { id: ID, state: encode(offlineDoc()) })).statusCode).toBe(201);
+    const state = await storedState(ID);
+    const { access_token } = await desktopSignIn(app, session);
+    const other = offlineDoc();
+    other.getText('document').insert(0, 'Di Stefano.\n');
+    for (const body of [{ id: ID, state: encode(other) }, { id: ID, category: 'one-shot', title: 'Mio' }]) {
+      const response = await upload(app, access_token, body);
+      expect(response.statusCode).toBe(409);
+      expect(response.json().error).toBe('id_taken');
+    }
+    expect(await storedState(ID)).toEqual(state);
+    expect((await app.inject({ url: '/api/projects', headers: bearer(access_token) })).json().projects).toEqual([]);
+  });
+
+  it.each([
+    ['another project’s id in the document', () => encode(offlineDoc({ id: '00000000-0000-4000-8000-000000000001' }))],
+    ['a document that is not a project', () => {
+      const doc = new Y.Doc();
+      doc.getText('document').insert(0, 'Solo testo.');
+      return encode(doc);
+    }],
+    ['a project of an unknown category', () => {
+      const doc = offlineDoc();
+      doc.getMap('meta').set('category', 'saga');
+      return encode(doc);
+    }],
+    ['a meta of the wrong kind', () => {
+      const doc = new Y.Doc();
+      doc.getArray('meta').insert(0, [ID]);
+      return encode(doc);
+    }],
+    ['bytes that are no Yjs update', () => Buffer.from('not a yjs update at all').toString('base64')],
+    ['text that is not base64', () => 'not base64!'],
+    ['a state over 5 MB', () => encode(offlineDoc({ document: 'a'.repeat(5 * 1024 * 1024 + 1) }))],
+  ])('answers 400 invalid_state to %s, and creates nothing', async (_what, state) => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const response = await upload(app, access_token, { id: ID, state: state() });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('invalid_state');
+    expect(await db.query('select id from projects')).toEqual([]);
+  });
+
+  it('refuses a body over 8 MB, a state without an id, and an id that is not a UUID', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const huge = await upload(app, access_token, { id: ID, state: 'A'.repeat(8 * 1024 * 1024) });
+    expect(huge.statusCode).toBe(413);
+    expect((await upload(app, access_token, { state: encode(offlineDoc()) })).statusCode).toBe(400);
+    expect((await upload(app, access_token, { id: 'not-a-uuid', state: encode(offlineDoc()) })).statusCode).toBe(400);
+    expect(await db.query('select id from projects')).toEqual([]);
+  });
+
+  it('reads a link to a campaign that is not the uploader’s as stand-alone', async () => {
+    const { app, session } = await setup();
+    await createUser(db, { username: 'anna', password: PASSWORD, displayName: 'Anna' });
+    const annas = await signedIn(app, 'anna');
+    const campaign = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { ...cookie(annas), origin: ORIGIN },
+      payload: { category: 'campaign', title: 'Di Anna' },
+    });
+    const { access_token } = await desktopSignIn(app, session);
+    const response = await upload(app, access_token, {
+      id: ID,
+      state: encode(offlineDoc({ campaignId: campaign.json().project.id })),
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().project.campaignId).toBeNull();
+  });
+
+  it('creates from the templates with an id and no state, and answers 200 to it again', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const body = { id: ID, category: 'adventure', title: 'Con un id' };
+    const first = await upload(app, access_token, body);
+    expect(first.statusCode).toBe(201);
+    expect(first.json().project).toMatchObject({ id: ID, title: 'Con un id', category: 'adventure' });
+    const again = await upload(app, access_token, { ...body, title: 'Cambiato' });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().project.title).toBe('Con un id');
+  });
 });

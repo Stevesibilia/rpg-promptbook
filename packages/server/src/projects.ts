@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   createProjectDoc,
+  isCategory,
   projectRow,
   skeletonDocument,
   summarize,
@@ -174,10 +175,15 @@ export interface NewProject {
 
 // A new project from the user's templates: the category's to-do list and the
 // skeleton document with the settings' defaults in its front matter. Shared
-// by the REST route and the connector's create_project.
-export async function createProject(db: Db, ownerId: string, input: NewProject): Promise<ProjectRow> {
+// by the REST route and the connector's create_project. The id is the
+// desktop app's when it chose one (createWithId).
+export async function createProject(
+  db: Db,
+  ownerId: string,
+  input: NewProject,
+  id: string = randomUUID(),
+): Promise<ProjectRow> {
   const settings = await getSettings(db, ownerId);
-  const id = randomUUID();
   await db.withTransaction(async (tx) => {
     const campaign = campaignFor(input.category, input.campaignId, await campaignsOf(tx, ownerId));
     const system = input.system ?? settings.system;
@@ -202,6 +208,68 @@ export async function createProject(db: Db, ownerId: string, input: NewProject):
     await insertProject(tx, ownerId, doc);
   });
   return (await getProject(db, ownerId, id))!;
+}
+
+// The largest document state the desktop app may upload. No document size
+// limit exists anywhere else, so this is the one (desktop-app design
+// decision 9).
+export const MAX_STATE_BYTES = 5 * 1024 * 1024;
+
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+const invalidState = (why: string) => new AppError(400, 'invalid_state', `state: ${why}`);
+
+// A project document as the desktop app uploads it, base64 of a Yjs update,
+// checked to read as a project with this id before anything is stored. The
+// document's own front matter, to-do list and the rest are the user's, as
+// any edit over sync would be.
+export function readUploadedState(id: string, state: string): Y.Doc {
+  if (state.length % 4 !== 0 || !BASE64.test(state)) throw invalidState('is not base64.');
+  const bytes = Buffer.from(state, 'base64');
+  if (bytes.length > MAX_STATE_BYTES) throw invalidState(`is larger than ${MAX_STATE_BYTES / 1024 / 1024} MB.`);
+  const doc = new Y.Doc();
+  let meta: { id: unknown; category: unknown };
+  try {
+    Y.applyUpdate(doc, bytes);
+    const map = doc.getMap<unknown>('meta');
+    meta = { id: map.get('id'), category: map.get('category') };
+    // Every part a summary reads must read; a shared type of the wrong kind
+    // throws here rather than when the row is written.
+    summarize(doc, { campaigns: [] });
+  } catch {
+    throw invalidState('is not a project document.');
+  }
+  if (!isCategory(meta.category)) throw invalidState('is not a project document.');
+  if (meta.id !== id) throw invalidState('is the document of another project id.');
+  return doc;
+}
+
+const UNIQUE_VIOLATION = '23505';
+
+// Creates a project with the id the desktop app chose, from its uploaded
+// document or else from the templates. The same id sent again by its owner
+// (a retry after a lost answer) answers the project as it is and changes
+// nothing; the provider then sends anything newer. An id another user has
+// is refused.
+export async function createWithId(
+  db: Db,
+  ownerId: string,
+  id: string,
+  create: () => Promise<unknown>,
+): Promise<{ project: ProjectRow; created: boolean }> {
+  for (let attempt = 0; ; attempt++) {
+    const existing = await db.queryOne<{ owner_id: string }>('select owner_id from projects where id = $1', [id]);
+    if (existing) {
+      if (existing.owner_id !== ownerId) throw new AppError(409, 'id_taken', 'id: is taken.');
+      return { project: (await getProject(db, ownerId, id))!, created: false };
+    }
+    try {
+      await create();
+      return { project: (await getProject(db, ownerId, id))!, created: true };
+    } catch (error) {
+      // Two uploads of one id at once: the second finds the first's row.
+      if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION || attempt > 0) throw error;
+    }
+  }
 }
 
 // Writes a document's state and its summary in one transaction. A project
