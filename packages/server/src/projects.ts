@@ -14,7 +14,8 @@ import {
 import * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
-import { sweepExpired } from './oauth/tokens.js';
+import { sweepUnfinishedFirstPartyGrants } from './oauth/grants.js';
+import { sweepExpired, tokenLifetimes } from './oauth/tokens.js';
 import { getSettings } from './routes/settings.js';
 
 // The projects table and the stored documents. The document is the source;
@@ -338,13 +339,14 @@ export interface Purged {
   oauthCodes: number;
   oauthTokens: number;
   oauthRegistrations: number;
+  oauthGrants: number;
 }
 
 // Removes projects in the bin for more than 30 days, with their documents
 // and snapshots, sign-in failures older than a day, expired single sign-on
 // handshakes, Claude and restore snapshots older than 30 days, expired OAuth
-// codes and tokens, and registration counts older than a day. Answers what it
-// removed.
+// codes and tokens, registration counts older than a day, and the desktop
+// app's sign-ins that never finished. Answers what it removed.
 export async function purge(db: Queryable): Promise<Purged> {
   const projects = await db.query(
     `delete from projects where deleted_at < now() - make_interval(days => $1) returning id`,
@@ -360,6 +362,7 @@ export async function purge(db: Queryable): Promise<Purged> {
   const registrations = await db.query(
     `delete from oauth_registrations where at < now() - interval '1 day' returning id`,
   );
+  const grants = await sweepUnfinishedFirstPartyGrants(db, tokenLifetimes.CODE_TTL_MS);
   return {
     projects: projects.length,
     loginFailures: failures.length,
@@ -368,5 +371,6 @@ export async function purge(db: Queryable): Promise<Purged> {
     oauthCodes: oauth.codes,
     oauthTokens: oauth.tokens,
     oauthRegistrations: registrations.length,
+    oauthGrants: grants,
   };
 }

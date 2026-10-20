@@ -23,7 +23,7 @@ import {
   type OAuthConfig,
   type OAuthScope,
 } from '../oauth/config.js';
-import { createGrant, listGrants, revokeGrant } from '../oauth/grants.js';
+import { countPendingFirstPartyGrants, createGrant, listGrants, revokeGrant } from '../oauth/grants.js';
 import {
   issueCode,
   issueTokens,
@@ -48,6 +48,11 @@ import type { Sync } from '../sync.js';
 
 // A token or registration request is a handful of short parameters.
 const SMALL_BODY_LIMIT = 8 * 1024;
+
+// The desktop app is approved without a click, so any page can start its
+// sign-in: past this many unfinished ones in the window, approvals wait.
+const PENDING_FIRST_PARTY_MAX = 10;
+const PENDING_FIRST_PARTY_WINDOW_MS = 600_000;
 
 // RFC 6749 section 5.2's error shape, and no-store on every answer of these
 // endpoints so no proxy keeps a token response.
@@ -318,6 +323,13 @@ export async function oauthRoutes(app: FastifyInstance, { config, db, sync }: { 
       );
     }
     const code = await db.withTransaction(async (tx) => {
+      if (validated.client.firstParty) {
+        // One approval at a time per user, so a burst cannot all count first.
+        await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-first-party:' || $1, 0))", [user.id]);
+        if ((await countPendingFirstPartyGrants(tx, user.id, PENDING_FIRST_PARTY_WINDOW_MS)) >= PENDING_FIRST_PARTY_MAX) {
+          throw new AppError(429, 'too_many_requests', 'Too many desktop sign-ins at once: wait a few minutes and try again.');
+        }
+      }
       const grantId = await createGrant(tx, user.id, validated.client.id, body.granted_scope, validated.deviceName);
       return issueCode(tx, grantId, {
         redirectUri: validated.query.redirect_uri,

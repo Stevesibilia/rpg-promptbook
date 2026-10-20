@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hashToken } from '../../src/accounts/sessions.js';
 import { createUser } from '../../src/accounts/users.js';
 import { sweepUnusedClients } from '../../src/oauth/clients.js';
+import { purge } from '../../src/projects.js';
 import { APP_RESOURCE, approveDesktop, desktopParams, desktopSignIn, LOOPBACK } from './desktop-helpers.js';
 import { db, ORIGIN, PASSWORD, seedDesktopClient, signedIn, startApp, steve } from './helpers.js';
 import { mcpCall } from './mcp-helpers.js';
@@ -159,6 +160,48 @@ describe('the first-party desktop client', () => {
     const approved = await approveDesktop(app, session, params, params.scope === 'read' ? 'read' : 'app');
     expect(approved.statusCode).toBe(400);
     expect(await db.query('select id from oauth_grants')).toEqual([]);
+  });
+
+  it('sweeps a desktop sign-in that never got a token once its code has expired, and nothing else', async () => {
+    const { app, session } = await setup();
+    const unfinished = await approveDesktop(app, session, desktopParams(pkce().challenge, { device_name: 'unfinished' }));
+    expect(unfinished.statusCode).toBe(200);
+    await desktopSignIn(app, session, 'signed-in');
+    const clientId = await registerClient(app);
+    await approveDesktop(app, session, authorizeParams(clientId, pkce().challenge), 'read');
+    await db.query("update oauth_grants set created_at = now() - interval '11 minutes'");
+    // Expired tokens go first in the purge: the signed-in grant keeps its
+    // refresh token, which lives 30 days.
+    await db.query("update oauth_tokens set expires_at = now() - interval '1 second' where kind = 'access'");
+    const fresh = await approveDesktop(app, session, desktopParams(pkce().challenge, { device_name: 'fresh' }));
+    expect(fresh.statusCode).toBe(200);
+    expect((await purge(db)).oauthGrants).toBe(1);
+    const left = await db.query<{ device_name: string | null; scope: string }>(
+      'select device_name, scope from oauth_grants order by device_name nulls first',
+    );
+    expect(left).toEqual([
+      { device_name: null, scope: 'read' },
+      { device_name: 'fresh', scope: 'app' },
+      { device_name: 'signed-in', scope: 'app' },
+    ]);
+  });
+
+  it('refuses a desktop approval with 429 past 10 unfinished sign-ins in 10 minutes', async () => {
+    const { app, session } = await setup();
+    const approveOnce = () => approveDesktop(app, session, desktopParams(pkce().challenge));
+    // Signed-in ones do not count.
+    await desktopSignIn(app, session);
+    for (let i = 0; i < 10; i++) expect((await approveOnce()).statusCode).toBe(200);
+    const refused = await approveOnce();
+    expect(refused.statusCode).toBe(429);
+    expect(refused.json().error).toBe('too_many_requests');
+    expect(await db.query('select id from oauth_grants')).toHaveLength(11);
+    // Another client is not capped.
+    const clientId = await registerClient(app);
+    expect((await approveDesktop(app, session, authorizeParams(clientId, pkce().challenge), 'read')).statusCode).toBe(200);
+    // Out of the window, they no longer count.
+    await db.query("update oauth_grants set created_at = now() - interval '11 minutes'");
+    expect((await approveOnce()).statusCode).toBe(200);
   });
 
   it('takes a device name of 80 characters', async () => {

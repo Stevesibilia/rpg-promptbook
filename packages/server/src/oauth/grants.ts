@@ -76,6 +76,37 @@ export async function revokeGrant(db: Queryable, userId: string, id: string): Pr
   if (!deleted) throw new AppError(404, 'not_found', 'Not found.');
 }
 
+// The desktop app's approvals no token was ever issued under, past the
+// lifetime of their codes: no exchange can still happen, so they are a sign-in
+// that never finished (a closed app, or a page that opened the authorize URL
+// on its own: the first-party client is approved without a click). Connected
+// apps would otherwise keep them for good. Other clients' grants stay, since
+// their users approved them by hand.
+export async function sweepUnfinishedFirstPartyGrants(db: Queryable, codeTtlMs: number): Promise<number> {
+  const rows = await db.query(
+    `delete from oauth_grants g using oauth_clients c
+     where c.id = g.client_id and c.first_party
+       and g.created_at < now() - make_interval(secs => $1)
+       and not exists (select 1 from oauth_tokens t where t.grant_id = g.id)
+     returning g.id`,
+    [codeTtlMs / 1000],
+  );
+  return rows.length;
+}
+
+// The user's desktop app approvals of the last minutes with no token yet:
+// sign-ins under way, which the authorize route caps.
+export async function countPendingFirstPartyGrants(db: Queryable, userId: string, withinMs: number): Promise<number> {
+  const row = await db.queryOne<{ n: string }>(
+    `select count(*) as n from oauth_grants g join oauth_clients c on c.id = g.client_id
+     where g.user_id = $1 and c.first_party
+       and g.created_at > now() - make_interval(secs => $2)
+       and not exists (select 1 from oauth_tokens t where t.grant_id = g.id)`,
+    [userId, withinMs / 1000],
+  );
+  return Number(row?.n ?? 0);
+}
+
 // By id alone, for the revocation endpoint and a reused refresh token: the
 // credential presented is what entitles the caller to end it.
 export async function deleteGrant(db: Queryable, grantId: string): Promise<void> {
