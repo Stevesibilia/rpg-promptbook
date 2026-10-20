@@ -1,10 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { strToU8, zipSync, type Zippable } from 'fflate';
-import { categories, createProjectDoc, exportFolderName, exportProject, prepareImport } from 'promptbook-project';
+import { Readable } from 'node:stream';
+import { strToU8, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
+import {
+  categories,
+  createProjectDoc,
+  exportBoard,
+  exportFolderName,
+  exportProject,
+  prepareImport,
+  type ExportFile,
+} from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db } from '../db.js';
+import type { BlobStore } from '../files/blobs.js';
 import {
   campaignFor,
   campaignsOf,
@@ -49,7 +59,10 @@ function attachment(reply: FastifyReply, name: string): FastifyReply {
     .header('content-disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
 }
 
-export async function transferRoutes(app: FastifyInstance, { db, sync }: { db: Db; sync: Sync }) {
+export async function transferRoutes(
+  app: FastifyInstance,
+  { db, sync, blobs }: { db: Db; sync: Sync; blobs: BlobStore },
+) {
   // Every note becomes one new project, converted here whatever the client
   // previewed; all of them or none.
   app.post('/api/import', { bodyLimit: IMPORT_BODY_LIMIT }, async (req) => {
@@ -86,40 +99,116 @@ export async function transferRoutes(app: FastifyInstance, { db, sync }: { db: D
     return { results };
   });
 
-  // The files of one project's folder, from the open document when a client
-  // has it, so edits not yet stored are in the export too.
-  async function folder(project: ProjectRow, titles: Map<string, string>): Promise<Zippable> {
+  // What one project's folder holds: its text files, from the open document
+  // when a client has it so edits not yet stored are in the export too, and
+  // the board's files that the project links. The bytes are read later, one
+  // file at a time.
+  async function plan(
+    project: ProjectRow,
+    titles: Map<string, string>,
+    folder: string,
+  ): Promise<{ folder: string; texts: Record<string, string>; files: ExportFile[]; missing: string[] }> {
     const doc = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
-    if (!doc) return {};
-    const files = exportProject(doc, {
+    if (!doc) return { folder, texts: {}, files: [], missing: [] };
+    const texts = exportProject(doc, {
       campaignTitle: project.campaignId ? (titles.get(project.campaignId) ?? null) : null,
       editedAt: project.editedAt,
     });
-    return Object.fromEntries(Object.entries(files).map(([name, text]) => [name, strToU8(text)]));
+    // The document is the user's to write, so a hash it names is read only
+    // when this project's links list it: knowing a hash never grants a file.
+    const linked = new Set(
+      (await db.query<{ sha256: string }>('select sha256 from project_files where project_id = $1', [project.id])).map(
+        (row) => row.sha256,
+      ),
+    );
+    const listed = exportBoard(doc).files;
+    return {
+      folder,
+      texts,
+      files: listed.filter((file) => linked.has(file.sha256)),
+      missing: listed.filter((file) => !linked.has(file.sha256)).map((file) => file.path),
+    };
   }
 
   const campaignTitles = async (userId: string) =>
     new Map((await campaignsOf(db, userId)).map((c) => [c.id, c.title]));
+
+  // The zip as a stream of chunks, written as the files are read: the text
+  // deflated, the images and tracks stored as they are (already compressed).
+  // Nothing but the file being read is in memory, and the next one is not
+  // read until the client has taken what came before.
+  async function* zipChunks(
+    projects: { project: ProjectRow; folder: string }[],
+    titles: Map<string, string>,
+    log: FastifyInstance['log'],
+  ): AsyncGenerator<Uint8Array> {
+    const queue: Uint8Array[] = [];
+    let failure: Error | null = null;
+    const zip = new Zip((error, chunk) => {
+      if (error) failure = error;
+      else queue.push(chunk);
+    });
+    const flush = () => {
+      if (failure) throw failure;
+      return queue.splice(0);
+    };
+    const text = (path: string, content: string) => {
+      const entry = new ZipDeflate(path, { level: 6 });
+      zip.add(entry);
+      entry.push(strToU8(content), true);
+    };
+    try {
+      for (const { project, folder } of projects) {
+        const { texts, files, missing } = await plan(project, titles, folder);
+        for (const [name, content] of Object.entries(texts)) text(`${folder}/${name}`, content);
+        yield* flush();
+        for (const file of files) {
+          const blob = await blobs.get(file.sha256);
+          if (!blob) {
+            missing.push(file.path);
+            continue;
+          }
+          const entry = new ZipPassThrough(`${folder}/${file.path}`);
+          zip.add(entry);
+          for await (const chunk of blob.stream) {
+            entry.push(chunk as Uint8Array, false);
+            yield* flush();
+          }
+          entry.push(new Uint8Array(0), true);
+          yield* flush();
+        }
+        if (missing.length > 0) {
+          log.warn({ project: project.id, missing: missing.length }, 'Export: files without bytes were left out');
+          text(`${folder}/files-missing.txt`, `${missing.join('\n')}\n`);
+          yield* flush();
+        }
+      }
+      zip.end();
+      yield* flush();
+    } finally {
+      zip.terminate();
+    }
+  }
+
+  const send = (reply: FastifyReply, name: string, chunks: AsyncGenerator<Uint8Array>) =>
+    attachment(reply, name).send(Readable.from(chunks, { objectMode: false }));
 
   app.get('/api/projects/:id/export', async (req, reply) => {
     const { user } = requireSession(req);
     const { id } = req.params as { id: string };
     const project = await getProject(db, user.id, id);
     if (!project || project.deletedAt) throw NOT_FOUND();
-    const name = exportFolderName(project.title, new Set());
-    const zip = zipSync({ [name]: await folder(project, await campaignTitles(user.id)) });
-    return attachment(reply, `${name}.zip`).send(Buffer.from(zip));
+    const folder = exportFolderName(project.title, new Set());
+    return send(reply, `${folder}.zip`, zipChunks([{ project, folder }], await campaignTitles(user.id), req.log));
   });
 
   // Every project not in the bin, one folder each.
   app.get('/api/export', async (req, reply) => {
     const { user } = requireSession(req);
     const projects = await listProjects(db, user.id, { bin: false });
-    const titles = await campaignTitles(user.id);
     const taken = new Set<string>();
-    const tree: Zippable = {};
-    for (const project of projects) tree[exportFolderName(project.title, taken)] = await folder(project, titles);
+    const named = projects.map((project) => ({ project, folder: exportFolderName(project.title, taken) }));
     const date = new Date().toISOString().slice(0, 10);
-    return attachment(reply, `promptbook-${date}.zip`).send(Buffer.from(zipSync(tree)));
+    return send(reply, `promptbook-${date}.zip`, zipChunks(named, await campaignTitles(user.id), req.log));
   });
 }
