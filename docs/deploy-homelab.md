@@ -3,8 +3,8 @@
 Promptbook runs at `https://promptbook.siberio.eu` on the homelab cluster. A
 `v*` tag on `main` builds the image, installs the Helm chart and checks that the
 live site reports the new version. This page covers the setup, a release,
-single sign-on and the way in when Authentik is down, a rollback, a restore
-and the yearly token renewal.
+single sign-on and the way in when Authentik is down, a rollback, a restore,
+the files volume and the yearly token renewal.
 
 ## What runs where
 
@@ -14,8 +14,8 @@ and the yearly token renewal.
   image registry and the deploy pipeline. GitLab Community Edition cannot pull
   from GitHub, which is why GitHub pushes.
 - **The cluster** runs one server pod (API, web client and the `/sync`
-  websocket), a Service and an Ingress in the namespace `rpg-promptbook`, and
-  a CloudNativePG cluster `rpg-promptbook-db` with WAL archiving and a daily
+  websocket), a Service, an Ingress and the files volume in the namespace
+  `rpg-promptbook`, and a CloudNativePG cluster `rpg-promptbook-db` with WAL archiving and a daily
   backup to the bucket `cnpg-rpg-promptbook` on Silo, kept 30 days.
 - **Authentik** (`auth.siberio.eu`) signs people in. Its application
   `rpg-promptbook` lets in the members of the group `Promptbook` only. Both,
@@ -206,6 +206,30 @@ backup configuration.
   repository explains the bucket layout.
 
 Every restore creates or replaces a database, so ask before running one.
+
+## Files volume
+
+The board's images and tracks live on the claim `rpg-promptbook-data`
+(storage class `ur-default`, 20 Gi, ReadWriteOnce), mounted at `/data`, under
+`/data/files/<aa>/<sha256>`. The pod's `fsGroup` 65532 makes it writable by
+the server; the chart's `persistence` values set it, and
+`persistence.existingClaim` uses a claim made elsewhere instead. Each user may
+store `app.filesQuotaGb` (20 GiB) of files; a file no document lists is
+removed `app.filesGraceDays` (30) days later by the daily sweep.
+
+See how much it holds:
+
+```sh
+kubectl -n rpg-promptbook exec deploy/rpg-promptbook -- du -sh /data/files
+```
+
+Uninstalling the chart keeps the claim (`helm.sh/resource-policy: keep`);
+delete it by hand only to throw the files away. Uploads need no ingress
+change: Traefik sets no body size limit by default.
+
+No backup yet: the volume's backup is decided later with the infrastructure.
+A lost volume loses the files; the documents keep their entries, which then
+show empty tiles, and the desktop apps hold a copy of every file they synced.
 
 ## Renewing tokens
 
