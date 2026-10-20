@@ -7,8 +7,9 @@ land in their scene, and the PDF for the table and the CueBard project are
 built from it.
 
 Status: the server and the web client run locally and on the homelab
-(see [docs/deploy-homelab.md](docs/deploy-homelab.md)). The desktop app comes
-later. See [docs/design.md](docs/design.md).
+(see [docs/deploy-homelab.md](docs/deploy-homelab.md)); the desktop app for
+Mac, Windows and Linux keeps every project on the computer and works offline.
+See [docs/design.md](docs/design.md).
 
 The name comes from theatre: the promptbook is the stage manager's master copy
 of the script, with every cue for lights and sound. Here it holds the GM's prep
@@ -41,6 +42,39 @@ access also needs OrbStack's `docker.expose_ports_to_lan` setting or a TCP
 relay from the LAN address to `127.0.0.1`.
 
 `docker compose down` stops the stack and keeps the data; `down -v` removes it.
+
+## Desktop app
+
+The desktop app keeps every project of your account on the computer, syncs
+them with the server in the background, and lets you edit and create projects
+with no connection. Download it from the
+[latest release](https://github.com/Stevesibilia/rpg-promptbook/releases/latest).
+The installers are not signed, so each system warns the first time:
+
+- **Mac** (`RPG-Promptbook-<version>-mac-arm64.dmg` for Apple silicon,
+  `-mac-x64.dmg` for Intel): open the disk image and drag Promptbook to
+  Applications. The first time macOS refuses to open it; go to System
+  Settings → Privacy & Security, press Open Anyway next to the message about
+  Promptbook, and confirm. The Mac app cannot update itself: when a new
+  version is out it says so, and Download opens the release page.
+- **Windows** (`RPG-Promptbook-<version>-win-x64.exe`): SmartScreen says
+  "Windows protected your PC"; press More info, then Run anyway. Updates
+  download by themselves and install when you restart the app.
+- **Linux**: the AppImage (`-linux-x86_64.AppImage`, make it executable and
+  run it) updates itself like Windows; the deb package
+  (`sudo apt install ./RPG-Promptbook-<version>-linux-amd64.deb`) is told of
+  new versions and you install them by hand.
+
+Sign in once: the app opens the server's sign-in page in your browser (single
+sign-on or password) and comes back by itself. After the first sync it needs
+no connection for as long as you like; changes go to the server when it is
+back. The projects live in `~/Library/Application Support/Promptbook` on a
+Mac, `%APPDATA%\Promptbook` on Windows and `~/.config/Promptbook` on Linux
+(Settings → This device shows the folder). Sign out from the sync status or
+from This device: the projects stay on the computer unless you tick "Also
+remove the projects from this computer". The computer shows up in Connected
+apps on the web as "Promptbook desktop · <computer name>"; revoking it there
+stops its sync.
 
 ## Editor shortcuts
 
@@ -120,6 +154,20 @@ Vite serves the web client on `http://localhost:5173` and passes `/api` and
 the server refuses the changes. `npm run cli -w promptbook-server -- seed steve`
 adds the sample projects.
 
+The desktop app runs the web client's build in Electron. Build both, then
+start it against a server:
+
+```sh
+npm run build -w promptbook-web
+npm run build -w promptbook-desktop
+PROMPTBOOK_SERVER=http://localhost:8090 npm start -w promptbook-desktop
+```
+
+`PROMPTBOOK_USER_DATA` points it at another data folder. `npx electron-builder
+--dir` in `packages/desktop` packages it for this computer into
+`packages/desktop/release`; release tags build every installer on GitHub
+Actions (`.github/workflows/desktop.yml`).
+
 ## Tests
 
 ```sh
@@ -135,3 +183,6 @@ with `TEST_DATABASE_URL` set to a Postgres database whose name ends in
 `npm run e2e` builds and starts its own stack on port 8091 (`E2E_PORT`), runs
 the Playwright tests and removes the stack with its data. Set `KEEP_STACK=1`
 to keep it. Install the browser once with `npx playwright install chromium`.
+The `desktop` project drives the desktop app from its build, so build the web
+client and the desktop app first (see Development); on Linux without a
+display run it under `xvfb-run`.

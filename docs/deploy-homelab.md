@@ -76,9 +76,12 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Then create a GitHub Release with generated notes. A tag on a commit that
-`main` does not contain makes the mirror workflow fail, and nothing reaches
-GitLab.
+The tag also starts the Desktop workflow (`.github/workflows/desktop.yml`):
+it builds the desktop installers for Mac, Windows and Linux at the tag's
+version and creates the GitHub Release with generated notes, the installers
+and the update manifests, so the release is not made by hand. A tag on a
+commit that `main` does not contain makes both the mirror and the desktop
+workflows fail: nothing reaches GitLab and no installer is built.
 
 The GitLab pipeline for the tag runs four stages:
 
