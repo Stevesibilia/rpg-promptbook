@@ -6,6 +6,7 @@ import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
 import { ConnectedApps } from '../connect/ConnectedApps.js';
 import { NeedsServer, NeedsServerGroup } from '../desktop/NeedsServer.js';
+import { ThisDevice } from '../desktop/ThisDevice.js';
 import { useOffline } from '../desktop/useDevice.js';
 import { platform } from '../platform/index.js';
 import { categoryLabels } from '../projects/list.js';
@@ -15,7 +16,7 @@ import { DownloadLink } from '../ui/DownloadLink.js';
 import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
 import './settings.css';
 
-const sections = [
+const webSections = [
   { key: 'todo', label: 'To-do templates' },
   { key: 'documents', label: 'Document templates' },
   { key: 'author', label: 'Author and licence' },
@@ -24,7 +25,14 @@ const sections = [
   { key: 'sync', label: 'Sync and storage' },
   { key: 'appearance', label: 'Appearance' },
 ] as const;
-type Section = (typeof sections)[number]['key'];
+type Section = (typeof webSections)[number]['key'] | 'device';
+
+// The desktop app adds This device after Sync and storage (desktop-app
+// design decision 13); the browser's sections are unchanged.
+const sections: readonly { key: Section; label: string; tag?: string }[] =
+  platform.kind === 'desktop'
+    ? [...webSections.slice(0, 6), { key: 'device', label: 'This device', tag: 'desktop' }, ...webSections.slice(6)]
+    : webSections;
 
 export function SettingsPage() {
   const params = useParams();
@@ -72,6 +80,7 @@ export function SettingsPage() {
                 onClick={() => navigate(`/settings/${s.key}`)}
               >
                 {s.label}
+                {s.tag && <small>{s.tag}</small>}
               </button>
             ))}
           </nav>
@@ -88,6 +97,7 @@ export function SettingsPage() {
             {section === 'account' && <Account />}
             {section === 'apps' && <ConnectedApps />}
             {section === 'sync' && <SyncStorage />}
+            {section === 'device' && <ThisDevice />}
             {section === 'appearance' && <Appearance />}
             {!settings && (section === 'todo' || section === 'author') && (
               <p className="loading">{loadError || 'Loading…'}</p>
@@ -432,7 +442,11 @@ function SyncStorage() {
   return (
     <section>
       <h2>Sync and storage</h2>
-      <p className="lead">In the browser projects live on the server; nothing is kept for offline use.</p>
+      <p className="lead">
+        {platform.kind === 'desktop'
+          ? 'Projects live on this device and sync with the server when online.'
+          : 'In the browser projects live on the server; nothing is kept for offline use.'}
+      </p>
       <div className="card wide-card">
         <div className="field">
           <label htmlFor="sync-server">Server</label>

@@ -261,3 +261,93 @@
   width: 16px;
   height: 16px;
 }
+
+/* The update strip, the status bar's item, What's new */
+.desktop .alert.upd {
+  background: color-mix(in srgb, var(--info) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--info) 55%, transparent);
+}
+.desktop .alert.upd b {
+  color: var(--info);
+  font-weight: 600;
+}
+.desktop .alert .q {
+  font-size: 12px;
+  color: var(--faint);
+}
+.desktop .ic.info {
+  color: var(--info);
+}
+.desktop .upi {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--info);
+}
+.desktop .upi .mini-bar {
+  width: 70px;
+  flex: none;
+}
+.desktop .upi .mini-bar i {
+  background: var(--info);
+}
+.desktop .upi .link {
+  color: var(--info);
+}
+.desktop .modal.whats-new .notes {
+  margin: 0;
+  padding-left: 18px;
+}
+.desktop .modal.whats-new .notes li {
+  margin: 4px 0;
+}
+.desktop .modal .mf .note {
+  margin-right: auto;
+  font-size: 12.5px;
+}
+
+/* Settings, This device */
+.desktop .set nav button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.desktop .set nav small {
+  font-size: 11px;
+  color: var(--faint);
+}
+.desktop .pathrow {
+  display: flex;
+  gap: 8px;
+}
+.desktop .pathrow input {
+  flex: 1;
+  font: 12.5px var(--mono);
+}
+.desktop .usage {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.desktop .usage b {
+  color: var(--text);
+  font: 600 17px var(--display);
+}
+.desktop .card.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.desktop .card .grow {
+  flex: 1;
+}
+.desktop .hint.block {
+  display: block;
+  margin: 2px 0 0;
+}
+.desktop .card .hint {
+  font-size: 12px;
+  color: var(--faint);
+}

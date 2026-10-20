@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { paragraphs, type Inline } from './inline.js';
 
-function Pieces({ pieces }: { pieces: Inline[] }) {
+export function Pieces({ pieces }: { pieces: Inline[] }) {
   return pieces.map((piece, i) => {
     switch (piece.kind) {
       case 'text':
