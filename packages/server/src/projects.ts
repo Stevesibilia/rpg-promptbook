@@ -135,9 +135,23 @@ const summaryParams = (s: Summary) => [
 ];
 
 // A new project's row and document. The category column is written here
-// only: the category is fixed at creation, so no summary rewrites it.
-export async function insertProject(tx: Queryable, ownerId: string, doc: Y.Doc): Promise<void> {
-  const summary = summarize(doc, { campaigns: await campaignsOf(tx, ownerId, { includeBin: true }) });
+// only: the category is fixed at creation, so no summary rewrites it. An
+// uploaded document (readUploadedState) is summarised here and nowhere else,
+// so a part that does not read refuses it as invalid_state.
+export async function insertProject(
+  tx: Queryable,
+  ownerId: string,
+  doc: Y.Doc,
+  { uploaded = false }: { uploaded?: boolean } = {},
+): Promise<void> {
+  const campaigns = await campaignsOf(tx, ownerId, { includeBin: true });
+  let summary: Summary;
+  try {
+    summary = summarize(doc, { campaigns });
+  } catch (error) {
+    if (uploaded) throw invalidState('is not a project document.');
+    throw error;
+  }
   await tx.query(
     `insert into projects (id, owner_id, category, title, status, campaign_id, system, seed,
                            todo_done, todo_total, next_due, scenes, words, errors, warnings)
@@ -220,9 +234,10 @@ const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const invalidState = (why: string) => new AppError(400, 'invalid_state', `state: ${why}`);
 
 // A project document as the desktop app uploads it, base64 of a Yjs update,
-// checked to read as a project with this id before anything is stored. The
-// document's own front matter, to-do list and the rest are the user's, as
-// any edit over sync would be.
+// checked to carry a project's meta with this id before anything is stored;
+// insertProject's summary, the one pass over the whole document, checks the
+// rest. The document's own front matter, to-do list and the rest are the
+// user's, as any edit over sync would be.
 export function readUploadedState(id: string, state: string): Y.Doc {
   if (state.length % 4 !== 0 || !BASE64.test(state)) throw invalidState('is not base64.');
   const bytes = Buffer.from(state, 'base64');
@@ -233,9 +248,6 @@ export function readUploadedState(id: string, state: string): Y.Doc {
     Y.applyUpdate(doc, bytes);
     const map = doc.getMap<unknown>('meta');
     meta = { id: map.get('id'), category: map.get('category') };
-    // Every part a summary reads must read; a shared type of the wrong kind
-    // throws here rather than when the row is written.
-    summarize(doc, { campaigns: [] });
   } catch {
     throw invalidState('is not a project document.');
   }

@@ -62,7 +62,7 @@ export async function projectsRoutes(app: FastifyInstance, { db, sync }: { db: D
       const { id, state } = parseBody(uploadBody, req.body);
       const doc = readUploadedState(id, state);
       const { project, created } = await createWithId(db, user.id, id, () =>
-        db.withTransaction((tx) => insertProject(tx, user.id, doc)),
+        db.withTransaction((tx) => insertProject(tx, user.id, doc, { uploaded: true })),
       );
       return reply.code(created ? 201 : 200).send({ project });
     }

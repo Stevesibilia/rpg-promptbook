@@ -576,6 +576,11 @@ describe('a project made on the device, uploaded', () => {
       doc.getArray('meta').insert(0, [ID]);
       return encode(doc);
     }],
+    ['a to-do list that holds no items', () => {
+      const doc = offlineDoc();
+      doc.getArray('todo').insert(0, ['Non una voce.']);
+      return encode(doc);
+    }],
     ['bytes that are no Yjs update', () => Buffer.from('not a yjs update at all').toString('base64')],
     ['text that is not base64', () => 'not base64!'],
     ['a state over 5 MB', () => encode(offlineDoc({ document: 'a'.repeat(5 * 1024 * 1024 + 1) }))],
