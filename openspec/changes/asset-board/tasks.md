@@ -25,14 +25,14 @@
 ## 3. Web board (brief C)
 
 - [x] 3.1 Platform seam (D13): `fileUrl` and `putFile` in `platform/index.ts`, `web.ts` (fetch PUT with `application/octet-stream`, errors mapped to messages) and `desktop.ts` (bridge `files.put`); `bridge.ts` gains `files.put`, `files.status`, `files.onStatus`, the channels `pb:files:put`, `pb:files:status`, `pb:files:on-status`, `FilesStatus`, and `DeviceUsage.files` and `fileBytes`
-- [ ] 3.2 Route and rail (D12): `projectViews` gains `board`; `projectEntries` gains Images and music with `BoardIcon` between Research and Brainstorm log; the entry hidden and the route redirected for a campaign
-- [ ] 3.3 `board/useBoard.ts` (parse through `createAnalysisClient`, `boardRows`, statuses, summary, filters) and `BoardView.tsx`, `SceneRow.tsx`, `ImageHalf.tsx`, `MusicHalf.tsx`, `ClaudeCard.tsx`, `board.css`: screens 1, 2 and 9 of Mockup in words with their strings, Copy with the secure-context fallback, the shared-title warning
-- [ ] 3.4 `PromptEditor.tsx`: Edit and Write by hand, Save overwriting the prompt as the user's with the toast «Saved.», Cancel (screen 7, D8)
-- [ ] 3.5 Empty state and Add the appendix with `appendixEdit` and its toast (screen 3); the Document view's `?scene=` (D12)
-- [ ] 3.6 `board/intake.ts` and `DropOverlay.tsx`: drop anywhere and Add files…, the overlay counts (screen 4), D9's metadata, thumbnail and hash, D11's steps with the `HEAD` check that re-links a file the project still links, "Uploading n of N", Retry for failed uploads, the result line with already-here and skipped counts, new marks (screen 5)
-- [ ] 3.7 `Tray.tsx` (pinned, Assign to scene…, Remove, toasts) and `MatchHelp.tsx` (screen 5b, examples from the project's prompts)
-- [ ] 3.8 `Viewer.tsx`: screen 6 with keyboard, strip, Choose, Move, Remove with the confirm, toasts; tracks with one shared `<audio>`, Play and Pause, Choose, and the track menu with «Move to another scene…» and «Remove» (confirm «Remove this track?», toasts) (D12)
-- [ ] 3.9 Unit tests: intake with a fake platform (skips, already here, re-link without upload, result counts, Retry), the fallback hash path, filters and summary counts, the track menu's move and remove
+- [x] 3.2 Route and rail (D12): `projectViews` gains `board`; `projectEntries` gains Images and music with `BoardIcon` between Research and Brainstorm log; the entry hidden and the route redirected for a campaign
+- [x] 3.3 `board/useBoard.ts` (parse through `createAnalysisClient`, `boardRows`, statuses, summary, filters) and `BoardView.tsx`, `SceneRow.tsx`, `ImageHalf.tsx`, `MusicHalf.tsx`, `ClaudeCard.tsx`, `board.css`: screens 1, 2 and 9 of Mockup in words with their strings, Copy with the secure-context fallback, the shared-title warning
+- [x] 3.4 `PromptEditor.tsx`: Edit and Write by hand, Save overwriting the prompt as the user's with the toast «Saved.», Cancel (screen 7, D8)
+- [x] 3.5 Empty state and Add the appendix with `appendixEdit` and its toast (screen 3); the Document view's `?scene=` (D12)
+- [x] 3.6 `board/intake.ts` and `DropOverlay.tsx`: drop anywhere and Add files…, the overlay counts (screen 4), D9's metadata, thumbnail and hash, D11's steps with the `HEAD` check that re-links a file the project still links, "Uploading n of N", Retry for failed uploads, the result line with already-here and skipped counts, new marks (screen 5)
+- [x] 3.7 `Tray.tsx` (pinned, Assign to scene…, Remove, toasts) and `MatchHelp.tsx` (screen 5b, examples from the project's prompts)
+- [x] 3.8 `Viewer.tsx`: screen 6 with keyboard, strip, Choose, Move, Remove with the confirm, toasts; tracks with one shared `<audio>`, Play and Pause, Choose, and the track menu with «Move to another scene…» and «Remove» (confirm «Remove this track?», toasts) (D12)
+- [x] 3.9 Unit tests: intake with a fake platform (skips, already here, re-link without upload, result counts, Retry), the fallback hash path, filters and summary counts, the track menu's move and remove
 - [ ] 3.10 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green; screenshots of screens 1 to 9 for the architect; hand-back of brief C
 
 ## 4. Desktop files, end-to-end tests, preview and docs (brief D)
