@@ -1,6 +1,6 @@
 import { startUrl, SIGNED_IN_PATH } from '../auth/oidc.js';
 import { NoticeError, POPUPS_BLOCKED } from '../editor/pdf/notice.js';
-import type { Platform } from './index.js';
+import { asRelease, type Platform } from './index.js';
 import { WebSyncRegistry } from './webRegistry.js';
 
 // The browser: exactly what the web client did before the desktop app.
@@ -17,6 +17,7 @@ function blobUrl(blob: Blob): string {
 export function createWebPlatform(): Platform {
   let registry: WebSyncRegistry | null = null;
   let signInWindow: Window | null = null;
+  let release: Promise<string | null> | null = null;
   return {
     kind: 'web',
     desktop: null,
@@ -26,6 +27,12 @@ export function createWebPlatform(): Platform {
     init: async () => {},
     request: (path, init) => fetch(path, init),
     openSync: () => (registry ??= new WebSyncRegistry()),
+
+    // One request for the page's life; the server's `dev` is no release.
+    releaseVersion: () =>
+      (release ??= fetch('/api/health')
+        .then(async (answer) => (answer.ok ? asRelease(((await answer.json()) as { version?: unknown }).version) : null))
+        .catch(() => null)),
 
     startSignIn() {
       // A second click while the window is still open brings it forward

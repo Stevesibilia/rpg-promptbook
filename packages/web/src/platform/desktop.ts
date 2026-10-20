@@ -1,6 +1,6 @@
 import type { AuthState, DeviceInfo, PromptbookBridge, UpdatesState } from './bridge.js';
 import { DesktopSyncRegistry } from './desktopRegistry.js';
-import type { Platform } from './index.js';
+import { asRelease, type Platform } from './index.js';
 import { createStore, type Store } from './store.js';
 
 // The desktop app: everything through window.promptbook (desktop-app design
@@ -121,6 +121,8 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
     },
     request: (path, init) => bridgeRequest(bridge, path, init),
     openSync: () => registry,
+    // The app's own version, there offline too.
+    releaseVersion: async () => asRelease(info.get().version),
     startSignIn() {
       startSignIn(auth.get().server || info.get().serverOrigin);
       return true;

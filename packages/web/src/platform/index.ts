@@ -29,8 +29,21 @@ export interface Platform {
   // An /api/ path's answer (an export) or bytes saved as a file: the
   // browser's download, or the desktop's save dialog.
   download(source: string | Blob, name: string): Promise<void>;
+  // The release this app runs, as `v0.5.1`: the server's from /api/health in
+  // the browser (once), the app's own on the desktop. null when unknown, `dev`
+  // or on an error; never rejects.
+  releaseVersion(): Promise<string | null>;
   // The desktop's own state; null in the browser.
   desktop: Desktop | null;
+}
+
+// `0.5.1` and `v0.5.1` both read `v0.5.1`; nothing for an empty value, `dev`
+// or the unreleased `0.0.0`.
+export function asRelease(version: unknown): string | null {
+  if (typeof version !== 'string') return null;
+  const bare = version.trim().replace(/^v/i, '');
+  if (!bare || bare === 'dev' || bare === '0.0.0') return null;
+  return `v${bare}`;
 }
 
 type Host = { promptbook?: PromptbookBridge } | undefined;

@@ -37,6 +37,8 @@ services:
       # Create the first account on a database with none.
       PROMPTBOOK_ADMIN_USERNAME: ${PROMPTBOOK_ADMIN_USERNAME:-}
       PROMPTBOOK_ADMIN_PASSWORD: ${PROMPTBOOK_ADMIN_PASSWORD:-}
+      # The release the rail shows; "dev" shows none.
+      APP_VERSION: ${APP_VERSION:-dev}
 
 volumes:
   postgres:
