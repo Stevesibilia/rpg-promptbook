@@ -35,8 +35,8 @@ const hasFiles = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer
 
 // Drop anywhere on the window while the board is open (asset-board design
 // decision 12), with a depth counter as the mockup's script. When `enabled`
-// is false (the empty state) a drop does nothing, but the browser still does
-// not open the file in place of the app.
+// is false (the board not loaded yet) a drop does nothing, but the browser
+// still does not open the file in place of the app.
 export function useWindowDrop(enabled: boolean, onDrop: (files: File[]) => void): DragCount | null {
   const [count, setCount] = useState<DragCount | null>(null);
   const latest = useRef({ enabled, onDrop });
@@ -94,8 +94,8 @@ export function DropOverlay({ count }: { count: DragCount }) {
         <div>
           <DropIcon className="ic" />
           <h2>Drop images and tracks</h2>
-          <p>They find their scene by filename.</p>
-          <p className="hint">Files that match nothing wait in Unmatched.</p>
+          <p>They find their prompt by filename, in any category.</p>
+          <p className="hint">Files that match no prompt, or more than one, wait in Unmatched.</p>
           <div className="cnt">{countLine(count)}</div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import type { BoardRow } from './useBoard.js';
+import type { BoardRow } from 'promptbook-project';
 import { WarningIcon } from '../ui/icons.js';
 import { useBoardContext } from './context.js';
 import { ImageHalf } from './ImageHalf.js';
@@ -26,7 +26,7 @@ export function SceneRow({ row, filter }: { row: BoardRow; filter: Filter }) {
         </div>
       )}
       <div className="halves">
-        <ImageHalf row={row} dim={dims(row.imageStatus, filter)} />
+        <ImageHalf row={row} filter={filter} />
         <MusicHalf row={row} dim={dims(row.musicStatus, filter)} />
       </div>
     </article>

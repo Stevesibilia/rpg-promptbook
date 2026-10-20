@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import { appendixEdit, type ProjectMeta } from 'promptbook-project';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
+import { appendixEdit, namedCategories, type BoardRow, type ProjectMeta } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import { ProjectShell } from '../project/ProjectShell.js';
@@ -10,34 +10,55 @@ import { useToast } from '../ui/Toast.js';
 import { useOffline } from '../desktop/useDevice.js';
 import { ClaudeCard } from './ClaudeCard.js';
 import { localLine, useLocalFiles } from './device.js';
-import { BoardContext, usePlayer, type BoardContextValue } from './context.js';
+import { CategoryTabs } from './CategoryTabs.js';
+import { BoardContext, held, usePlayer, type Adding, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
-import { progressLine, resultLine, type IntakeState } from './intake.js';
+import { progressLine, resultLine, type IntakeState, type ResultPlace } from './intake.js';
 import { MatchHelp } from './MatchHelp.js';
+import { NamedGrid, NamedSummary } from './NamedGrid.js';
+import { Counts, SummaryLine } from './parts.js';
 import { SceneRow } from './SceneRow.js';
-import { filterCounts, filterLabels, filters, keeps, summarize, type Filter, type HalfCounts } from './summary.js';
+import {
+  categoryOf,
+  categoryText,
+  keepsRow,
+  rowFilterCounts,
+  summarizeScenes,
+  tabOf,
+  tabParam,
+  type Filter,
+  type Tab,
+} from './summary.js';
 import { Tray } from './Tray.js';
 import { useBoard } from './useBoard.js';
 import { useIntake } from './useIntake.js';
 import { Viewer } from './Viewer.js';
 import './board.css';
 
-// The images and music board (asset-board design decision 12): one row per
-// scene of the document's appendix, with its prompts and files, the files
-// dropped anywhere on the window, the Unmatched tray and the viewer.
+// The images and music board (asset-board design decision 12,
+// image-categories design decision 7): the category tabs; on Scenes one row
+// per scene of the document's appendix with its image prompts and music; on
+// PCs, NPCs and Handouts one card per prompt. Files are dropped anywhere on
+// the window; the Unmatched tray and the viewer serve every tab.
 export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: ProjectMeta }) {
   const board = useBoard(doc);
-  const { parsed, rows, tray } = board;
+  const { parsed, rows, named, shown, tray } = board;
   const [intake, intakeState] = useIntake(id);
   const [toast, showToast] = useToast();
+  const [params, setParams] = useSearchParams();
+  const tab = tabParam(params.get('tab'));
   const [filter, setFilter] = useState<Filter>('all');
   const [help, setHelp] = useState(false);
-  const [viewing, setViewing] = useState<{ sceneId: string; fileId: string } | null>(null);
+  const [viewing, setViewing] = useState<{ promptId: string; fileId: string } | null>(null);
+  const [adding, setAdding] = useState<Adding | null>(null);
   const player = usePlayer(id);
   const center = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
+  // The row a result line's link scrolls to once its tab shows.
+  const scrollTo = useRef<string | null>(null);
 
-  const hasRows = parsed !== null && rows.length > 0;
+  const loaded = parsed !== null;
+  const hasRows = loaded && rows.length > 0;
   const sceneIds = useMemo(() => rows.map((r) => r.sceneId), [rows]);
   useEffect(() => intake.setScenes(sceneIds), [intake, sceneIds]);
 
@@ -48,7 +69,9 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     if (playing && !board.files.some((f) => f.id === playing)) stop();
   }, [playing, board.files, stop]);
 
-  const drag = useWindowDrop(hasRows, (files) => intake.add(files));
+  // Images can match PCs, NPCs and handouts with no appendix (O7): dropping
+  // works as soon as the board has loaded.
+  const drag = useWindowDrop(loaded, (files) => intake.add(files));
   const closeViewer = useCallback(() => setViewing(null), []);
   const closeHelp = useCallback(() => setHelp(false), []);
   const [editing, setEditingKeys] = useState<ReadonlySet<string>>(new Set());
@@ -63,27 +86,70 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       }),
     [],
   );
-  const beingEdited = (sceneId: string) => editing.has(`${sceneId}/image`) || editing.has(`${sceneId}/music`);
+  // A row with an editor open, or the new prompt, stays whatever the filter.
+  const beingEdited = (row: BoardRow) =>
+    editing.has(`${row.sceneId}/music`) ||
+    editing.has(`${row.sceneId}/track`) ||
+    row.prompts.some((p) => held(editing, p.prompt.id)) ||
+    (adding?.category === 'scene' && adding.sceneId === row.sceneId);
+
+  const toTop = () => center.current?.closest('.center')?.scrollTo({ top: 0 });
+  const setTab = (next: Tab) => {
+    if (next !== tab) setParams(next === 'scenes' ? {} : { tab: next }, { replace: false });
+    toTop();
+  };
+  useEffect(() => {
+    const sceneId = scrollTo.current;
+    if (tab !== 'scenes' || sceneId === null) return;
+    scrollTo.current = null;
+    document.getElementById(`row-${sceneId}`)?.scrollIntoView({ block: 'start' });
+  });
+  // A link of the result line: its tab, its row, with every row and card
+  // shown, so a filter never hides what it points at.
+  const goTo = (place: ResultPlace) => {
+    setFilter('all');
+    if (place.category !== 'scene') return setTab(tabOf[place.category]);
+    if (tab === 'scenes') {
+      scrollTo.current = null;
+      document.getElementById(`row-${place.sceneId}`)?.scrollIntoView({ block: 'start' });
+      return;
+    }
+    scrollTo.current = place.sceneId;
+    setParams({}, { replace: false });
+  };
 
   const context: BoardContextValue = {
     doc,
     projectId: id,
     rows,
+    named,
+    shown,
     marks: intakeState.marks,
     toast: showToast,
-    openViewer: (sceneId, fileId) => setViewing({ sceneId, fileId }),
+    openViewer: (promptId, fileId) => setViewing({ promptId, fileId }),
     player,
     mark: (fileId) => intake.mark(fileId),
     editing,
     setEditing,
+    adding,
+    setAdding,
   };
 
+  const prompts = shown.size;
   const status = (
     <>
       <span>Images and music</span>
-      {parsed && <span>{hasRows ? `${rows.length} ${rows.length === 1 ? 'scene' : 'scenes'}` : 'No appendix'}</span>}
+      {parsed && (
+        <span>
+          {hasRows ? `${rows.length} ${rows.length === 1 ? 'scene' : 'scenes'}` : 'No appendix'} · {prompts}{' '}
+          {prompts === 1 ? 'image prompt' : 'image prompts'}
+        </span>
+      )}
     </>
   );
+  const noPrompts =
+    ![...shown.values()].some((p) => p.row.prompt.prompt.trim() !== '') && !rows.some((r) => r.music?.title);
+  const category = categoryOf[tab];
 
   return (
     <ProjectShell id={id} doc={doc} meta={meta} view="board" status={status}>
@@ -91,9 +157,12 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
         <div className="pane board" ref={center}>
           <div className="head">
             <h1>Images and music</h1>
-            <p className="lead">One row per scene, from the document's appendix. For the table and the CueBard export.</p>
+            <p className="lead">
+              Image prompts for scenes, PCs, NPCs and handouts; music for each scene. For the table and the CueBard
+              export.
+            </p>
             <span className="spacer" />
-            {hasRows && (
+            {loaded && (
               <span className="row acts">
                 <button
                   className="tb line sm"
@@ -122,44 +191,60 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                 />
               </span>
             )}
-            {help && hasRows && <MatchHelp rows={rows} onClose={closeHelp} />}
+            {help && loaded && <MatchHelp rows={rows} named={named} shown={shown} onClose={closeHelp} />}
           </div>
 
           {parsed === null ? (
             <p className="loading">Reading the appendix…</p>
-          ) : hasRows ? (
+          ) : (
             <>
-              <Summary rows={rows} filter={filter} setFilter={setFilter} />
-              {!rows.some((r) => r.image?.prompt || r.music?.title) && (
-                <ClaudeCard title={meta.title} onToast={showToast} />
+              <CategoryTabs tab={tab} onTab={setTab} rows={rows} named={named} marks={intakeState.marks} />
+              {category === 'scene' ? (
+                hasRows && <ScenesSummary rows={rows} filter={filter} setFilter={setFilter} />
+              ) : (
+                <NamedSummary category={category} filter={filter} setFilter={setFilter} />
               )}
+              {noPrompts && <ClaudeCard title={meta.title} onToast={showToast} />}
               <OfflineLine projectId={id} />
-              <Strips state={intakeState} onDismiss={() => intake.dismissResult()} intake={intake} />
+              <Strips state={intakeState} onDismiss={() => intake.dismissResult()} intake={intake} onPlace={goTo} />
               <Tray
                 files={tray}
                 onHelp={() => {
                   setHelp(true);
-                  center.current?.closest('.center')?.scrollTo({ top: 0 });
+                  toTop();
                 }}
               />
-              <div className="rows">
-                {rows
-                  .filter((row) => keeps(row, filter) || beingEdited(row.sceneId))
-                  .map((row) => (
-                    <SceneRow key={row.sceneId} row={row} filter={filter} />
-                  ))}
+              {/* Every tab stays mounted, the others hidden, so an editor's
+                  draft outlives a change of tab. */}
+              <div role="tabpanel" aria-label="Scenes" hidden={tab !== 'scenes'}>
+                {hasRows ? (
+                  <>
+                    <div className="rows">
+                      {rows
+                        .filter((row) => keepsRow(row, filter) || beingEdited(row))
+                        .map((row) => (
+                          <SceneRow key={row.sceneId} row={row} filter={filter} />
+                        ))}
+                    </div>
+                    <p className="hint" style={{ marginTop: 14 }}>
+                      Rows follow the appendix. Add or rename a scene there and the board follows.
+                    </p>
+                  </>
+                ) : (
+                  <NoAppendix doc={doc} id={id} board={board} onToast={showToast} />
+                )}
               </div>
-              <p className="hint" style={{ marginTop: 14 }}>
-                Rows follow the appendix. Add or rename a scene there and the board follows.
-              </p>
+              {namedCategories.map((c) => (
+                <div key={c} role="tabpanel" aria-label={categoryText[c].tab} hidden={category !== c}>
+                  <NamedGrid category={c} title={meta.title} filter={filter} setFilter={setFilter} />
+                </div>
+              ))}
             </>
-          ) : (
-            <NoAppendix doc={doc} id={id} board={board} onToast={showToast} />
           )}
           {drag && <DropOverlay count={drag} />}
           {viewing && (
             <Viewer
-              sceneId={viewing.sceneId}
+              promptId={viewing.promptId}
               fileId={viewing.fileId}
               onShow={(fileId) => setViewing((v) => v && { ...v, fileId })}
               onClose={closeViewer}
@@ -172,41 +257,17 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   );
 }
 
-function Summary({
-  rows,
-  filter,
-  setFilter,
-}: {
-  rows: Parameters<typeof summarize>[0];
-  filter: Filter;
-  setFilter(filter: Filter): void;
-}) {
-  const sum = summarize(rows);
-  const counts = filterCounts(rows);
-  const part = (c: HalfCounts) => (
-    <>
-      <b>{c.chosen}</b> chosen, <b>{c.received}</b> received, <b>{c.wanted}</b> wanted
-    </>
-  );
+// «6 scenes · 8 image prompts: 3 chosen, 4 received, 1 wanted · music 2
+// chosen, 3 received, 1 wanted».
+function ScenesSummary({ rows, filter, setFilter }: { rows: BoardRow[]; filter: Filter; setFilter(f: Filter): void }) {
+  const sum = summarizeScenes(rows);
   return (
-    <div className="sumline">
-      <span className="summary">
-        <b>{sum.scenes}</b> {sum.scenes === 1 ? 'scene' : 'scenes'}
-        <span className="sep">·</span>images {part(sum.images)}
-        <span className="sep">·</span>music {part(sum.music)}
-      </span>
-      <span className="spacer" />
-      <div className="segwrap">
-        <div className="seg" role="group" aria-label="Filter the rows">
-          {filters.map((f) => (
-            <button key={f} className={filter === f ? 'on' : ''} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-              {filterLabels[f]}
-              <span className="n">{counts[f]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <SummaryLine counts={rowFilterCounts(rows)} filter={filter} setFilter={setFilter} label="Filter the rows">
+      <b>{sum.scenes}</b> {sum.scenes === 1 ? 'scene' : 'scenes'}
+      <span className="sep">·</span>
+      {sum.prompts} {sum.prompts === 1 ? 'image prompt' : 'image prompts'}: <Counts counts={sum.images} />
+      <span className="sep">·</span>music <Counts counts={sum.music} />
+    </SummaryLine>
   );
 }
 
@@ -232,10 +293,12 @@ function Strips({
   state,
   intake,
   onDismiss,
+  onPlace,
 }: {
   state: IntakeState;
   intake: ReturnType<typeof useIntake>[0];
   onDismiss(): void;
+  onPlace(place: ResultPlace): void;
 }) {
   const where = platform.kind === 'web' ? 'browser' : 'desktop';
   const result = state.result && resultLine(state.result);
@@ -250,7 +313,18 @@ function Strips({
         <div className="info good" role="status">
           <CheckIcon className="ic" />
           <span>
-            <b>{result.head}</b> {result.rest}
+            <b>{result.head}</b>{' '}
+            {result.places.map((place, i) => (
+              <Fragment key={place.key}>
+                {i > 0 && ' · '}
+                <button className="lnk" onClick={() => onPlace(place)}>
+                  {place.label}
+                </button>
+                : {place.counts}
+              </Fragment>
+            ))}
+            {result.places.length > 0 && '. '}
+            {result.rest}
           </span>
           <button className="tb xs x" title="Dismiss" aria-label="Dismiss" onClick={onDismiss}>
             ✕

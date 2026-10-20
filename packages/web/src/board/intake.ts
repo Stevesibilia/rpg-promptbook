@@ -11,10 +11,12 @@ import {
   SNIFF_BYTES,
   type FileEntry,
   type FileKind,
+  type NamedCategory,
   type NewFile,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { targetsOf } from './actions.js';
+import { categoryText, newName } from './summary.js';
 import type { PutFileResult } from '../platform/bridge.js';
 import { PutFileError } from '../platform/index.js';
 import { createStore, type Store } from '../platform/store.js';
@@ -22,7 +24,9 @@ import { createStore, type Store } from '../platform/store.js';
 // Intake (asset-board design decision 11): the dropped or picked files are
 // hashed, checked against the project, measured, uploaded thumbnail first,
 // matched to a scene by their names and added to the document one by one,
-// two at a time. A drop while a batch runs joins it. A file whose upload
+// two at a time, matched to a prompt of any category or to a scene
+// (image-categories design decision 7). A drop while a batch runs joins it.
+// A file whose upload
 // failed stays here, outside the document, with Retry, until the page closes.
 //
 // An intake holds its own reference to the project's document from the
@@ -64,12 +68,25 @@ export interface SceneCount {
   tracks: number;
 }
 
+// The images of one PC, NPC or handout, named as it was at the drop.
+export interface NamedCount {
+  promptId: string;
+  category: NamedCategory;
+  name: string;
+  // Its order in its category, for the result line.
+  order: number;
+  images: number;
+}
+
 export interface IntakeResult {
   added: number;
   matched: number;
   toAssign: number;
-  // Per scene, in the order the files were added.
+  // Per scene, its images (all its prompts) and tracks; in the appendix's
+  // order once the batch ends.
   scenes: SceneCount[];
+  // Per PC, NPC or handout; by category and order once the batch ends.
+  named: NamedCount[];
   alreadyHere: number;
   skipped: number;
   failed: number;
@@ -94,6 +111,7 @@ const emptyResult = (): IntakeResult => ({
   matched: 0,
   toAssign: 0,
   scenes: [],
+  named: [],
   alreadyHere: 0,
   skipped: 0,
   failed: 0,
@@ -265,7 +283,11 @@ export class Intake {
       return i === -1 ? Infinity : i;
     };
     const scenes = [...this.result.scenes].sort((a, b) => order(a.sceneId) - order(b.sceneId));
-    this.set({ working: false, result: { ...this.result, scenes } });
+    const categories: readonly string[] = ['pc', 'npc', 'handout'];
+    const named = [...this.result.named].sort(
+      (a, b) => categories.indexOf(a.category) - categories.indexOf(b.category) || a.order - b.order,
+    );
+    this.set({ working: false, result: { ...this.result, scenes, named } });
   }
 
   // The document went (sign-out) or the page closes: the jobs not begun are
@@ -406,14 +428,21 @@ export class Intake {
     if (file.sceneId === null && file.promptId === null) this.result.toAssign += 1;
     else {
       this.result.matched += 1;
-      // Counted per scene; an image of a PC, an NPC or a handout has none
-      // until the board shows image categories (brief B).
-      const sceneId = file.sceneId ?? readImagePrompts(doc).find((p) => p.id === file.promptId)?.sceneId ?? null;
+      // Counted per scene, whichever of its prompts, or per named prompt.
+      const prompt = file.promptId === null ? null : readImagePrompts(doc).find((p) => p.id === file.promptId);
+      const sceneId = file.sceneId ?? prompt?.sceneId ?? null;
       if (sceneId !== null) {
         let scene = this.result.scenes.find((s) => s.sceneId === sceneId);
         if (!scene) this.result.scenes.push((scene = { sceneId, images: 0, tracks: 0 }));
         if (file.kind === 'image') scene.images += 1;
         else scene.tracks += 1;
+      } else if (prompt && prompt.category !== 'scene') {
+        let named = this.result.named.find((n) => n.promptId === prompt.id);
+        if (!named) {
+          named = { promptId: prompt.id, category: prompt.category, name: prompt.name ?? '', order: prompt.order, images: 0 };
+          this.result.named.push(named);
+        }
+        named.images += 1;
       }
     }
     this.set({ marks: new Set([...this.state.marks, file.id]) });
@@ -422,32 +451,53 @@ export class Intake {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-// The result line (screen 5): the bold part, then the rest.
-export function resultLine(result: IntakeResult): { head: string; rest: string } {
+// One place of the result line: «S3: 4 images, 2 tracks», «NPCs · Padre
+// Anselmo: 4 images»; its label links to its tab.
+export interface ResultPlace {
+  // Its scene or prompt id.
+  key: string;
+  label: string;
+  counts: string;
+  sceneId: string | null;
+  category: 'scene' | NamedCategory;
+}
+
+// The result line (screen 5): the bold part, the places, then the rest.
+export function resultLine(result: IntakeResult): { head: string; places: ResultPlace[]; rest: string } {
   const head =
     result.added > 0
       ? `${plural(result.added, 'file', 'files')} added: ${result.matched} matched, ${result.toAssign} to assign.`
       : 'No files added.';
+  const places: ResultPlace[] = [
+    ...result.scenes.map((s) => ({
+      key: s.sceneId,
+      label: s.sceneId,
+      counts: [
+        ...(s.images ? [plural(s.images, 'image', 'images')] : []),
+        ...(s.tracks ? [plural(s.tracks, 'track', 'tracks')] : []),
+      ].join(', '),
+      sceneId: s.sceneId,
+      category: 'scene' as const,
+    })),
+    ...result.named.map((n) => ({
+      key: n.promptId,
+      label: `${categoryText[n.category].tab} · ${n.name || newName(n.category)}`,
+      counts: plural(n.images, 'image', 'images'),
+      sceneId: null,
+      category: n.category,
+    })),
+  ];
   const parts: string[] = [];
-  if (result.scenes.length > 0) {
-    parts.push(
-      result.scenes
-        .map((s) => {
-          const kinds = [
-            ...(s.images ? [plural(s.images, 'image', 'images')] : []),
-            ...(s.tracks ? [plural(s.tracks, 'track', 'tracks')] : []),
-          ];
-          return `${s.sceneId}: ${kinds.join(', ')}`;
-        })
-        .join(' · ') + '.',
-    );
-  }
   if (result.added > 0) parts.push('New files are marked.');
   if (result.alreadyHere > 0) parts.push(`${result.alreadyHere} already here.`);
   if (result.skipped > 0) parts.push(`${result.skipped} skipped: not an image or a track.`);
   if (result.failed > 0) parts.push(`${result.failed} not added.`);
-  return { head, rest: parts.join(' ') };
+  return { head, places, rest: parts.join(' ') };
 }
+
+// The places as plain text: «S3: 4 images · NPCs · Padre Anselmo: 4 images.».
+export const placesText = (places: readonly ResultPlace[]): string =>
+  places.length === 0 ? '' : `${places.map((p) => `${p.label}: ${p.counts}`).join(' · ')}.`;
 
 // «Uploading 3 of 14» in the browser; on the desktop the files are stored on
 // this computer first.

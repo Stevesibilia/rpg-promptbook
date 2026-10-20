@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Model } from 'promptbook-format';
+import type { AppendixRow, Model } from 'promptbook-format';
 import {
   boardRows,
   matchFile,
   matchTargets,
+  migrateImagePrompts,
   namedPrompts,
+  needsImageMigration,
   readBoard,
   readFiles,
   readImagePrompts,
   unmatchedFiles,
-  type Author,
   type BoardEntry,
-  type BoardRow as SceneBoardRow,
+  type BoardRow,
   type FileEntry,
-  type HalfStatus,
   type ImagePromptEntry,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { connectWorker, createAnalysisClient, type Connect } from '../editor/analysis/client.js';
+import { shownPrompts, type Named, type ShownPrompt } from './summary.js';
 
-// The board's data (asset-board design decision 2): the appendix parsed by
-// the editor's worker, never on the main thread, joined to the prompts and
-// files of the Yjs document, which are read again on every change.
+// The board's data (asset-board design decision 2, image-categories design
+// decisions 7 and 9): the appendix parsed by the editor's worker, never on
+// the main thread, joined to the image prompts and files of the Yjs
+// document, which are read again on every change.
 
 export interface Parsed {
   // The text the model was parsed from.
@@ -29,39 +31,23 @@ export interface Parsed {
   model: Model;
 }
 
-// Until the board shows image categories (image-categories brief B), a scene
-// shows its first image prompt as it showed its one prompt before.
-export interface BoardRow extends SceneBoardRow {
-  // The first prompt's id; null when the scene has none.
-  promptId: string | null;
-  image: { prompt: string; by: Author; at: string } | null;
-  images: FileEntry[];
-  chosenImage: string | null;
-  imageStatus: HalfStatus;
-}
-
-export function withFirstPrompt(row: SceneBoardRow): BoardRow {
-  const first = row.prompts[0];
-  const text = first && first.prompt.prompt !== '' ? first.prompt : null;
-  return {
-    ...row,
-    promptId: first?.prompt.id ?? null,
-    image: text ? { prompt: text.prompt, by: text.by, at: text.at } : null,
-    images: first?.images ?? [],
-    chosenImage: first?.chosen ?? null,
-    imageStatus: first?.status ?? 'wanted',
-  };
-}
-
 export interface TrayFile {
   file: FileEntry;
   reason: string;
+  // The shown prompts an image's name matches, when two or more do; derived
+  // as the tray is drawn, never stored (design decision 3).
+  candidates: string[];
 }
 
 export interface Board {
   // Null until the first parse is in.
   parsed: Parsed | null;
+  // One per scene of the appendix, with its image prompts.
   rows: BoardRow[];
+  // The PCs, the NPCs and the handouts.
+  named: Named;
+  // Every prompt shown, by id, for labels and menus.
+  shown: Map<string, ShownPrompt>;
   tray: TrayFile[];
   files: FileEntry[];
   // Parse now; the promise gives the newest parse, whose text the caller
@@ -98,17 +84,45 @@ function useFilesAndBoard(doc: Y.Doc): Read {
   return value;
 }
 
-// Why a file left unmatched at intake has no prompt or scene, as matchFile
-// says now; '' when its name would match since (a prompt written after the
-// drop).
-function reasonOf(file: FileEntry, targets: ReturnType<typeof matchTargets>): string {
-  const match = matchFile(file.name, file.kind, targets);
-  return 'reason' in match ? match.reason : '';
+// An older client (v0.6) may write a legacy key or a scene's image during a
+// live session: the board migrates it as soon as it sees it (design
+// decision 2), outside the observer that read it. Safe on every replica.
+function useMigration(doc: Y.Doc, read: Read): void {
+  useEffect(() => {
+    try {
+      if (needsImageMigration(doc)) migrateImagePrompts(doc);
+    } catch {
+      // A document the migration cannot read is shown as it is.
+    }
+  }, [doc, read.files, read.board]);
+}
+
+// The Unmatched tray: each file with its reason and, for an image whose name
+// matches several shown prompts, those prompts. A file left unmatched at
+// intake gets the reason matchFile gives now; '' when its name would match
+// since (a prompt written after the drop).
+export function trayFiles(
+  appendix: readonly AppendixRow[],
+  rows: readonly BoardRow[],
+  named: Named,
+  prompts: readonly ImagePromptEntry[],
+  files: readonly FileEntry[],
+): TrayFile[] {
+  const targets = matchTargets({ rows, named });
+  return unmatchedFiles(appendix, prompts, files).map(({ file, reason }): TrayFile => {
+    if (reason !== null) return { file, reason, candidates: [] };
+    const match = matchFile(file.name, file.kind, targets);
+    return 'reason' in match
+      ? { file, reason: match.reason, candidates: match.candidates }
+      : { file, reason: '', candidates: [] };
+  });
 }
 
 export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   const [parsed, setParsed] = useState<Parsed | null>(null);
-  const { files, board, prompts } = useFilesAndBoard(doc);
+  const read = useFilesAndBoard(doc);
+  useMigration(doc, read);
+  const { files, board, prompts } = read;
   // Callers of parseNow waiting for the text they asked for.
   const waiting = useRef<{ resolve(p: Parsed): void }[]>([]);
   const client = useRef<ReturnType<typeof createAnalysisClient<string>> | null>(null);
@@ -142,20 +156,16 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
     };
   }, [doc, connect]);
 
-  const sceneRows = useMemo(
+  const rows = useMemo(
     () => (parsed ? boardRows(parsed.model.appendix, board, prompts, files) : []),
     [parsed, board, prompts, files],
   );
-  const rows = useMemo(() => sceneRows.map(withFirstPrompt), [sceneRows]);
-  const tray = useMemo(() => {
-    if (!parsed) return [];
-    const targets = matchTargets({ rows: sceneRows, named: namedPrompts(prompts, files) });
-    return unmatchedFiles(parsed.model.appendix, prompts, files).map(({ file, reason }) => ({
-      file,
-      // Left unmatched at intake: the reason matchFile gives now.
-      reason: reason ?? reasonOf(file, targets),
-    }));
-  }, [parsed, prompts, files, sceneRows]);
+  const named = useMemo(() => namedPrompts(prompts, files), [prompts, files]);
+  const shown = useMemo(() => shownPrompts(rows, named), [rows, named]);
+  const tray = useMemo(
+    () => (parsed ? trayFiles(parsed.model.appendix, rows, named, prompts, files) : []),
+    [parsed, prompts, files, rows, named],
+  );
 
   const parseNow = () =>
     new Promise<Parsed>((resolve) => {
@@ -165,5 +175,5 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
       client.current?.flush();
     });
 
-  return { parsed, rows, tray, files, parseNow };
+  return { parsed, rows, named, shown, tray, files, parseNow };
 }

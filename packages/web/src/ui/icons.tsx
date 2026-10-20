@@ -132,3 +132,24 @@ export const DiskIcon = icon(
     <path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
   </>,
 );
+// The board's categories: a PC, NPCs, a handout.
+export const PersonIcon = icon(
+  <>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+  </>,
+);
+export const PeopleIcon = icon(
+  <>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5" />
+    <circle cx="17" cy="9" r="2.5" />
+    <path d="M17 14c3 0 5 1.6 5 4.5" />
+  </>,
+);
+export const HandoutIcon = icon(
+  <>
+    <path d="M6 3h9l4 4v14H6z" />
+    <path d="M14 3v5h5M9 12h6M9 16h4" />
+  </>,
+);

@@ -27,12 +27,12 @@ Assisted-by: <agent>/<model-id>
 
 ## 3. Web board (brief B)
 
-- [ ] 3.1 `useBoard.ts` (prompts, named, tray with derived candidates, the migration when a legacy key or scene-less image appears), `summary.ts` (labels, counts and filters per tab, tab sub-lines), `actions.ts` (assign and move to a prompt, choose per prompt, remove a prompt, Match again across categories with its toasts), `intake.ts` (`matchTargets`, results per scene and per named prompt); web unit tests of D10
-- [ ] 3.2 `CategoryTabs.tsx` and `?tab=`, the summary and filters per tab, the status bar count, the Claude card's new text, `ActionSelect` with option groups
-- [ ] 3.3 Scenes tab: `ImageHalf.tsx` as the prompt stack, new `ImagePrompt.tsx`, «Add image prompt», removing a prompt with its confirm and toasts, thumbnails in the image's shape
-- [ ] 3.4 `NamedGrid.tsx`: PCs, NPCs and Handouts cards, the add card, the empty states and hints; `PromptEditor.tsx` with Name and Prompt, the Add mode and the empty-prompt toast
-- [ ] 3.5 `Tray.tsx` (reasons, «matches N prompts», «Assign to prompt…» grouped with «Its name matches» first), `Viewer.tsx` (Prompt, «Choose for this prompt», «Move to another prompt…»), `MatchHelp.tsx`, `DropOverlay.tsx`, the result line's tab links, the header and dropping without an appendix
-- [ ] 3.6 Checks: `npm run typecheck`, `npm test`; screenshots of screens 1 to 9 (1b, 1c, 1d, 7b included) for the architect
+- [x] 3.1 `useBoard.ts` (prompts, named, tray with derived candidates, the migration when a legacy key or scene-less image appears), `summary.ts` (labels, counts and filters per tab, tab sub-lines), `actions.ts` (assign and move to a prompt, choose per prompt, remove a prompt, Match again across categories with its toasts), `intake.ts` (`matchTargets`, results per scene and per named prompt); web unit tests of D10
+- [x] 3.2 `CategoryTabs.tsx` and `?tab=`, the summary and filters per tab, the status bar count, the Claude card's new text, `ActionSelect` with option groups
+- [x] 3.3 Scenes tab: `ImageHalf.tsx` as the prompt stack, new `ImagePrompt.tsx`, «Add image prompt», removing a prompt with its confirm and toasts, thumbnails in the image's shape
+- [x] 3.4 `NamedGrid.tsx`: PCs, NPCs and Handouts cards, the add card, the empty states and hints; `PromptEditor.tsx` with Name and Prompt, the Add mode and the empty-prompt toast
+- [x] 3.5 `Tray.tsx` (reasons, «matches N prompts», «Assign to prompt…» grouped with «Its name matches» first), `Viewer.tsx` (Prompt, «Choose for this prompt», «Move to another prompt…»), `MatchHelp.tsx`, `DropOverlay.tsx`, the result line's tab links, the header and dropping without an appendix
+- [x] 3.6 Checks: `npm run typecheck`, `npm test`; screenshots of screens 1 to 9 (1b, 1c, 1d, 7b included) for the architect
 
 ## 4. End-to-end tests, docs and preview (brief B)
 

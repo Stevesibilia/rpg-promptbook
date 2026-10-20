@@ -1,11 +1,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { FileEntry } from 'promptbook-project';
-import type { BoardRow } from './useBoard.js';
+import type { BoardRow, FileEntry } from 'promptbook-project';
 import { Confirm } from '../ui/Confirm.js';
 import { DropIcon, EditIcon, MusicIcon } from '../ui/icons.js';
 import { ActionSelect } from './ActionSelect.js';
-import { moveFile, REMOVE_NOTE, removeFromScene, removeQuestion, toggleChoice } from './actions.js';
+import { moveTrack, REMOVE_NOTE, removeFromBoard, toggleTrack, trackQuestion } from './actions.js';
 import { useBoardContext } from './context.js';
 import { CopyButton } from './CopyButton.js';
 import { localTitle, useLocalFiles } from './device.js';
@@ -162,11 +161,11 @@ function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: numb
       </span>
       <span className="dur">{loaded && player.time > 0 ? duration(player.time) : duration(length)}</span>
       {chosen ? (
-        <button className="chosen-tag" title="Click to unchoose" onClick={() => toggleChoice(doc, row.sceneId, file)}>
+        <button className="chosen-tag" title="Click to unchoose" onClick={() => toggleTrack(doc, row.sceneId, file.id)}>
           ✓ Chosen
         </button>
       ) : (
-        <button className="tb sm line" onClick={() => toggleChoice(doc, row.sceneId, file)}>
+        <button className="tb sm line" onClick={() => toggleTrack(doc, row.sceneId, file.id)}>
           Choose
         </button>
       )}
@@ -190,9 +189,15 @@ function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: numb
 // «⋯»: Move to another scene… and Remove, the image viewer's actions
 // (asset-board design decision 12).
 export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
-  const { doc, rows, toast, player } = useBoardContext();
+  const { doc, rows, toast, player, setEditing: hold } = useBoardContext();
   const [open, setOpen] = useState<'menu' | 'move' | null>(null);
-  const [confirm, setConfirm] = useState(false);
+  // While it asks, a change of status does not filter the row away.
+  const [confirm, setConfirmHere] = useState(false);
+  const setConfirm = (on: boolean) => {
+    setConfirmHere(on);
+    hold(`${row.sceneId}/track`, on);
+  };
+  useEffect(() => () => hold(`${row.sceneId}/track`, false), [hold, row.sceneId]);
   const box = useRef<HTMLSpanElement>(null);
 
   // Esc or a click outside closes it.
@@ -212,7 +217,7 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
     };
   }, [open]);
 
-  const question = removeQuestion(row, file);
+  const question = trackQuestion(row, file);
   return (
     <span className="more" ref={box}>
       <button
@@ -254,7 +259,7 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
               onPick={(to) => {
                 setOpen(null);
                 if (player.current === file.id) player.stop();
-                const said = moveFile(doc, rows, file.id, to);
+                const said = moveTrack(doc, rows, file.id, to);
                 if (said) toast(said);
               }}
             />
@@ -272,7 +277,7 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
             onClose={() => setConfirm(false)}
             onConfirm={() => {
               if (player.current === file.id) player.stop();
-              const said = removeFromScene(doc, file);
+              const said = removeFromBoard(doc, file);
               if (said) toast(said);
             }}
           >
