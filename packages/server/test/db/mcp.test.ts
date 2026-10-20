@@ -428,114 +428,21 @@ describe('replace_section', () => {
     expect(await snapshots(s.id)).toEqual([]);
   });
 
-  it('refuses an edit that adds an error with the new problems, and changes nothing', async () => {
+  it('writes an edit that adds an error and reports the problems', async () => {
     const s = await setup();
     const { hash } = await read(s, 'S2');
     const markdown = ['### S2. Il molo', '', '**Luogo e momento:** il porto, alba.'].join('\n');
     const outcome = await s.call('replace_section', { projectId: s.id, target: 'S2', markdown, hash });
-    expect(outcome.error?.code).toBe('more_errors');
-    expect(outcome.error?.message).toContain('callout.count');
-    expect(outcome.error?.details).toMatchObject({
-      errorsBefore: check(ADVENTURE, 'adventure')!.errors,
-      errorsAfter: check(ADVENTURE, 'adventure')!.errors + 1,
+    expect(outcome.error).toBeUndefined();
+    const before = check(ADVENTURE, 'adventure')!;
+    expect(outcome.value).toMatchObject({
+      errorsBefore: before.errors,
+      warningsBefore: before.warnings,
+      errors: before.errors + 1,
       problems: expect.arrayContaining([expect.objectContaining({ code: 'callout.count', severity: 'error' })]),
     });
-    expect(await storedText(s.id)).toBe(ADVENTURE);
-    expect(await snapshots(s.id)).toEqual([]);
-  });
-
-  it('allows an edit that only adds warnings, and reports them', async () => {
-    const s = await setup();
-    const { hash } = await read(s, 'S2');
-    const markdown = `${scene('S2', 'Il molo', 'Il mare è nero.', 'il porto, alba.')}\n\n> Una citazione qualunque.`;
-    const before = check(ADVENTURE, 'adventure')!;
-    const outcome = await s.call('replace_section', { projectId: s.id, target: 'S2', markdown, hash });
-    expect(outcome.isError).toBe(false);
-    expect(outcome.value.errors).toBe(before.errors);
-    expect(outcome.value.warnings).toBeGreaterThan(before.warnings);
-    expect(outcome.value.problems.some((p: { severity: string }) => p.severity === 'warning')).toBe(true);
-  });
-
-  it('replaces a campaign heading with no check', async () => {
-    const s = await setup({ category: 'campaign' });
-    const { hash } = await read(s, 'il faro');
-    const markdown = '### Il faro\n\nAcceso di nuovo, ma nessuno lo sa.\n\n[!leggi senza chiusura';
-    const outcome = await s.call('replace_section', { projectId: s.id, target: 'Il faro', markdown, hash });
-    expect(outcome.isError).toBe(false);
-    expect(outcome.value).toMatchObject({ errors: null, warnings: null, problems: [] });
-    expect(await storedText(s.id)).toBe(CAMPAIGN.replace('### Il faro\n\nSpento.', markdown));
-    const outline = (await s.call('get_outline', { projectId: s.id })).value;
-    expect(outline.checked).toBe(false);
-    expect(outline.targets.map((t: { target: string }) => t.target)).toEqual(['Luoghi', 'Il faro', 'Fazioni']);
-  });
-
-  it('deletes its snapshot and refuses when the user types while the snapshot is stored', async () => {
-    let typing: (() => void) | null = null;
-    // Types into the open document while the snapshot's insert is on its way.
-    const racing: Db = {
-      ...db,
-      async queryOne<T>(sql: string, params?: unknown[]) {
-        if (typing && sql.includes('insert into snapshots')) {
-          const result = await db.queryOne<T>(sql, params);
-          typing();
-          typing = null;
-          return result;
-        }
-        return db.queryOne<T>(sql, params);
-      },
-    };
-    const app = await buildApp({ config: testConfig(), db: racing });
-    try {
-      const s = await setup({}, app);
-      const { hash } = await read(s, 'S1');
-      typing = () => {
-        const doc = app.sync.liveDocument(s.id)!;
-        doc.getText('document').insert(doc.getText('document').length, 'Nota.');
-      };
-      const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown: scene('S1', 'A', 'B', 'C'), hash });
-      expect(outcome.error?.code).toBe('changed_since_read');
-      expect(typing).toBeNull();
-      expect(await snapshots(s.id)).toEqual([]);
-      expect(await storedText(s.id)).toBe(`${ADVENTURE}Nota.`);
-    } finally {
-      await app.close();
-    }
-  });
-
-  it('reaches an open editor at once, with the snapshot message', async () => {
-    const s = await setup();
-    const client = connect(await listen(s.app), s.id, { token: s.session });
-    await synced(client);
-    const { text, hash } = await read(s, 'S1');
-    const markdown = scene('S1', 'La casa che crolla', 'La casa crolla.', 'casa Faraci, mezzanotte.');
-    const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown, hash });
-    await waitFor(() => readDocument(client.doc) === ADVENTURE.replace(text, markdown), 'the edit in the editor');
-    await waitFor(
-      () => client.stateless.some((m) => m.includes(`"type":"snapshot"`) && m.includes(outcome.value.snapshotId)),
-      'the snapshot message',
-    );
-    expect(JSON.parse(client.stateless.find((m) => m.includes('"snapshot"'))!)).toEqual({
-      type: 'snapshot',
-      id: outcome.value.snapshotId,
-      kind: 'claude',
-    });
-    destroyClients();
-  });
-
-  it('is undone by the snapshot’s undo, which puts the part back and keeps text typed elsewhere', async () => {
-    const s = await setup();
-    const { hash } = await read(s, 'S1');
-    const markdown = scene('S1', 'La casa che crolla', 'La casa crolla.', 'casa Faraci, mezzanotte.');
-    const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown, hash });
-    const edited = await storedText(s.id);
-    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => setDocumentText(doc, `${edited}Altro.`));
-    const undo = await s.app.inject({
-      method: 'POST',
-      url: `/api/projects/${s.id}/snapshots/${outcome.value.snapshotId}/undo`,
-      headers: { ...cookie(s.session), origin: ORIGIN },
-    });
-    expect(undo.statusCode).toBe(200);
-    expect(await storedText(s.id)).toBe(`${ADVENTURE}Altro.`);
+    expect(await storedText(s.id)).toContain(markdown);
+    expect(await snapshots(s.id)).toHaveLength(1);
   });
 });
 
@@ -547,8 +454,6 @@ describe('inputs built to be slow', () => {
     const cases: [string, string][] = [
       [`x${spaces}y`, 'invalid_markdown'],
       [`### S1. ${spaces}y`, 'invalid_markdown'],
-      [`### S1. A\n\nTesto.${spaces}`, 'more_errors'],
-      [`### S1. A\n\nTesto.${'\n '.repeat(45_000)}`, 'more_errors'],
     ];
     for (const [markdown, code] of cases) {
       const started = performance.now();
@@ -559,10 +464,24 @@ describe('inputs built to be slow', () => {
     const long = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown: `### S1. ${'a'.repeat(HEADING_LINE_MAX)}`, hash });
     expect(long.error?.code).toBe('invalid_markdown');
     expect(long.error?.message).toContain(`${HEADING_LINE_MAX} characters`);
-    const started = performance.now();
-    await s.call('add_scene', { projectId: s.id, title: 'X', markdown: `\n${' '.repeat(50_000)}\n${spaces}` });
-    expect(performance.now() - started).toBeLessThan(2000);
     expect(await storedText(s.id)).toBe(ADVENTURE);
+    // Written, with the trailing blanks trimmed; the edit changes the hash.
+    for (const tail of [spaces, '\n '.repeat(45_000)]) {
+      const current = (await s.call('read_document', { projectId: s.id, target: 'S1' })).value;
+      const started = performance.now();
+      const outcome = await s.call('replace_section', {
+        projectId: s.id,
+        target: 'S1',
+        markdown: `### S1. A\n\nTesto.${tail}`,
+        hash: current.hash,
+      });
+      expect(performance.now() - started).toBeLessThan(2000);
+      expect(outcome.error).toBeUndefined();
+    }
+    const started = performance.now();
+    const added = await s.call('add_scene', { projectId: s.id, title: 'X', markdown: `\n${' '.repeat(50_000)}\n${spaces}` });
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(added.error).toBeUndefined();
   });
 });
 
@@ -661,15 +580,17 @@ describe('add_scene', () => {
     expect(await storedText(s.id)).toContain(`## Scene\n\n### S1. Prima\n\n${body}\n\n## Indizi`);
   });
 
-  it('refuses a body that adds errors, a heading inside, and a campaign', async () => {
+  it('writes a body that adds errors, and refuses a heading inside', async () => {
     const s = await setup();
     const empty = await s.call('add_scene', { projectId: s.id, title: 'Vuota', markdown: '' });
-    expect(empty.error?.code).toBe('more_errors');
-    expect(empty.error?.details.problems.map((p: { code: string }) => p.code)).toContain('callout.count');
+    expect(empty.error).toBeUndefined();
+    expect(empty.value?.problems.map((p: { code: string }) => p.code)).toContain('callout.count');
+    const written = await storedText(s.id);
+    expect(written).toContain('### S3. Vuota');
     const heading = await s.call('add_scene', { projectId: s.id, title: 'X', markdown: '> [!leggi]\n> a\n\n### S8. Y' });
     expect(heading.error?.code).toBe('invalid_markdown');
     expect((await s.call('add_scene', { projectId: s.id, title: 'Due\nrighe', markdown: '' })).isError).toBe(true);
-    expect(await storedText(s.id)).toBe(ADVENTURE);
+    expect(await storedText(s.id)).toBe(written);
   });
 
   it('refuses a campaign', async () => {

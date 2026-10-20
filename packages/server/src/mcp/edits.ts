@@ -9,8 +9,7 @@ import type { Sync } from '../sync.js';
 import { ToolRefusal } from './errors.js';
 
 // Claude's edits of the prep document, one target at a time (connector design
-// decisions 5 and 13): never over text Claude has not read, never adding
-// errors, always after a snapshot of the text it replaces, always through the
+// decisions 5 and 13): never over text Claude has not read, always after a snapshot of the text it replaces, always through the
 // live document.
 
 export const MARKDOWN_MAX = 100_000;
@@ -130,22 +129,26 @@ function checkHeading(markdown: string, target: Target): void {
   }
 }
 
-// The new text, refused when it adds errors. Warnings never refuse.
-function refuseMoreErrors(before: string, after: string, category: Category, from: number, to: number): Check | null {
+// What the checks say before and after an edit. Problems never refuse it:
+// they are reported, and the caller fixes them in later edits.
+interface Report {
+  errorsBefore: number | null;
+  warningsBefore: number | null;
+  errors: number | null;
+  warnings: number | null;
+  problems: ProblemOut[];
+}
+
+function report(before: string, after: string, category: Category, from: number, to: number): Report {
   const old = check(before, category);
   const next = check(after, category);
-  if (!old || !next) return next;
-  if (next.errors > old.errors) {
-    const problems = inSpan(next.problems, from, to).map(problemOut);
-    const lines = problems.map((p) => `line ${p.line}, ${p.severity} ${p.code}: ${p.message}`).join('\n');
-    throw new ToolRefusal(
-      422,
-      'more_errors',
-      `The edit would raise the document's errors from ${old.errors} to ${next.errors}; nothing was changed. Problems in the new text:\n${lines || '(outside the edited part)'}`,
-      { errorsBefore: old.errors, errorsAfter: next.errors, problems },
-    );
-  }
-  return next;
+  return {
+    errorsBefore: old?.errors ?? null,
+    warningsBefore: old?.warnings ?? null,
+    errors: next?.errors ?? null,
+    warnings: next?.warnings ?? null,
+    problems: next ? inSpan(next.problems, from, to).map(problemOut) : [],
+  };
 }
 
 // After the edit, the target must read as exactly the text written, so its
@@ -166,6 +169,8 @@ export interface EditResult {
   title: string;
   hash: string;
   snapshotId: string;
+  errorsBefore: number | null;
+  warningsBefore: number | null;
   errors: number | null;
   warnings: number | null;
   problems: ProblemOut[];
@@ -244,7 +249,7 @@ export function replaceSection(
     const next = text.slice(0, target.from) + markdown + text.slice(target.to);
     const end = target.from + markdown.length;
     const after = spanAfter(next, project.category, target.target, target.from, end);
-    const checked = refuseMoreErrors(text, next, project.category, target.from, end);
+    const reported = report(text, next, project.category, target.from, end);
     const afterHash = textHash(markdown);
     return {
       text: next,
@@ -256,9 +261,7 @@ export function replaceSection(
         target: target.target,
         title: after.title,
         hash: afterHash,
-        errors: checked?.errors ?? null,
-        warnings: checked?.warnings ?? null,
-        problems: checked ? inSpan(checked.problems, target.from, end).map(problemOut) : [],
+        ...reported,
       },
     };
   });
@@ -297,7 +300,7 @@ export function addScene(
     const from = at + 2;
     const end = from + scene.length;
     const after = spanAfter(next, project.category, id, from, end);
-    const checked = refuseMoreErrors(text, next, project.category, from, end);
+    const reported = report(text, next, project.category, from, end);
     const afterHash = textHash(scene);
     return {
       text: next,
@@ -309,9 +312,7 @@ export function addScene(
         target: id,
         title: after.title,
         hash: afterHash,
-        errors: checked?.errors ?? null,
-        warnings: checked?.warnings ?? null,
-        problems: checked ? inSpan(checked.problems, from, end).map(problemOut) : [],
+        ...reported,
       },
     };
   });

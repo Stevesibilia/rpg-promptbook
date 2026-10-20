@@ -154,7 +154,8 @@ function slotAnchor(scene: Scene, template: Template, label: string | null): num
   const target = order.indexOf(label);
   const endOf = (slot: string | null): number | null => {
     if (slot === null) {
-      const box = scene.readAloud ? scene.boxes.find((b) => b.id === scene.readAloud) : undefined;
+      const last = scene.readAlouds.at(-1);
+      const box = last ? scene.boxes.find((b) => b.id === last) : undefined;
       return box ? box.range.end.offset : null;
     }
     const field = scene.fields.find((f) => f.known && f.label === slot);

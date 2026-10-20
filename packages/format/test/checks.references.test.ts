@@ -15,14 +15,6 @@ const cases: Case[] = [
     sceneId: 'S1',
   },
   {
-    name: 'a scene has two read-alouds',
-    code: 'callout.count',
-    doc: change(leggi, leggi + '> [!leggi]\n> Un altro buio.\n\n'),
-    severity: 'error',
-    at: '> [!leggi]\n> Un altro buio.',
-    sceneId: 'S1',
-  },
-  {
     name: 'the strong start has no read-aloud',
     code: 'callout.count',
     doc: change('> [!leggi]\n> Il buio si muove.\n\n', ''),
@@ -143,6 +135,25 @@ describe('callout and reference checks', () => {
     expect(codes(parse(base).problems)).not.toContain('callout.place');
     const box = change('## Verità del mondo', '> [!riquadro] Nota\n> Ovunque.\n\n## Verità del mondo');
     expect(codes(parse(box).problems)).not.toContain('callout.place');
+  });
+
+  it('accepts several read-alouds in a scene and in Inizio forte, and keeps them in order', () => {
+    const second = '> [!leggi]\n> Un altro buio.\n\n';
+    const scene = parse(change(leggi, leggi + second));
+    expect(codes(scene.problems)).not.toContain('callout.count');
+    const s1 = scene.model.scenes[0]!;
+    expect(s1.readAlouds).toHaveLength(2);
+    expect(s1.boxes.filter((b) => s1.readAlouds.includes(b.id)).map((b) => b.kind === 'callout' && b.content)).toEqual([
+      'Una porta socchiusa.',
+      'Un altro buio.',
+    ]);
+    const start = parse(change('> [!leggi]\n> Il buio si muove.\n\n', '> [!leggi]\n> Il buio si muove.\n\n> [!leggi]\n> Poi tace.\n\n'));
+    expect(codes(start.problems)).not.toContain('callout.count');
+    const section = start.model.sections.find((s) => s.role === 'strongStart');
+    expect(section?.blocks.filter((b) => b.kind === 'callout' && b.type === 'leggi').map((b) => b.kind === 'callout' && b.content)).toEqual([
+      'Il buio si muove.',
+      'Poi tace.',
+    ]);
   });
 
   it('turns a plain quote into a read-aloud or a handout with a fix', () => {

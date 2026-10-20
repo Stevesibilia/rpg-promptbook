@@ -45,8 +45,8 @@ describe('toLayoutInput on Sabaoth', () => {
   it('keeps every block\'s source offset', () => {
     const s3 = input.scenes[2]!;
     expect(text.slice(s3.from)).toMatch(/^### S3\. Il cordone di Donato/);
-    expect(text.slice(s3.readAloud!.from)).toMatch(/^> \[!leggi\]/);
-    expect(s3.readAloud!.markdown).toMatch(/^Una piazza di macerie/);
+    expect(text.slice(s3.readAlouds[0]!.from)).toMatch(/^> \[!leggi\]/);
+    expect(s3.readAlouds[0]!.markdown).toMatch(/^Una piazza di macerie/);
     expect(text.slice(s3.cast!.from)).toMatch(/^\*\*Chi c'è\*\*/);
   });
 
@@ -140,5 +140,28 @@ describe('toLayoutInput on a small adventure', () => {
   it('links a reference in an inline field', () => {
     const input = layout(small('titolo: Il porto\n'));
     expect(input.scenes[0]!.inPlay?.blocks[0]?.markdown).toBe('la nave → [Capitano](#sheet-capitano).');
+  });
+});
+
+describe('several read-alouds', () => {
+  // A box of the given text put before the first read-aloud found after `after`.
+  const withBoxBefore = (text: string, after: string, box: string) => {
+    const at = text.indexOf('> [!leggi]', text.indexOf(after));
+    return `${text.slice(0, at)}> [!leggi]\n> ${box}\n\n${text.slice(at)}`;
+  };
+
+  it('keeps every read-aloud of a scene in the slot, in order, none in the boxes', () => {
+    const s1 = layout(withBoxBefore(sabaoth(), '### S1.', 'Un brano in più.')).scenes[0]!;
+    expect(s1.readAlouds).toHaveLength(2);
+    expect(s1.readAlouds[0]!.markdown).toBe('Un brano in più.');
+    expect(s1.readAlouds[0]!.from).toBeLessThan(s1.readAlouds[1]!.from);
+    expect(s1.boxes.filter((b) => b.box?.role === 'readAloud')).toEqual([]);
+  });
+
+  it('keeps every block of Inizio forte, two read-alouds in order', () => {
+    const blocks = layout(withBoxBefore(sabaoth(), '## Inizio forte', 'Un brano in più.')).start.strongStart!.blocks;
+    const reads = blocks.filter((b) => b.box?.role === 'readAloud');
+    expect(reads).toHaveLength(2);
+    expect(reads[0]!.markdown).toBe('Un brano in più.');
   });
 });

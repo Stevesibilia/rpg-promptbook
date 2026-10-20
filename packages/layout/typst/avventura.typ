@@ -462,7 +462,7 @@
 
     columns-part(
       {
-        if scene.readAloud != none { callout(scene.readAloud) }
+        for b in scene.readAlouds { callout(b) }
         if scene.happens != none {
           h3(scene.happens.label)
           field-blocks(scene.happens)

@@ -224,7 +224,7 @@ describe('callouts', () => {
   it('takes the read-aloud from its type, not its position', () => {
     const scene = parse(sample).model.scenes[0];
     expect(scene?.boxes.map((b) => b.kind === 'callout' && b.type)).toEqual(['documento', 'leggi']);
-    expect(scene?.readAloud).toBe('S1.2');
+    expect(scene?.readAlouds).toEqual(['S1.2']);
   });
 });
 
