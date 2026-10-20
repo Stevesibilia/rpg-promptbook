@@ -1,9 +1,12 @@
 import { app as electronApp, BrowserWindow, protocol, safeStorage, shell, webContents } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
+import { channels } from 'promptbook-web/src/platform/bridge.js';
 import { App } from './app.js';
 import { registerIpc } from './ipc.js';
 import { privileges, SCHEME, serveApp } from './protocol.js';
+import { installKind, Updater } from './updater.js';
 import { createWindow, guardWebContents, lockPermissions } from './window.js';
 
 // The app's lifecycle (desktop-app design decisions 1 to 5): one instance,
@@ -60,6 +63,14 @@ if (!electronApp.requestSingleInstanceLock()) {
     ...(e2e ? { snapshotIntervalMs: Number(process.env.PROMPTBOOK_E2E_SNAPSHOT_SECONDS ?? 5) * 1000 } : {}),
   });
   if (e2e) globalThis.__promptbook = app;
+  const updater = new Updater({
+    packaged: electronApp.isPackaged,
+    kind: installKind(process.platform, process.env),
+    version: electronApp.getVersion(),
+    autoUpdater: () => autoUpdater,
+    emit: (state) => broadcast(channels.updatesOnState, state),
+    openExternal: (url) => shell.openExternal(url),
+  });
 
   electronApp.on('second-instance', () => {
     if (!window) return;
@@ -77,8 +88,9 @@ if (!electronApp.requestSingleInstanceLock()) {
     const root = join(__dirname, '..', 'app', 'web');
     protocol.handle(SCHEME, (request) => serveApp(root, request));
     lockPermissions();
-    registerIpc(app);
+    registerIpc(app, updater);
     app.start();
+    updater.start();
     window = createWindow();
     window.on('closed', () => {
       window = null;
@@ -101,6 +113,7 @@ if (!electronApp.requestSingleInstanceLock()) {
     if (closed) return;
     event.preventDefault();
     closed = true;
+    updater.stop();
     void app
       .close()
       .catch((error: unknown) => console.error('Closing the account failed:', error))

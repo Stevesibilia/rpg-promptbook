@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { channels, type BridgeRequestInit, type DeviceInfo } from 'promptbook-web/src/platform/bridge.js';
 import type { App } from './app.js';
+import type { Updater } from './updater.js';
 import { isRoutablePath } from './router.js';
 import { isMode } from './snapshots.js';
+import { installKind } from './updater.js';
 import { appVersion } from './version.js';
 import { isAppUrl } from './window.js';
 
@@ -80,7 +82,7 @@ function handle(channel: string, handler: Handler): void {
   });
 }
 
-export function registerIpc(app: App): void {
+export function registerIpc(app: App, updater: Updater): void {
   handle(channels.deviceInfo, (): DeviceInfo => ({
     os: process.platform === 'win32' || process.platform === 'darwin' ? process.platform : 'linux',
     version: electronApp.isPackaged ? electronApp.getVersion() : appVersion(__dirname, electronApp.getVersion()),
@@ -90,7 +92,7 @@ export function registerIpc(app: App): void {
     databaseFile: app.databaseFile(),
     signInRemembered: app.options.secrets.isEncryptionAvailable(),
     localSnapshots: app.localSnapshots(),
-    updates: process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE) ? 'self' : 'manual',
+    updates: installKind(process.platform, process.env),
   }));
 
   handle(channels.apiRequest, (_event, path, init) => {
@@ -135,12 +137,10 @@ export function registerIpc(app: App): void {
   });
   handle(channels.deviceUsage, () => app.usage());
 
-  // The updater comes with the packaging (design decision 14); until then
-  // there is nothing to check.
-  handle(channels.updatesState, () => ({ kind: 'off' }));
-  handle(channels.updatesCheck, () => {});
-  handle(channels.updatesRestart, () => {});
-  handle(channels.updatesOpenRelease, () => {});
+  handle(channels.updatesState, () => updater.state);
+  handle(channels.updatesCheck, () => updater.check());
+  handle(channels.updatesRestart, () => updater.restart());
+  handle(channels.updatesOpenRelease, () => updater.openRelease());
 
   handle(channels.filesOpenPdf, async (_event, data, name) => {
     const pdf = bytes(data, MAX_FILE_BYTES);
