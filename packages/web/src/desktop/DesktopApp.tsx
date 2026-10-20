@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { api, type User } from '../api.js';
 import { AppRoutes } from '../AppRoutes.js';
 import { AuthContext, type Auth } from '../auth/context.js';
@@ -35,7 +36,11 @@ export function DesktopApp() {
   const sync = useSync();
   const account = auth.account;
   const accountId = account?.id ?? null;
-  const [user, setUser] = useState<User | null>(null);
+  // The user, with the account it belongs to: the pages of another account
+  // never render with the last one's.
+  const [owned, setOwned] = useState<{ account: string; user: User } | null>(null);
+  const user = owned && owned.account === accountId ? owned.user : null;
+  const navigate = useNavigate();
   const [toast, showToast] = useToast();
   // The failure the user dismissed; a new one shows again.
   const [dismissed, setDismissed] = useState<AuthState['signIn'] | null>(null);
@@ -50,22 +55,27 @@ export function DesktopApp() {
   useEffect(() => {
     if (previous.current === accountId) return;
     previous.current = accountId;
+    // Another account, or none: its pages start from the list, and its first
+    // sync is shown again (a folder removed and signed in to anew).
+    navigate('/', { replace: true });
+    setStartedEarly(null);
+    setStatusOf(null);
     if (!accountId) return;
     let live = true;
     void desktop.registry.refresh().finally(() => live && setStatusOf(accountId));
     return () => {
       live = false;
     };
-  }, [accountId, desktop]);
+  }, [accountId, desktop, navigate]);
 
   useEffect(() => {
-    setUser(null);
     if (!account) return;
     let live = true;
+    const id = account.id;
     api
       .me()
-      .then(({ user }) => live && setUser(user ?? userOf(account.user)))
-      .catch(() => live && setUser(userOf(account.user)));
+      .then(({ user }) => live && setOwned({ account: id, user: user ?? userOf(account.user) }))
+      .catch(() => live && setOwned({ account: id, user: userOf(account.user) }));
     return () => {
       live = false;
     };
@@ -80,12 +90,14 @@ export function DesktopApp() {
       user
         ? {
             user,
-            setUser,
+            setUser: (next: User) => {
+              if (accountId) setOwned({ account: accountId, user: next });
+            },
             signOut: async () => setSigningOut(true),
             openSignIn: () => void platform.startSignIn(),
           }
         : null,
-    [user, desktop],
+    [user, accountId],
   );
 
   const signIn = auth.signIn;

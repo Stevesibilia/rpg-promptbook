@@ -26,7 +26,7 @@ export function SignInScreen() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void desktop.bridge.auth.start(server.trim() || DEFAULT_SERVER);
+            desktop.startSignIn(server.trim() || DEFAULT_SERVER);
           }}
         >
           <div className="field">
@@ -105,7 +105,7 @@ export function SignInFailedScreen({
           <button className="tb line" onClick={onDismiss}>
             {accountOpen ? 'Cancel' : 'Change server'}
           </button>
-          <button className="tb primary" onClick={() => void desktop.bridge.auth.start(auth.server || DEFAULT_SERVER)}>
+          <button className="tb primary" onClick={() => desktop.startSignIn(auth.server || DEFAULT_SERVER)}>
             Try again
           </button>
         </div>

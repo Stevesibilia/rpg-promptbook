@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { choosePlatform, hostOf } from '../src/platform/index.js';
-import { fakeBridge } from './fake-bridge.js';
+import { fakeBridge, signedIn } from './fake-bridge.js';
 
 describe('choosePlatform', () => {
   it('is the browser without the desktop bridge', () => {
@@ -40,6 +40,37 @@ describe('choosePlatform', () => {
     expect(await answer.json()).toEqual({ error: 'offline', message: 'Needs the server.' });
     const empty = await platform.request('/api/settings', { method: 'DELETE' });
     expect(empty.status).toBe(204);
+  });
+});
+
+describe('the desktop platform', () => {
+  it("keeps main's newer auth event over the first read's older answer", async () => {
+    const fake = fakeBridge();
+    const ended = { ...signedIn, session: 'ended' as const };
+    // The read answers active; main ends the session before init settles.
+    const state = fake.bridge.auth.state;
+    fake.bridge.auth.state = async () => {
+      const answer = await state();
+      fake.events.auth.emit(ended);
+      return answer;
+    };
+    const platform = choosePlatform({ promptbook: fake.bridge });
+    await platform.init();
+    expect(platform.desktop?.auth.get().session).toBe('ended');
+  });
+
+  it('starts one sign-in at a time, until main reports the browser step', async () => {
+    const fake = fakeBridge();
+    const starts: string[] = [];
+    fake.bridge.auth.start = async (server) => void starts.push(server);
+    const platform = choosePlatform({ promptbook: fake.bridge });
+    platform.desktop!.startSignIn('https://a.example');
+    platform.desktop!.startSignIn('https://a.example');
+    platform.startSignIn();
+    expect(starts).toEqual(['https://a.example']);
+    fake.events.auth.emit({ ...signedIn, signIn: { step: 'browser', host: 'a.example' } });
+    platform.desktop!.startSignIn('https://a.example');
+    expect(starts).toHaveLength(2);
   });
 });
 

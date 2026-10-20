@@ -103,7 +103,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   // at the click, before the build (platform/web.ts).
   const printPdf = async () => {
     if (!pdf) return;
-    await platform.openPdf(pdf.pdf(), pdfFileName(meta.title));
+    await platform.openPdf(() => pdf.pdf(), pdfFileName(meta.title));
   };
   const toggleInspector = () => {
     if (pane) {

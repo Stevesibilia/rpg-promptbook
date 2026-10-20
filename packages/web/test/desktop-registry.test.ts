@@ -194,6 +194,12 @@ describe('desktopSnapshot', () => {
     expect(snapshot.state).toBe('syncing');
   });
 
+  it('is local with no project while offline', () => {
+    expect(desktopSnapshot(status({ online: false, offlineSince: '2026-10-20T10:05:00.000Z' }), 'active').state).toBe(
+      'local',
+    );
+  });
+
   it('is synced with no project and the server there', () => {
     expect(desktopSnapshot(status(), 'active').state).toBe('synced');
     expect(desktopSnapshot(status(), 'signed-out').state).toBe('signed-out');

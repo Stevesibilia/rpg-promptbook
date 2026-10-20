@@ -16,11 +16,17 @@ export function useDeviceProject(id: string): DesktopProjectStatus | null {
   );
 }
 
-// Offline on the desktop: what only the server can do is disabled.
+// Offline on the desktop: what only the server can do is disabled. Not
+// before main first knows whether the server is there.
 export function useOffline(): boolean {
   const desktop = platform.kind === 'desktop';
   return useSyncExternalStore(
     desktop ? registry.subscribe : never,
-    desktop ? () => registry.getSnapshot().device?.online === false : () => false,
+    desktop
+      ? () => {
+          const device = registry.getSnapshot().device;
+          return !!device && !device.online && device.offlineSince !== null;
+        }
+      : () => false,
   );
 }

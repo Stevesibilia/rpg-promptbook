@@ -16,6 +16,9 @@ export interface Desktop {
   auth: Store<AuthState>;
   updates: Store<UpdatesState>;
   registry: DesktopSyncRegistry;
+  // Starts a sign-in through the browser, once: another call before main
+  // reports the browser step (or a failure) does nothing.
+  startSignIn(server: string): void;
 }
 
 const NO_INFO: DeviceInfo = {
@@ -61,10 +64,30 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
   const updates = createStore<UpdatesState>({ kind: 'off' });
   const registry = new DesktopSyncRegistry(bridge, auth);
   const refreshInfo = async () => info.set(await bridge.info());
-  const desktop: Desktop = { bridge, info, refreshInfo, auth, updates, registry };
+  // Events counted, so a first read answered before a newer event never
+  // overwrites it.
+  let authEvents = 0;
+  let updateEvents = 0;
+  let starting: ReturnType<typeof setTimeout> | null = null;
+  const startSignIn = (server: string) => {
+    if (starting) return;
+    // Main answers with the browser step or a failure; a minute is the
+    // fallback should neither come.
+    starting = setTimeout(() => (starting = null), 60_000);
+    bridge.auth.start(server).catch(() => {
+      if (starting) clearTimeout(starting);
+      starting = null;
+    });
+  };
+  const desktop: Desktop = { bridge, info, refreshInfo, auth, updates, registry, startSignIn };
 
   // Events first, so nothing that changes during the first reads is lost.
   bridge.auth.onState((state) => {
+    authEvents += 1;
+    if (starting && state.signIn.step !== 'idle') {
+      clearTimeout(starting);
+      starting = null;
+    }
     const before = auth.get().account?.id ?? null;
     auth.set(state);
     // Another account, or none: the documents of the old one are let go,
@@ -75,7 +98,10 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
       void refreshInfo();
     }
   });
-  bridge.updates.onState((state) => updates.set(state));
+  bridge.updates.onState((state) => {
+    updateEvents += 1;
+    updates.set(state);
+  });
 
   return {
     kind: 'desktop',
@@ -86,20 +112,21 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
     async init() {
       // The desktop's own styles apply under this class only.
       if (typeof document !== 'undefined') document.documentElement.classList.add('desktop');
+      const seen = { auth: authEvents, updates: updateEvents };
       const [i, a, u] = await Promise.all([bridge.info(), bridge.auth.state(), bridge.updates.state()]);
       info.set(i);
-      auth.set(a);
-      updates.set(u);
+      if (authEvents === seen.auth) auth.set(a);
+      if (updateEvents === seen.updates) updates.set(u);
       await registry.refresh();
     },
     request: (path, init) => bridgeRequest(bridge, path, init),
     openSync: () => registry,
     startSignIn() {
-      void bridge.auth.start(auth.get().server || info.get().serverOrigin);
+      startSignIn(auth.get().server || info.get().serverOrigin);
       return true;
     },
-    async openPdf(bytes, name) {
-      await bridge.files.openPdf(await bytes, name);
+    async openPdf(build, name) {
+      await bridge.files.openPdf(await build(), name);
     },
     async download(source, name) {
       await bridge.files.save(typeof source === 'string' ? source : new Uint8Array(await source.arrayBuffer()), name);

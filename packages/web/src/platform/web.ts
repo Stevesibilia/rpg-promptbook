@@ -50,11 +50,11 @@ export function createWebPlatform(): Platform {
     // The tab is opened at the click, before the build, or the browser may
     // block it; a blocked or closed tab is never opened again after the
     // build.
-    async openPdf(bytes) {
+    async openPdf(build) {
       const tab = window.open('', '_blank');
       if (!tab) throw new NoticeError(POPUPS_BLOCKED);
       try {
-        const pdf = await bytes;
+        const pdf = await build();
         if (tab.closed) throw new NoticeError(POPUPS_BLOCKED);
         tab.location.href = blobUrl(new Blob([pdf as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }));
       } catch (error) {

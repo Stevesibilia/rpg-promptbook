@@ -23,8 +23,9 @@ export interface Platform {
   // system browser on the desktop.
   startSignIn(): boolean;
   // The PDF where it can be printed: a tab of its own in the browser, opened
-  // at once while the bytes are built; the system's viewer on the desktop.
-  openPdf(bytes: Promise<Uint8Array>, name: string): Promise<void>;
+  // at once, before `build` makes the bytes; the system's viewer on the
+  // desktop.
+  openPdf(build: () => Promise<Uint8Array>, name: string): Promise<void>;
   // An /api/ path's answer (an export) or bytes saved as a file: the
   // browser's download, or the desktop's save dialog.
   download(source: string | Blob, name: string): Promise<void>;

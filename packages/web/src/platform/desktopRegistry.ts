@@ -50,8 +50,10 @@ export function desktopSnapshot(status: DesktopSyncStatus, session: AuthState['s
     onDevice: true,
   }));
   const sessionEnded = session === 'ended' || session === 'signed-out';
+  // No project to read it from: offline is the account's own state.
+  const offline = !connected && providers.length === 0 && !sessionEnded;
   return {
-    state: overallState(providers, sessionEnded),
+    state: offline ? 'local' : overallState(providers, sessionEnded),
     providers,
     lastSync: status.lastSync ? new Date(status.lastSync) : null,
     sessionEnded,
