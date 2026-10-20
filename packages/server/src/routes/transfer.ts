@@ -14,6 +14,7 @@ import {
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db } from '../db.js';
+import { AppError } from '../errors.js';
 import type { BlobStore } from '../files/blobs.js';
 import {
   campaignFor,
@@ -32,6 +33,10 @@ import { getSettings } from './settings.js';
 // Markdown import and export (design decision 7).
 
 export const IMPORT_BODY_LIMIT = 20 * 1024 * 1024;
+
+// What a zip without ZIP64 can hold, with room for the text files and headers.
+const ZIP_BYTES_MAX = 4_000_000_000;
+const ZIP_ENTRIES_MAX = 65_000;
 
 const importBody = z.object({
   notes: z
@@ -190,8 +195,34 @@ export async function transferRoutes(
     }
   }
 
-  const send = (reply: FastifyReply, name: string, chunks: AsyncGenerator<Uint8Array>) =>
-    attachment(reply, name).send(Readable.from(chunks, { objectMode: false }));
+  // The first chunk is read before the answer is committed, so a failure in
+  // the first project's own reads is a 500 and not an empty 200.
+  const send = async (reply: FastifyReply, name: string, chunks: AsyncGenerator<Uint8Array>) => {
+    const first = await chunks.next();
+    async function* all() {
+      if (!first.done) yield first.value;
+      yield* chunks;
+    }
+    return attachment(reply, name).send(Readable.from(all(), { objectMode: false }));
+  };
+
+  // fflate's Zip writes 32-bit sizes and offsets and a 16-bit entry count, so
+  // an archive past them would be silently corrupt: refuse it up front. The
+  // links' sizes are what the export can read, each content once per project.
+  async function checkFits(projectIds: string[]): Promise<void> {
+    const row = await db.queryOne<{ bytes: string; entries: string }>(
+      `select coalesce(sum(f.size), 0) as bytes, count(*) as entries
+       from project_files pf join files f using (sha256) where pf.project_id = any($1::uuid[])`,
+      [projectIds],
+    );
+    if (Number(row?.bytes ?? 0) > ZIP_BYTES_MAX || Number(row?.entries ?? 0) + 8 * projectIds.length > ZIP_ENTRIES_MAX) {
+      throw new AppError(
+        413,
+        'export_too_large',
+        'These projects hold more than 4 GB of images and tracks, more than one zip can take. Export fewer projects at a time.',
+      );
+    }
+  }
 
   app.get('/api/projects/:id/export', async (req, reply) => {
     const { user } = requireSession(req);
@@ -199,6 +230,7 @@ export async function transferRoutes(
     const project = await getProject(db, user.id, id);
     if (!project || project.deletedAt) throw NOT_FOUND();
     const folder = exportFolderName(project.title, new Set());
+    await checkFits([project.id]);
     return send(reply, `${folder}.zip`, zipChunks([{ project, folder }], await campaignTitles(user.id), req.log));
   });
 
@@ -209,6 +241,7 @@ export async function transferRoutes(
     const taken = new Set<string>();
     const named = projects.map((project) => ({ project, folder: exportFolderName(project.title, taken) }));
     const date = new Date().toISOString().slice(0, 10);
+    await checkFits(projects.map((p) => p.id));
     return send(reply, `promptbook-${date}.zip`, zipChunks(named, await campaignTitles(user.id), req.log));
   });
 }

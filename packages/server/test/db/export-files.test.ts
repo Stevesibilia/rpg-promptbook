@@ -228,6 +228,20 @@ describe('exporting a project with files', () => {
   });
 });
 
+describe('an export too large for one zip', () => {
+  it('is refused before anything is sent, one project or all', async () => {
+    const s = await setup();
+    const hash = 'a'.repeat(64);
+    await db.query("insert into files (sha256, size, mime) values ($1, 4000000001, 'audio/mpeg')", [hash]);
+    await db.query('insert into project_files (project_id, sha256) values ($1, $2)', [s.project, hash]);
+    for (const url of [`/api/projects/${s.project}/export`, '/api/export']) {
+      const response = await s.app.inject({ method: 'GET', url, headers: auth(s.token) });
+      expect(response.statusCode, url).toBe(413);
+      expect(response.json().error).toBe('export_too_large');
+    }
+  });
+});
+
 describe('a large export', () => {
   it('streams 120 MB of files without holding them in memory', { timeout: 180_000 }, async () => {
     const s = await setup();

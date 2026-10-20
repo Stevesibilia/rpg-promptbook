@@ -4,6 +4,7 @@ import {
   assignFile,
   chooseFile,
   exportBoard,
+  exportFolderName,
   exportProject,
   readFiles,
   setImagePrompt,
@@ -235,5 +236,18 @@ describe('the board in the export', () => {
       markdown: '',
       files: [{ path: 'files/unmatched/one.png', sha256: hash(1) }],
     });
+  });
+});
+
+describe('exportFolderName', () => {
+  it('never gives a folder that climbs out of the zip', () => {
+    const taken = new Set<string>();
+    expect([
+      exportFolderName('..', taken),
+      exportFolderName('.', taken),
+      exportFolderName('...', taken),
+      exportFolderName('', taken),
+      exportFolderName('a\u0000b\tc', taken),
+    ]).toEqual(['Untitled', 'Untitled (2)', 'Untitled (3)', 'Untitled (4)', 'a-b-c']);
   });
 });

@@ -228,7 +228,9 @@ export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOpt
 // systems refuse replaced by "-", made unique among the names already taken
 // with " (2)", " (3)"… Adds the name it returns to `taken`.
 export function exportFolderName(title: string, taken: Set<string>): string {
-  const base = title.replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled';
+  const cleaned = title.replace(/[/\\:*?"<>|\u0000-\u001f]/g, '-').trim();
+  // "." and ".." would climb out of the folder the zip is extracted into.
+  const base = cleaned === '' || /^\.+$/.test(cleaned) ? 'Untitled' : cleaned;
   let name = base;
   for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${base} (${n})`;
   taken.add(name.toLowerCase());
