@@ -48,3 +48,5 @@ services:
       NODE_EXTRA_CA_CERTS: /certs/ca.pem
     volumes:
       - ${ISSUER_CERTS}:/certs:ro
+      # The same files as the password app: both serve one database.
+      - app-data:/data

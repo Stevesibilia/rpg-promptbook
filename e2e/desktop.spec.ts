@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Y from 'yjs';
 import { createProject, row, signIn, syncPill, throttle } from './helpers.js';
+import { midjourneyName, png } from './media.js';
 import { baseURL, compose, password, username } from './stack.js';
 
 // The desktop app against the compose stack (desktop-app design decision 17),
@@ -12,6 +13,9 @@ import { baseURL, compose, password, username } from './stack.js';
 // edit online, then with the server stopped an edit and a new project, a
 // relaunch still offline, the server back with everything on it as the web
 // client shows it, a local snapshot in History, and both ways of signing out.
+// The board (asset-board design decision 18): images dropped offline stay on
+// this computer across the relaunch, upload once the server is back and show
+// on the web in the same scene; an image added on the web reaches the app.
 // Runs the unpackaged app from packages/desktop/dist; in CI under xvfb-run.
 
 const desktop = fileURLToPath(new URL('../packages/desktop/', import.meta.url));
@@ -24,6 +28,7 @@ interface Bridge {
     update(id: string, update: Uint8Array): Promise<void>;
   };
   auth: { state(): Promise<{ session: string; remembered: boolean }> };
+  files: { status(): Promise<{ waiting: unknown[]; downloading: number; refused: unknown[] }> };
 }
 declare global {
   interface Window {
@@ -122,6 +127,17 @@ test.afterAll(async () => {
   }
 });
 
+// Every picture of the row drawn: loaded, not an empty tile.
+async function loadedImages(p: Page, sceneId: string): Promise<number> {
+  return p
+    .locator(`#row-${sceneId} .th-i img`)
+    .evaluateAll((imgs) => imgs.filter((i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0).length);
+}
+
+const PROMPT = 'A pier at dawn in Messina, fishing boats, cold light --ar 16:9 --v 8.1';
+const APPENDIX = '\n\n## Appendice: immagini e musica\n\n### S1. Il molo\n\nvisual: a pier at dawn, fishing boats\n\nmood: calm, cold wind\n';
+const offlineImages = [1, 2].map((n) => ({ name: midjourneyName(PROMPT, n), mimeType: 'image/png', buffer: png() }));
+
 const stamp = Date.now().toString(36);
 const online = `Scritto nel desktop, online ${stamp}.`;
 const offline = `Scritto nel desktop, offline ${stamp}.`;
@@ -154,6 +170,8 @@ test('an edit online reaches the server', async () => {
   await row(page, mine.title).dblclick();
   await expect(page.locator('.cm-content')).toContainText(`titolo: ${mine.title}`);
   await typeAtEnd(`\n\n${online}`);
+  // The board's appendix, for the steps offline.
+  await page.keyboard.insertText(APPENDIX);
   await expect(syncPill(page)).toHaveAttribute('data-state', 'synced', { timeout: 30_000 });
 });
 
@@ -183,6 +201,23 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await appendThroughBridge(mine.id, ' Ancora.');
   await expect.poll(() => hourly.count(), { timeout: 20_000 }).toBeGreaterThan(before);
 
+  // The board offline: a prompt by hand, then two images dropped, kept here.
+  await page.goto(`promptbook://app/projects/${mine.id}/board`);
+  const s1 = page.locator('#row-S1');
+  await s1.getByRole('button', { name: 'Write by hand' }).first().click();
+  await page.getByLabel('Midjourney prompt for S1').fill(PROMPT);
+  await s1.getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('.toast')).toHaveText('Saved.');
+  await page.locator('.board input[type=file]').setInputFiles(offlineImages);
+  await expect(page.locator('.info.good')).toContainText('2 files added: 2 matched, 0 to assign.', { timeout: 30_000 });
+  await expect(s1.locator('.th-i .badge.dev')).toHaveCount(2);
+  await expect(s1.locator('.th-i .badge.dev').first()).toHaveAttribute('title', 'On this computer. Uploads when you are back online');
+  await expect(page.locator('.info.local')).toContainText(
+    '2 files on this computer, uploaded when you are back online. Choosing and editing prompts work offline; they sync too.',
+  );
+  await expect(statusRight()).toHaveText(/^Offline · \d+ changes? on this device · 2 files waiting to upload$/);
+  await expect.poll(() => loadedImages(page, 'S1')).toBe(2);
+
   // Quit and start again, still offline.
   await app.close();
   await launch();
@@ -195,6 +230,10 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await row(page, newTitle).dblclick();
   await expect(page.locator('.cm-content')).toContainText(`titolo: ${newTitle}`);
   await expect(await endOf(page)).toContainText(newText);
+  // The images are still here, and still waiting.
+  await page.goto(`promptbook://app/projects/${mine.id}/board`);
+  await expect(page.locator('#row-S1 .th-i .badge.dev')).toHaveCount(2);
+  await expect.poll(() => loadedImages(page, 'S1')).toBe(2);
 });
 
 test('back online: the web client has both edits and the new project', async () => {
@@ -217,6 +256,10 @@ test('back online: the web client has both edits and the new project', async () 
     await finishInBrowser();
   }
   await expect(syncPill(page)).toHaveAttribute('data-state', 'synced', { timeout: 90_000 });
+  // The images dropped offline go up.
+  await expect
+    .poll(() => page.evaluate(() => window.promptbook.files.status().then((s) => s.waiting.length)), { timeout: 60_000 })
+    .toBe(0);
 
   const browser = await chromium.launch();
   try {
@@ -231,9 +274,23 @@ test('back online: the web client has both edits and the new project', async () 
     await row(web, newTitle).dblclick();
     await expect(web.locator('.cm-content')).toContainText(`titolo: ${newTitle}`);
     await expect(await endOf(web)).toContainText(newText);
+
+    // The board on the web: the two images in S1, then a third added there
+    // reaches the app.
+    await web.goto(`/projects/${mine.id}/board`);
+    await expect(web.locator('#row-S1 .th-i img')).toHaveCount(2);
+    await expect.poll(() => loadedImages(web, 'S1')).toBe(2);
+    await web
+      .locator('.board input[type=file]')
+      .setInputFiles([{ name: midjourneyName(PROMPT, 3), mimeType: 'image/png', buffer: png() }]);
+    await expect(web.locator('.info.good')).toContainText('1 file added: 1 matched, 0 to assign.', { timeout: 30_000 });
   } finally {
     await browser.close();
   }
+  await page.goto(`promptbook://app/projects/${mine.id}/board`);
+  await expect(page.locator('#row-S1 .th-i img')).toHaveCount(3, { timeout: 30_000 });
+  await expect.poll(() => loadedImages(page, 'S1'), { timeout: 30_000 }).toBe(3);
+  await expect(page.locator('#row-S1 .th-i .badge.dev')).toHaveCount(0);
 });
 
 test('signs out keeping the projects, then removing them', async () => {
@@ -247,6 +304,10 @@ test('signs out keeping the projects, then removing them', async () => {
   expect(accountFolders()).toHaveLength(1);
 
   await page.goto('promptbook://app/settings/device');
+  // The account's other projects (board.spec.ts) hold files too.
+  await expect(page.locator('.usage')).toContainText(/ · \d+ images and tracks$/);
+  const kept = Number(/(\d+) images and tracks/.exec((await page.locator('.usage').textContent()) ?? '')?.[1]);
+  expect(kept).toBeGreaterThanOrEqual(3);
   await page.getByRole('button', { name: 'Sign out…' }).click();
   await page.getByLabel('Also remove the projects from this computer').check();
   await page.getByRole('button', { name: 'Sign out and remove' }).click();

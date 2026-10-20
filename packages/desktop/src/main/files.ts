@@ -669,8 +669,20 @@ export class Files {
     return { files: originals.size, fileBytes };
   }
 
+  // The images and tracks: a thumbnail its document names as one goes up
+  // with its image and is not counted.
   status(): FilesStatus {
-    const rows = this.options.store.listUploads();
+    const thumbs = new Map<string, Set<string>>();
+    const thumbOf = (projectId: string) => {
+      let set = thumbs.get(projectId);
+      if (!set) {
+        const doc = this.options.engine.doc(projectId);
+        set = new Set(doc ? readFiles(doc).flatMap((f) => (f.thumbSha256 ? [f.thumbSha256] : [])) : []);
+        thumbs.set(projectId, set);
+      }
+      return set;
+    };
+    const rows = this.options.store.listUploads().filter((r) => !thumbOf(r.projectId).has(r.sha256));
     let downloading = 0;
     for (const [sha, w] of this.wanted) if (!w.notFound && !this.onDisk.has(sha)) downloading += 1;
     return {

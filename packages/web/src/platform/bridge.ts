@@ -84,8 +84,9 @@ export interface DeviceUsage {
 }
 
 // The board's files as main holds them (asset-board design decision 14):
-// those stored here and not yet on the server, the downloads in progress, and
-// those the server refused (413, 415 or 507) with its message.
+// the images and tracks stored here and not yet on the server (their
+// thumbnails go with them, uncounted), the downloads in progress, and those
+// the server refused (400, 413, 415 or 507) with its message.
 export interface FilesStatus {
   waiting: { projectId: string; sha256: string }[];
   downloading: number;

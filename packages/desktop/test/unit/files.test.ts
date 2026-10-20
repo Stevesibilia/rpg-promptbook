@@ -550,5 +550,7 @@ describe('the local sweep and usage', () => {
       entry(track, { kind: 'audio', mime: 'audio/mpeg', width: null, height: null, duration: 3, name: 'title.mp3' }),
     ]);
     expect(files!.usage()).toEqual({ files: 2, fileBytes: image.length + thumb.length + track.length });
+    // Waiting: the image and the track; the thumbnail goes up uncounted.
+    expect(files!.status().waiting.map((w) => w.sha256).sort()).toEqual([sha(image), sha(track)].sort());
   });
 });
