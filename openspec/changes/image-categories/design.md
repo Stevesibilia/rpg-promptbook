@@ -589,6 +589,33 @@ group: the connector and the export keep their output until their own
 commit, and the web board shows each scene's first prompt as it shows the
 one prompt today, until brief B.
 
+### Accepted in review of brief A (architect)
+
+Departures from the plan, each accepted with its reason:
+
+1. `set_scene_prompts` answers `{ scene, warnings }`: `scene` has the shape
+   of an item of `get_board`'s `scenes`.
+2. The shared-first-words warning fires when one prompt's six-word key equals
+   or is a prefix of another's: Midjourney cuts names mid-word, so a short
+   prompt's downloads match both.
+3. `addImagePrompt` accepts empty text in the model, as migrated prompts have;
+   the connector and the UI refuse it.
+4. `addFiles` refuses an image with a `sceneId` and a track with a `promptId`,
+   enforcing D1 at write time.
+5. `exportBoard` calls `migratedView` itself; `transfer.ts` takes the view
+   once for both calls.
+6. `board.md` stays empty for a project with no rows and no named prompts;
+   otherwise all four parts are written, with «None yet.» for an empty one.
+7. The server's `afterLoadDocument` migration, the desktop's `open()` and
+   `migratedView` catch and log a failure and leave the document as stored,
+   rather than closing the project.
+8. `get_board` items carry `at: null` for an empty stored date; update and
+   remove work on `outsideAppendix` prompts; a removed id answers
+   `unknown_prompt`; a named prompt with an empty stored name exports as
+   «Untitled».
+9. Two requirements' first lines now carry SHALL, so strict validation
+   passes; the meaning is unchanged.
+
 ## What is not touched
 
 - **Music:** keys, rows, matching by title, the track menu.

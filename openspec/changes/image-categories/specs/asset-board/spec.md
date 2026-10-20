@@ -437,12 +437,8 @@ A board written before image categories SHALL open with each scene's image
 prompt as that scene's prompt 1, with its images, its chosen image, its
 author and date, and the music unchanged, on the web, in the desktop app
 offline, and through the connector. The conversion SHALL run on every
-replica without losing an edit made on another, and an image prompt or
-image written later by an older app SHALL join that scene's prompt 1, the
-later prompt text winning. A prompt 1 that was removed SHALL stay removed,
-even when another replica converted the board at the same time; images an
-older app gives its scene later SHALL wait in Unmatched with «Its prompt was
-removed.».
+replica without losing an edit made on another. A removed prompt 1 SHALL stay
+removed.
 
 #### Scenario: Board from v0.6
 
@@ -456,6 +452,14 @@ removed.».
 - **WHEN** the desktop app, offline, opens that project and edits S3's
   prompt 1 while the server converted it too, and the app comes back online
 - **THEN** S3 has one prompt 1 holding the desktop's edit, on both
+
+#### Scenario: Written later by an older app
+
+- **WHEN** an older app writes S3's image prompt or gives S3 an image after the
+  conversion
+- **THEN** they join S3's prompt 1, the later prompt text winning; if S3's
+  prompt 1 was removed, the images wait in Unmatched with «Its prompt was
+  removed.»
 
 #### Scenario: Removed while converted elsewhere
 

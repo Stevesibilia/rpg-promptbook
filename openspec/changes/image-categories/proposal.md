@@ -78,7 +78,7 @@ None.
 ## Impact
 
 - `packages/project`: `board.ts` (the image prompt model, readers, writers,
-  rows per prompt, tray), new `migrate.ts` (`migrateImagePrompts`,
+  rows per prompt, tray), new `board-migration.ts` (`migrateImagePrompts`,
   `needsImageMigration`, `migratedView`), `match.ts` (prompts of every
   category, candidates), `export.ts` (`board.md`, folders), `model.ts`
   (`CAPS.imagePrompts`), the shape comment in `doc.ts`; exported from
