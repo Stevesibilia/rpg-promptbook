@@ -133,7 +133,7 @@ describe('the endpoint', () => {
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 
-  it('lists the 17 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
+  it('lists the 19 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
     const s = await setup();
     for (const era of ['modern', 'legacy'] as const) {
       const tools = await mcpListTools(s.app, s.tokens.access_token, era);
@@ -149,6 +149,7 @@ describe('the endpoint', () => {
     const readOnly = tools.filter((t) => t.annotations?.readOnlyHint).map((t) => t.name);
     expect(readOnly.sort()).toEqual(
       [
+        'get_board',
         'get_brainstorm_log',
         'get_inspiration',
         'get_outline',
