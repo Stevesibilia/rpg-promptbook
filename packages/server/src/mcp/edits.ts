@@ -9,8 +9,9 @@ import type { Sync } from '../sync.js';
 import { ToolRefusal } from './errors.js';
 
 // Claude's edits of the prep document, one target at a time (connector design
-// decisions 5 and 13): never over text Claude has not read, always after a snapshot of the text it replaces, always through the
-// live document.
+// decisions 5 and 13): never over text Claude has not read, always after a
+// snapshot of the text it replaces, always through the live document; the
+// checks are reported, never a reason to refuse (#27).
 
 export const MARKDOWN_MAX = 100_000;
 

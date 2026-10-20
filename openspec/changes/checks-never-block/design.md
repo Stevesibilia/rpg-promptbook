@@ -59,6 +59,22 @@ never refuse because of problems. Separately, the template
    already hides the count when `max` is null), and the row reads as
    present when there is at least one.
 
+### Departures accepted in review (2026-10-20)
+
+1. The model's field is `Scene.readAlouds: string[]` (box ids in document
+   order); `readAloud` is gone. Layout input, inspector, inserts and writes
+   follow it. Inserting the next field goes after the last read-aloud; a jump
+   to "the read-aloud" goes to the first.
+2. «Inizio forte» has no read-aloud field in the model; its blocks already
+   printed in order. A layout test covers two there.
+3. The edit result keeps `errors`, `warnings` and `problems` and adds
+   `errorsBefore` and `warningsBefore` (null for a campaign).
+4. With `max: null`, the `/` menu always offers "Da leggere" and the syntax
+   sheet reads "at least 1 per place".
+5. The appendix-row tests were not added: in the fixture a missing or orphan
+   row is a warning, so they would prove nothing. An edit that removes a
+   scene's read-aloud (a `callout.count` error) covers both tools.
+
 ## Risks / Trade-offs
 
 - [Claude may leave a document with errors] → The errors are listed in each
