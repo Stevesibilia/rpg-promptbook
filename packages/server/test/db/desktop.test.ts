@@ -394,6 +394,28 @@ describe('/sync with the desktop app’s token', () => {
       expect(response.statusCode).toBe(200);
     }));
 
+  it('closes the grant’s sockets when the code it was signed in with is replayed', async () => {
+    const { app, session } = await setup();
+    const id = await newProject(app, session);
+    const url = await listen(app);
+    const { verifier, challenge } = pkce();
+    const approved = await approveDesktop(app, session, desktopParams(challenge));
+    const code = new URL(approved.json<{ redirect_to: string }>().redirect_to).searchParams.get('code')!;
+    const redeem = () =>
+      exchange(app, {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: LOOPBACK,
+        client_id: 'promptbook-desktop',
+        code_verifier: verifier,
+      });
+    const tokens = (await redeem()).json<Tokens>();
+    const desktop = connect(url, id, { origin: null, appToken: tokens.access_token });
+    await synced(desktop);
+    expect((await redeem()).json()).toMatchObject({ error: 'invalid_grant' });
+    await waitFor(() => desktop.closes.includes('4401 Unauthorized'), 'the desktop socket to close');
+  });
+
   it('closes the grant’s sockets when a refresh token is reused', () =>
     revokedCloses(async ({ app, tokens }) => {
       const refresh = () =>
