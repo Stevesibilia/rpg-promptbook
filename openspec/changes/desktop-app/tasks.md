@@ -8,7 +8,7 @@
 - [x] 1.6 `POST /api/projects` with optional `id` and `state`: 8 MB `bodyLimit`, 5 MB decoded state, shape and `meta.id` check (`invalid_state`), 201 new, 200 same owner, 409 `id_taken` (D9)
 - [x] 1.7 Web `AuthorizePage`: for `first_party`, «Signing in Promptbook on this computer…» and the approval with `granted_scope: 'app'` at once; Connected apps shows «Promptbook desktop · <device>» with the access «Desktop app» (D8)
 - [x] 1.8 Db tests of D17's server list: seeded client and sweep, app resource and scope rules, first-party approval, `device_name`, bearer REST (app token works, MCP token 401, app token 401 at `/api/mcp`, consent and logout refuse it), `/sync` token auth without `Origin`, MCP token refused, revocation closes sockets (three paths), create with `id`/`state` (validation, size, mismatch, 409, idempotence)
-- [ ] 1.9 Checks: `npm run typecheck`, `npm test`, `npm run e2e` (connector and sso suites green); hand-back of brief A
+- [x] 1.9 Checks: `npm run typecheck`, `npm test`, `npm run e2e` (connector and sso suites green); hand-back of brief A
 
 ## 2. Desktop core (brief B)
 
