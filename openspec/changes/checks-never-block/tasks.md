@@ -13,5 +13,5 @@
 
 ## 3. Close
 
-- [ ] 3.1 `npm run typecheck`, the full unit tests (database tests included) and `npm run e2e` pass; Prettier on touched Markdown.
-- [ ] 3.2 A PDF of a scene with two read-alouds and an «Inizio forte» with two, checked by eye (screenshot in the hand-back).
+- [x] 3.1 `npm run typecheck`, the full unit tests (database tests included) and `npm run e2e` pass; Prettier on touched Markdown.
+- [x] 3.2 A PDF of a scene with two read-alouds and an «Inizio forte» with two, checked by eye (screenshot in the hand-back).
