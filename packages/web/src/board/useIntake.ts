@@ -26,6 +26,23 @@ export function intakeFor(projectId: string): Intake {
   return intake;
 }
 
+// On the desktop, signing out or opening another account lets the documents
+// go without destroying them (desktopRegistry.closeAll), so no 'destroy'
+// reaches an intake. The account's store changes first: the intakes stop
+// then, so none writes to a let-go document or later releases the open of a
+// board shown since.
+const desktop = platform.desktop;
+if (desktop) {
+  let account = desktop.auth.get().account?.id ?? null;
+  desktop.auth.subscribe(() => {
+    const next = desktop.auth.get().account?.id ?? null;
+    if (next === account) return;
+    account = next;
+    for (const intake of intakes.values()) intake.dispose();
+    intakes.clear();
+  });
+}
+
 // In the browser, closing the tab during an upload asks first: the files
 // not yet uploaded would not reach the project.
 function guard(event: BeforeUnloadEvent) {

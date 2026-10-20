@@ -1,5 +1,6 @@
 import { removeFile } from 'promptbook-project';
 import { MusicIcon, WarningIcon } from '../ui/icons.js';
+import { ActionSelect } from './ActionSelect.js';
 import { assignFromTray } from './actions.js';
 import { useBoardContext } from './context.js';
 import { FileImage } from './parts.js';
@@ -42,26 +43,18 @@ export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
                 <div className="why">{reason ? `${kind} · ${reason}` : kind}</div>
               </div>
               <div className="uact">
-                <select
-                  aria-label={`Assign ${file.name} to a scene`}
-                  value=""
-                  onChange={(e) => {
-                    const to = e.target.value;
-                    if (!to) return;
+                <ActionSelect
+                  label={`Assign ${file.name} to a scene`}
+                  placeholder="Assign to scene…"
+                  options={rows.map((r) => ({ value: r.sceneId, label: sceneLabel(r) }))}
+                  onPick={(to) => {
                     const said = assignFromTray(doc, rows, file.id, to);
                     if (said) {
                       mark(file.id);
                       toast(said);
                     }
                   }}
-                >
-                  <option value="">Assign to scene…</option>
-                  {rows.map((r) => (
-                    <option key={r.sceneId} value={r.sceneId}>
-                      {sceneLabel(r)}
-                    </option>
-                  ))}
-                </select>
+                />
                 <button
                   className="tb sm danger"
                   onClick={() => {

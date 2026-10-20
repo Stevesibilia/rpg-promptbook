@@ -15,6 +15,10 @@ export interface BoardContextValue {
   player: Player;
   // A file assigned by hand from the tray is marked new.
   mark(fileId: string): void;
+  // The scenes with a prompt editor open, kept on the board whatever the
+  // filter, so a draft is never unmounted by a change of state.
+  editing: ReadonlySet<string>;
+  setEditing(key: string, on: boolean): void;
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

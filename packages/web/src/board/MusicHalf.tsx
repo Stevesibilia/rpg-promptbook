@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { BoardRow, FileEntry } from 'promptbook-project';
 import { Confirm } from '../ui/Confirm.js';
 import { DropIcon, EditIcon, MusicIcon } from '../ui/icons.js';
+import { ActionSelect } from './ActionSelect.js';
 import { moveFile, REMOVE_NOTE, removeFromScene, removeQuestion, toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';
 import { CopyButton } from './CopyButton.js';
@@ -12,8 +13,14 @@ import { duration, sceneLabel } from './summary.js';
 
 // The Music · Suno half of a row (screen 1).
 export function MusicHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
-  const { doc, projectId, toast } = useBoardContext();
-  const [editing, setEditing] = useState(false);
+  const { doc, projectId, toast, setEditing: hold } = useBoardContext();
+  // The board keeps the row shown while its editor is open.
+  const [editing, setEditingHere] = useState(false);
+  const setEditing = (on: boolean) => {
+    setEditingHere(on);
+    hold(`${row.sceneId}/music`, on);
+  };
+  useEffect(() => () => hold(`${row.sceneId}/music`, false), [hold, row.sceneId]);
   const title = useRef<HTMLSpanElement>(null);
   const style = useRef<HTMLSpanElement>(null);
   const lyrics = useRef<HTMLSpanElement>(null);
@@ -229,28 +236,20 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
               </button>
             </>
           ) : (
-            <select
-              aria-label="Move to another scene"
+            <ActionSelect
+              label="Move to another scene"
+              placeholder="Move to another scene…"
               autoFocus
-              defaultValue=""
-              onChange={(e) => {
-                const to = e.target.value;
-                if (!to) return;
+              options={rows
+                .filter((r) => r.sceneId !== row.sceneId)
+                .map((r) => ({ value: r.sceneId, label: sceneLabel(r) }))}
+              onPick={(to) => {
                 setOpen(null);
                 if (player.current === file.id) player.stop();
                 const said = moveFile(doc, rows, file.id, to);
                 if (said) toast(said);
               }}
-            >
-              <option value="">Move to another scene…</option>
-              {rows
-                .filter((r) => r.sceneId !== row.sceneId)
-                .map((r) => (
-                  <option key={r.sceneId} value={r.sceneId}>
-                    {sceneLabel(r)}
-                  </option>
-                ))}
-            </select>
+            />
           )}
         </div>
       )}

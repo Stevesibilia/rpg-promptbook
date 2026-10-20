@@ -4,6 +4,7 @@ import type { FileEntry, MatchedBy } from 'promptbook-project';
 import { snapshotTime } from '../dates.js';
 import { Confirm } from '../ui/Confirm.js';
 import { CheckIcon, NextIcon, PrevIcon, TrashIcon } from '../ui/icons.js';
+import { ActionSelect } from './ActionSelect.js';
 import { moveFile, REMOVE_NOTE, removeFromScene, removeQuestion, toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';
 import { FileImage } from './parts.js';
@@ -40,10 +41,15 @@ export function Viewer({
   const index = images.findIndex((f) => f.id === fileId);
   const file: FileEntry | undefined = images[index];
 
+  // Gone meanwhile, even with the confirm open: the confirm goes too, so it
+  // never asks about another image.
   const gone = !row || !file;
   useEffect(() => {
-    if (gone && !confirm) onClose();
-  }, [gone, confirm, onClose]);
+    if (!gone) return;
+    setConfirm(false);
+    onClose();
+  }, [gone, onClose]);
+  useEffect(() => setConfirm(false), [fileId]);
 
   const step = (by: number) => {
     if (images.length === 0) return;
@@ -56,6 +62,8 @@ export function Viewer({
     closeButton.current?.focus();
     const key = (e: KeyboardEvent) => {
       if (latest.current.confirm) return;
+      // The Move select's own keys.
+      if (e.key !== 'Escape' && (e.target as Element | null)?.closest?.('select, input, textarea')) return;
       if (e.key === 'Escape') latest.current.onClose();
       if (e.key === 'ArrowLeft') latest.current.step(-1);
       if (e.key === 'ArrowRight') latest.current.step(1);
@@ -160,26 +168,18 @@ export function Viewer({
                 </>
               )}
             </button>
-            <select
-              aria-label="Move to another scene"
-              value=""
-              onChange={(e) => {
-                const to = e.target.value;
-                if (!to) return;
+            <ActionSelect
+              label="Move to another scene"
+              placeholder="Move to another scene…"
+              options={rows
+                .filter((r) => r.sceneId !== row.sceneId)
+                .map((r) => ({ value: r.sceneId, label: sceneLabel(r) }))}
+              onPick={(to) => {
                 onClose();
                 const said = moveFile(doc, rows, file.id, to);
                 if (said) toast(said);
               }}
-            >
-              <option value="">Move to another scene…</option>
-              {rows
-                .filter((r) => r.sceneId !== row.sceneId)
-                .map((r) => (
-                  <option key={r.sceneId} value={r.sceneId}>
-                    {sceneLabel(r)}
-                  </option>
-                ))}
-            </select>
+            />
             <button className="tb danger" onClick={() => setConfirm(true)}>
               <TrashIcon />
               Remove

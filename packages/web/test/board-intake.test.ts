@@ -131,6 +131,42 @@ describe('intake', () => {
     expect(intake.state.result).toMatchObject({ added: 1, alreadyHere: 1 });
   });
 
+  it('tries the second copy of a content when the first failed', async () => {
+    let calls = 0;
+    const { doc, intake, done } = setup({
+      put: async (_id, _sha, _bytes, mime) => {
+        calls += 1;
+        // The first copy's thumbnail fails; everything after succeeds.
+        if (calls === 1) throw new PutFileError(503, 'The file was removed while it was uploaded. Upload it again.');
+        return { mime, state: 'uploaded' };
+      },
+    });
+    intake.add([file('a.png', png(4), 'image/png'), file('b.png', png(4), 'image/png')]);
+    await done();
+    expect(readFiles(doc).map((f) => f.name)).toEqual(['b.png']);
+    expect(intake.state.result).toMatchObject({ added: 1, alreadyHere: 0, failed: 1 });
+  });
+
+  it('adds nothing more once disposed (the desktop account changed), and releases once', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { doc, intake, released, done } = setup({
+      put: async (_id, _sha, _bytes, mime) => {
+        await gate;
+        return { mime, state: 'uploaded' };
+      },
+    });
+    intake.add([file('a.png', png(1), 'image/png'), file('b.png', png(2), 'image/png'), file('c.png', png(3), 'image/png')]);
+    await vi.waitFor(() => expect(intake.state.started).toBe(2));
+    intake.dispose();
+    release();
+    await done();
+    expect(readFiles(doc)).toEqual([]);
+    expect(released).toEqual(['p1']);
+    intake.add([file('d.png', png(5), 'image/png')]);
+    expect(intake.state.working).toBe(false);
+  });
+
   it('joins a second drop to the batch running', async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));

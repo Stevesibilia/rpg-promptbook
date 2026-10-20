@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BoardRow, FileEntry } from 'promptbook-project';
 import { DropIcon, EditIcon, ImageIcon } from '../ui/icons.js';
 import { toggleChoice } from './actions.js';
@@ -9,8 +9,14 @@ import { ImagePromptEditor } from './PromptEditor.js';
 
 // The Image · Midjourney half of a row (screen 1).
 export function ImageHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
-  const { doc, projectId, toast } = useBoardContext();
-  const [editing, setEditing] = useState(false);
+  const { doc, projectId, toast, setEditing: hold } = useBoardContext();
+  // The board keeps the row shown while its editor is open.
+  const [editing, setEditingHere] = useState(false);
+  const setEditing = (on: boolean) => {
+    setEditingHere(on);
+    hold(`${row.sceneId}/image`, on);
+  };
+  useEffect(() => () => hold(`${row.sceneId}/image`, false), [hold, row.sceneId]);
   const text = useRef<HTMLDivElement>(null);
   const { image } = row;
 

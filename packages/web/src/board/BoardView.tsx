@@ -49,6 +49,19 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const drag = useWindowDrop(hasRows, (files) => intake.add(files));
   const closeViewer = useCallback(() => setViewing(null), []);
   const closeHelp = useCallback(() => setHelp(false), []);
+  const [editing, setEditingKeys] = useState<ReadonlySet<string>>(new Set());
+  const setEditing = useCallback(
+    (key: string, on: boolean) =>
+      setEditingKeys((keys) => {
+        if (keys.has(key) === on) return keys;
+        const next = new Set(keys);
+        if (on) next.add(key);
+        else next.delete(key);
+        return next;
+      }),
+    [],
+  );
+  const beingEdited = (sceneId: string) => editing.has(`${sceneId}/image`) || editing.has(`${sceneId}/music`);
 
   const context: BoardContextValue = {
     doc,
@@ -59,6 +72,8 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     openViewer: (sceneId, fileId) => setViewing({ sceneId, fileId }),
     player,
     mark: (fileId) => intake.mark(fileId),
+    editing,
+    setEditing,
   };
 
   const status = (
@@ -126,7 +141,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
               />
               <div className="rows">
                 {rows
-                  .filter((row) => keeps(row, filter))
+                  .filter((row) => keeps(row, filter) || beingEdited(row.sceneId))
                   .map((row) => (
                     <SceneRow key={row.sceneId} row={row} filter={filter} />
                   ))}

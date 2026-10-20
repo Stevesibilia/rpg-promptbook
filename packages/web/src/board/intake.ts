@@ -1,5 +1,6 @@
 import {
   addFiles,
+  CAPS,
   FILE_LIMITS,
   MAX_FILE_BYTES,
   matchFile,
@@ -137,9 +138,10 @@ export class Intake {
   private queue: Job[] = [];
   private running = 0;
   private doc: Y.Doc | null = null;
-  // The hashes of the batch being added, so one content dropped twice at once
-  // is added once.
-  private inFlight = new Set<string>();
+  // The hashes of the batch being added, each settled once its file is added
+  // or failed: one content dropped twice at once is added once, the second
+  // copy waiting for the first and tried itself only if the first failed.
+  private inFlight = new Map<string, Promise<void>>();
   private result = emptyResult();
   // The jobs of failed files, for Retry.
   private held = new Map<number, Job>();
@@ -302,8 +304,9 @@ export class Intake {
     } catch {
       return this.fail(job, guessed, 'The file could not be read.', true);
     }
+    for (let first = this.inFlight.get(sha); first; first = this.inFlight.get(sha)) await first;
     if (this.doc !== doc) return;
-    if (this.inFlight.has(sha) || this.listed(doc, sha)) {
+    if (this.listed(doc, sha)) {
       this.result.alreadyHere += 1;
       return;
     }
@@ -313,9 +316,11 @@ export class Intake {
       return;
     }
     if (bytes.length > FILE_LIMITS[sniffed.kind]) return this.fail(job, sniffed.kind, TOO_LARGE, false);
-    this.inFlight.add(sha);
+    let settle!: () => void;
+    this.inFlight.set(sha, new Promise((resolve) => (settle = resolve)));
     try {
-      const probed = await this.deps.probe(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: sniffed.mime }), sniffed.kind);
+      // A slice of the file, not a copy of its bytes.
+      const probed = await this.deps.probe(file.slice(0, file.size, sniffed.mime), sniffed.kind);
       let thumbSha: string | null = null;
       if (probed.thumb) {
         thumbSha = await this.deps.hash(probed.thumb.bytes);
@@ -334,6 +339,7 @@ export class Intake {
       this.fail(job, sniffed.kind, message, !PERMANENT.has(status));
     } finally {
       this.inFlight.delete(sha);
+      settle();
     }
   }
 
@@ -374,7 +380,7 @@ export class Intake {
     let added: FileEntry[];
     try {
       added = addFiles(doc, [entry]).added;
-    } catch (error) {
+    } catch {
       // The project's cap: the file stays here with the reason.
       this.result.failed += 1;
       this.set({
@@ -384,7 +390,7 @@ export class Intake {
             key: this.nextKey++,
             name,
             kind,
-            message: error instanceof Error ? error.message : 'The file could not be added.',
+            message: `The project holds ${CAPS.files} images and tracks, the most it can.`,
             retry: false,
           },
         ],

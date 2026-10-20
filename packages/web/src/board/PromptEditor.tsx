@@ -87,15 +87,21 @@ export function MusicPromptEditor({
   const changed = (base.current?.at ?? null) !== (current?.at ?? null);
   const id = (part: string) => `ed-${sceneId}-${part}`;
 
+  const titleInput = useRef<HTMLInputElement>(null);
+  // A track needs its title, which names the download and matches it: with
+  // none typed and none before, Save waits for one.
   const save = () => {
     const next = {
       title: (title.trim() || current?.title || '').slice(0, LIMITS.trackTitle),
       style: style.trim().slice(0, LIMITS.style),
       lyrics: lyrics.slice(0, LIMITS.lyrics),
     };
-    const empty = !next.title && !next.style && !next.lyrics.trim();
-    if (!empty) setMusicPrompt(doc, sceneId, next, 'user');
-    onDone(!empty);
+    if (!next.title) {
+      titleInput.current?.focus();
+      return;
+    }
+    setMusicPrompt(doc, sceneId, next, 'user');
+    onDone(true);
   };
   const cancel = () => onDone(false);
 
@@ -105,6 +111,7 @@ export function MusicPromptEditor({
         <label htmlFor={id('t')}>Title</label>
         <input
           id={id('t')}
+          ref={titleInput}
           autoFocus
           maxLength={LIMITS.trackTitle}
           value={title}
