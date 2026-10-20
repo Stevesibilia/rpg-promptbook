@@ -64,8 +64,8 @@ jobs:
       - run: helm template rpg-promptbook charts/rpg-promptbook --set image.tag=ci > /dev/null
       - run: helm template rpg-promptbook charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml --set image.tag=ci > /dev/null
 
-  # The end-to-end tests against the compose stack (design decision 11). Not a
-  # required check until the owner says so.
+  # The end-to-end tests against the compose stack (design decision 11), the
+  # desktop app's among them. Not a required check until the owner says so.
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -76,7 +76,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
+      # The desktop project runs the unpackaged app from these builds.
+      - run: npm run build -w promptbook-web
+      - run: npm run build -w promptbook-desktop
+      # Ubuntu's AppArmor refuses the unprivileged user namespaces Electron's
+      # renderer sandbox needs.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # Electron needs a display: xvfb-run gives it one.
+      - run: xvfb-run -a npm run e2e
         env:
           CI: true
       - if: failure()
