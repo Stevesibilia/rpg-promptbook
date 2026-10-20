@@ -779,6 +779,46 @@ a secure context (a plain-HTTP LAN preview); the Unmatched tray gets "Match
 again", which reruns matching on the tray's files and assigns those that
 now match exactly one scene.
 
+### Departures accepted in review (brief D, 2026-10-20)
+
+1. `pb:files:put` always answers `{ mime, state: 'waiting' }`; every upload
+   goes through the queue.
+2. The desktop protocol takes a file's Content-Type from its bytes on disk,
+   not from the document (writable by any client; thumbnails carry no MIME).
+3. Under the protocol any other `/api/` path answers 404, not the SPA.
+4. A file put in this session is served before its entry reaches main.
+5. A file not on disk waits for its turn in the download queue (two at a
+   time, up to 60 s); during a retry backoff it answers 404 at once.
+6. Waiting and refused counts cover images and tracks, not thumbnails.
+7. 400 (hash or validation) is a refusal like 413, 415 and 507: no retry.
+8. The local sweep drops an upload whose document no longer lists the file
+   a day after it was added, and stale temporary files.
+9. A file the server does not have yet (404) does not hold a project's
+   first-sync ✓; it is retried with backoff. `DesktopProjectStatus` gains
+   `filesMissing` and `fileBytes`.
+10. The server client takes a body as a function (fresh stream per
+    attempt), a 15-minute timeout for transfers and an abort signal.
+11. The status bar counts files in offline states only.
+12. A picture that failed to load is asked for again when the desktop's
+    download count drops.
+13. Sizes reach GB; This device reads "… · N images and tracks".
+14. The sign-out warning adds "and N files not yet uploaded." (waiting plus
+    refused; a file in two projects counts twice).
+15. Match again's toasts: "n files found their scene.", "1 file found its
+    scene.", "No file found its scene."
+16. e2e helpers `e2e/claude.ts` (OAuth and MCP as Claude) and
+    `e2e/media.ts` (real PNGs and WAVs with Midjourney and Suno names).
+17. The download and upload retry runs 10 s doubling to 5 min.
+
+Review: no security findings; 3 race findings fixed with tests (protocol
+requests skipping the download queue, sign-out not waiting for a put in
+flight, an unguarded file-system error in the sweep).
+
+Not verified before release: Windows file locks during the sweep or
+sign-out, the Linux and Windows packages and the x64 Mac build (CI and the
+release build them), real Midjourney and Suno downloads, an 80 MB put over
+IPC with a real file.
+
 ## Strings not in the mockup
 
 Chosen by the plan, to check at the owner preview: "Scene S6 is not in the
