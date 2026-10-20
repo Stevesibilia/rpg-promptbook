@@ -1,8 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { addFiles, boardRows, readBoard, readFiles, setMusicPrompt, type BoardRow, type NewFile } from 'promptbook-project';
+import {
+  addFiles,
+  boardRows,
+  readBoard,
+  readFiles,
+  setImagePrompt,
+  setMusicPrompt,
+  type BoardRow,
+  type NewFile,
+} from 'promptbook-project';
 import type { AppendixRow } from 'promptbook-format';
 import * as Y from 'yjs';
-import { moveFile, removeFromScene, removeQuestion, toggleChoice } from '../src/board/actions.js';
+import {
+  matchAgain,
+  matchAgainToast,
+  moveFile,
+  removeFromScene,
+  removeQuestion,
+  toggleChoice,
+} from '../src/board/actions.js';
 import { countItems, countLine } from '../src/board/DropOverlay.js';
 import { midjourneyWords } from '../src/board/MatchHelp.js';
 import { dims, duration, filterCounts, keeps, shortName, summarize } from '../src/board/summary.js';
@@ -120,6 +136,50 @@ describe('the track menu', () => {
     // A row drawn before: the badge still unchooses.
     expect(toggleChoice(doc, 'S3', first)).toBe(false);
     expect(rows()[0]!.chosenTrack).toBeNull();
+  });
+});
+
+describe('Match again', () => {
+  const image = (name: string, n: number): NewFile => ({
+    ...track(name, 'S3', n),
+    kind: 'image',
+    mime: 'image/png',
+    width: 1456,
+    height: 816,
+    duration: null,
+    sceneId: null,
+    matchedBy: null,
+  });
+
+  it('assigns the tray files that now match exactly one scene, and leaves the rest', () => {
+    const { doc, rows } = board();
+    addFiles(doc, [
+      image('you_a_vast_cathedral_nave_flooded_with_seawater_0b6f2c1e-3d4a-4b5c-8d9e-0f1a2b3c4d5e_1.png', 10),
+      { ...track('torre faro.mp3', 'S9', 11), matchedBy: null },
+      { ...track('untitled track.mp3', 'S3', 12), sceneId: null, matchedBy: null },
+    ]);
+    // Prompts written after the drop.
+    setImagePrompt(doc, 'S4', 'A vast cathedral nave flooded with seawater, torchlight --ar 16:9 --v 8.1', 'claude');
+    setMusicPrompt(doc, 'S3', { title: 'Torre Faro', style: 'folk', lyrics: '[End]' }, 'claude');
+
+    const assigned = matchAgain(doc, rows());
+    expect(assigned).toHaveLength(2);
+    expect(matchAgainToast(assigned.length)).toBe('2 files found their scene.');
+    const byName = new Map(readFiles(doc).map((f) => [f.name, f]));
+    expect(byName.get('torre faro.mp3')).toMatchObject({ sceneId: 'S3', matchedBy: 'title' });
+    expect([...byName.values()].find((f) => f.kind === 'image')).toMatchObject({ sceneId: 'S4', matchedBy: 'prompt' });
+    expect(byName.get('untitled track.mp3')).toMatchObject({ sceneId: null, matchedBy: null });
+    // The files already in a scene are left alone.
+    expect(byName.get('ordini del re.mp3')).toMatchObject({ sceneId: 'S3', matchedBy: 'title' });
+  });
+
+  it('assigns nothing when a title is shared by two scenes', () => {
+    const { doc, rows } = board();
+    setMusicPrompt(doc, 'S4', { title: 'Ordini del Re', style: 'martial', lyrics: '[End]' }, 'claude');
+    addFiles(doc, [{ ...track('ordini del re (2).mp3', 'S3', 20), sceneId: null, matchedBy: null }]);
+    expect(matchAgain(doc, rows())).toEqual([]);
+    expect(matchAgainToast(0)).toBe('No file found its scene.');
+    expect(matchAgainToast(1)).toBe('1 file found its scene.');
   });
 });
 

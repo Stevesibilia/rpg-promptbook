@@ -1,4 +1,13 @@
-import { assignFile, chooseFile, readBoard, removeFile, type BoardRow, type FileEntry } from 'promptbook-project';
+import {
+  assignFile,
+  chooseFile,
+  matchFile,
+  readBoard,
+  readFiles,
+  removeFile,
+  type BoardRow,
+  type FileEntry,
+} from 'promptbook-project';
 import type * as Y from 'yjs';
 import { sceneLabel } from './summary.js';
 
@@ -30,6 +39,40 @@ export function assignFromTray(doc: Y.Doc, rows: readonly BoardRow[], fileId: st
   if (!listed(doc, fileId)) return null;
   assignFile(doc, fileId, sceneId, 'hand');
   return `Assigned to ${label(rows, sceneId)}.`;
+}
+
+// Match again (the tray): every file in the tray matched against the prompts
+// and titles as the document holds them now, read afresh rather than from the
+// rows drawn; those that match exactly one scene are assigned to it, in one
+// transaction. The ids of the files assigned.
+export function matchAgain(doc: Y.Doc, rows: readonly BoardRow[]): string[] {
+  const scenes = new Set(rows.map((r) => r.sceneId));
+  const board = readBoard(doc);
+  const matchRows = rows.map(({ sceneId }) => {
+    const entry = board.get(sceneId);
+    return {
+      sceneId,
+      image: entry?.image ? { prompt: entry.image.prompt } : null,
+      music: entry?.music ? { title: entry.music.title } : null,
+    };
+  });
+  const assigned: string[] = [];
+  doc.transact(() => {
+    for (const file of readFiles(doc)) {
+      if (file.sceneId !== null && scenes.has(file.sceneId)) continue;
+      const match = matchFile(file.name, file.kind, matchRows);
+      if (!('sceneId' in match)) continue;
+      assignFile(doc, file.id, match.sceneId, match.matchedBy);
+      assigned.push(file.id);
+    }
+  });
+  return assigned;
+}
+
+// «3 files found their scene.», «1 file found its scene.»
+export function matchAgainToast(n: number): string {
+  if (n === 0) return 'No file found its scene.';
+  return n === 1 ? '1 file found its scene.' : `${n} files found their scene.`;
 }
 
 // The confirm before a file leaves its scene: «Remove this track?», «Take 2

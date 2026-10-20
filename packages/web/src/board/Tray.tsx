@@ -1,7 +1,7 @@
 import { removeFile } from 'promptbook-project';
 import { MusicIcon, WarningIcon } from '../ui/icons.js';
 import { ActionSelect } from './ActionSelect.js';
-import { assignFromTray } from './actions.js';
+import { assignFromTray, matchAgain, matchAgainToast } from './actions.js';
 import { useBoardContext } from './context.js';
 import { FileImage } from './parts.js';
 import { duration, sceneLabel, shortName } from './summary.js';
@@ -22,6 +22,17 @@ export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
         </span>
         <span className="hint">Their names match no prompt or track title.</span>
         <span className="spacer" />
+        <button
+          className="tb xs line"
+          title="Match the files again against the prompts and titles as they are now"
+          onClick={() => {
+            const assigned = matchAgain(doc, rows);
+            for (const id of assigned) mark(id);
+            toast(matchAgainToast(assigned.length));
+          }}
+        >
+          Match again
+        </button>
         <button className="tb xs" onClick={onHelp}>
           How matching works
         </button>
