@@ -34,6 +34,9 @@ declare global {
 }
 
 let window: BrowserWindow | null = null;
+// The account closed: the next quit goes through.
+let closed = false;
+let closing: Promise<void> | null = null;
 
 function broadcast(channel: string, ...args: unknown[]): void {
   for (const w of BrowserWindow.getAllWindows()) {
@@ -63,6 +66,11 @@ if (!electronApp.requestSingleInstanceLock()) {
     ...(e2e ? { snapshotIntervalMs: Number(process.env.PROMPTBOOK_E2E_SNAPSHOT_SECONDS ?? 5) * 1000 } : {}),
   });
   if (e2e) globalThis.__promptbook = app;
+  const closeAll = (): Promise<void> =>
+    (closing ??= (async () => {
+      updater.stop();
+      await app.close().catch((error: unknown) => console.error('Closing the account failed:', error));
+    })());
   const updater = new Updater({
     packaged: electronApp.isPackaged,
     kind: installKind(process.platform, process.env),
@@ -70,6 +78,10 @@ if (!electronApp.requestSingleInstanceLock()) {
     autoUpdater: () => autoUpdater,
     emit: (state) => broadcast(channels.updatesOnState, state),
     openExternal: (url) => shell.openExternal(url),
+    beforeInstall: () =>
+      closeAll().then(() => {
+        closed = true;
+      }),
   });
 
   electronApp.on('second-instance', () => {
@@ -108,15 +120,13 @@ if (!electronApp.requestSingleInstanceLock()) {
   // Every document compacted and the database closed before the process
   // ends; the quit asked again on the next turn is the one that lets it go
   // (Electron ignores a quit asked from inside the handler that refused it).
-  let closed = false;
+  // Restart now closes the same way before the installer takes over.
   electronApp.on('before-quit', (event) => {
     if (closed) return;
     event.preventDefault();
-    closed = true;
-    updater.stop();
-    void app
-      .close()
-      .catch((error: unknown) => console.error('Closing the account failed:', error))
-      .finally(() => setImmediate(() => electronApp.quit()));
+    void closeAll().finally(() => {
+      closed = true;
+      setImmediate(() => electronApp.quit());
+    });
   });
 }

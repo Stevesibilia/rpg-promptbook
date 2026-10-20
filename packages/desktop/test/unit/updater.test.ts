@@ -139,7 +139,7 @@ describe('the updater', () => {
     await updater.openRelease();
     expect(opened).toEqual(['https://github.com/Stevesibilia/rpg-promptbook/releases/tag/v0.6.0']);
     // Restart now means nothing without electron-updater.
-    updater.restart();
+    await updater.restart();
     expect(auto.checks + auto.installs).toBe(0);
   });
 
@@ -195,7 +195,7 @@ describe('the updater', () => {
     await updater.check();
     expect(auto.checks).toBe(1);
     await updater.openRelease();
-    updater.restart();
+    await updater.restart();
     expect(auto.installs).toBe(1);
   });
 
@@ -215,6 +215,32 @@ describe('the updater', () => {
     };
     await updater.check();
     expect(updater.state).toMatchObject({ kind: 'available', version: '0.6.0' });
+  });
+
+  it('takes back an offer when a later check finds nothing newer', async () => {
+    let tag = 'v0.6.0';
+    const { updater } = setup({ answer: () => Response.json(release(tag)) });
+    await updater.check();
+    expect(updater.state.kind).toBe('available');
+    tag = 'v0.5.0';
+    await updater.check();
+    expect(updater.state).toEqual({ kind: 'idle', checking: false });
+  });
+
+  it('closes the app before handing over to the installer', async () => {
+    const order: string[] = [];
+    const { updater, auto } = setup({
+      kind: 'self',
+      beforeInstall: async () => {
+        order.push('closed');
+      },
+    });
+    auto.quitAndInstall = () => void order.push('install');
+    stop = () => updater.stop();
+    updater.start();
+    auto.emit('update-downloaded', { version: '0.6.0', releaseNotes: 'x' });
+    await updater.restart();
+    expect(order).toEqual(['closed', 'install']);
   });
 
   it('runs one check at a time', async () => {

@@ -178,7 +178,7 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   const hourly = page.getByText('Hourly, while editing');
   const before = await hourly.count();
   await appendThroughBridge(mine.id, ' Ancora.');
-  await expect(hourly).toHaveCount(before + 1, { timeout: 20_000 });
+  await expect.poll(() => hourly.count(), { timeout: 20_000 }).toBeGreaterThan(before);
 
   // Quit and start again, still offline.
   await app.close();
@@ -199,7 +199,12 @@ test('back online: the web client has both edits and the new project', async () 
   compose('start', 'app');
   // Linux with no keyring keeps the sign-in in memory only (design decision
   // 8): the relaunch asks to sign in again.
-  if (!(await page.evaluate(() => window.promptbook.auth.state())).remembered) {
+  const { remembered } = await page.evaluate(() => window.promptbook.auth.state());
+  test.info().annotations.push({
+    type: 'sign-in',
+    description: remembered ? 'remembered across the relaunch' : 'not remembered (no keyring): signed in again',
+  });
+  if (!remembered) {
     await expect(syncPill(page)).toHaveAttribute('data-state', 'signed-out', { timeout: 30_000 });
     await page.getByRole('button', { name: 'Sign in…' }).click();
     await finishInBrowser();

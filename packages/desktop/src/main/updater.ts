@@ -85,6 +85,9 @@ export interface UpdaterOptions {
   autoUpdater: () => AutoUpdater;
   emit: (state: UpdatesState) => void;
   openExternal: (url: string) => void | Promise<void>;
+  // Before Restart now hands over to the installer: every document compacted
+  // and the store closed, so the installer never stops the app mid-write.
+  beforeInstall?: () => Promise<void>;
   fetch?: typeof fetch;
   log?: (message: string, error?: unknown) => void;
 }
@@ -172,8 +175,9 @@ export class Updater {
     if (this.updater) {
       try {
         await this.updater.checkForUpdates();
-        // update-available moved on to downloading; otherwise nothing new.
-        if (this.current.kind === 'idle') this.set({ kind: 'idle', checking: false });
+        // update-available moved on to downloading; otherwise nothing new,
+        // and an offer from an earlier lookup is gone too.
+        if (this.current.kind === 'idle' || this.current.kind === 'available') this.set({ kind: 'idle', checking: false });
         return;
       } catch (error) {
         // As CueBard does: the release page is still worth offering.
@@ -182,8 +186,9 @@ export class Updater {
     }
     try {
       const offer = await this.latestRelease();
+      // Nothing newer: an earlier offer goes too (a release taken back).
       if (offer) this.set({ kind: 'available', ...offer });
-      else if (this.current.kind === 'idle') this.set({ kind: 'idle', checking: false });
+      else this.set({ kind: 'idle', checking: false });
     } catch (error) {
       this.log('Looking up the latest release failed:', error);
       this.set(before.kind === 'available' ? before : { kind: 'idle', checking: false });
@@ -201,9 +206,18 @@ export class Updater {
     return parseLatestRelease(await response.json(), this.options.version);
   }
 
-  // Restart now: only with an update downloaded.
-  restart(): void {
-    if (this.current.kind === 'ready' && this.updater) this.updater.quitAndInstall();
+  // Restart now: only with an update downloaded. The app closes its store
+  // first; the installer then replaces it and starts it again.
+  async restart(): Promise<void> {
+    const updater = this.updater;
+    if (this.current.kind !== 'ready' || !updater) return;
+    try {
+      await this.options.beforeInstall?.();
+      updater.quitAndInstall();
+    } catch (error) {
+      // The update still installs on quit (autoInstallOnAppQuit).
+      this.log('Restarting into the update failed:', error);
+    }
   }
 
   // Download, or Full release notes on GitHub.

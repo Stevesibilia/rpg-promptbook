@@ -143,11 +143,13 @@ jobs:
           retention-days: 7
 
   # The GitHub Release for the tag, with generated notes, made once every
-  # platform has built; then every file, replacing any left by an earlier
-  # run of the same tag.
+  # platform has built: a draft first, so the latest release never lacks its
+  # installers or update manifests, then every file (replacing any left by an
+  # earlier run of the same tag), then published. A manual run, even on a
+  # tag, releases nothing.
   release:
     needs: [version, build]
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -165,6 +167,7 @@ jobs:
         run: |
           ls -l release
           if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --generate-notes --verify-tag
+            gh release create "$TAG" --draft --generate-notes --verify-tag
           fi
           gh release upload "$TAG" release/* --clobber
+          gh release edit "$TAG" --draft=false

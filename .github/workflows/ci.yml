@@ -80,8 +80,11 @@ jobs:
       - run: npm run build -w promptbook-web
       - run: npm run build -w promptbook-desktop
       # Ubuntu's AppArmor refuses the unprivileged user namespaces Electron's
-      # renderer sandbox needs.
-      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # renderer sandbox needs (on images that have the setting).
+      - run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       # Electron needs a display: xvfb-run gives it one.
       - run: xvfb-run -a npm run e2e
         env:
