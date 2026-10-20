@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { createProject, row, signIn, syncPill } from './helpers.js';
-import { baseURL, password, username } from './stack.js';
+import { baseURL, password, releaseVersion, username } from './stack.js';
 
 // The scenarios of design decision 11, against the compose stack.
 
@@ -28,6 +28,15 @@ test('sign in, with a wrong password first, lands on the page asked for', async 
   await expect(fresh.locator('.crumbs')).toContainText(project.title);
   await expect(fresh.locator('.cm-content')).toContainText(`titolo: ${project.title}`);
   await other.close();
+});
+
+test("the rail shows the server's release under Settings", async ({ page }) => {
+  await signIn(page);
+  const note = page.getByRole('note', { name: `Release ${releaseVersion}` });
+  await expect(note).toHaveText(releaseVersion);
+  const settings = await page.getByRole('button', { name: 'Settings' }).boundingBox();
+  const release = await note.boundingBox();
+  expect(release!.y).toBeGreaterThan(settings!.y + settings!.height - 1);
 });
 
 test('create an adventure in a campaign and open it', async ({ page }) => {

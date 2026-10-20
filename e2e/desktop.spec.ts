@@ -145,6 +145,9 @@ test('signs in through the browser and downloads every project', async ({ reques
   await expect(page.getByText('All on this device')).toBeVisible();
   await expect(row(page, mine.title)).toBeVisible();
   expect(accountFolders()).toHaveLength(1);
+  // The unpackaged build is 0.0.0, which is no release: the rail shows none.
+  await expect(page.locator('.rail .rail-version')).toBeAttached();
+  await expect(page.getByRole('note', { name: /^Release / })).toHaveCount(0);
 });
 
 test('an edit online reaches the server', async () => {
