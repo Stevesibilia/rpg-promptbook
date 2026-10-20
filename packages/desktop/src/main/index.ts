@@ -1,36 +1,84 @@
-import { app as electronApp, BrowserWindow, protocol } from 'electron';
+import { app as electronApp, BrowserWindow, protocol, safeStorage, shell, webContents } from 'electron';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
+import { App } from './app.js';
+import { registerIpc } from './ipc.js';
 import { privileges, SCHEME, serveApp } from './protocol.js';
 import { createWindow, guardWebContents, lockPermissions } from './window.js';
 
-// The app's lifecycle (desktop-app design decisions 1 to 3): one instance,
-// the promptbook:// scheme and the window.
+// The app's lifecycle (desktop-app design decisions 1 to 5): one instance,
+// the promptbook:// scheme, the window, the bridge, and every project of the
+// account synced in this process. On quit every document is compacted before
+// the process ends.
 //
-// PROMPTBOOK_USER_DATA sets the data folder.
+// PROMPTBOOK_USER_DATA sets the data folder and PROMPTBOOK_SERVER the server
+// the Sign in screen offers; PROMPTBOOK_E2E=1 hands the authorize URL to the
+// tests instead of opening the browser, and takes local snapshots every
+// PROMPTBOOK_E2E_SNAPSHOT_SECONDS (5 by default).
 
 electronApp.setName('Promptbook');
 const userData = process.env.PROMPTBOOK_USER_DATA || join(electronApp.getPath('appData'), 'Promptbook');
 electronApp.setPath('userData', userData);
 
+const e2e = process.env.PROMPTBOOK_E2E === '1';
+
 protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges }]);
 
+declare global {
+  // The sign-in in progress, for the tests (PROMPTBOOK_E2E only).
+  var __promptbookAuthorizeUrl: string | undefined;
+  var __promptbook: App | undefined;
+}
+
 let window: BrowserWindow | null = null;
+
+function broadcast(channel: string, ...args: unknown[]): void {
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) w.webContents.send(channel, ...args);
+  }
+}
+
+function sendTo(id: number, channel: string, ...args: unknown[]): void {
+  const contents = webContents.fromId(id);
+  if (contents && !contents.isDestroyed()) contents.send(channel, ...args);
+}
 
 if (!electronApp.requestSingleInstanceLock()) {
   electronApp.quit();
 } else {
+  const app = new App({
+    userData,
+    defaultServer: process.env.PROMPTBOOK_SERVER ?? '',
+    secrets: safeStorage,
+    hostname: hostname(),
+    openExternal: (url) => {
+      if (e2e) globalThis.__promptbookAuthorizeUrl = url;
+      else return shell.openExternal(url);
+    },
+    broadcast,
+    sendTo,
+    ...(e2e ? { snapshotIntervalMs: Number(process.env.PROMPTBOOK_E2E_SNAPSHOT_SECONDS ?? 5) * 1000 } : {}),
+  });
+  if (e2e) globalThis.__promptbook = app;
+
   electronApp.on('second-instance', () => {
     if (!window) return;
     if (window.isMinimized()) window.restore();
     window.focus();
   });
 
-  electronApp.on('web-contents-created', (_event, contents) => guardWebContents(contents));
+  electronApp.on('web-contents-created', (_event, contents) => {
+    guardWebContents(contents);
+    const id = contents.id;
+    contents.on('destroyed', () => app.account?.engine.releaseAll(id));
+  });
 
   void electronApp.whenReady().then(() => {
     const root = join(__dirname, '..', 'app', 'web');
     protocol.handle(SCHEME, (request) => serveApp(root, request));
     lockPermissions();
+    registerIpc(app);
+    app.start();
     window = createWindow();
     window.on('closed', () => {
       window = null;
@@ -43,5 +91,19 @@ if (!electronApp.requestSingleInstanceLock()) {
 
   electronApp.on('window-all-closed', () => {
     if (process.platform !== 'darwin') electronApp.quit();
+  });
+
+  // Every document compacted and the database closed before the process
+  // ends; the quit asked again on the next turn is the one that lets it go
+  // (Electron ignores a quit asked from inside the handler that refused it).
+  let closed = false;
+  electronApp.on('before-quit', (event) => {
+    if (closed) return;
+    event.preventDefault();
+    closed = true;
+    void app
+      .close()
+      .catch((error: unknown) => console.error('Closing the account failed:', error))
+      .finally(() => setImmediate(() => electronApp.quit()));
   });
 }
