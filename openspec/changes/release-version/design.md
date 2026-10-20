@@ -35,6 +35,21 @@ server).
    Settings is reserved by the rail's layout, or the label is absolutely
    positioned).
 
+### Departures accepted in review (2026-10-20)
+
+1. The desktop e2e checks that the unpackaged build (version `0.0.0`) shows
+   no release; the positive desktop case is a unit test of the desktop
+   platform.
+2. `e2e/stack.ts` takes `E2E_PROJECT` (default `promptbook-e2e`), and
+   teardown follows it, so two worktrees can run the suite at once.
+3. `compose.yaml` passes `APP_VERSION` (default `dev`) to the app; the e2e
+   stack sets `v9.9.9` and the browser e2e checks the rail reads it.
+4. The "only when known" rendering is tested through an exported
+   `ReleaseNote` rendered to static markup, since the web tests have no
+   component harness.
+5. The label's slot is always rendered (10 px), so the rail never moves; the
+   rail has no phone layout, and the label hides with the rail in focus mode.
+
 ## Risks / Trade-offs
 
 - [A cached service worker or tab may show an older release after a
