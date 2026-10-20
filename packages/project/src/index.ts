@@ -5,6 +5,7 @@ export {
   boardRows,
   chooseFile,
   duplicateTitles,
+  fileHashes,
   fileKinds,
   halfStatuses,
   isSha256,

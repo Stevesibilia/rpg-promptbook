@@ -5,8 +5,8 @@ import { requireSession } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
-import { HashMismatch, TooLarge, type BlobStore } from '../files/blobs.js';
-import { fitsQuota, linkedFile, linkFile } from '../files/store.js';
+import { HashMismatch, Incomplete, TooLarge, type BlobStore } from '../files/blobs.js';
+import { fitsQuota, linkedFile, linkFile, quotaReached } from '../files/store.js';
 import { getProject } from '../projects.js';
 import { NOT_FOUND } from './projects.js';
 
@@ -90,7 +90,9 @@ function parseRange(header: string | undefined, size: number): { start: number; 
   }
   const start = Number(match[1]);
   const end = match[2] === '' ? size - 1 : Math.min(Number(match[2]), size - 1);
-  if (start >= size || (match[2] !== '' && Number(match[2]) < start)) return 'unsatisfiable';
+  // A last byte before the first makes the header invalid, so it is ignored.
+  if (match[2] !== '' && Number(match[2]) < start) return null;
+  if (start >= size) return 'unsatisfiable';
   return { start, end };
 }
 
@@ -105,34 +107,54 @@ export async function filesRoutes(
 
   const quotaBytes = config.filesQuotaGb * GIB;
 
+  // A refusal that leaves a body unread, of unknown or refused length, ends
+  // the connection: Node would otherwise read all of it to keep the
+  // connection alive. A body whose head was read and whose length is within
+  // the limits is drained instead (`drained`), so the client gets its answer.
+  const drained = new WeakSet<FastifyRequest>();
+  app.addHook('onSend', async (req, reply) => {
+    if (req.method === 'PUT' && reply.statusCode >= 400 && !req.raw.complete && !drained.has(req)) {
+      reply.header('connection', 'close');
+    }
+  });
+
   app.put('/api/projects/:id/files/:sha256', async (req, reply) => {
     const { id, sha256 } = params(req);
     const { userId } = await ownProject(db, req, id);
     const length = contentLength(req);
     const linked = await linkedFile(db, id, sha256);
     // A retry, or a file the project still links: the body is not read.
-    if (linked) return reply.code(200).send(linked);
+    // Bytes lost from the disk are uploaded again below.
+    if (linked && (await blobs.has(sha256))) return reply.code(200).send(linked);
     // Knowing a hash never grants a file: another project's or user's copy is
     // read and hashed below like a new one.
-    if (!(await fitsQuota(db, userId, sha256, length, quotaBytes))) {
-      throw new AppError(507, 'quota', 'Your files have reached their quota.');
-    }
+    if (!(await fitsQuota(db, userId, sha256, length, quotaBytes))) throw quotaReached();
     const { head, rest } = await readHead(req);
-    const type: Sniffed | null = sniff(head);
-    if (!type) throw new AppError(415, 'unsupported_type', 'Only PNG, JPEG and WebP images and MP3, M4A, AAC, WAV, Ogg and FLAC tracks.');
-    if (length > FILE_LIMITS[type.kind]) throw tooLarge();
-    let size: number;
     try {
-      ({ size } = await blobs.put(sha256, rejoin(head, rest), { maxBytes: length }));
+      const type: Sniffed | null = sniff(head);
+      if (!type) {
+        throw new AppError(415, 'unsupported_type', 'Only PNG, JPEG and WebP images and MP3, M4A, AAC, WAV, Ogg and FLAC tracks.');
+      }
+      if (length > FILE_LIMITS[type.kind]) throw tooLarge();
+      try {
+        await blobs.put(sha256, rejoin(head, rest), { maxBytes: length, size: length });
+      } catch (error) {
+        if (error instanceof TooLarge) throw tooLarge();
+        if (error instanceof HashMismatch) throw new AppError(400, 'hash_mismatch', error.message);
+        if (error instanceof Incomplete) throw new AppError(400, 'validation_error', error.message);
+        throw error;
+      }
+      const stored = { sha256, size: length, mime: type.mime };
+      await linkFile(db, blobs, id, stored, { userId, quotaBytes });
+      return reply.code(201).send(stored);
     } catch (error) {
-      if (error instanceof TooLarge) throw tooLarge();
-      if (error instanceof HashMismatch) throw new AppError(400, 'hash_mismatch', error.message);
+      // The rest of the body, at most the 80 MB of its declared length, is
+      // read and thrown away.
+      drained.add(req);
+      await rest.return?.();
+      req.raw.resume();
       throw error;
     }
-    if (size !== length || size === 0) throw new AppError(400, 'validation_error', 'The upload ended early.');
-    const stored = { sha256, size, mime: type.mime };
-    await linkFile(db, id, stored, userId);
-    return reply.code(201).send(stored);
   });
 
   // GET and HEAD in one route: HEAD answers the same headers without opening
@@ -144,7 +166,9 @@ export async function filesRoutes(
       const { id, sha256 } = params(req);
       await ownProject(db, req, id);
       const file = await linkedFile(db, id, sha256);
-      if (!file) throw NOT_FOUND();
+      // Linked but not on disk (a lost volume, design.md Risks): not found, so
+      // a client that still has the file uploads it again.
+      if (!file || !(await blobs.has(sha256))) throw NOT_FOUND();
       const range = parseRange(req.headers.range, file.size);
       const headers = {
         'accept-ranges': 'bytes',
@@ -156,8 +180,8 @@ export async function filesRoutes(
       if (range === 'unsatisfiable') {
         return reply.code(416).headers({ ...headers, 'content-range': `bytes */${file.size}` }).send();
       }
-      // Opened first, so a file missing from the disk (a lost volume, design.md
-      // Risks) is answered as not found rather than with its headers.
+      // Opened before the headers are set, so a file that went missing since
+      // is answered as not found rather than with its headers.
       const blob = req.method === 'HEAD' ? null : await blobs.get(sha256, range ?? undefined);
       if (req.method !== 'HEAD' && !blob) throw NOT_FOUND();
       if (range) reply.code(206).header('content-range', `bytes ${range.start}-${range.end}/${file.size}`);

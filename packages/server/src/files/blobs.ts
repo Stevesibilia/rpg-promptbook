@@ -13,11 +13,12 @@ import { ConfigError } from '../config.js';
 export interface BlobStore {
   has(sha256: string): Promise<boolean>;
   // Streams `body` to a temporary file while hashing it; refuses past
-  // `maxBytes` with TooLarge; on a hash other than `sha256` deletes it and
-  // throws HashMismatch; otherwise moves it into place. Nothing is left
+  // `maxBytes` with TooLarge, and short of `size` when given with
+  // Incomplete; on a hash other than `sha256` deletes it and throws
+  // HashMismatch; otherwise moves it into place. Nothing is left
   // behind when it throws, and `body` is never destroyed, so the request it
   // comes from can still be answered.
-  put(sha256: string, body: Readable, opts: { maxBytes: number }): Promise<{ size: number }>;
+  put(sha256: string, body: Readable, opts: { maxBytes: number; size?: number }): Promise<{ size: number }>;
   // A range is inclusive at both ends, as in HTTP; `size` is always the whole
   // file's.
   get(sha256: string, range?: { start: number; end: number }): Promise<{ stream: Readable; size: number } | null>;
@@ -31,6 +32,12 @@ export interface BlobStore {
 export class HashMismatch extends Error {
   constructor() {
     super('The bytes do not have the SHA-256 the request names.');
+  }
+}
+
+export class Incomplete extends Error {
+  constructor() {
+    super('The upload ended early.');
   }
 }
 
@@ -77,7 +84,11 @@ export class FsBlobStore implements BlobStore {
     }
   }
 
-  async put(sha256: string, body: Readable, { maxBytes }: { maxBytes: number }): Promise<{ size: number }> {
+  async put(
+    sha256: string,
+    body: Readable,
+    { maxBytes, size: expected }: { maxBytes: number; size?: number },
+  ): Promise<{ size: number }> {
     const target = this.path(sha256);
     const temp = join(this.tmp, randomUUID());
     const out = createWriteStream(temp, { flags: 'wx' });
@@ -100,6 +111,7 @@ export class FsBlobStore implements BlobStore {
       out.end();
       if (!out.closed) await once(out, 'close');
       if (failed) throw failed;
+      if (expected !== undefined && size !== expected) throw new Incomplete();
       if (hash.digest('hex') !== sha256) throw new HashMismatch();
       await mkdir(join(this.root, sha256.slice(0, 2)), { recursive: true });
       // Over a copy already there, which has the same bytes: the new one's

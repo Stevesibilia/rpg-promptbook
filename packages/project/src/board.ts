@@ -149,6 +149,21 @@ const byAdded = (a: FileEntry, b: FileEntry): number => {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 };
 
+// Every file and thumbnail hash the document names, whatever the item's
+// kind and past CAPS.files: what the file stores must keep for it, read so
+// that a newer client's kinds keep their bytes too.
+export function fileHashes(doc: Y.Doc): Set<string> {
+  const hashes = new Set<string>();
+  for (const item of filesOf(doc).toArray()) {
+    if (!isItem(item)) continue;
+    for (const key of ['sha256', 'thumbSha256']) {
+      const value = item.get(key);
+      if (isSha256(value)) hashes.add(value);
+    }
+  }
+  return hashes;
+}
+
 // Oldest first, ties by id.
 export function readFiles(doc: Y.Doc): FileEntry[] {
   return validFiles(doc).map(toFile).sort(byAdded);

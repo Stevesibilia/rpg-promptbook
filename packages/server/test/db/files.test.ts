@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
-import { request } from 'node:http';
+import { Agent, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -328,15 +328,17 @@ describe('serving a file', () => {
     expect(suffix.rawPayload.equals(bytes.subarray(9990))).toBe(true);
     const past = await get(s, s.project, hash, { range: 'bytes=9000-20000' });
     expect(past.headers['content-range']).toBe('bytes 9000-9999/10000');
-    for (const range of ['bytes=10000-', 'bytes=20000-30000', 'bytes=-0', 'bytes=5-4']) {
+    for (const range of ['bytes=10000-', 'bytes=20000-30000', 'bytes=-0']) {
       const response = await get(s, s.project, hash, { range });
       expect(response.statusCode, range).toBe(416);
       expect(response.headers['content-range']).toBe('bytes */10000');
     }
-    // A range this route does not read gets the whole file.
-    const several = await get(s, s.project, hash, { range: 'bytes=0-1,5-6' });
-    expect(several.statusCode).toBe(200);
-    expect(several.rawPayload.length).toBe(10_000);
+    // A range this route does not read, or an invalid one, gets the whole file.
+    for (const range of ['bytes=0-1,5-6', 'bytes=5-4', 'items=0-1']) {
+      const whole = await get(s, s.project, hash, { range });
+      expect(whole.statusCode, range).toBe(200);
+      expect(whole.rawPayload.length).toBe(10_000);
+    }
   });
 
   it('answers 404 for a file the project does not link, even one another project has', async () => {
@@ -364,6 +366,12 @@ describe('serving a file', () => {
     const lost = await get(s, s.project, hash);
     expect(lost.statusCode).toBe(404);
     expect(lost.json().error).toBe('not_found');
+    // So the client uploads it again, and the bytes are read this time.
+    expect((await get(s, s.project, hash, {}, 'HEAD')).statusCode).toBe(404);
+    expect((await put(s, s.project, hash, png())).json().error).toBe('hash_mismatch');
+    expect((await put(s, s.project, hash, bytes)).statusCode).toBe(201);
+    expect((await get(s, s.project, hash)).rawPayload.equals(bytes)).toBe(true);
+    expect((await rows()).links).toHaveLength(1);
   });
 
   it('needs a session', async () => {
@@ -388,6 +396,55 @@ describe('the projects in the bin for good', () => {
     await purge(db);
     expect((await rows()).links).toEqual([]);
     expect((await rows()).files).toHaveLength(1);
+  });
+});
+
+describe('a refused upload', () => {
+  it('ends the connection when the body is unread and its length unknown or refused', async () => {
+    const s = await setup();
+    const bytes = png();
+    const chunked = await put(s, s.project, sha(bytes), Readable.from([bytes]));
+    expect(chunked.statusCode).toBe(411);
+    expect(chunked.headers.connection).toBe('close');
+    const huge = await put(s, s.project, sha(bytes), bytes, { 'content-length': String(81 * 1024 * 1024) });
+    expect(huge.headers.connection).toBe('close');
+    expect((await put(s, s.project, sha(bytes), bytes)).headers.connection).not.toBe('close');
+  });
+
+  it('reads the rest of a refused body, so the connection answers the next request', { timeout: 30_000 }, async () => {
+    const s = await setup();
+    await s.app.listen({ port: 0, host: '127.0.0.1' });
+    const { port } = s.app.server.address() as AddressInfo;
+    const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+    const send = (method: string, path: string, body?: Buffer) =>
+      new Promise<{ status: number; body: string; socket: unknown }>((resolve, reject) => {
+        const req = request(
+          {
+            port,
+            method,
+            path,
+            agent,
+            headers: { ...auth(s.token), ...(body ? { 'content-type': 'application/octet-stream', 'content-length': body.length } : {}) },
+          },
+          (res) => {
+            let text = '';
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => (text += chunk));
+            res.on('end', () => resolve({ status: res.statusCode!, body: text, socket: req.socket }));
+          },
+        );
+        req.on('error', reject);
+        req.end(body);
+      });
+    const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), randomBytes(8 * 1024 * 1024)]);
+    const refused = await send('PUT', fileUrl(s.project, sha(pdf)), pdf);
+    expect(refused.status).toBe(415);
+    const started = Date.now();
+    const next = await send('GET', '/api/health');
+    expect(next.status).toBe(200);
+    expect(next.socket).toBe(refused.socket);
+    expect(Date.now() - started).toBeLessThan(5000);
+    agent.destroy();
   });
 });
 

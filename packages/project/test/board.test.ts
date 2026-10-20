@@ -8,6 +8,7 @@ import {
   CAPS,
   chooseFile,
   duplicateTitles,
+  fileHashes,
   LIMITS,
   readBoard,
   readFiles,
@@ -258,6 +259,15 @@ describe('files', () => {
       sceneId: null,
       addedBy: 'user',
     });
+  });
+
+  it('names every hash the document lists, thumbnails and unknown kinds included', () => {
+    const doc = project();
+    addFiles(doc, [image(1), track(2)]);
+    const item = new Y.Map<unknown>();
+    for (const [k, v] of Object.entries({ id: 'v', sha256: hash(3), kind: 'video', thumbSha256: 'bad' })) item.set(k, v);
+    doc.getArray<Y.Map<unknown>>('files').push([item]);
+    expect([...fileHashes(doc)].sort()).toEqual([hash(1), hash(2), hash(3), hash(1001)].sort());
   });
 
   it('chooses and unchooses a file of the scene', () => {

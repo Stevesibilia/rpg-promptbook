@@ -1,18 +1,14 @@
-import { readFiles } from 'promptbook-project';
+import { fileHashes } from 'promptbook-project';
 import type { Db } from '../db.js';
 import { loadProjectDoc } from '../projects.js';
 import type { BlobStore } from './blobs.js';
+import { lockContent } from './store.js';
 
 // The daily sweep of the file store (asset-board design decision 6): a
 // project keeps its link to a file while its stored document lists it, and
 // for the grace period after; a file no project links is deleted.
 
 const DAY_MS = 86_400_000;
-// A blob written this recently may belong to an upload whose rows are not
-// committed yet: its bytes wait for a later sweep.
-const IN_FLIGHT_MS = 3_600_000;
-
-const FOREIGN_KEY_VIOLATION = '23503';
 
 export interface Swept {
   // Links whose document lists the file again.
@@ -38,7 +34,7 @@ export async function sweepFiles(db: Db, blobs: BlobStore, { graceDays }: { grac
     const doc = await loadProjectDoc(db, projectId);
     // No stored document to read: nothing can be said about its links.
     if (!doc) continue;
-    const listed = [...new Set(readFiles(doc).flatMap((f) => (f.thumbSha256 ? [f.sha256, f.thumbSha256] : [f.sha256])))];
+    const listed = [...fileHashes(doc)];
     doc.destroy();
     const relisted = await db.query(
       `update project_files set unreferenced_since = null
@@ -61,33 +57,29 @@ export async function sweepFiles(db: Db, blobs: BlobStore, { graceDays }: { grac
     swept.unreferenced += unreferenced.length;
   }
 
-  // 2. Files no project links, one at a time: an upload linking one again
-  // meanwhile makes its delete fail, and it stays.
+  // 2. Files no project links, with their bytes. Each one under its
+  // content's lock (store.ts): an upload linking it meanwhile either commits
+  // first, and the file stays, or finds the bytes gone and answers retry.
   const unlinked = await db.query<{ sha256: string }>(
     'select sha256 from files f where not exists (select 1 from project_files pf where pf.sha256 = f.sha256)',
   );
-  const recent = new Set<string>();
-  for await (const blob of blobs.list()) if (blob.mtimeMs > Date.now() - IN_FLIGHT_MS) recent.add(blob.sha256);
   for (const { sha256 } of unlinked) {
-    try {
-      const deleted = await db.query(
+    const deleted = await db.withTransaction(async (tx) => {
+      await lockContent(tx, sha256);
+      const rows = await tx.query(
         `delete from files f where sha256 = $1
          and not exists (select 1 from project_files pf where pf.sha256 = f.sha256) returning sha256`,
         [sha256],
       );
-      if (deleted.length === 0) continue;
-    } catch (error) {
-      if ((error as { code?: unknown }).code === FOREIGN_KEY_VIOLATION) continue;
-      throw error;
-    }
-    swept.files++;
-    // Written again by an upload in the meantime: step 3 has it tomorrow if
-    // that upload never commits.
-    if (!recent.has(sha256)) await blobs.delete(sha256);
+      if (rows.length > 0) await blobs.delete(sha256);
+      return rows.length > 0;
+    });
+    if (deleted) swept.files++;
   }
 
   // 3. Bytes with no row, older than a day: a stop between the move into
-  // place and the commit. Then the temporary files of uploads cut short.
+  // place and the commit, or an upload past the quota. Looked for again
+  // under the content's lock, as in step 2.
   const old: string[] = [];
   for await (const blob of blobs.list()) if (blob.mtimeMs < Date.now() - DAY_MS) old.push(blob.sha256);
   const known = new Set(
@@ -97,8 +89,13 @@ export async function sweepFiles(db: Db, blobs: BlobStore, { graceDays }: { grac
   );
   for (const sha256 of old) {
     if (known.has(sha256)) continue;
-    await blobs.delete(sha256);
-    swept.orphans++;
+    const removed = await db.withTransaction(async (tx) => {
+      await lockContent(tx, sha256);
+      if (await tx.queryOne('select 1 from files where sha256 = $1', [sha256])) return false;
+      await blobs.delete(sha256);
+      return true;
+    });
+    if (removed) swept.orphans++;
   }
   swept.temp = await blobs.clearTemp(DAY_MS);
   return swept;

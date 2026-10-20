@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { addFiles, readFiles, removeFile, type NewFile } from 'promptbook-project';
+import * as Y from 'yjs';
 import { describe, expect, it } from 'vitest';
 import { openBlobStore, type FsBlobStore } from '../../src/files/blobs.js';
 import { linkFile } from '../../src/files/store.js';
@@ -35,7 +36,7 @@ async function stored({ blobs, userId }: Setup, projectId: string, bytes = png()
   const hash = sha(bytes);
   await blobs.put(hash, Readable.from([bytes]), { maxBytes: bytes.length });
   utimesSync(join(blobs.root, hash.slice(0, 2), hash), TWO_DAYS_AGO, TWO_DAYS_AGO);
-  await linkFile(db, projectId, { sha256: hash, size: bytes.length, mime: 'image/png' }, userId);
+  await linkFile(db, blobs, projectId, { sha256: hash, size: bytes.length, mime: 'image/png' }, { userId, quotaBytes: 1024 ** 3 });
   return hash;
 }
 
@@ -151,14 +152,47 @@ describe('the file sweep', () => {
     expect(onDisk(s, hash)).toBe(false);
   });
 
-  it('leaves the bytes of an unlinked file written in the last hour for a later sweep', async () => {
+  it('keeps the links of files of a kind it does not know, which a newer client may write', async () => {
     const s = await setup();
     const id = await project(s);
     const hash = await stored(s, id);
-    utimesSync(join(s.blobs.root, hash.slice(0, 2), hash), new Date(), new Date());
-    await db.query('delete from projects where id = $1', [id]);
-    expect(await sweepFiles(db, s.blobs, GRACE)).toMatchObject({ files: 1, orphans: 0 });
-    expect(onDisk(s, hash)).toBe(true);
+    await edit(id, (doc) => {
+      const item = new Y.Map<unknown>();
+      for (const [k, v] of Object.entries({ id: 'v1', sha256: hash, kind: 'video', addedAt: new Date().toISOString() })) item.set(k, v);
+      doc.getArray<Y.Map<unknown>>('files').push([item]);
+    });
+    expect(await sweepFiles(db, s.blobs, GRACE)).toMatchObject({ unreferenced: 0 });
+    expect(await links()).toEqual([{ project_id: id, sha256: hash, unreferenced: false }]);
+  });
+
+  it('answers retry to an upload whose bytes a sweep deleted before it was linked', async () => {
+    const s = await setup();
+    const id = await project(s);
+    const bytes = png();
+    const hash = sha(bytes);
+    await s.blobs.put(hash, Readable.from([bytes]), { maxBytes: bytes.length });
+    await s.blobs.delete(hash);
+    const linking = linkFile(db, s.blobs, id, { sha256: hash, size: bytes.length, mime: 'image/png' }, {
+      userId: s.userId,
+      quotaBytes: 1024 ** 3,
+    });
+    await expect(linking).rejects.toMatchObject({ status: 503, code: 'retry' });
+    expect(await links()).toEqual([]);
+  });
+
+  it('checks the quota again when it links, against uploads that finished meanwhile', async () => {
+    const s = await setup();
+    const id = await project(s);
+    await stored(s, id);
+    await db.query('update files set size = 1000');
+    const bytes = png();
+    await s.blobs.put(sha(bytes), Readable.from([bytes]), { maxBytes: bytes.length });
+    const linking = linkFile(db, s.blobs, id, { sha256: sha(bytes), size: bytes.length, mime: 'image/png' }, {
+      userId: s.userId,
+      quotaBytes: 1200,
+    });
+    await expect(linking).rejects.toMatchObject({ status: 507, code: 'quota' });
+    expect(await links()).toHaveLength(1);
   });
 
   it('deletes bytes with no row and temporary files older than a day, and keeps newer ones', async () => {
