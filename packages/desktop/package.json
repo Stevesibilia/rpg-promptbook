@@ -1,0 +1,30 @@
+{
+  "name": "promptbook-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The RPG Promptbook desktop app: the web client in Electron, with every project on this computer.",
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "electron .",
+    "test": "vitest run",
+    "prove": "playwright test -c test/stack/playwright.config.ts"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "^4.7.1",
+    "@hocuspocus/server": "^4.7.1",
+    "@types/node": "^26.6.5",
+    "electron": "44.9.1",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "promptbook-format": "^0.0.0",
+    "promptbook-project": "^0.0.0",
+    "promptbook-web": "^0.0.0",
+    "vitest": "^5.0.5",
+    "yjs": "^13.6.33"
+  }
+}
