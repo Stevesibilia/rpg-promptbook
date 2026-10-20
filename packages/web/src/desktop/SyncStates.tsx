@@ -249,8 +249,8 @@ export function DesktopSyncStrip() {
 }
 
 // The status bar's sync text, on the right, and its colour: amber (a) or
-// red (d).
-export function statusSyncText(sync: SyncSnapshot): { text: string; tone?: 'a' | 'd' } {
+// red (d). Offline, the board's files waiting to upload are counted too.
+export function statusSyncText(sync: SyncSnapshot, filesWaiting = 0): { text: string; tone?: 'a' | 'd' } {
   const projects = sync.device?.projects ?? [];
   switch (sync.state) {
     case 'synced':
@@ -261,7 +261,11 @@ export function statusSyncText(sync: SyncSnapshot): { text: string; tone?: 'a' |
     case 'reconnecting': {
       if (refusedOnline(sync)) return { text: stateLabels.local, tone: 'a' };
       const n = unsent(projects);
-      return { text: n ? `Offline · ${changes(n)} on this device` : 'Offline · nothing waiting to sync', tone: 'a' };
+      const parts = [
+        ...(n ? [`${changes(n)} on this device`] : []),
+        ...(filesWaiting ? [`${filesWaiting} ${filesWaiting === 1 ? 'file' : 'files'} waiting to upload`] : []),
+      ];
+      return { text: parts.length ? ['Offline', ...parts].join(' · ') : 'Offline · nothing waiting to sync', tone: 'a' };
     }
     case 'not-saved':
       return { text: 'Not saved', tone: 'd' };
@@ -270,8 +274,9 @@ export function statusSyncText(sync: SyncSnapshot): { text: string; tone?: 'a' |
   }
 }
 
-export function desktopStatusSync(sync: SyncSnapshot) {
-  const { text, tone } = statusSyncText(sync);
+export function DesktopStatusSync({ sync }: { sync: SyncSnapshot }) {
+  const files = useStore(useDesktop().files);
+  const { text, tone } = statusSyncText(sync, files.waiting.length);
   return <span {...(tone ? { className: tone } : {})}>{text}</span>;
 }
 

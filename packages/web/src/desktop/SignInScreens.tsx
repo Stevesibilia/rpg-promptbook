@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuthConfig } from '../auth/config.js';
 import { Brand } from '../auth/SignInPage.js';
-import type { AuthState, DesktopSyncStatus } from '../platform/bridge.js';
+import type { AuthState, DesktopProjectStatus, DesktopSyncStatus } from '../platform/bridge.js';
 import { useDesktop, useStore } from '../platform/hooks.js';
 import { useProjects } from '../projects/useProjects.js';
 import { ExternalIcon } from '../ui/icons.js';
@@ -123,9 +123,11 @@ export function FirstSyncScreen({ status, onStart }: { status: DesktopSyncStatus
   const { projects: rows } = useProjects();
   const title = (id: string, fallback: string) => rows?.find((r) => r.id === id)?.title ?? fallback;
   const projects = status.projects;
-  const done = projects.filter((p) => p.downloaded);
-  const current = projects.find((p) => !p.downloaded)?.id;
-  const bytes = done.reduce((n, p) => n + p.bytes, 0);
+  // ✓ once the document and the images and tracks it lists are here.
+  const here = (p: DesktopProjectStatus) => p.downloaded && p.filesMissing === 0;
+  const done = projects.filter(here);
+  const current = projects.find((p) => !here(p))?.id;
+  const bytes = projects.reduce((n, p) => n + (p.downloaded ? p.bytes + p.fileBytes : 0), 0);
   return (
     <div className="full">
       <div className="auth first-sync">
@@ -145,9 +147,9 @@ export function FirstSyncScreen({ status, onStart }: { status: DesktopSyncStatus
           {projects.map((p) => (
             <li key={p.id}>
               <span>{title(p.id, p.downloaded ? p.title : '…')}</span>
-              <span>{p.downloaded ? size(p.bytes) : ''}</span>
-              <span className={p.downloaded ? 'okc' : p.id === current ? 'now' : ''}>
-                {p.downloaded ? '✓' : p.id === current ? '↓' : ''}
+              <span>{p.downloaded ? size(p.bytes + p.fileBytes) : ''}</span>
+              <span className={here(p) ? 'okc' : p.id === current ? 'now' : ''}>
+                {here(p) ? '✓' : p.id === current ? '↓' : ''}
               </span>
             </li>
           ))}

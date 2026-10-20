@@ -177,6 +177,13 @@
 .board .info.good .ic {
   color: var(--primary);
 }
+.board .info.local {
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+.board .info.local .ic {
+  color: var(--amber);
+}
 .board .info.bad {
   border-color: color-mix(in srgb, var(--danger) 45%, transparent);
   background: color-mix(in srgb, var(--danger) 6%, transparent);
@@ -675,6 +682,25 @@
   background: var(--info);
   color: var(--on-info);
 }
+.board .badge.dev {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  z-index: 2;
+  font: 600 10.5px var(--font);
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.62);
+  color: #ffd28a;
+}
+.board .badge.dev .ic {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.2;
+}
 .board .th-i .idx {
   position: absolute;
   right: 6px;
@@ -780,6 +806,15 @@
   border-radius: 999px;
   background: var(--info);
   color: var(--on-info);
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.board .trk-r .devdot {
+  font: 600 10.5px var(--font);
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--amber);
+  color: var(--amber);
   margin-left: 6px;
   vertical-align: 1px;
 }

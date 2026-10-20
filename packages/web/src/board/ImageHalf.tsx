@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BoardRow, FileEntry } from 'promptbook-project';
-import { DropIcon, EditIcon, ImageIcon } from '../ui/icons.js';
+import { DropIcon, EditIcon, ImageIcon, LaptopIcon } from '../ui/icons.js';
 import { toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';
 import { CopyButton } from './CopyButton.js';
+import { localTitle, useLocalFiles } from './device.js';
 import { FileImage, Provenance, SourceLine, StatusChip } from './parts.js';
 import { ImagePromptEditor } from './PromptEditor.js';
 
@@ -97,6 +98,7 @@ export function ImageHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
 
 function Thumb({ row, file, n }: { row: BoardRow; file: FileEntry; n: number }) {
   const { doc, projectId, marks, openViewer } = useBoardContext();
+  const local = useLocalFiles(projectId);
   const chosen = row.chosenImage === file.id;
   const others = row.chosenImage !== null && !chosen;
   const open = () => openViewer(row.sceneId, file.id);
@@ -129,7 +131,14 @@ function Thumb({ row, file, n }: { row: BoardRow; file: FileEntry; n: number }) 
         {chosen ? '✓' : ''}
       </button>
       {marks.has(file.id) && <span className="badge new">new</span>}
-      <span className="idx">{n}</span>
+      {local.has(file.sha256) ? (
+        <span className="badge dev" title={localTitle(local.get(file.sha256)!)}>
+          <LaptopIcon className="ic" />
+          on this device
+        </span>
+      ) : (
+        <span className="idx">{n}</span>
+      )}
     </div>
   );
 }

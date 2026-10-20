@@ -37,11 +37,11 @@
 
 ## 4. Desktop files, end-to-end tests, preview and docs (brief D)
 
-- [ ] 4.1 Store migration 2 (`file_uploads`) in `main/store.ts` (D14)
-- [ ] 4.2 `main/files.ts`: the files folder, `pb:files:put` (sender, id, hash, sniff, 80 MB), the upload queue with retries and refusals, downloads with resume and hash check, `pb:files:status` and `pb:files:on-status`, the local sweep (D14)
-- [ ] 4.3 `protocol.ts`: the file route before the SPA fallback with the access rule, Range, fetch-once when online, headers; `media-src 'self' blob:` in its CSP (D7, D14)
-- [ ] 4.4 First sync counting files, `usage()` with `files` and `fileBytes`, This device's usage line, the sign-out dialog's count of files waiting; the board's offline strip, «on this device» badges and the status bar text (screen 8)
-- [ ] 4.5 Desktop unit tests: migration 2, queue (retry, 404 wait, refusal), download resume, protocol file route (allowed, refused, Range), local sweep, usage, sign-out count
+- [x] 4.1 Store migration 2 (`file_uploads`) in `main/store.ts` (D14)
+- [x] 4.2 `main/files.ts`: the files folder, `pb:files:put` (sender, id, hash, sniff, 80 MB), the upload queue with retries and refusals, downloads with resume and hash check, `pb:files:status` and `pb:files:on-status`, the local sweep (D14)
+- [x] 4.3 `protocol.ts`: the file route before the SPA fallback with the access rule, Range, fetch-once when online, headers; `media-src 'self' blob:` in its CSP (D7, D14)
+- [x] 4.4 First sync counting files, `usage()` with `files` and `fileBytes`, This device's usage line, the sign-out dialog's count of files waiting; the board's offline strip, «on this device» badges and the status bar text (screen 8)
+- [x] 4.5 Desktop unit tests: migration 2, queue (retry, 404 wait, refusal), download resume, protocol file route (allowed, refused, Range), local sweep, usage, sign-out count
 - [ ] 4.6 `e2e/board.spec.ts` (D18's browser flow) and the board steps in `e2e/desktop.spec.ts` (offline drop, relaunch, upload when back, the file on the web, a web file in the app)
 - [ ] 4.7 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
 - [ ] 4.8 Docs: README (the board, intake by filename, the connector's board tools, where the desktop keeps files); `docs/design.md` (Asset board and Intake by filename marked built with a pointer to this change, phase 2 built); `docs/deploy-homelab.md` ("Files volume": the claim, size, usage check, kept on uninstall, "No backup yet: the volume's backup is decided later with the infrastructure."); Prettier on the files touched

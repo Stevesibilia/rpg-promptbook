@@ -4,6 +4,7 @@ import type { Author, FileEntry, HalfStatus } from 'promptbook-project';
 import { relativeTime } from '../dates.js';
 import { projectPath } from '../project/top.js';
 import { platform } from '../platform/index.js';
+import { useDownloadsVersion } from './device.js';
 import { statusLabels } from './summary.js';
 
 // Small parts the halves, the tray and the viewer share.
@@ -63,7 +64,8 @@ export function Provenance({ by, at }: { by: Author; at: string }) {
 
 // A file's picture: its thumbnail, or the original when it has none. A file
 // whose bytes are not there yet (uploaded later by a desktop) is an empty
-// tile, with no text.
+// tile, with no text; on the desktop it is asked for again once a download
+// ends.
 export function FileImage({
   projectId,
   file,
@@ -76,8 +78,9 @@ export function FileImage({
   className?: string;
 }) {
   const sha = full ? file.sha256 : (file.thumbSha256 ?? file.sha256);
+  const attempt = `${sha}:${useDownloadsVersion()}`;
   const [broken, setBroken] = useState<string | null>(null);
-  if (broken === sha) return <span className={className} />;
+  if (broken === attempt) return <span className={className} />;
   return (
     <img
       className={className}
@@ -86,7 +89,7 @@ export function FileImage({
       loading={full ? 'eager' : 'lazy'}
       decoding="async"
       draggable={false}
-      onError={() => setBroken(sha)}
+      onError={() => setBroken(attempt)}
     />
   );
 }

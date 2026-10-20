@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { channels } from 'promptbook-web/src/platform/bridge.js';
 import { App } from './app.js';
 import { registerIpc } from './ipc.js';
-import { privileges, SCHEME, serveApp } from './protocol.js';
+import { fileRoute, privileges, SCHEME, serveApp } from './protocol.js';
 import { installKind, Updater } from './updater.js';
 import { createWindow, guardWebContents, lockPermissions } from './window.js';
 
@@ -98,7 +98,11 @@ if (!electronApp.requestSingleInstanceLock()) {
 
   void electronApp.whenReady().then(() => {
     const root = join(__dirname, '..', 'app', 'web');
-    protocol.handle(SCHEME, (request) => serveApp(root, request));
+    protocol.handle(SCHEME, (request) => {
+      const file = fileRoute(request.url);
+      if (file === 'invalid') return new Response('Not found', { status: 404 });
+      return file ? app.serveFile(file.projectId, file.sha256, request) : serveApp(root, request);
+    });
     lockPermissions();
     registerIpc(app, updater);
     app.start();

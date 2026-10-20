@@ -59,16 +59,64 @@ const typed = (doc: Y.Doc, text: string) => {
 };
 
 describe('store', () => {
-  it('creates the six tables in WAL mode', () => {
+  it('creates the tables in WAL mode', () => {
     const file = join(dir, 'a.sqlite');
     Store.open(file).close();
     const db = new DatabaseSync(file);
     const tables = (db.prepare("select name from sqlite_master where type = 'table' order by name").all() as {
       name: string;
     }[]).map((t) => t.name);
-    expect(tables).toEqual(['doc_updates', 'docs', 'kv', 'projects', 'server_cache', 'snapshots', 'sqlite_sequence']);
+    expect(tables).toEqual([
+      'doc_updates',
+      'docs',
+      'file_uploads',
+      'kv',
+      'projects',
+      'server_cache',
+      'snapshots',
+      'sqlite_sequence',
+    ]);
     expect(db.prepare('pragma journal_mode').get()).toEqual({ journal_mode: 'wal' });
-    expect(db.prepare('pragma user_version').get()).toEqual({ user_version: 1 });
+    expect(db.prepare('pragma user_version').get()).toEqual({ user_version: 2 });
+    db.close();
+  });
+
+  // Migration 2 (asset-board design decision 14) on a store of version 1,
+  // whose documents stay as they were.
+  it('adds file_uploads to a store made by the previous version', () => {
+    const file = join(dir, 'a.sqlite');
+    const old = new DatabaseSync(file);
+    old.exec(`create table docs (project_id text primary key, state blob not null, updated_at integer);
+      create table doc_updates (seq integer primary key autoincrement, project_id text, "update" blob not null,
+        origin text not null, created_at integer);
+      create table projects (id text primary key, summary text not null, server_edited_at text, deleted_at text,
+        created_local integer not null default 0, uploaded integer not null default 1);
+      create table snapshots (id text primary key, project_id text, created_at integer, kind text, label text,
+        text text not null, words integer);
+      create table server_cache (key text primary key, value text not null, fetched_at integer);
+      create table kv (key text primary key, value text);
+      pragma user_version = 1;`);
+    const doc = new Y.Doc();
+    doc.getText('document').insert(0, 'Kept');
+    old.prepare('insert into docs (project_id, state, updated_at) values (?, ?, 0)').run(ID, Y.encodeStateAsUpdate(doc));
+    old.close();
+
+    const store = Store.open(file);
+    expect(store.loadDoc(ID)!.getText('document').toString()).toBe('Kept');
+    const sha = 'a'.repeat(64);
+    store.addUpload({ projectId: ID, sha256: sha, mime: 'image/png', size: 10 });
+    // A second put of the same file keeps the row and its attempts.
+    store.retryUpload(ID, sha, 2, 5000);
+    store.addUpload({ projectId: ID, sha256: sha, mime: 'image/png', size: 10 });
+    expect(store.listUploads()).toMatchObject([{ projectId: ID, sha256: sha, attempts: 2, nextAt: 5000, refused: null }]);
+    store.refuseUpload(ID, sha, 'Over your quota.');
+    expect(store.listUploads()[0]!.refused).toBe('Over your quota.');
+    expect(store.hasUpload(ID, sha)).toBe(true);
+    store.removeProject(ID);
+    expect(store.listUploads()).toEqual([]);
+    store.close();
+    const db = new DatabaseSync(file);
+    expect(db.prepare('pragma user_version').get()).toEqual({ user_version: 2 });
     db.close();
   });
 

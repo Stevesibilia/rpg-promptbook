@@ -138,6 +138,11 @@ export interface DesktopProjectStatus {
   downloaded: boolean;
   // Bytes of the encoded document once downloaded, for First sync.
   bytes: number;
+  // The board's images and tracks the document lists that are not on this
+  // computer yet (a download the server answered 404 is not counted), and
+  // the bytes of those that are (asset-board design decision 14).
+  filesMissing: number;
+  fileBytes: number;
   // Made on this device and not on the server yet (D9).
   localOnly: boolean;
   // The server refused its upload (409 or 400): it stays on this device

@@ -140,6 +140,28 @@ describe('sync engine', () => {
     expect(store.loadDoc(A)?.getText('document').toString()).toBe('Testo del server.');
   });
 
+  // A project's row gets its ✓ once the files its document lists are here
+  // too (asset-board design decision 14).
+  it('keeps First sync going until every document’s files are on this computer', async () => {
+    const missing = new Map([[A, 2]]);
+    makeEngine({ files: (id) => ({ missing: missing.get(id) ?? 0, bytes: 40_000_000 - (missing.get(id) ?? 0) }) });
+    engine.add(A);
+    engine.add(B);
+    engine.firstSync = true;
+    engine.setActive(true);
+    await until(() => engine.status().projects.every((p) => p.downloaded && p.synced));
+    let status = engine.status();
+    expect(status.firstSync).toBe(true);
+    expect(status.projects.map((p) => [p.filesMissing, p.fileBytes])).toEqual([
+      [2, 39_999_998],
+      [0, 40_000_000],
+    ]);
+    missing.set(A, 0);
+    engine.filesChanged();
+    status = engine.status();
+    expect(status.firstSync).toBe(false);
+  });
+
   it('sends a window’s edit to the server and to the other windows, never back', async () => {
     makeEngine();
     engine.add(A);

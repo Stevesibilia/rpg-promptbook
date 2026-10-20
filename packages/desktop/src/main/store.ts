@@ -45,6 +45,22 @@ export interface LocalSnapshotRecord {
   words: number;
 }
 
+// A board file stored on this computer and not yet on the server
+// (asset-board design decision 14).
+export interface UploadRecord {
+  projectId: string;
+  sha256: string;
+  mime: string;
+  size: number;
+  // ms since epoch
+  addedAt: number;
+  attempts: number;
+  // ms since epoch; the next attempt waits until then.
+  nextAt: number;
+  // The server's message when it refused the file (413, 415, 507).
+  refused: string | null;
+}
+
 export interface CachedValue {
   value: unknown;
   fetchedAt: number;
@@ -62,7 +78,7 @@ interface PendingUpdate {
 // writes fail.
 export type Database = Pick<DatabaseSync, 'exec' | 'prepare' | 'close'>;
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const MIGRATIONS = [
   `create table docs (
@@ -102,6 +118,18 @@ const MIGRATIONS = [
      fetched_at integer
    );
    create table kv (key text primary key, value text);`,
+  // The board's files waiting to upload (asset-board design decision 14).
+  `create table file_uploads (
+     project_id text not null,
+     sha256 text not null,
+     mime text not null,
+     size integer not null,
+     added_at integer not null,
+     attempts integer not null default 0,
+     next_at integer not null default 0,
+     refused text,
+     primary key (project_id, sha256)
+   );`,
 ];
 
 const isLocal = (origin: UpdateOrigin) => origin !== 'remote';
@@ -425,6 +453,7 @@ export class Store {
       this.run('delete from snapshots where project_id = ?', id);
       this.run('delete from projects where id = ?', id);
       this.run('delete from kv where key = ?', unsyncedKey(id));
+      this.run('delete from file_uploads where project_id = ?', id);
     });
     this.rows.delete(id);
     this.unsynced.delete(id);
@@ -493,6 +522,54 @@ export class Store {
   snapshotCount(): number {
     if (this.closed) return 0;
     return Number(this.get<{ n: number }>('select count(*) as n from snapshots')?.n ?? 0);
+  }
+
+  // Files waiting to upload.
+
+  // Kept as it is when the project already has the row.
+  addUpload(u: Pick<UploadRecord, 'projectId' | 'sha256' | 'mime' | 'size'>): void {
+    if (this.closed) return;
+    this.run(
+      `insert into file_uploads (project_id, sha256, mime, size, added_at) values (?, ?, ?, ?, ?)
+       on conflict (project_id, sha256) do nothing`,
+      u.projectId,
+      u.sha256,
+      u.mime,
+      u.size,
+      this.now(),
+    );
+  }
+
+  // Oldest first.
+  listUploads(): UploadRecord[] {
+    if (this.closed) return [];
+    return this.all<UploadDbRow>('select * from file_uploads order by added_at, project_id, sha256').map(toUpload);
+  }
+
+  hasUpload(projectId: string, sha256: string): boolean {
+    if (this.closed) return false;
+    return !!this.get('select 1 from file_uploads where project_id = ? and sha256 = ?', projectId, sha256);
+  }
+
+  deleteUpload(projectId: string, sha256: string): void {
+    if (this.closed) return;
+    this.run('delete from file_uploads where project_id = ? and sha256 = ?', projectId, sha256);
+  }
+
+  retryUpload(projectId: string, sha256: string, attempts: number, nextAt: number): void {
+    if (this.closed) return;
+    this.run(
+      'update file_uploads set attempts = ?, next_at = ? where project_id = ? and sha256 = ?',
+      attempts,
+      nextAt,
+      projectId,
+      sha256,
+    );
+  }
+
+  refuseUpload(projectId: string, sha256: string, message: string): void {
+    if (this.closed) return;
+    this.run('update file_uploads set refused = ? where project_id = ? and sha256 = ?', message, projectId, sha256);
   }
 
   // What the server last answered.
@@ -574,6 +651,28 @@ const toRecord = (r: ProjectDbRow): ProjectRecord => ({
   deletedAt: r.deleted_at,
   createdLocal: Number(r.created_local) === 1,
   uploaded: Number(r.uploaded) === 1,
+});
+
+interface UploadDbRow {
+  project_id: string;
+  sha256: string;
+  mime: string;
+  size: number;
+  added_at: number;
+  attempts: number;
+  next_at: number;
+  refused: string | null;
+}
+
+const toUpload = (r: UploadDbRow): UploadRecord => ({
+  projectId: r.project_id,
+  sha256: r.sha256,
+  mime: r.mime,
+  size: Number(r.size),
+  addedAt: Number(r.added_at),
+  attempts: Number(r.attempts),
+  nextAt: Number(r.next_at),
+  refused: r.refused,
 });
 
 interface SnapshotDbRow {

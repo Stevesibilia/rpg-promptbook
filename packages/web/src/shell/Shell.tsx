@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import type { Category } from 'promptbook-project';
 import { useAuth } from '../auth/context.js';
 import { DesktopStatusItems, DesktopStrips } from '../desktop/frame.js';
-import { desktopStatusSync } from '../desktop/SyncStates.js';
+import { DesktopStatusSync } from '../desktop/SyncStates.js';
 import { platform, serverHost } from '../platform/index.js';
 import { useSync } from '../sync/hooks.js';
 import {
@@ -148,7 +148,7 @@ export function Shell({
         {platform.kind === 'desktop' && <DesktopStatusItems />}
         <span className="r">
           {platform.kind === 'desktop'
-            ? desktopStatusSync(sync)
+            ? <DesktopStatusSync sync={sync} />
             : statusBarSync(sync.state, unsentCount(sync.providers), sync.lastSync)}
         </span>
       </footer>

@@ -7,6 +7,7 @@ import { ActionSelect } from './ActionSelect.js';
 import { moveFile, REMOVE_NOTE, removeFromScene, removeQuestion, toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';
 import { CopyButton } from './CopyButton.js';
+import { localTitle, useLocalFiles } from './device.js';
 import { Provenance, SourceLine, StatusChip } from './parts.js';
 import { MusicPromptEditor } from './PromptEditor.js';
 import { duration, sceneLabel } from './summary.js';
@@ -132,7 +133,8 @@ const PauseIcon = () => (
 );
 
 function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: number }) {
-  const { doc, marks, player } = useBoardContext();
+  const { doc, projectId, marks, player } = useBoardContext();
+  const local = useLocalFiles(projectId);
   const chosen = row.chosenTrack === file.id;
   const loaded = player.current === file.id;
   const playing = loaded && player.playing;
@@ -150,6 +152,11 @@ function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: numb
       <span className="fn" title={file.name}>
         {file.name}
         {marks.has(file.id) && <span className="newdot">new</span>}
+        {local.has(file.sha256) && (
+          <span className="devdot" title={localTitle(local.get(file.sha256)!)}>
+            on this device
+          </span>
+        )}
         <small>Take {take}</small>
       </span>
       <span className="dur">{loaded && player.time > 0 ? duration(player.time) : duration(length)}</span>

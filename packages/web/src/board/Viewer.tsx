@@ -7,6 +7,7 @@ import { CheckIcon, NextIcon, PrevIcon, TrashIcon } from '../ui/icons.js';
 import { ActionSelect } from './ActionSelect.js';
 import { moveFile, REMOVE_NOTE, removeFromScene, removeQuestion, toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';
+import { useLocalFiles } from './device.js';
 import { FileImage } from './parts.js';
 import { fileSize, sceneLabel } from './summary.js';
 
@@ -34,6 +35,7 @@ export function Viewer({
   onClose(): void;
 }) {
   const { doc, projectId, rows, toast } = useBoardContext();
+  const local = useLocalFiles(projectId);
   const [confirm, setConfirm] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null);
   const row = rows.find((r) => r.sceneId === sceneId);
@@ -134,7 +136,8 @@ export function Viewer({
             <dd>{file.matchedBy ? matchedLabels[file.matchedBy] : '—'}</dd>
             <dt>Added</dt>
             <dd>
-              {snapshotTime(file.addedAt)} by {file.addedBy === 'claude' ? 'Claude' : 'you'}
+              {snapshotTime(file.addedAt)}
+              {local.has(file.sha256) ? ' · on this device' : ` by ${file.addedBy === 'claude' ? 'Claude' : 'you'}`}
             </dd>
             <dt>Status</dt>
             <dd>{status}</dd>

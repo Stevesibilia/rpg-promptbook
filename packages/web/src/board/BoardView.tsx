@@ -5,9 +5,11 @@ import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import { ProjectShell } from '../project/ProjectShell.js';
 import { projectPath } from '../project/top.js';
-import { BoardIcon, CheckIcon, HelpIcon, ImportIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
+import { BoardIcon, CheckIcon, HelpIcon, ImportIcon, LaptopIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
 import { useToast } from '../ui/Toast.js';
+import { useOffline } from '../desktop/useDevice.js';
 import { ClaudeCard } from './ClaudeCard.js';
+import { localLine, useLocalFiles } from './device.js';
 import { BoardContext, usePlayer, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
 import { progressLine, resultLine, type IntakeState } from './intake.js';
@@ -131,6 +133,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
               {!rows.some((r) => r.image?.prompt || r.music?.title) && (
                 <ClaudeCard title={meta.title} onToast={showToast} />
               )}
+              <OfflineLine projectId={id} />
               <Strips state={intakeState} onDismiss={() => intake.dismissResult()} intake={intake} />
               <Tray
                 files={tray}
@@ -203,6 +206,22 @@ function Summary({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Screen 8: offline on the desktop, the files added here wait to upload.
+function OfflineLine({ projectId }: { projectId: string }) {
+  const offline = useOffline();
+  const local = useLocalFiles(projectId);
+  const waiting = [...local.values()].filter((refused) => refused === null).length;
+  if (!offline || waiting === 0) return null;
+  return (
+    <div className="info local" role="status">
+      <LaptopIcon className="ic" />
+      <span>
+        <b>{localLine(waiting)}</b> Choosing and editing prompts work offline; they sync too.
+      </span>
     </div>
   );
 }

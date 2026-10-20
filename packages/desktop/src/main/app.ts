@@ -8,8 +8,10 @@ import type {
   BridgeResponse,
   DesktopSyncStatus,
   DeviceUsage,
+  FilesStatus,
   LocalSnapshotsMode,
   OpenedDoc,
+  PutFileResult,
 } from 'promptbook-web/src/platform/bridge.js';
 import {
   accountFolder,
@@ -22,6 +24,7 @@ import {
 import { deviceName, LoopbackSignIn, type SignedIn } from './auth/loopback.js';
 import { Tokens, type SecretStore, type TokenStorage } from './auth/tokens.js';
 import { Creator } from './create.js';
+import { FileError, Files } from './files.js';
 import { LIST_EVERY_MS, ProjectList } from './projects.js';
 import { json, OFFLINE, Router } from './router.js';
 import { HttpError, ServerClient } from './server.js';
@@ -49,6 +52,8 @@ export interface AppOptions {
   fetch?: typeof fetch;
   now?: () => number;
   snapshotIntervalMs?: number;
+  // The board files' retry delay, first and longest (the tests).
+  filesRetryMs?: number;
   WebSocketPolyfill?: unknown;
   log?: (message: string) => void;
 }
@@ -59,6 +64,7 @@ const SESSION_KEY = 'session_state';
 const USER_KEY = 'user';
 const SIGNED_IN_KEY = 'signed_in_at';
 const DAY = 86_400_000;
+const NO_FILES = (): FilesStatus => ({ waiting: [], downloading: 0, refused: [] });
 
 const kvStorage = (store: Store): TokenStorage => ({
   get: () => store.getKv('refresh_token'),
@@ -79,6 +85,7 @@ class Account {
   readonly creator: Creator;
   readonly snapshots: LocalSnapshots;
   readonly router: Router;
+  readonly files: Files;
   client: ServerClient | null = null;
   private timers: ReturnType<typeof setInterval>[] = [];
   private probing: Promise<void> | null = null;
@@ -107,7 +114,10 @@ class Account {
           o.sendTo(webContentsId, channels.syncOnUpdate, projectId, update),
         status: (status) => o.broadcast(channels.syncOnStatus, status),
         stateless: (projectId, payload) => o.broadcast(channels.syncOnStateless, { id: projectId, payload }),
-        docChanged: (projectId, local) => this.list?.docChanged(projectId, local),
+        docChanged: (projectId, local) => {
+          this.list?.docChanged(projectId, local);
+          this.files?.docChanged(projectId);
+        },
         connection: (online) => {
           if (online) void this.whenOnline();
         },
@@ -115,7 +125,11 @@ class Account {
         deleted: (projectId) => this.list?.markDeleted(projectId),
         added: (projectId) => this.snapshots?.track(projectId),
         downloaded: (projectId) => this.snapshots?.baseline(projectId),
-        removed: (projectId) => this.snapshots?.untrack(projectId),
+        removed: (projectId) => {
+          this.snapshots?.untrack(projectId);
+          this.files?.forget(projectId);
+        },
+        files: (projectId) => this.files?.counted(projectId) ?? { missing: 0, bytes: 0 },
       },
     });
     this.engine = engine;
@@ -141,10 +155,20 @@ class Account {
       snapshots: this.snapshots,
       server: () => this.activeClient(),
     });
+    this.files = new Files({
+      folder: join(accountFolder(o.userData, id), 'files'),
+      store: this.store,
+      engine,
+      client: () => this.activeClient(),
+      emit: (status) => o.broadcast(channels.filesOnStatus, status),
+      ...(o.now ? { now: o.now } : {}),
+      ...(o.filesRetryMs ? { retryFirstMs: o.filesRetryMs, retryMaxMs: o.filesRetryMs } : {}),
+    });
     this.useTokens(tokens);
     for (const record of this.store.listProjects()) {
       if (record.deletedAt === null) engine.add(record.id, { localOnly: !record.uploaded });
     }
+    this.files.start();
     this.list.purge();
     this.snapshots.start();
     this.timers.push(
@@ -193,6 +217,8 @@ class Account {
       // Offline again, or signed out; the next reconnect tries again.
     }
     await this.creator.uploadPending();
+    // Files wait for their project to be on the server.
+    this.files.wake();
   }
 
   // A provider was refused: with a token that works, the project is not
@@ -221,18 +247,20 @@ class Account {
     const folder = accountFolder(this.app.options.userData, this.id);
     for (const name of readdirSync(folder)) {
       try {
-        bytes += statSync(join(folder, name)).size;
+        const s = statSync(join(folder, name));
+        // The files folder is counted file by file below.
+        if (s.isFile()) bytes += s.size;
       } catch {
         // Gone meanwhile (the WAL after a checkpoint).
       }
     }
+    const { files, fileBytes } = this.files.usage();
     return {
-      bytes,
+      bytes: bytes + fileBytes,
       projects: this.list.rows().length,
       localSnapshots: this.store.snapshotCount(),
-      // Brief D of asset-board counts the files folder (task 4.4).
-      files: 0,
-      fileBytes: 0,
+      files,
+      fileBytes,
     };
   }
 
@@ -240,6 +268,7 @@ class Account {
   // compacted, a refresh in flight written, the database closed.
   async close(): Promise<void> {
     for (const t of this.timers) clearInterval(t);
+    await this.files.close();
     this.snapshots.stop();
     this.list.close();
     this.engine.close();
@@ -447,6 +476,7 @@ export class App {
       await account.close();
       rmSync(accountFolder(this.options.userData, account.id), { recursive: true, force: true });
       writeDeviceFile(this.options.userData, { server: account.server, lastAccount: null });
+      this.options.broadcast(channels.filesOnStatus, NO_FILES());
     }
     this.emitAuth();
   }
@@ -500,8 +530,23 @@ export class App {
   }
 
   usage(): DeviceUsage {
-    // Brief D of asset-board fills files and fileBytes in (task 4.4).
     return this.account?.usage() ?? { bytes: 0, projects: 0, localSnapshots: 0, files: 0, fileBytes: 0 };
+  }
+
+  // pb:files:put: a board file kept on this computer and queued for upload.
+  putFile(projectId: string, sha256: string, bytes: Uint8Array): Promise<PutFileResult> {
+    if (!this.account) throw new FileError('Sign in first.');
+    return this.account.files.put(projectId, sha256, bytes);
+  }
+
+  filesStatus(): FilesStatus {
+    return this.account?.files.status() ?? NO_FILES();
+  }
+
+  // The protocol's file route.
+  serveFile(projectId: string, sha256: string, request: Request): Promise<Response> {
+    if (!this.account) return Promise.resolve(new Response('Not found', { status: 404 }));
+    return this.account.files.serve(projectId, sha256, request);
   }
 
   databaseFile(): string | null {
