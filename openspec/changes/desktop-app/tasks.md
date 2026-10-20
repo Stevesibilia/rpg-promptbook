@@ -40,11 +40,11 @@
 
 ## 4. Packaging, updates, release pipeline, e2e and docs (brief D)
 
-- [ ] 4.1 `updater.ts` after CueBard's `electron/updater.js`: per-platform flows of D14 (Windows and AppImage download and restart; Mac and deb latest-release API and Download), checks at start, every 6 h and on demand, off when not packaged; unit tests of its decisions
-- [ ] 4.2 electron-builder `build` in `packages/desktop/package.json` as D15 (from CueBard's `build`), the generated `build/icon.png`; `electron-builder --dir` works locally on the Mac
-- [ ] 4.3 `.github/workflows/desktop.yml` as D16 (from CueBard's `build-release.yml`): pull request dry run on ubuntu, tag build on three OSes with the tag-on-main guard and the version from the tag, one release job with `gh release create --generate-notes --verify-tag` and the uploads; `workflow_dispatch` dry run
-- [ ] 4.4 `e2e/desktop.spec.ts` and the `desktop` project in `e2e/playwright.config.ts` (the `chromium` project ignores it): the flow of D17; the CI `e2e` job builds the desktop and runs under `xvfb-run`
-- [ ] 4.5 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.6 Docs: README (install per OS, Gatekeeper's Open Anyway, SmartScreen, where the data lives, signing out); `docs/design.md` (desktop decisions, `node:sqlite` instead of `better-sqlite3`); `docs/deploy-homelab.md` (the GitHub Release made by the tag workflow); Prettier on the files touched
-- [ ] 4.7 Owner preview: the branch's server as a local compose stack (password mode, seeded user) and a locally packaged Mac build (`--dir`, the unpacked `.app`) opened on the owner's Mac against it; give the owner the URLs and the app path, then stop and wait for the owner's go
-- [ ] 4.8 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief D
+- [x] 4.1 `updater.ts` after CueBard's `electron/updater.js`: per-platform flows of D14 (Windows and AppImage download and restart; Mac and deb latest-release API and Download), checks at start, every 6 h and on demand, off when not packaged; unit tests of its decisions
+- [x] 4.2 electron-builder `build` in `packages/desktop/package.json` as D15 (from CueBard's `build`), the generated `build/icon.png`; `electron-builder --dir` works locally on the Mac
+- [x] 4.3 `.github/workflows/desktop.yml` as D16 (from CueBard's `build-release.yml`): pull request dry run on ubuntu, tag build on three OSes with the tag-on-main guard and the version from the tag, one release job with `gh release create --generate-notes --verify-tag` and the uploads; `workflow_dispatch` dry run
+- [x] 4.4 `e2e/desktop.spec.ts` and the `desktop` project in `e2e/playwright.config.ts` (the `chromium` project ignores it): the flow of D17; the CI `e2e` job builds the desktop and runs under `xvfb-run`
+- [x] 4.5 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.6 Docs: README (install per OS, Gatekeeper's Open Anyway, SmartScreen, where the data lives, signing out); `docs/design.md` (desktop decisions, `node:sqlite` instead of `better-sqlite3`); `docs/deploy-homelab.md` (the GitHub Release made by the tag workflow); Prettier on the files touched
+- [x] 4.7 Owner preview: the branch's server as a local compose stack (password mode, seeded user) and a locally packaged Mac build (`--dir`, the unpacked `.app`) opened on the owner's Mac against it; give the owner the URLs and the app path, then stop and wait for the owner's go
+- [x] 4.8 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief D
