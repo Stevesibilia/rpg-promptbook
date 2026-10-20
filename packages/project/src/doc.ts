@@ -72,9 +72,24 @@ const topicsOf = (doc: Y.Doc) => doc.getArray<Item>('researchTopics');
 const notesOf = (doc: Y.Doc) => doc.getArray<Item>('researchNotes');
 const logOf = (doc: Y.Doc) => doc.getArray<Item>('brainstorm');
 
-// Available in browsers, Node and Electron alike; typed here because the
+interface WebCrypto {
+  randomUUID?: () => string;
+  getRandomValues<T extends Uint8Array>(array: T): T;
+}
+
+// A version 4 UUID. crypto.randomUUID exists only in a secure context, so a
+// page served over plain HTTP (a LAN preview) builds one from
+// crypto.getRandomValues, which every context has. Typed here because the
 // package compiles without DOM or Node types.
-export const randomId = (): string => (globalThis as unknown as { crypto: { randomUUID(): string } }).crypto.randomUUID();
+export function randomId(): string {
+  const crypto = (globalThis as unknown as { crypto: WebCrypto }).crypto;
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6]! & 0x0f) | 0x40;
+  b[8] = (b[8]! & 0x3f) | 0x80;
+  const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 const DUE = /^\d{4}-\d{2}-\d{2}$/;
 
