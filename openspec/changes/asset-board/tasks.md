@@ -43,7 +43,7 @@
 - [x] 4.4 First sync counting files, `usage()` with `files` and `fileBytes`, This device's usage line, the sign-out dialog's count of files waiting; the board's offline strip, «on this device» badges and the status bar text (screen 8)
 - [x] 4.5 Desktop unit tests: migration 2, queue (retry, 404 wait, refusal), download resume, protocol file route (allowed, refused, Range), local sweep, usage, sign-out count
 - [x] 4.6 `e2e/board.spec.ts` (D18's browser flow) and the board steps in `e2e/desktop.spec.ts` (offline drop, relaunch, upload when back, the file on the web, a web file in the app)
-- [ ] 4.7 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.7 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
 - [x] 4.8 Docs: README (the board, intake by filename, the connector's board tools, where the desktop keeps files); `docs/design.md` (Asset board and Intake by filename marked built with a pointer to this change, phase 2 built); `docs/deploy-homelab.md` ("Files volume": the claim, size, usage check, kept on uninstall, "No backup yet: the volume's backup is decided later with the infrastructure."); Prettier on the files touched
 - [ ] 4.9 Owner preview: the branch's server as a local compose stack (password mode, seeded user, a seeded adventure with an appendix) and a locally packaged Mac build (`--dir`) against it; give the owner the URLs, the app path and a folder of sample files named as Midjourney and Suno name them; then stop and wait for the owner's go
 - [x] 4.11 `randomId` in `packages/project` falls back to `crypto.getRandomValues` when `crypto.randomUUID` is missing (plain-HTTP origin), with a unit test
