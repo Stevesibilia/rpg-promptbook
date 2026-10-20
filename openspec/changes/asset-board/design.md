@@ -655,6 +655,57 @@ store, migration, sweep, CSP, chart, compose, image), B (connector tools,
 export), C (web board, intake, viewer, tray, track menu, edit, seam's web
 side, rail), D (desktop files, e2e, owner preview, docs). Release `v0.6.0` after the owner's go.
 
+### Departures accepted in review (brief A, 2026-10-20)
+
+Server file store:
+
+1. The files route scope removes every body parser and adds a `*` no-op, so
+   every upload body stays a raw stream whatever its Content-Type; an empty
+   Content-Type gets Fastify's own 415.
+2. `BlobStore` gains `clearTemp(olderThanMs?)`; `put` takes an optional
+   `size` and throws `Incomplete` before the rename; it renames over an
+   existing copy (same bytes, fresh mtime).
+3. The rows are written in one transaction after the bytes are in place,
+   under a per-user and a per-content advisory lock that re-check the bytes
+   and the quota. No transaction stays open while a file streams.
+4. New answers: 503 `retry` when the sweep removed the bytes before linking;
+   GET and HEAD 404 for a linked file missing from disk, and a PUT of it
+   uploads it again; a refused PUT drains its bounded body or closes the
+   connection; a malformed hash on GET answers 400 `validation_error`; an
+   inverted Range is ignored (200).
+5. The sweep reads every hash in the raw `files` array (`fileHashes`),
+   skips a project with no stored document, runs its delete steps under the
+   content lock, and is not awaited at start.
+6. Quota in GiB (1024³), matching the chart's `20Gi`; files of projects in
+   the bin count.
+7. HEAD is an explicit route, since Fastify's automatic HEAD reads the whole
+   stream.
+
+Project model:
+
+8. `LIMITS` keys `imagePrompt`, `trackTitle`, `style`, `lyrics`,
+   `fileName`; empty prompts delete their key; `addFiles` refuses a whole
+   batch past `CAPS.files`; `chooseFile` throws for a file of another scene
+   or kind; `unmatchedFiles` returns `{ file, reason }`, with `reason` null
+   when the web must run `matchFile` for the intake reason.
+9. `appendixEdit` returns `TextEdit | null` (null when the appendix already
+   has rows); with no scenes it inserts the heading only.
+10. `sniff.ts` also exports `FILE_LIMITS`, `MAX_FILE_BYTES` and
+    `SNIFF_BYTES`; `sha256.ts` exports a streaming `Sha256` class.
+
+Deployment:
+
+11. The Dockerfile prepares `/data` in the build stage under `/tmp/out`
+    (uid 65532 cannot write the root).
+
+Review: a security subagent found 7 issues, all fixed in brief A (a sweep
+racing a re-upload, stalled keep-alive after a refusal, unbounded discarded
+bodies, quota overrun by parallel uploads, unknown file kinds ignored by the
+sweep, inverted Range, size checked after rename).
+
+For brief D: `e2e/compose.oidc.yaml`'s second app shares the database but
+not the volume; give it `app-data` too.
+
 ## Strings not in the mockup
 
 Chosen by the plan, to check at the owner preview: "Scene S6 is not in the
