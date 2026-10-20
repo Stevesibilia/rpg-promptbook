@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook asset board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Same tokens as editor.html, connector.html and desktop.html (gdrarchive's Emerald look).
+   Layout: the project shell (rail, top bar, status bar) around one scrolling board of scene rows,
+   each row split into an Image half and a Music half; halves stack when the app is narrow. */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --on-info: #08121f;
+  --desk: #0a0e0c; --scrim: rgba(5,10,8,.72); --shadow: rgba(0,0,0,.45);
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --on-info: #ffffff;
+  --desk: #d9e0dc; --scrim: rgba(20,30,26,.55); --shadow: rgba(20,30,26,.18);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--desk); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+a { color: var(--primary); text-decoration: none; cursor: pointer; } a:hover { text-decoration: underline; }
+code { font: 12.5px var(--mono); }
+[hidden] { display: none !important; }
+
+/* Stage: the web app fills it; the desktop and phone screens put a frame around it (desktop.html) */
+.stage { position: fixed; inset: 0; display: grid; place-items: stretch; padding: 0 0 0 310px; }
+body.lmin .stage { padding-left: 0; }
+.window { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg);
+  border-left: 1px solid var(--border); overflow: hidden; container-type: inline-size; container-name: app; }
+.wt { display: none; height: 32px; flex: none; align-items: center; gap: 8px; padding: 0 12px; position: relative; user-select: none;
+  background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.wt .ttl { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+.tl { display: flex; gap: 8px; } .tl i { width: 12px; height: 12px; border-radius: 50%; }
+.tl i:nth-child(1) { background: #ff5f57; } .tl i:nth-child(2) { background: #febc2e; } .tl i:nth-child(3) { background: #28c840; }
+body.desk .stage { place-items: center; padding: 18px 18px 18px 330px; }
+body.desk.lmin .stage { padding-left: 18px; }
+body.desk .window { width: min(1280px, 100%); height: min(820px, 100%); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 30px 80px var(--shadow); }
+body.desk .wt { display: flex; }
+body.phone .stage { place-items: center; padding: 18px 18px 18px 330px; }
+body.phone.lmin .stage { padding-left: 18px; }
+body.phone .window { width: 390px; max-width: 100%; height: min(844px, 100%); border: 1px solid var(--border); border-radius: 30px; box-shadow: 0 30px 80px var(--shadow); }
+.notch { display: none; height: 30px; flex: none; align-items: center; justify-content: space-between; padding: 0 26px; font: 600 12.5px var(--font); background: var(--surface); }
+body.phone .notch { display: flex; }
+
+/* App grid (connector.html) */
+.app { flex: 1; min-height: 0; display: grid; grid-template-rows: 44px auto 1fr 26px; grid-template-columns: 48px minmax(0, 1fr); }
+.topbar { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0; min-width: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { width: 48px; flex: none; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
+.sync.local i { background: var(--amber); } .sync.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.danger { color: var(--danger); }
+.tb.red { background: var(--danger); color: #fff; font-weight: 600; }
+.tb.sm { padding: 3px 8px; font-size: 12.5px; }
+.tb.xs { padding: 1px 6px; font-size: 12px; gap: 4px; }
+.tb.ok { color: var(--primary); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tb.sm svg, .tb.xs svg { width: 15px; height: 15px; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); color: var(--text); flex: none; }
+.avatar.cl { background: color-mix(in srgb, var(--info) 28%, var(--surface-2)); }
+.strips { grid-column: 1 / -1; grid-row: 2; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 3 / 5; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9;
+  background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+.rail .new { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--info); }
+
+/* Center */
+.center { grid-column: 2; grid-row: 3; overflow: auto; min-width: 0; position: relative; }
+.status { grid-column: 2 / -1; grid-row: 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; } .status .a { color: var(--amber); }
+.pane { max-width: 1240px; margin: 0 auto; padding: 22px 28px 80px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; position: relative; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hint { font-size: 12px; color: var(--faint); }
+.who-cl { color: var(--info); } .who-you { color: var(--primary); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.panel-h { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+
+/* Board header: summary and filters */
+.sumline { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.summary { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.summary b { color: var(--text); font-weight: 600; }
+.summary .sep { color: var(--faint); margin: 0 4px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: none; }
+.seg button { padding: 4px 10px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.seg .n { font: 500 11.5px var(--mono); color: var(--faint); }
+.segwrap { overflow-x: auto; max-width: 100%; }
+
+/* Matching help popover */
+.pop { position: absolute; top: calc(100% + 6px); right: 0; width: 380px; max-width: calc(100cqw - 32px); z-index: 30; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 32px var(--shadow); padding: 12px 14px; font-size: 13px; }
+.pop h4 { margin: 0 0 8px; font: 600 14px var(--font); display: flex; justify-content: space-between; align-items: center; }
+.pop .m { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.pop .m b { font-weight: 600; } .pop .m p { margin: 0; color: var(--muted); }
+.pop .fn { font: 11.5px/1.5 var(--mono); color: var(--text); word-break: break-all; margin-top: 3px; }
+.pop .fn u { text-decoration: none; background: color-mix(in srgb, var(--primary) 22%, transparent); border-radius: 2px; }
+.pop .arrow { color: var(--faint); font-size: 12px; }
+
+/* Strips: result of a drop, offline line, Claude banner (as connector.html's info line) */
+.info { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 8px 12px; margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--info) 45%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--info) 8%, transparent); }
+.info .ic { color: var(--info); width: 16px; height: 16px; }
+.info.good { border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.info.good .ic { color: var(--primary); }
+.info.local { border-color: color-mix(in srgb, var(--amber) 45%, transparent); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+.info.local .ic { color: var(--amber); }
+.info b { color: var(--text); font-weight: 600; } .info > span { flex: 1; min-width: 0; }
+.info .x { margin-left: auto; }
+
+.claude { padding: 14px 16px; margin-bottom: 14px; border-color: color-mix(in srgb, var(--info) 45%, transparent); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; }
+.claude h3 { margin: 0; font: 700 19px var(--display); letter-spacing: .02em; }
+.claude p { margin: 0; color: var(--muted); }
+.ask { display: flex; align-items: center; gap: 8px; font: 12.5px/1.45 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 6px 6px 10px; margin: 8px 0 6px; }
+.ask span { flex: 1; min-width: 0; }
+
+/* Unmatched tray */
+.tray { position: sticky; top: 0; z-index: 6; margin-bottom: 14px; border-color: color-mix(in srgb, var(--amber) 55%, transparent); box-shadow: 0 6px 18px var(--shadow); }
+.tray .th { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.tray .th b { font-weight: 600; } .tray .th .cnt { color: var(--amber); font: 500 12px var(--mono); }
+.tray .th .ic { color: var(--amber); width: 16px; height: 16px; }
+.uf { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.uf:last-child { border-bottom: 0; }
+.uf .fn { font: 12px/1.4 var(--mono); word-break: break-all; }
+.uf .why { font-size: 12px; color: var(--faint); }
+.uf .uact { display: flex; gap: 8px; align-items: center; }
+.uf select { padding: 4px 8px; font-size: 13px; width: 210px; }
+.uf .mini { width: 64px; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 4px; }
+.uf .trk { width: 64px; height: 36px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); }
+
+/* Scene rows */
+.rows { display: flex; flex-direction: column; gap: 14px; }
+.scene { overflow: hidden; }
+.scene .sh { display: flex; align-items: baseline; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+.scene .sid { font: 600 13px var(--mono); color: var(--primary); }
+.scene .stt { font: 600 18px/1.3 var(--prose); }
+.scene .sh .go { margin-left: auto; font-size: 12.5px; }
+.halves { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.half { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 9px; min-width: 0; transition: opacity .15s; }
+.half + .half { border-left: 1px solid var(--border); }
+.half.dim { opacity: .4; }
+.hh { display: flex; align-items: center; gap: 8px; }
+.hh .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); display: inline-flex; gap: 6px; align-items: center; }
+.hh .lab .ic { width: 15px; height: 15px; }
+.hh .st { margin-left: auto; }
+.st { font-size: 12px; padding: 1px 9px 1px 7px; border-radius: 999px; border: 1px solid; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.st i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+.st.wanted { color: var(--muted); border-color: var(--border); }
+.st.received { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 50%, transparent); } .st.received i { background: currentColor; }
+.st.chosen { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 55%, transparent); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.st.chosen i { border: 0; width: auto; height: auto; } .st.chosen i::before { content: '✓'; font-style: normal; font-size: 11px; }
+.srcline { font: italic 14px/1.45 var(--prose); color: var(--muted); }
+.srcline .k { font: 500 12px var(--mono); font-style: normal; color: var(--faint); margin-right: 4px; }
+.srcline a { font: 12.5px var(--font); font-style: normal; margin-left: 6px; white-space: nowrap; }
+.srcline.empty { color: var(--faint); }
+.pbox { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.ptext { font: 12.5px/1.55 var(--mono); padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pfoot { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.prov { font-size: 12px; color: var(--faint); margin-right: auto; }
+.parts3 { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; }
+.parts3 > * { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.parts3 > :nth-last-child(-n+3) { border-bottom: 0; }
+.parts3 .pl { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-top: 8px; padding-left: 10px; }
+.parts3 .pv { font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.parts3 .pv.lyr { white-space: normal; } .parts3 .pv.lyr span { white-space: nowrap; }
+.parts3 .pv.title { font: 600 14px/1.4 var(--font); }
+.parts3 .pv small { display: block; font: 11.5px var(--font); color: var(--faint); }
+.parts3 .pc { padding: 4px 6px; display: flex; align-items: flex-start; }
+.fixed { font: 12px var(--mono); color: var(--muted); padding: 6px 10px; border-top: 1px dashed var(--border); }
+.noprompt { border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--faint); font-size: 13px; }
+.noprompt span { flex: 1; min-width: 160px; }
+.editbox textarea { width: 100%; min-height: 96px; font: 12.5px/1.55 var(--mono); resize: vertical; display: block; border: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--bg); }
+.editbox { border: 1px solid var(--primary); border-radius: var(--radius); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.editbox .eg { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 6px 8px; padding: 8px 10px; background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; }
+.editbox .eg label { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-top: 6px; }
+.editbox .eg input, .editbox .eg textarea { font: 12.5px/1.5 var(--mono); padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; min-height: 0; background: var(--surface-2); }
+.editbox .eg textarea { min-height: 70px; }
+.editbox .pfoot .hint { margin-right: auto; }
+
+/* Thumbnails */
+.thumbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.th-i { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 5px; overflow: hidden; cursor: zoom-in; outline: 1px solid color-mix(in srgb, var(--text) 10%, transparent); outline-offset: -1px; }
+.th-i::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); pointer-events: none; }
+.th-i.chosen { outline: 2px solid var(--primary); outline-offset: 1px; }
+.th-i.others { filter: saturate(.55) brightness(.8); }
+.pick { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.85); background: rgba(0,0,0,.35);
+  display: grid; place-items: center; color: #fff; font-size: 12px; opacity: 0; transition: opacity .12s; z-index: 2; }
+.th-i:hover .pick, .pick:focus-visible { opacity: 1; }
+.th-i.chosen .pick { opacity: 1; background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.th-i .badge { position: absolute; left: 5px; bottom: 5px; z-index: 2; font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; display: inline-flex; gap: 3px; align-items: center; }
+.th-i .badge .ic { width: 11px; height: 11px; stroke-width: 2.2; }
+.badge.new { background: var(--info); color: var(--on-info); left: 5px; top: 5px; bottom: auto; }
+.badge.dev { background: rgba(0,0,0,.62); color: #ffd28a; }
+.th-i .idx { position: absolute; right: 6px; bottom: 4px; z-index: 2; font: 500 10.5px var(--mono); color: rgba(255,255,255,.75); }
+.empty-drop { border: 1px dashed var(--border); border-radius: 5px; padding: 12px; font-size: 12.5px; color: var(--faint); display: flex; gap: 8px; align-items: center; }
+.empty-drop .ic { width: 16px; height: 16px; }
+.slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.slots i { aspect-ratio: 16 / 9; border-radius: 5px; border: 1px dashed var(--border); }
+
+/* Tracks */
+.tracks { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.trk-r { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 8px 6px 6px; border-bottom: 1px solid var(--border); position: relative; }
+.trk-r:last-child { border-bottom: 0; }
+.trk-r.chosen { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.play { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; color: var(--text); }
+.play:hover { border-color: var(--primary); color: var(--primary); }
+.play svg { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.trk-r .fn { font: 12.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trk-r .fn small { display: block; font: 11.5px var(--font); color: var(--faint); }
+.trk-r .dur { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.trk-r .bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--primary); }
+.trk-r.playing .bar { animation: prog 14s linear forwards; }
+.trk-r .newdot { font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; background: var(--info); color: var(--on-info); margin-left: 6px; vertical-align: 1px; }
+.trk-r .devdot { font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; border: 1px solid var(--amber); color: var(--amber); margin-left: 6px; vertical-align: 1px; }
+@keyframes prog { to { width: 100%; } }
+.chosen-tag { font-size: 12px; color: var(--primary); display: inline-flex; gap: 4px; align-items: center; padding: 2px 6px; }
+
+/* Empty state: no appendix */
+.emptyst { max-width: 640px; margin: 40px auto; padding: 26px 28px; }
+.emptyst h2 { font: 700 26px var(--display); letter-spacing: .02em; margin: 0 0 6px; text-wrap: balance; }
+.emptyst p { color: var(--muted); margin: 0 0 12px; }
+.emptyst pre { font: 12.5px/1.6 var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 16px; overflow-x: auto; color: var(--muted); }
+.emptyst pre b { color: var(--text); font-weight: 500; }
+.emptyst .big-ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); color: var(--primary); margin-bottom: 14px; }
+.emptyst .big-ic .ic { width: 24px; height: 24px; }
+
+/* Drop overlay, over the board area */
+.dropov { grid-column: 2; grid-row: 3; position: relative; z-index: 20; min-width: 0; display: grid; place-items: center; padding: 18px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px); }
+.dropov .zone { width: 100%; height: 100%; border: 2px dashed var(--primary); border-radius: 14px; display: grid; place-items: center; text-align: center;
+  background: color-mix(in srgb, var(--primary) 6%, transparent); padding: 16px; }
+.dropov .zone .ic { width: 46px; height: 46px; color: var(--primary); stroke-width: 1.4; }
+.dropov h2 { font: 700 30px var(--display); letter-spacing: .02em; margin: 10px 0 4px; text-wrap: balance; }
+.dropov p { color: var(--muted); margin: 0 0 4px; }
+.dropov .cnt { font: 500 13px var(--mono); color: var(--primary); margin-top: 10px; }
+
+/* Lightbox */
+.scrim { position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: grid; place-items: center; padding: 24px; }
+.lb { width: min(1180px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 320px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; box-shadow: 0 30px 80px var(--shadow); }
+.lb .stagei { position: relative; background: #050706; display: grid; place-items: center; padding: 16px 56px; min-height: 0; }
+.lb .big { width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 4px; position: relative; overflow: hidden; }
+.lb .big::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+.lb .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.08); color: #e7ece9; display: grid; place-items: center; }
+.lb .nav:hover { background: rgba(255,255,255,.18); }
+.lb .nav.l { left: 8px; } .lb .nav.r { right: 8px; }
+.lb .ctr { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font: 12px var(--mono); color: #97a49d; }
+.lb .side { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--border); min-width: 0; overflow: auto; }
+.lb .side .top { display: flex; justify-content: space-between; align-items: center; }
+.lb .fn { font: 12.5px/1.5 var(--mono); word-break: break-all; }
+.kv { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 5px 10px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--faint); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.lb .acts { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+.lb .acts .tb { justify-content: center; padding: 7px 10px; }
+.lb .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.lb .strip button { aspect-ratio: 16 / 9; border-radius: 3px; outline: 1px solid var(--border); position: relative; }
+.lb .strip button.cur { outline: 2px solid var(--text); }
+.lb .strip button.ch::after { content: '✓'; position: absolute; top: 1px; right: 3px; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
+
+/* Modal and toast (connector.html) */
+.cscrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; }
+.modal { width: min(460px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px var(--shadow); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 16px 18px; } .modal .mb p { margin: 0 0 8px; } .modal .mb p.m { color: var(--muted); margin: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--border); }
+.toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 80; background: var(--text); color: var(--bg);
+  padding: 8px 14px; border-radius: var(--radius); font-size: 13px; box-shadow: 0 8px 24px var(--shadow); max-width: calc(100vw - 32px); }
+.toast.big { display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
+
+/* Notes for the reviewer: screen switcher (desktop.html) */
+.legend { position: fixed; left: 18px; top: 18px; z-index: 50; width: 280px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px var(--shadow); max-height: calc(100vh - 36px); overflow: auto; }
+.legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; align-items: center; }
+.legend ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); } .legend li { margin: 3px 0; }
+.legend li b { color: var(--text); font-weight: 600; }
+.legend .lrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.legend .lrow button { font-size: 11.5px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.legend .lrow button.on { border-color: var(--primary); color: var(--primary); }
+.legend .lab { font: 600 10.5px var(--font); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.legend.min { width: auto; } .legend.min ul, .legend.min .lrow, .legend.min .lab { display: none; } .legend.min h5 { margin: 0; gap: 10px; }
+
+/* Narrow app (phone screen, or a narrow browser): rail hidden, halves stacked */
+@container app (max-width: 760px) {
+  .app { grid-template-columns: 0 minmax(0, 1fr); grid-template-rows: 44px auto 1fr 0; }
+  .rail, .status { display: none; }
+  .topbar { gap: 6px; padding-right: 8px; }
+  .topbar .chip, .topbar .hide-n, .topbar .kbd { display: none; }
+  .sync span { display: none; } .sync { padding: 5px; }
+  .pane { padding: 16px 16px 60px; }
+  .head h1 { font-size: 25px; } .head .lead { margin-left: 0; flex-basis: 100%; }
+  .head .acts { width: 100%; }
+  .halves { grid-template-columns: minmax(0, 1fr); }
+  .half + .half { border-left: 0; border-top: 1px solid var(--border); }
+  .thumbs, .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pick { opacity: 1; }
+  .uf { grid-template-columns: 64px minmax(0, 1fr); }
+  .uf .uact { grid-column: 1 / -1; } .uf select { flex: 1; width: auto; min-width: 0; }
+  .tray { position: static; }
+  .claude { grid-template-columns: minmax(0, 1fr); } .claude > .avatar { display: none; }
+  .scene .sh { padding: 10px 14px; } .half { padding: 12px 14px 14px; }
+  .scene .sh .go { margin-left: 0; flex-basis: 100%; }
+  .sumline { gap: 10px; } .sumline .spacer { display: none; }
+}
+@media (max-width: 900px) {
+  .lb { grid-template-columns: minmax(0, 1fr); overflow: auto; } .lb .side { border-left: 0; border-top: 1px solid var(--border); }
+  .lb .stagei { padding: 12px 48px; }
+}
+@media (max-width: 760px) {
+  .stage, body.desk .stage, body.phone .stage { padding: 0; }
+  body.phone .window, body.desk .window { width: 100%; height: 100%; border-radius: 0; border: 0; }
+  .window { border-left: 0; }
+  .legend { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 60vh; }
+  .legend.min { left: auto; }
+  .scrim { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="window" id="win">
+  <div class="wt"><span class="tl"><i></i><i></i><i></i></span><span class="ttl">L'Ancora di Sabaoth · Promptbook</span></div>
+  <div class="notch"><span>21:42</span><span>●●● ▮</span></div>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="logo" title="Promptbook">P</div>
+      <div class="crumbs"><span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L'Ancora di Sabaoth</b></div>
+      <span class="chip">One-shot</span>
+      <div class="spacer"></div>
+      <span class="sync" id="sync" title="Sync status"><i></i><span id="syncT">Synced</span></span>
+      <button class="tb hide-n" title="History and snapshots"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+      <button class="tb" id="theme" title="Light or dark (mockup)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16a8 8 0 0 0 0-16z" fill="currentColor"/></svg></button>
+      <button class="tb primary hide-n"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+      <span class="kbd" title="Command palette">⌘K</span>
+      <span class="avatar" title="Signed in as Stefano">S</span>
+    </header>
+    <div class="strips"></div>
+
+    <nav class="rail">
+      <button data-tip="Document" data-other><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+      <button data-tip="Inspiration" data-other><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+      <button data-tip="Research" data-other><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+      <button class="on" data-tip="Images and music"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="11" rx="1.5"/><path d="M3 12l3.5-3 3 2.5 2-1.5L16 13"/><path d="M19 9v9.5"/><circle cx="17" cy="18.5" r="2"/><path d="M19 9l2.5-1"/></svg></button>
+      <button data-tip="Brainstorm log" data-other><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+      <button data-tip="History" data-other><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+      <button class="bottom" data-tip="Projects" data-other><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+      <button class="last" data-tip="Settings and templates" data-other><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+    </nav>
+
+    <main class="center" id="center">
+      <div class="pane">
+        <div class="head">
+          <h1>Images and music</h1>
+          <p class="lead">One row per scene, from the document's appendix. For the table and the CueBard export.</p>
+          <span class="spacer"></span>
+          <span class="row acts">
+            <button class="tb line sm" id="helpBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"/></svg>How matching works</button>
+            <button class="tb primary sm" id="addFiles"><svg viewBox="0 0 24 24"><path d="M12 19V7M7 12l5-5 5 5M5 21h14"/></svg>Add files…</button>
+            <input type="file" id="fileIn" multiple accept="image/*,audio/*" hidden>
+          </span>
+          <div class="pop" id="help" hidden>
+            <h4>How files find their scene <button class="tb xs" id="helpX" title="Close">✕</button></h4>
+            <div class="m"><b>Midjourney</b><div><p>The filename holds the first words of the prompt. They pick the scene.</p>
+              <div class="fn">steve_<u>collapsed_1900s_Sicilian_library_at_night</u>_3f9a1c22-…_2.png</div><div class="arrow">→ S1 · La casa che cede</div></div></div>
+            <div class="m"><b>Suno</b><div><p>The filename is the track title from the prompt. A second take gets "(1)".</p>
+              <div class="fn"><u>dominus deus sabaoth</u> (1).mp3</div><div class="arrow">→ S5 · Capo Peloro, la terza scossa</div></div></div>
+            <div class="m"><b>Other files</b><div><p>Renamed files, or prompts you changed in Midjourney or Suno, go to Unmatched. Assign them by hand.</p></div></div>
+          </div>
+        </div>
+
+        <div id="boardBody">
+          <div class="sumline">
+            <span class="summary" id="summary"></span>
+            <span class="spacer"></span>
+            <div class="segwrap"><div class="seg" id="filters"></div></div>
+          </div>
+          <div id="strips"></div>
+          <div id="tray"></div>
+          <div class="rows" id="rows"></div>
+          <p class="hint" style="margin-top:14px">Rows follow the appendix. Add or rename a scene there and the board follows.</p>
+        </div>
+
+        <div class="card emptyst" id="emptySt" hidden>
+          <div class="big-ic"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="11" rx="1.5"/><path d="M3 12l3.5-3 3 2.5 2-1.5L16 13"/><path d="M19 9v9.5"/><circle cx="17" cy="18.5" r="2"/></svg></div>
+          <h2>No scenes for the board yet</h2>
+          <p>The board makes one row per scene from the appendix <b style="color:var(--text)">Appendice: immagini e musica</b> at the end of the document. This document has no appendix, or the appendix has no scenes.</p>
+          <pre><b>## Appendice: immagini e musica</b>
+
+<b>### S1. La casa che cede</b>
+
+visual: collapsed 1900s Sicilian library at night, …
+
+mood: chaotic, suffocating, low rumbling drones, …</pre>
+          <div class="row">
+            <button class="tb primary" id="addAppendix"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add the appendix</button>
+            <button class="tb line" data-other-doc>Open the document</button>
+          </div>
+          <p class="hint" style="margin:10px 0 0">Add the appendix writes the heading and one row per scene (S1 to S6) with empty <code>visual:</code> and <code>mood:</code> lines. Claude can fill them in.</p>
+        </div>
+      </div>
+
+    </main>
+    <div class="dropov" id="dropov" hidden>
+        <div class="zone"><div>
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+          <h2>Drop images and tracks</h2>
+          <p>They find their scene by filename.</p>
+          <p class="hint">Files that match nothing wait in Unmatched.</p>
+          <div class="cnt">14 files · 10 images, 4 tracks</div>
+        </div></div>
+      </div>
+
+    <footer class="status">
+      <span>Images and music</span><span id="sbCount">6 scenes</span>
+      <span class="r" id="sbClaude">Claude connected · read and edit</span><span id="sbSync">Synced 21:40 · promptbook.siberio.eu</span>
+    </footer>
+  </div>
+</div>
+</div>
+
+<div class="scrim" id="lb" hidden><div class="lb" role="dialog" aria-label="Image viewer">
+  <div class="stagei">
+    <div class="big" id="lbBig"></div>
+    <button class="nav l" id="lbPrev" title="Previous (←)"><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="nav r" id="lbNext" title="Next (→)"><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="ctr" id="lbCtr"></div>
+  </div>
+  <div class="side">
+    <div class="top"><span class="panel-h" id="lbScene"></span><button class="tb sm" id="lbClose" title="Close (Esc)">✕</button></div>
+    <div class="fn" id="lbFn"></div>
+    <dl class="kv" id="lbKv"></dl>
+    <div class="strip" id="lbStrip"></div>
+    <div class="acts">
+      <button class="tb primary" id="lbChoose"></button>
+      <select id="lbMove" aria-label="Move to another scene"></select>
+      <button class="tb danger" id="lbRemove"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Remove</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="cscrim" id="confirm" hidden><div class="modal">
+  <div class="mh"><h3 id="cTitle"></h3><button class="tb" data-cancel>✕</button></div>
+  <div class="mb"><p id="cText"></p><p class="m" id="cNote"></p></div>
+  <div class="mf"><button class="tb line" data-cancel>Cancel</button><button class="tb red" id="cOk">Remove</button></div>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="legend" id="legend">
+  <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
+  <div class="lab">Screen</div>
+  <div class="lrow" id="screens">
+    <button data-sc="board" class="on">1 Board</button><button data-sc="noprompts">2 No prompts yet</button><button data-sc="noappendix">3 No appendix</button>
+    <button data-sc="dropping">4 Dropping</button><button data-sc="afterdrop">5 After a drop</button><button data-sc="matching">5b Matching help</button><button data-sc="viewer">6 Image viewer</button>
+    <button data-sc="edit">7 Edit a prompt</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
+  </div>
+  <ul>
+    <li>Route <code>/projects/:id/board</code>. Rail entry <b>Images and music</b>, between Research and Brainstorm log.</li>
+    <li><b>Board</b>: one row per <code>### S… </code> of the appendix. Each half has the scene's <code>visual:</code> or <code>mood:</code> line (read-only), the prompt with Copy and Edit, who wrote it, the files, and a status: Wanted (no files), Received (files, none chosen), Chosen.</li>
+    <li>Click a thumbnail to open it; the round badge chooses it. Play only toggles (no audio). Filters keep rows with at least one half in that state; the other half dims.</li>
+    <li><b>No prompts yet</b>: the prompts come from Claude through the connector; the request is copyable. Write by hand stays on every row.</li>
+    <li><b>Dropping</b>: real files dropped on this page also open the overlay, then the result.</li>
+    <li><b>After a drop</b>: the result line, new files marked, Unmatched pinned at the top while you scroll. Assigning moves a file into its row.</li>
+    <li><b>Matching help</b>: the popover behind "How matching works", also linked from the Unmatched tray.</li>
+    <li><b>Desktop, offline</b>: files dropped offline stay on this computer and upload later; choosing and prompts still work.</li>
+    <li><b>Phone width</b>: the same board in a 390 px frame. A narrow browser window gets the same layout.</li>
+    <li>The half-circle in the top bar switches light and dark.</li>
+  </ul>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* Icons */
+const IC = {
+  img: '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5L5 20"/></svg>',
+  mus: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
+  drop: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>',
+  dev: '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1"/><path d="M2 19h20"/></svg>',
+  check: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>',
+  info: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  warn: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+};
+
+/* Fake image art: gradients per scene, from its visual: line */
+const PAL = {
+  S1: ['#1d1610', '#5b4429', '#e3b366', '#2b2119'],
+  S2: ['#141c20', '#4d6672', '#d3e0e2', '#26343a'],
+  S3: ['#1b1b1e', '#5c5853', '#c2ae92', '#34302d'],
+  S4: ['#0d1b2a', '#355f72', '#e2cf9f', '#1b3346'],
+  S5: ['#1c0a16', '#7c2836', '#ef8a3c', '#3d1a4a'],
+  S6: ['#0b1d22', '#4a8388', '#d9eee6', '#1a3a40'],
+  X1: ['#0d1a20', '#2f5866', '#9fd0d0', '#22323a'],
+  X2: ['#161b22', '#4d5b6a', '#e0c38c', '#28313b'],
+};
+const POS = ['24% 34%', '72% 28%', '40% 62%', '82% 70%'];
+function art(key, i) {
+  const p = PAL[key] || PAL.X1, pos = POS[i % 4];
+  const ground = [18, 24, 14, 21][i % 4], hz = [58, 54, 62, 50][i % 4], beam = [112, 64, 128, 76][i % 4];
+  return `background:
+    radial-gradient(ellipse 30% 38% at ${pos}, ${p[2]} 0, transparent 70%),
+    radial-gradient(ellipse 95% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.6) 100%),
+    linear-gradient(to top, rgba(0,0,0,.7) 0 ${ground}%, transparent ${ground}%),
+    linear-gradient(${beam}deg, transparent 38%, rgba(0,0,0,.32) 38% 44%, transparent 44%),
+    linear-gradient(180deg, transparent 0 ${hz}%, color-mix(in srgb, ${p[2]} 22%, transparent) ${hz}% ${hz + 1}%, transparent ${hz + 1}%),
+    linear-gradient(${178 - i * 9}deg, ${p[1]} 0%, ${p[3]} 52%, ${p[0]} 100%);`;
+}
+
+/* Data: the appendix of L'Ancora di Sabaoth (packages/format/fixtures/esempio.md), plus an S6 epilogue */
+const UUID = { S1: '3f9a1c22-5d4e-4b1a-9c2f-7e8d6a5b4c3d', S2: 'a1b2c3d4-6e7f-4a8b-9c0d-1e2f3a4b5c6d', S3: '5c7e9a01-2b3c-4d5e-8f60-718293a4b5c6',
+  S4: 'd4e5f607-8192-4a3b-bc4d-5e6f708192a3', S5: '9e8d7c6b-5a49-4382-a716-05f4e3d2c1b0' };
+const SLUG = { S1: 'collapsed_1900s_Sicilian_library_at_night', S2: 'ruined_doctors_office_in_1908_Messina_anatomical',
+  S3: 'collapsed_cathedral_facade_in_1908_Messina_Italian', S4: 'Sicilian_fishing_village_at_the_tip_of_the_strait',
+  S5: 'rocky_cape_at_sunset_a_man_in_a_black_coat' };
+const mjFiles = id => [0, 1, 2, 3].map(i => ({ n: `steve_${SLUG[id]}_${UUID[id]}_${i}.png`, art: id, i }));
+const LYR = t => `[Intro: ${t}]\n[Instrumental]\n[Outro: fade out]\n[End]`;
+const BASE = [
+  { id: 'S1', t: 'La casa che cede',
+    visual: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, shadows stretching unnaturally toward the sea, sepia and ash palette',
+    mood: 'chaotic, suffocating, low rumbling drones, sudden silence, dread',
+    img: { p: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, cinematic wide shot, muted sepia, film grain --ar 16:9 --v 8.1', by: 'you', when: 'yesterday', files: mjFiles('S1'), chosen: 2 },
+    mus: { title: 'Cinque e venti', style: 'dark ambient, slow, low rumbling drones, creaking wood, sudden silences, dread', lyrics: '[Intro: low rumble]\n[Instrumental]\n[Break: sudden silence]\n[Outro: fade out]\n[End]', by: 'cl', when: '2 days ago',
+      tracks: [{ n: 'cinque e venti.mp3', d: '3:12' }, { n: 'cinque e venti (1).mp3', d: '2:47' }], chosen: 0 } },
+  { id: 'S2', t: "L'ambulatorio di Salvi",
+    visual: "ruined doctor's office 1908, anatomical drawings of a sea strait shaped like a human body, spilled ether bottles, cold dawn light through a broken wall",
+    mood: 'clinical, uncanny, quiet ticking, fevered obsession',
+    img: { p: "ruined doctor's office in 1908 Messina, anatomical drawings of a sea strait shaped like a human body pinned to the wall, spilled ether bottles, cold dawn light through a broken wall, cinematic, desaturated teal, film grain --ar 16:9 --v 8.1", by: 'cl', when: '5 min ago', files: mjFiles('S2'), chosen: null },
+    mus: { title: 'Anatomia dello Stretto', style: 'dark ambient, clinical, sparse, quiet clock ticking, glass harmonics, uneasy strings, fevered', lyrics: LYR('ticking clock'), by: 'cl', when: '5 min ago', tracks: [], chosen: null } },
+  { id: 'S3', t: "L'ordine di Donato",
+    visual: 'collapsed cathedral facade, soldiers in 1908 Italian uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke and grey sky',
+    mood: 'oppressive, martial, eerie stillness, a single drum',
+    img: { p: 'collapsed cathedral facade in 1908 Messina, Italian soldiers in period uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke, flat grey sky, wide shot, desaturated, film grain --ar 16:9 --v 8.1', by: 'cl', when: '5 min ago', files: mjFiles('S3'), chosen: null },
+    mus: { title: 'Ordini del Re', style: 'dark martial ambient, slow, single snare drum, low brass drone, eerie stillness, oppressive', lyrics: '[Intro: single drum]\n[Instrumental]\n[Outro: the drum stops]\n[End]', by: 'cl', when: '5 min ago',
+      tracks: [{ n: 'ordini del re.mp3', d: '2:54' }, { n: 'ordini del re (1).mp3', d: '3:21' }], chosen: null } },
+  { id: 'S4', t: 'Torre Faro e la canzone',
+    visual: "Sicilian fishing village at the strait's tip, overturned boats, a lighthouse in the distance, the sea with countless glints like eyes, an old woman singing on the shore",
+    mood: 'melancholic, haunting folk song, wind, waves, quiet grief',
+    img: { p: 'Sicilian fishing village at the tip of the strait at dusk, overturned boats on the shore, a distant lighthouse, the sea full of glints like eyes, an old woman singing on the beach, cinematic, cold blue and ochre, film grain --ar 16:9 --v 8.1', by: 'cl', when: '2 days ago', files: mjFiles('S4'), chosen: 1 },
+    mus: { title: 'Canzone di Colapesce', style: 'melancholic Sicilian folk, solo mandolin, accordion drone, wind, waves, quiet grief, haunting', lyrics: LYR('waves'), by: 'cl', when: '2 days ago',
+      tracks: [{ n: 'canzone di colapesce.mp3', d: '3:40' }], chosen: 0 } },
+  { id: 'S5', t: 'Capo Peloro, la terza scossa',
+    visual: 'rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor wedged in rock, the strait boiling, sky twisting in impossible colors, a vast presence beneath the water',
+    mood: 'apocalyptic, choral, overwhelming pressure, a voice too big for the sky',
+    img: { p: 'rocky cape at sunset, a man in a black coat kneeling over an ancient bronze anchor wedged in the rock, the strait boiling, sky twisting in impossible colors, a vast presence beneath the water, epic wide shot, film grain --ar 16:9 --v 8.1', by: 'cl', when: '5 min ago', files: mjFiles('S5'), chosen: null },
+    mus: { title: 'Dominus Deus Sabaoth', style: 'dark ambient, slow, low drones, distant choir pads, tape hiss, dread', lyrics: LYR('low drone'), by: 'you', when: '3 min ago', tracks: [], chosen: null } },
+  { id: 'S6', t: 'Il mare di vetro',
+    visual: 'the Strait of Messina at dawn, the sea perfectly still like glass, the ruined city on the shore, survivors on the quay, pale gold light',
+    mood: 'still, exhausted, fragile hope, solo cello, distant bells',
+    img: { p: null, files: [], chosen: null },
+    mus: { title: null, tracks: [], chosen: null } },
+];
+const UNMATCHED = [
+  { k: 'img', n: 'steve_a_vast_cathedral_nave_flooded_with_seawater_8c1e2f40-1b2a-4c3d-9e8f-0a1b2c3d4e5f_2.png', art: 'X1', i: 1, why: 'No prompt starts with "a vast cathedral nave flooded".' },
+  { k: 'mus', n: 'untitled track.mp3', d: '2:31', why: 'No track title "untitled track".' },
+  { k: 'img', n: 'steve_portrait_of_an_old_Sicilian_fisherwoman_singing_77ab31c2-4e5f-4a6b-8c7d-9e0f1a2b3c4d_0.png', art: 'X2', i: 2, why: 'No prompt starts with "portrait of an old Sicilian".' },
+];
+
+let S, cur = 'board', filter = 'all';
+const clone = o => JSON.parse(JSON.stringify(o));
+function build(k) {
+  const st = { scenes: clone(BASE), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false };
+  if (k === 'noprompts') st.scenes.forEach(s => { s.img = { p: null, files: [], chosen: null }; s.mus = { title: null, tracks: [], chosen: null }; });
+  if (k === 'noappendix') st.noAppendix = true;
+  if (k === 'afterdrop') {
+    const by = id => st.scenes.find(s => s.id === id);
+    by('S3').img.files.forEach(f => f.new = true); by('S5').img.files.forEach(f => f.new = true);
+    by('S3').mus.tracks.forEach(t => t.new = true);
+    by('S5').mus.tracks.push({ n: 'dominus deus sabaoth.mp3', d: '4:05', new: true });
+    st.unmatched = clone(UNMATCHED); st.result = true;
+  }
+  if (k === 'edit') st.editing = 'S2.img';
+  if (k === 'desktop') { st.local = true; st.scenes[0].img.files.forEach(f => f.local = true); }
+  return st;
+}
+const imgSt = h => !h.files.length ? 'wanted' : h.chosen != null ? 'chosen' : 'received';
+const musSt = h => !h.tracks.length ? 'wanted' : h.chosen != null ? 'chosen' : 'received';
+const STL = { wanted: 'Wanted', received: 'Received', chosen: 'Chosen' };
+const chip = st => `<span class="st ${st}"><i></i>${STL[st]}</span>`;
+const prov = h => h.by === 'cl' ? `by <span class="who-cl">Claude</span> · ${h.when}` : `edited by <span class="who-you">you</span> · ${h.when}`;
+const copyBtn = (key, label = 'Copy') => `<button class="tb sm line" data-copy="${key}">${IC.copy}<span>${label}</span></button>`;
+
+/* Rendering */
+function imgHalf(s) {
+  const h = s.img, st = imgSt(h), key = s.id + '.img';
+  let p;
+  if (S.editing === key) p = `<div class="editbox"><textarea id="ed-${s.id}-img" aria-label="Midjourney prompt for ${s.id}">${esc(h.p)}</textarea>
+      <div class="pfoot"><span class="hint">Claude can rewrite it later; History keeps the old text.</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${key}">Save</button></div></div>`;
+  else if (h.p) p = `<div class="pbox"><div class="ptext">${esc(h.p)}</div>
+      <div class="pfoot"><span class="prov">${prov(h)}</span>${copyBtn(key)}<button class="tb sm" data-edit="${key}">${IC.edit}Edit</button></div></div>`;
+  else p = `<div class="noprompt"><span>No Midjourney prompt yet. Ask Claude, or write one.</span><button class="tb sm line" data-write="${key}">${IC.edit}Write by hand</button></div>`;
+  const files = h.files.length
+    ? `<div class="thumbs">${h.files.map((f, i) => `<div class="th-i${h.chosen === i ? ' chosen' : h.chosen != null ? ' others' : ''}" style="${art(f.art, f.i)}" data-open="${s.id}:${i}" tabindex="0" role="button" aria-label="Open image ${i + 1} of ${s.id}">
+        <button class="pick" data-pick="${s.id}:${i}" title="${h.chosen === i ? 'Chosen. Click to unchoose' : 'Choose this image'}">${h.chosen === i ? '✓' : ''}</button>
+        ${f.new ? '<span class="badge new">new</span>' : ''}${f.local ? `<span class="badge dev" title="On this computer. Uploads when you are back online">${IC.dev}on this device</span>` : ''}
+        ${f.local ? '' : `<span class="idx">${i + 1}</span>`}</div>`).join('')}</div>`
+    : h.p ? `<div class="empty-drop">${IC.drop}<span>No images yet. Drop Midjourney's four files anywhere on the board.</span></div>`
+          : `<div class="slots"><i></i><i></i><i></i><i></i></div>`;
+  return `<div class="half" data-half="${st}">
+    <div class="hh"><span class="lab">${IC.img}Image · Midjourney</span>${chip(st)}</div>
+    ${srcLine('visual', s.visual)}${p}${files}</div>`;
+}
+function musHalf(s) {
+  const h = s.mus, st = musSt(h), key = s.id + '.mus';
+  let p;
+  if (S.editing === key) p = `<div class="editbox"><div class="eg">
+      <label for="ed-${s.id}-t">Title</label><input id="ed-${s.id}-t" value="${esc(h.title || '')}">
+      <label for="ed-${s.id}-s">Style</label><textarea id="ed-${s.id}-s">${esc(h.style || '')}</textarea>
+      <label for="ed-${s.id}-l">Lyrics</label><textarea id="ed-${s.id}-l">${esc(h.lyrics || LYR('low drone'))}</textarea></div>
+      <div class="pfoot"><span class="hint">Suno names the download after the title.</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${key}">Save</button></div></div>`;
+  else if (h.title) p = `<div class="pbox"><div class="parts3">
+      <span class="pl">Title</span><span class="pv title">${esc(h.title)}<small>The download's filename. Used to match tracks.</small></span><span class="pc">${copyBtn(key + '.t')}</span>
+      <span class="pl">Style</span><span class="pv">${esc(h.style)}</span><span class="pc">${copyBtn(key + '.s')}</span>
+      <span class="pl">Lyrics</span><span class="pv lyr">${h.lyrics.split('\n').map(l => `<span>${esc(l)}</span>`).join(' ')}</span><span class="pc">${copyBtn(key + '.l')}</span></div>
+      <div class="fixed">Instrumental: ON · Weirdness: low · Style Influence: strong</div>
+      <div class="pfoot"><span class="prov">${prov(h)}</span><button class="tb sm" data-edit="${key}">${IC.edit}Edit</button></div></div>`;
+  else p = `<div class="noprompt"><span>No Suno prompt yet. Ask Claude, or write one.</span><button class="tb sm line" data-write="${key}">${IC.edit}Write by hand</button></div>`;
+  const tracks = h.tracks.length
+    ? `<div class="tracks">${h.tracks.map((t, i) => `<div class="trk-r${h.chosen === i ? ' chosen' : ''}" data-trk="${s.id}:${i}">
+        <button class="play" data-play title="Play">${IC.play}</button>
+        <span class="fn" title="${esc(t.n)}">${esc(t.n)}${t.new ? '<span class="newdot">new</span>' : ''}${t.local ? '<span class="devdot">on this device</span>' : ''}<small>Take ${i + 1}</small></span>
+        <span class="dur">${t.d}</span>
+        ${h.chosen === i ? `<button class="chosen-tag" data-choose-t="${s.id}:${i}" title="Click to unchoose">✓ Chosen</button>` : `<button class="tb sm line" data-choose-t="${s.id}:${i}">Choose</button>`}
+        <span class="bar"></span></div>`).join('')}</div>`
+    : h.title ? `<div class="empty-drop">${IC.drop}<span>No tracks yet. Drop Suno's downloads anywhere on the board.</span></div>` : '';
+  return `<div class="half" data-half="${st}">
+    <div class="hh"><span class="lab">${IC.mus}Music · Suno</span>${chip(st)}</div>
+    ${srcLine('mood', s.mood)}${p}${tracks}</div>`;
+}
+function srcLine(k, v) {
+  if (S.emptyAppendix) return `<div class="srcline empty"><span class="k">${k}:</span>empty <a data-other-doc>Edit in the document</a></div>`;
+  return `<div class="srcline"><span class="k">${k}:</span>${esc(v)} <a data-other-doc>Edit in the document</a></div>`;
+}
+function render() {
+  const has = !S.noAppendix;
+  $('#boardBody').hidden = !has; $('#emptySt').hidden = has;
+  $('#helpBtn').hidden = $('#addFiles').hidden = !has;
+  const rows = $('#rows');
+  rows.innerHTML = S.scenes.map(s => {
+    const a = imgSt(s.img), b = musSt(s.mus);
+    const show = filter === 'all' || a === filter || b === filter;
+    const html = `<article class="card scene" id="row-${s.id}" ${show ? '' : 'hidden'}>
+      <div class="sh"><span class="sid">${s.id}</span><span class="stt">${esc(s.t)}</span><a class="go" data-other-doc>Open the scene in the document</a></div>
+      <div class="halves">${imgHalf(s)}${musHalf(s)}</div></article>`;
+    return html;
+  }).join('');
+  if (filter !== 'all') $$('.half').forEach(h => h.classList.toggle('dim', h.dataset.half !== filter));
+  summary(); strips(); tray();
+  $('#sbCount').textContent = S.noAppendix ? 'No appendix' : S.scenes.length + ' scenes';
+}
+function counts(fn) { const c = { chosen: 0, received: 0, wanted: 0 }; S.scenes.forEach(s => c[fn(s)]++); return c; }
+function summary() {
+  const i = counts(s => imgSt(s.img)), m = counts(s => musSt(s.mus));
+  const part = c => `<b>${c.chosen}</b> chosen, <b>${c.received}</b> received, <b>${c.wanted}</b> wanted`;
+  $('#summary').innerHTML = `<b>${S.scenes.length}</b> scenes<span class="sep">·</span>images ${part(i)}<span class="sep">·</span>music ${part(m)}`;
+  const rowsIn = f => S.scenes.filter(s => f === 'all' || imgSt(s.img) === f || musSt(s.mus) === f).length;
+  $('#filters').innerHTML = [['all', 'All'], ['wanted', 'Wanted'], ['received', 'Received'], ['chosen', 'Chosen']]
+    .map(([k, l]) => `<button data-filter="${k}" class="${filter === k ? 'on' : ''}">${l}<span class="n">${rowsIn(k)}</span></button>`).join('');
+}
+function strips() {
+  let h = '';
+  if (cur === 'noprompts') h += `<div class="card claude"><span class="avatar cl">C</span><div>
+      <h3>Prompts come from Claude</h3>
+      <p>Claude reads each scene's <code>visual:</code> and <code>mood:</code> lines and writes one Midjourney prompt and one Suno prompt per row. Ask in a chat on claude.ai:</p>
+      <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth»</span>${copyBtn('ask')}</div>
+      <p class="hint">Claude needs the Promptbook connector, with read and edit access. <a data-other-settings>Settings → Connected apps</a></p></div></div>`;
+  if (S.result) h += `<div class="info good">${IC.check}<span><b>14 files added: 11 matched, 3 to assign.</b> S3: 4 images, 2 tracks · S5: 4 images, 1 track. New files are marked.</span><button class="tb xs x" id="resX" title="Dismiss">✕</button></div>`;
+  if (S.local) h += `<div class="info local">${IC.dev}<span><b>4 files on this computer, uploaded when you are back online.</b> Choosing and editing prompts work offline; they sync too.</span></div>`;
+  $('#strips').innerHTML = h;
+}
+const sceneOpts = (sel) => `<option value="">Assign to scene…</option>` + S.scenes.map(s => `<option value="${s.id}"${sel === s.id ? ' selected' : ''}>${s.id} · ${esc(s.t)}</option>`).join('');
+function tray() {
+  const t = $('#tray');
+  if (!S.unmatched.length) { t.innerHTML = ''; return; }
+  t.innerHTML = `<div class="card tray"><div class="th">${IC.warn}<b>Unmatched</b><span class="cnt">${S.unmatched.length} ${S.unmatched.length === 1 ? 'file' : 'files'}</span><span class="hint">Their names match no prompt or track title.</span>
+      <span class="spacer"></span><button class="tb xs" id="trayHelp">How matching works</button></div>
+    ${S.unmatched.map((f, i) => `<div class="uf">
+      ${f.k === 'img' ? `<span class="mini" style="${art(f.art, f.i)}"></span>` : `<span class="trk">${IC.mus}</span>`}
+      <div style="min-width:0"><div class="fn">${esc(f.n)}</div><div class="why">${f.k === 'img' ? 'Image' : 'Track · ' + f.d} · ${esc(f.why)}</div></div>
+      <div class="uact"><select data-assign="${i}" aria-label="Assign ${esc(f.n)} to a scene">${sceneOpts()}</select>
+      <button class="tb sm danger" data-unrm="${i}">Remove</button></div></div>`).join('')}</div>`;
+}
+
+/* Screens */
+function screen(k) {
+  cur = k; S = build(k); filter = 'all';
+  $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === k));
+  document.body.classList.toggle('desk', k === 'desktop');
+  document.body.classList.toggle('phone', k === 'phone');
+  $('#sync').className = 'sync' + (S.local ? ' local' : '');
+  $('#syncT').textContent = S.local ? 'On this device only' : 'Synced';
+  $('#sbSync').innerHTML = S.local ? '<span class="a">Offline · 4 files waiting to upload</span>' : 'Synced 21:40 · promptbook.siberio.eu';
+  $('#sbClaude').textContent = S.local ? 'Claude needs a connection' : 'Claude connected · read and edit';
+  render();
+  $('#dropov').hidden = k !== 'dropping';
+  setHelp(false);
+  closeLb();
+  $('#center').scrollTop = 0;
+  if (k === 'viewer') openLb('S3', 1);
+  if (k === 'edit') { const r = $('#row-S2'); $('#center').scrollTop = r.offsetTop - 12; }
+  if (k === 'matching') setHelp(true);
+}
+$$('#screens button').forEach(b => b.onclick = () => screen(b.dataset.sc));
+$('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); document.body.classList.toggle('lmin', l.classList.contains('min')); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
+$('#theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; };
+
+/* Toast and confirm */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+let onOk = null;
+function ask(title, text, note, cb) { $('#cTitle').textContent = title; $('#cText').textContent = text; $('#cNote').textContent = note || ''; onOk = cb; $('#confirm').hidden = false; }
+$$('#confirm [data-cancel]').forEach(b => b.onclick = () => $('#confirm').hidden = true);
+$('#cOk').onclick = () => { $('#confirm').hidden = true; if (onOk) onOk(); };
+
+/* Help popover */
+function setHelp(on) { $('#help').hidden = !on; $('#helpBtn').setAttribute('aria-expanded', on); }
+$('#helpBtn').onclick = () => setHelp($('#help').hidden);
+$('#helpX').onclick = () => setHelp(false);
+
+/* Copy */
+function copyText(key) {
+  if (key === 'ask') return $('#askText').textContent;
+  const [id, half, part] = key.split('.'), s = S.scenes.find(x => x.id === id);
+  if (half === 'img') return s.img.p;
+  return { t: s.mus.title, s: s.mus.style, l: s.mus.lyrics }[part];
+}
+function flash(btn) {
+  const sp = btn.querySelector('span'), old = sp.textContent;
+  sp.textContent = 'Copied'; btn.classList.add('ok');
+  setTimeout(() => { sp.textContent = old; btn.classList.remove('ok'); }, 1300);
+}
+
+/* Lightbox */
+let lbScene = null, lbIdx = 0;
+function openLb(id, i) { lbScene = id; lbIdx = i; drawLb(); $('#lb').hidden = false; }
+function closeLb() { $('#lb').hidden = true; lbScene = null; }
+function drawLb() {
+  const s = S.scenes.find(x => x.id === lbScene), h = s.img, f = h.files[lbIdx];
+  $('#lbBig').setAttribute('style', art(f.art, f.i));
+  $('#lbCtr').textContent = `${lbIdx + 1} of ${h.files.length}`;
+  $('#lbScene').textContent = `${s.id} · ${s.t}`;
+  $('#lbFn').textContent = f.n;
+  const size = ['2.1', '1.9', '2.3', '2.0'][lbIdx % 4];
+  $('#lbKv').innerHTML = `<dt>Scene</dt><dd>${s.id} · ${esc(s.t)}</dd><dt>Size</dt><dd>${size} MB · PNG</dd><dt>Dimensions</dt><dd>1456 × 816 px</dd>
+    <dt>Matched by</dt><dd>the prompt's first words</dd><dt>Added</dt><dd>${f.local ? 'Today 21:38 · on this device' : 'Today 21:38 by you'}</dd>
+    <dt>Status</dt><dd>${h.chosen === lbIdx ? '<span class="who-you">Chosen for this scene</span>' : h.chosen != null ? 'Another image is chosen' : 'None chosen yet'}</dd>`;
+  $('#lbStrip').innerHTML = h.files.map((g, j) => `<button class="${j === lbIdx ? 'cur' : ''}${h.chosen === j ? ' ch' : ''}" style="${art(g.art, g.i)}" data-lbgo="${j}" title="Image ${j + 1}"></button>`).join('');
+  const ch = h.chosen === lbIdx;
+  $('#lbChoose').className = 'tb ' + (ch ? 'line' : 'primary');
+  $('#lbChoose').innerHTML = ch ? '✓ Chosen · click to unchoose' : `${IC.check.replace('class="ic"', '')}Choose for this scene`;
+  $('#lbMove').innerHTML = `<option value="">Move to another scene…</option>` + S.scenes.filter(x => x.id !== s.id).map(x => `<option value="${x.id}">${x.id} · ${esc(x.t)}</option>`).join('');
+}
+function lbStep(d) { const h = S.scenes.find(x => x.id === lbScene).img; lbIdx = (lbIdx + d + h.files.length) % h.files.length; drawLb(); }
+$('#lbPrev').onclick = () => lbStep(-1); $('#lbNext').onclick = () => lbStep(1);
+$('#lbClose').onclick = closeLb;
+$('#lb').onclick = e => { if (e.target.id === 'lb') closeLb(); const g = e.target.closest('[data-lbgo]'); if (g) { lbIdx = +g.dataset.lbgo; drawLb(); } };
+$('#lbChoose').onclick = () => { const h = S.scenes.find(x => x.id === lbScene).img; h.chosen = h.chosen === lbIdx ? null : lbIdx; render(); drawLb(); if (h.chosen != null) toast(`Chosen for ${lbScene}.`); };
+$('#lbMove').onchange = e => {
+  const to = e.target.value; if (!to) return;
+  const from = S.scenes.find(x => x.id === lbScene), dst = S.scenes.find(x => x.id === to);
+  const [f] = from.img.files.splice(lbIdx, 1); dst.img.files.push(f);
+  if (from.img.chosen === lbIdx) from.img.chosen = null; else if (from.img.chosen > lbIdx) from.img.chosen--;
+  closeLb(); render(); toast(`Moved to ${dst.id} · ${dst.t}.`);
+};
+$('#lbRemove').onclick = () => {
+  const s = S.scenes.find(x => x.id === lbScene);
+  ask('Remove this image?', `Image ${lbIdx + 1} leaves ${s.id} · ${s.t}.`, 'The file in your Downloads folder is not touched.', () => {
+    s.img.files.splice(lbIdx, 1);
+    if (s.img.chosen === lbIdx) s.img.chosen = null; else if (s.img.chosen > lbIdx) s.img.chosen--;
+    if (!s.img.files.length) closeLb(); else { lbIdx = Math.min(lbIdx, s.img.files.length - 1); drawLb(); }
+    render(); toast('Image removed.');
+  });
+};
+document.addEventListener('keydown', e => {
+  if (!$('#lb').hidden) { if (e.key === 'Escape') closeLb(); if (e.key === 'ArrowLeft') lbStep(-1); if (e.key === 'ArrowRight') lbStep(1); return; }
+  if (e.key === 'Escape') { setHelp(false); $('#dropov').hidden = true; $('#confirm').hidden = true; }
+  if (e.key === 'Enter' && e.target.matches('[data-open]')) { const [id, i] = e.target.dataset.open.split(':'); openLb(id, +i); }
+});
+
+/* Board clicks */
+let playing = null;
+document.addEventListener('click', e => {
+  const t = e.target;
+  const c = t.closest('[data-copy]');
+  if (c) {
+    const txt = copyText(c.dataset.copy);
+    try { navigator.clipboard.writeText(txt).catch(() => {}); } catch (_) {}
+    flash(c); return;
+  }
+  const pk = t.closest('[data-pick]');
+  if (pk) { e.stopPropagation(); const [id, i] = pk.dataset.pick.split(':'); const h = S.scenes.find(x => x.id === id).img; h.chosen = h.chosen === +i ? null : +i; render(); return; }
+  const op = t.closest('[data-open]');
+  if (op) { const [id, i] = op.dataset.open.split(':'); openLb(id, +i); return; }
+  const ct = t.closest('[data-choose-t]');
+  if (ct) { const [id, i] = ct.dataset.chooseT.split(':'); const h = S.scenes.find(x => x.id === id).mus; h.chosen = h.chosen === +i ? null : +i; render(); return; }
+  const pl = t.closest('[data-play]');
+  if (pl) {
+    const r = pl.closest('.trk-r'), on = !r.classList.contains('playing');
+    $$('.trk-r.playing').forEach(x => { x.classList.remove('playing'); x.querySelector('.play').innerHTML = IC.play; });
+    if (on) { r.classList.add('playing'); pl.innerHTML = IC.pause; pl.title = 'Pause'; }
+    return;
+  }
+  const f = t.closest('[data-filter]');
+  if (f) { filter = f.dataset.filter; render(); return; }
+  const ed = t.closest('[data-edit], [data-write]');
+  if (ed) { S.editing = ed.dataset.edit || ed.dataset.write; render(); const el = $(`#row-${S.editing.split('.')[0]} .editbox textarea, #row-${S.editing.split('.')[0]} .editbox input`); if (el) el.focus(); return; }
+  if (t.closest('[data-cancel-edit]')) { S.editing = null; render(); return; }
+  const sv = t.closest('[data-save]');
+  if (sv) {
+    const [id, half] = sv.dataset.save.split('.'), s = S.scenes.find(x => x.id === id);
+    if (half === 'img') { s.img.p = $(`#ed-${id}-img`).value.trim() || s.img.p; s.img.by = 'you'; s.img.when = 'just now'; }
+    else { s.mus.title = $(`#ed-${id}-t`).value.trim() || null; s.mus.style = $(`#ed-${id}-s`).value.trim(); s.mus.lyrics = $(`#ed-${id}-l`).value; s.mus.by = 'you'; s.mus.when = 'just now'; }
+    S.editing = null; render(); toast(`Saved. The old text is in History.`); return;
+  }
+  const rm = t.closest('[data-unrm]');
+  if (rm) { const f2 = S.unmatched.splice(+rm.dataset.unrm, 1)[0]; render(); toast(`Removed ${f2.n.length > 40 ? f2.n.slice(0, 40) + '…' : f2.n}.`); return; }
+  if (t.closest('#resX')) { S.result = false; strips(); return; }
+  if (t.closest('#trayHelp')) { setHelp(true); $('#center').scrollTop = 0; return; }
+  if (t.closest('[data-other]')) { toast('Mockup: the other project views are in connector.html.'); return; }
+  if (t.closest('[data-other-doc]')) { toast('Opens the Document view at this scene (editor.html).'); return; }
+  if (t.closest('[data-other-settings]')) { toast('Settings → Connected apps is in connector.html.'); return; }
+  if (!t.closest('#help') && !t.closest('#helpBtn') && !t.closest('#trayHelp')) setHelp(false);
+});
+document.addEventListener('change', e => {
+  const a = e.target.closest('[data-assign]'); if (!a || !a.value) return;
+  const f = S.unmatched.splice(+a.dataset.assign, 1)[0], s = S.scenes.find(x => x.id === a.value);
+  if (f.k === 'img') s.img.files.push({ n: f.n, art: f.art, i: f.i, new: true }); else s.mus.tracks.push({ n: f.n, d: f.d, new: true });
+  render(); toast(`Assigned to ${s.id} · ${s.t}.`);
+});
+$('#addAppendix').onclick = () => { screen('noprompts'); S.emptyAppendix = true; render(); toast('Appendix added with 6 scenes. Fill in visual: and mood:, or ask Claude.'); };
+$('#addFiles').onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = () => screen('afterdrop');
+
+/* Real drag and drop on the page */
+let dragDepth = 0;
+const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+window.addEventListener('dragenter', e => { if (!hasFiles(e) || S.noAppendix) return; e.preventDefault(); dragDepth++; $('#dropov').hidden = false; });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; if (cur !== 'dropping') $('#dropov').hidden = true; } });
+window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; screen('afterdrop'); });
+$('#dropov').onclick = e => { e.stopPropagation(); if (cur === 'dropping') screen('afterdrop'); };
+
+/* Start: the screen in the URL hash, if any; legend folded on narrow screens */
+if (window.innerWidth <= 760) $('#legendX').click();
+const start = (location.hash || '').slice(1);
+screen($$('#screens button').some(b => b.dataset.sc === start) ? start : 'board');
+</script>
+</body>
+</html>
