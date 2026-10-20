@@ -19,10 +19,10 @@
 - [x] 2.5 `store.ts`: one database per account, `device.json`, the six tables, WAL, append on every update, compaction at 500 rows and on quit, Not saved queue retried every 10 s (D4)
 - [x] 2.6 `sync.ts`: one socket, a provider per project with the token function, load before attach, origins `remote` / `renderer:<id>` / `main`, forwarding to renderers, stateless messages, `unsynced:<id>` counts (D5)
 - [x] 2.7 `auth/loopback.ts` and `auth/tokens.ts`: listener, PKCE, state, `shell.openExternal` or `PROMPTBOOK_E2E` hand-off, the Signed in and failure pages, 5-minute timeout, cancel, reopen; token exchange and refresh, `safeStorage` with the memory-only fallback, sign-out with revoke and optional removal (D8)
-- [ ] 2.8 `router.ts`: local routes (projects, bin cache, settings, me, auth config, merged snapshots with `source`, offline user snapshot, local restore and delete), forward with the bearer, 503 `offline`, 401 → signed out; list refresh and bin detection of D10 (D7, D10)
+- [x] 2.8 `router.ts`: local routes (projects, bin cache, settings, me, auth config, merged snapshots with `source`, offline user snapshot, local restore and delete), forward with the bearer, 503 `offline`, 401 → signed out; list refresh and bin detection of D10 (D7, D10)
 - [x] 2.9 `create.ts`: offline and online create through the same path, upload before attach, retry on reconnect, 409/400 left local (D9)
 - [x] 2.10 `snapshots.ts`: per-project timers by `kv['local_snapshots']`, only on changed text, labels, expiry at start and every 24 h; first-sync progress events (D10, D12)
-- [ ] 2.11 Unit tests of D17's desktop list: store, router, loopback against a fake AS, offline create upload, local snapshots
+- [x] 2.11 Unit tests of D17's desktop list: store, router, loopback against a fake AS, offline create upload, local snapshots
 - [ ] 2.12 Checks: `npm run typecheck`, `npm test`, `npm run build -w promptbook-desktop`, the app starts unpackaged against the local stack; hand-back of brief B
 
 ## 3. Web client (brief C)
