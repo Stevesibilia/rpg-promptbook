@@ -25,19 +25,18 @@ test('the window serves the web build, its workers and WebAssembly from the prot
     page.on('console', (m) => {
       if (/Content Security Policy|ERR_|net::|Failed to load|protocol/i.test(m.text())) problems.push(m.text());
     });
-    // Until the web client's platform seam (brief C), its first REST call
-    // reaches the protocol, which answers index.html: the bundle runs and
-    // throws on that answer. Any other page error is a problem.
+    // The web client runs through its platform seam: with no account it
+    // shows the desktop's Sign in, and no page error.
     const pageErrors: string[] = [];
     page.on('pageerror', (e) => pageErrors.push(String(e)));
     await page.waitForLoadState('load');
     expect(page.url()).toBe('promptbook://app/');
     // The bundle's stylesheet applied (the Emerald background) and its
-    // module ran (the page error below comes from its code).
+    // module ran.
     const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(background).toBe('rgb(19, 25, 23)');
-    await expect.poll(() => pageErrors.length).toBeGreaterThan(0);
-    expect(pageErrors.every((e) => e.includes("reading 'signIn'"))).toBe(true);
+    await expect(page.getByText('Opens the server\'s sign-in page in your default browser, then comes back here.')).toBeVisible();
+    expect(pageErrors).toEqual([]);
 
     // A layout asset, fetched as the PDF worker fetches it.
     const typ = await page.evaluate(async (url) => {

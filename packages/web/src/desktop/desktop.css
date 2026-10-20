@@ -1,0 +1,101 @@
+/* The desktop app's own parts (desktop.html, and projects.html's desktop
+   shell). Every rule sits under .desktop, the class
+   the desktop platform puts on <html>: the browser never matches one. */
+
+/* Sign in, In browser, Sign-in failed, First sync */
+.desktop .auth h3 {
+  font: 700 22px var(--display);
+  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+}
+.desktop .auth p {
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.desktop .auth .centred {
+  text-align: center;
+}
+.desktop .auth .btns {
+  display: flex;
+  gap: 8px;
+}
+.desktop .auth .btns .tb {
+  flex: 1;
+  justify-content: center;
+  padding: 8px 10px;
+}
+.desktop .auth form .field {
+  margin-bottom: 12px;
+}
+.desktop .spin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  animation: pb-rot 1.4s linear infinite;
+  margin: 4px auto 14px;
+}
+@keyframes pb-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.desktop .bad {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 10px;
+  color: var(--danger);
+  border: 2px solid var(--danger);
+  font: 700 18px var(--font);
+}
+.desktop .auth.first-sync {
+  width: min(460px, 100%);
+}
+.desktop .auth .bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  margin: 2px 0 10px;
+  overflow: hidden;
+}
+.desktop .auth .bar i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+.desktop .dlist {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 13px;
+  max-height: 50vh;
+  overflow: auto;
+}
+.desktop .dlist li {
+  display: grid;
+  grid-template-columns: 1fr 70px 18px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.desktop .dlist li span:nth-child(2) {
+  font: 11.5px var(--mono);
+  color: var(--faint);
+  text-align: right;
+}
+.desktop .dlist .okc {
+  color: var(--primary);
+}
+.desktop .dlist .now {
+  color: var(--info);
+}
+.desktop .first-acts {
+  display: flex;
+  margin-top: 16px;
+}

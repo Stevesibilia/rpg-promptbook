@@ -84,6 +84,8 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
       return auth.get().server || info.get().serverOrigin;
     },
     async init() {
+      // The desktop's own styles apply under this class only.
+      if (typeof document !== 'undefined') document.documentElement.classList.add('desktop');
       const [i, a, u] = await Promise.all([bridge.info(), bridge.auth.state(), bridge.updates.state()]);
       info.set(i);
       auth.set(a);
