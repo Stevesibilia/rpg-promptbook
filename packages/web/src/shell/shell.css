@@ -287,6 +287,32 @@
 .rail .last {
   margin-bottom: 8px;
 }
+/* The release under Settings: small and muted, not a control. Its slot is
+   always there, so the rail does not move when the version arrives. */
+.rail .rail-version {
+  height: 10px;
+  margin-bottom: 8px;
+  font-size: 10px;
+  line-height: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.rail .rail-version span {
+  position: relative;
+}
+.rail .rail-version span:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 44px;
+  top: -4px;
+  z-index: 9;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
 .rail svg {
   width: 18px;
   height: 18px;

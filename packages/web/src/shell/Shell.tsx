@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.js';
 import { DesktopStatusItems, DesktopStrips } from '../desktop/frame.js';
@@ -117,6 +117,7 @@ export function Shell({
         >
           <SettingsIcon />
         </button>
+        <RailVersion />
       </nav>
 
       {left && <aside className="left">{left}</aside>}
@@ -134,6 +135,32 @@ export function Shell({
             : statusBarSync(sync.state, unsentCount(sync.providers), sync.lastSync)}
         </span>
       </footer>
+    </div>
+  );
+}
+
+// The release under Settings: small and muted, a fact to check. Nothing until
+// it is known; the slot holds its place, so the rail never moves.
+function RailVersion() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void platform.releaseVersion().then((v) => live && setVersion(v));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return <ReleaseNote version={version} />;
+}
+
+export function ReleaseNote({ version }: { version: string | null }) {
+  return (
+    <div className="rail-version">
+      {version && (
+        <span role="note" aria-label={`Release ${version}`} data-tip={`Release ${version}`}>
+          {version}
+        </span>
+      )}
     </div>
   );
 }
