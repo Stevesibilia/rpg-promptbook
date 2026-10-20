@@ -33,7 +33,7 @@
 - [x] 3.7 `Tray.tsx` (pinned, Assign to scene…, Remove, toasts) and `MatchHelp.tsx` (screen 5b, examples from the project's prompts)
 - [x] 3.8 `Viewer.tsx`: screen 6 with keyboard, strip, Choose, Move, Remove with the confirm, toasts; tracks with one shared `<audio>`, Play and Pause, Choose, and the track menu with «Move to another scene…» and «Remove» (confirm «Remove this track?», toasts) (D12)
 - [x] 3.9 Unit tests: intake with a fake platform (skips, already here, re-link without upload, result counts, Retry), the fallback hash path, filters and summary counts, the track menu's move and remove
-- [ ] 3.10 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green; screenshots of screens 1 to 9 for the architect; hand-back of brief C
+- [x] 3.10 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green; screenshots of screens 1 to 9 for the architect; hand-back of brief C
 
 ## 4. Desktop files, end-to-end tests, preview and docs (brief D)
 
