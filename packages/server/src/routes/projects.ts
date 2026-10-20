@@ -21,6 +21,10 @@ export const NOT_FOUND = () => new AppError(404, 'not_found', 'Not found.');
 
 const title = z.string().trim().min(1, 'is required').max(200);
 
+// A project id chosen by the desktop app, in lower case as Postgres writes a
+// uuid: an upper-case one would name the same row and another document.
+const chosenId = z.uuid().regex(/^[0-9a-f-]+$/, 'must be in lower case');
+
 const createBody = z.object({
   category: z.enum(categories),
   title,
@@ -30,14 +34,14 @@ const createBody = z.object({
   status: z.enum(statuses).default('draft'),
   seed: z.string().max(10_000).default(''),
   // Chosen by the desktop app, which made the project on the device.
-  id: z.uuid().optional(),
+  id: chosenId.optional(),
 });
 
 // The desktop app's upload of a project made on the device (desktop-app
 // design decision 9): its id and its document, base64. Every other field is
 // in the document. The state's size is checked once decoded, against
 // MAX_STATE_BYTES, within the route's body limit.
-const uploadBody = z.object({ id: z.uuid(), state: z.string() });
+const uploadBody = z.object({ id: chosenId, state: z.string() });
 
 // Room for the largest state in base64 and the JSON around it.
 const UPLOAD_BODY_LIMIT = 8 * 1024 * 1024;

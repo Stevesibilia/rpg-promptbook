@@ -545,13 +545,17 @@ describe('a project made on the device, uploaded', () => {
     expect(await db.query('select id from projects')).toEqual([]);
   });
 
-  it('refuses a body over 8 MB, a state without an id, and an id that is not a UUID', async () => {
+  it('refuses a body over 8 MB, a state without an id, and an id that is not a lower-case UUID', async () => {
     const { app, session } = await setup();
     const { access_token } = await desktopSignIn(app, session);
     const huge = await upload(app, access_token, { id: ID, state: 'A'.repeat(8 * 1024 * 1024) });
     expect(huge.statusCode).toBe(413);
     expect((await upload(app, access_token, { state: encode(offlineDoc()) })).statusCode).toBe(400);
     expect((await upload(app, access_token, { id: 'not-a-uuid', state: encode(offlineDoc()) })).statusCode).toBe(400);
+    // An upper-case id would alias the row's lower-case one.
+    const upper = ID.toUpperCase();
+    expect((await upload(app, access_token, { id: upper, state: encode(offlineDoc({ id: upper })) })).statusCode).toBe(400);
+    expect((await upload(app, access_token, { id: upper, category: 'one-shot', title: 'Maiuscolo' })).statusCode).toBe(400);
     expect(await db.query('select id from projects')).toEqual([]);
   });
 
