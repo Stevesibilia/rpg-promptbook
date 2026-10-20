@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { OAUTH_ROUTES, PUBLIC_ROUTES } from '../../src/accounts/auth.js';
+import { COOKIE_SESSION_ROUTES, OAUTH_ROUTES, PUBLIC_ROUTES } from '../../src/accounts/auth.js';
 import { hashToken } from '../../src/accounts/sessions.js';
 import { TOO_MANY_ATTEMPTS } from '../../src/accounts/throttle.js';
 import { createUser, ensureAdmin, findUserByUsername } from '../../src/accounts/users.js';
 import { verifyPassword } from '../../src/accounts/passwords.js';
 import { WRONG_CREDENTIALS } from '../../src/routes/auth.js';
-import { db, ORIGIN, PASSWORD, sessionCookie, signedIn, signIn, startApp, steve } from './helpers.js';
+import { desktopSignIn } from './desktop-helpers.js';
+import { db, ORIGIN, PASSWORD, seedDesktopClient, sessionCookie, signedIn, signIn, startApp, steve } from './helpers.js';
 
 const cookie = (token: string) => ({ cookie: `pb_session=${token}` });
 
@@ -190,6 +191,32 @@ describe('requests are protected by default', () => {
     expect((await app.inject({ url: '/api/health' })).json()).toEqual({ ok: true, version: 'dev' });
     expect((await app.inject({ url: '/api/auth/me' })).json()).toEqual({ user: null });
     expect((await app.inject({ url: '/api/no-such-route' })).statusCode).toBe(401);
+  });
+
+  it('takes the desktop app’s token on every session route but consent and sign-out, which answer 403', async () => {
+    await steve();
+    await seedDesktopClient(db);
+    const app = await startApp();
+    const { access_token } = await desktopSignIn(app, await signedIn(app));
+    const api = [...app.routeList].filter((route) => route.includes(' /api') && !route.startsWith('HEAD '));
+    const sessionOnly = api.filter((r) => !PUBLIC_ROUTES.has(r) && !OAUTH_ROUTES.has(r));
+    for (const route of COOKIE_SESSION_ROUTES) expect(sessionOnly).toContain(route);
+    const answers: string[] = [];
+    const expected: string[] = [];
+    for (const route of sessionOnly) {
+      const [method, url] = route.split(' ') as ['GET', string];
+      const response = await app.inject({
+        method,
+        url: url.replace(/:[^/]+/g, '00000000-0000-4000-8000-000000000000'),
+        headers: { authorization: `Bearer ${access_token}` },
+        ...(method === 'GET' ? {} : { payload: {} }),
+      });
+      // Past the session check: whatever the route answers next, never 401.
+      const cookieOnly = COOKIE_SESSION_ROUTES.has(route);
+      answers.push(`${route} ${cookieOnly ? response.statusCode : response.statusCode === 401 ? 401 : 'past'}`);
+      expected.push(`${route} ${cookieOnly ? 403 : 'past'}`);
+    }
+    expect(answers).toEqual(expected);
   });
 
   it('refuses a cross-site write and leaves the state as it was', async () => {

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { requireSession } from '../accounts/auth.js';
+import { requireCookieSession, requireSession } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
@@ -33,6 +33,7 @@ import {
   sweepExpired,
   TokenError,
 } from '../oauth/tokens.js';
+import type { Sync } from '../sync.js';
 
 // The authorization server for the MCP endpoint (connector design decisions 7
 // to 9, ported from gdrarchive), and for the desktop app, a first-party client
@@ -135,7 +136,7 @@ export interface ConsentRequest {
   first_party: boolean;
 }
 
-export async function oauthRoutes(app: FastifyInstance, { config, db }: { config: Config; db: Db }) {
+export async function oauthRoutes(app: FastifyInstance, { config, db, sync }: { config: Config; db: Db; sync: Sync }) {
   const oauth: OAuthConfig = oauthConfig(config.publicOrigin);
 
   // Everything a request must satisfy before anyone is shown anything or any
@@ -286,10 +287,10 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     }
   });
 
-  // Consent, for the /authorize page: session only, same origin.
+  // Consent, for the /authorize page: a cookie session only, same origin.
 
   app.get('/api/oauth/authorize', async (req): Promise<ConsentRequest> => {
-    requireSession(req);
+    requireCookieSession(req);
     const validated = await validateRequest(req.query);
     return {
       client_name: validated.client.clientName,
@@ -304,7 +305,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
   // Allow: the grant, a code, and where to send the browser. Every check runs
   // again rather than trusting what the page was shown.
   app.post('/api/oauth/authorize', async (req) => {
-    const { user } = requireSession(req);
+    const { user } = requireCookieSession(req);
     const parsed = approveBody.safeParse(req.body ?? {});
     if (!parsed.success) throw new AppError(400, 'invalid_request', 'The approval is missing or malformed.');
     const body = parsed.data;
@@ -330,7 +331,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
   // Deny: nothing recorded, the client told at its redirect URI, which had
   // to be valid like an approval's.
   app.post('/api/oauth/authorize/deny', async (req) => {
-    requireSession(req);
+    requireCookieSession(req);
     const validated = await validateRequest(req.body);
     return redirectTo(validated, { error: 'access_denied', state: validated.query.state });
   });
@@ -412,6 +413,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
         throw new TokenError('unsupported_grant_type', 'This server supports authorization_code and refresh_token.');
       } catch (error) {
         if (error instanceof TokenError) {
+          if (error.revokedGrantId) sync.closeGrants([error.revokedGrantId]);
           // The grant type and the code, nothing else of this body.
           req.log.warn({ grant_type: grantType, code: error.code }, 'OAuth token request refused');
           return sendOAuthError(reply, 400, error.code, error.message);
@@ -426,7 +428,8 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
         return sendOAuthError(reply, 400, 'invalid_request', 'The revocation request must be form-encoded.');
       }
       const presented = formField(req.body, 'token');
-      if (presented) await revokeByTokenValue(db, presented);
+      const revoked = presented ? await revokeByTokenValue(db, presented) : null;
+      if (revoked) sync.closeGrants([revoked]);
       return reply.code(200).header('cache-control', 'no-store').send({});
     });
   });
@@ -442,6 +445,7 @@ export async function oauthRoutes(app: FastifyInstance, { config, db }: { config
     const { user } = requireSession(req);
     const { id } = req.params as { id: string };
     await revokeGrant(db, user.id, id);
+    sync.closeGrants([id]);
     return reply.code(204).send();
   });
 }

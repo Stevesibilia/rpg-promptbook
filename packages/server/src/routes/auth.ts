@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { clearSessionCookie, requireSession, setSessionCookie } from '../accounts/auth.js';
+import { clearSessionCookie, requireCookieSession, requireSession, setSessionCookie } from '../accounts/auth.js';
 import { burnVerificationTime, verifyPassword } from '../accounts/passwords.js';
 import { createSession, deleteOtherSessions, deleteSession } from '../accounts/sessions.js';
 import { releaseAttempt, reserveAttempt } from '../accounts/throttle.js';
@@ -56,8 +56,10 @@ export async function authRoutes(app: FastifyInstance, { config, db, sync }: { c
     return { user: signedIn };
   });
 
+  // The browser's own sign-out; the desktop app signs out by revoking its
+  // grant.
   app.post('/api/auth/logout', async (req, reply) => {
-    const session = requireSession(req);
+    const session = requireCookieSession(req);
     await deleteSession(db, session.tokenHash);
     sync.closeSessions([session.tokenHash]);
     clearSessionCookie(reply);
@@ -74,7 +76,7 @@ export async function authRoutes(app: FastifyInstance, { config, db, sync }: { c
   });
 
   // Ends every other session of the user and their sync connections; the one
-  // making the change stays.
+  // making the change stays. From the desktop app, every cookie session ends.
   app.post('/api/auth/password', async (req, reply) => {
     refusePasswords();
     const session = requireSession(req);

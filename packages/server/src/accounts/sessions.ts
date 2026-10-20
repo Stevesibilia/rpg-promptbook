@@ -10,10 +10,18 @@ const TOKEN_BYTES = 32;
 const LAST_SEEN_WRITE_INTERVAL_MS = 60_000;
 
 export interface Session {
-  // SHA-256 hex of the cookie's token: the session's id everywhere.
-  tokenHash: string;
+  // SHA-256 hex of the cookie's token: the session's id everywhere. Null for
+  // the desktop app, which has no cookie.
+  tokenHash: string | null;
   user: User;
+  // The pb_session cookie, or a bearer access token of the desktop app
+  // (desktop-app design decision 8).
+  via: 'cookie' | 'app';
+  // The desktop app's grant; null for a cookie session.
+  grantId: string | null;
 }
+
+export type CookieSession = Session & { tokenHash: string; via: 'cookie' };
 
 export const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 
@@ -35,7 +43,7 @@ export async function createSession(
 
 // The session and user behind a cookie value, or null when it is unknown or
 // expired. An expired row is deleted on the way past.
-export async function resolveSession(db: Queryable, token: string): Promise<Session | null> {
+export async function resolveSession(db: Queryable, token: string): Promise<CookieSession | null> {
   if (!token) return null;
   const tokenHash = hashToken(token);
   const row = await db.queryOne<Omit<UserRow, 'password_hash'> & { expires_at: Date; last_seen_at: Date }>(
@@ -52,7 +60,7 @@ export async function resolveSession(db: Queryable, token: string): Promise<Sess
   if (Date.now() - row.last_seen_at.getTime() > LAST_SEEN_WRITE_INTERVAL_MS) {
     await db.query('update sessions set last_seen_at = now() where token_hash = $1', [tokenHash]);
   }
-  return { tokenHash, user: toUser(row) };
+  return { tokenHash, user: toUser(row), via: 'cookie', grantId: null };
 }
 
 export async function deleteSession(db: Queryable, tokenHash: string): Promise<void> {

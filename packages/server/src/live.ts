@@ -30,7 +30,7 @@ export interface LiveDocument {
 // then stays the same object in memory, and every check repeated inside
 // transact sees what the clients see.
 export async function openLiveDocument(sync: Sync, projectId: string, userId: string): Promise<LiveDocument> {
-  const connection = await sync.hocuspocus.openDirectConnection(projectId, { userId, sessionHash: null });
+  const connection = await sync.hocuspocus.openDirectConnection(projectId, { userId, sessionHash: null, grantId: null });
   const document = connection.document as Document;
   let closed = false;
   return {

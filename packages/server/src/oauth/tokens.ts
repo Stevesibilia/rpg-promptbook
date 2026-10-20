@@ -31,6 +31,9 @@ export class TokenError extends Error {
   constructor(
     readonly code: 'invalid_request' | 'invalid_grant' | 'unsupported_grant_type',
     message: string,
+    // The grant a replayed code or refresh token revoked, whose sync
+    // connections must close too.
+    readonly revokedGrantId: string | null = null,
   ) {
     super(message);
   }
@@ -131,6 +134,7 @@ export async function redeemCode(db: Queryable, input: CodeRedemption): Promise<
       throw new TokenError(
         'invalid_grant',
         'That authorization code had already been used. The approval has been revoked; authorize the client again.',
+        spent.grant_id,
       );
     }
     throw new TokenError('invalid_grant', 'That authorization code is not valid.');
@@ -215,6 +219,7 @@ async function revokeForReuse(db: Queryable, grantId: string): Promise<never> {
   throw new TokenError(
     'invalid_grant',
     'That refresh token had already been exchanged. The approval has been revoked; authorize the client again.',
+    grantId,
   );
 }
 
@@ -262,13 +267,16 @@ export async function rotateRefreshToken(
 }
 
 // RFC 7009: the approval behind either kind of token goes. An unknown value
-// is a silent success: the endpoint must not say which tokens exist.
-export async function revokeByTokenValue(db: Queryable, value: string): Promise<void> {
-  if (!value) return;
+// is a silent success: the endpoint must not say which tokens exist. Answers
+// the grant revoked, for its sync connections.
+export async function revokeByTokenValue(db: Queryable, value: string): Promise<string | null> {
+  if (!value) return null;
   const row = await db.queryOne<{ grant_id: string }>('select grant_id from oauth_tokens where token_hash = $1', [
     hashToken(value),
   ]);
-  if (row) await deleteGrant(db, row.grant_id);
+  if (!row) return null;
+  await deleteGrant(db, row.grant_id);
+  return row.grant_id;
 }
 
 // Verification.

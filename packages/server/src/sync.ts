@@ -6,6 +6,8 @@ import type { WebSocket } from 'ws';
 import * as Y from 'yjs';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
+import { APP_SCOPE, oauthConfig } from './oauth/config.js';
+import { verifyAccessToken } from './oauth/tokens.js';
 import { storeProjectDoc } from './projects.js';
 
 // Yjs sync over one WebSocket route, with Hocuspocus inside the Fastify
@@ -18,10 +20,17 @@ declare module 'fastify' {
 }
 
 // What every document connection on a socket carries. The socket's cookie is
-// fixed at the upgrade, so all its documents share one session.
+// fixed at the upgrade, so all its documents share one session. The desktop
+// app sends no cookie: each document authenticates with the app's access
+// token instead (desktop-app design decision 8).
 export interface SyncContext {
   userId: string | null;
   sessionHash: string | null;
+  // The desktop app's grant, on a document its token authenticated.
+  grantId: string | null;
+  // The grants whose tokens authenticated a document on this socket, one set
+  // shared by the socket's documents, so revoking a grant finds its sockets.
+  socketGrants?: Set<string>;
 }
 
 // Stateless messages to a document's clients about storing it.
@@ -30,8 +39,9 @@ export const STORED = JSON.stringify({ type: 'stored' });
 // Sent before a project's connections close because it went to the bin.
 export const DELETED = JSON.stringify({ type: 'deleted' });
 
-// A socket closed because its session ended: the provider reconnects, and
-// its next authentication fails, which the client shows as Sign in to sync.
+// A socket closed because its session ended or its grant was revoked: the
+// provider reconnects, and its next authentication fails, which the client
+// shows as Sign in to sync.
 const SESSION_ENDED = { code: 4401, reason: 'Unauthorized' };
 // A document connection closed because the project went to the bin; the
 // socket stays open for the client's other documents.
@@ -48,6 +58,8 @@ export interface Sync {
   hocuspocus: Hocuspocus<SyncContext>;
   // Closes every socket opened with one of these sessions.
   closeSessions(sessionHashes: readonly string[]): void;
+  // Closes every socket with a document opened with a token of these grants.
+  closeGrants(grantIds: readonly string[]): void;
   // Closes every connection to a project's document.
   closeProject(projectId: string): void;
   // The document as the open clients have it, or null when no one has it open.
@@ -68,29 +80,54 @@ function webRequest(req: FastifyRequest, publicOrigin: string): Request {
 export function createSync({ config, db, log }: { config: Config; db: Db; log: FastifyBaseLogger }): Sync {
   const sockets = new Map<WebSocket, SyncContext>();
   const retries = new Map<string, NodeJS.Timeout>();
+  const { appResource } = oauthConfig(config.publicOrigin);
+
+  // The user of a desktop app token, recorded on the socket before its grant
+  // is checked once more: a revocation that lands between the token check
+  // and the record is then seen here, and one after it closes the socket.
+  async function authenticateToken(token: string, context: SyncContext): Promise<{ userId: string; grantId: string }> {
+    const caller = await verifyAccessToken(db, token, appResource);
+    if (!caller || caller.scope !== APP_SCOPE) throw new Error('Sign in first.');
+    context.socketGrants?.add(caller.grantId);
+    if (!(await db.queryOne('select 1 from oauth_grants where id = $1', [caller.grantId]))) {
+      throw new Error('Sign in first.');
+    }
+    return { userId: caller.userId, grantId: caller.grantId };
+  }
 
   const hocuspocus: Hocuspocus<SyncContext> = new Hocuspocus<SyncContext>({
     quiet: true,
     debounce: 2_000,
     maxDebounce: 10_000,
 
-    // Refuses unless the upgrade came from the public origin with a live
-    // session of the project's owner, and the project is not in the bin.
-    async onAuthenticate({ requestHeaders, documentName, context }) {
-      if (requestHeaders.get('origin') !== config.publicOrigin) throw new Error('Cross-origin connection refused.');
-      if (!context.sessionHash || !context.userId) throw new Error('Sign in first.');
-      const session = await db.queryOne(
-        'select 1 from sessions where token_hash = $1 and user_id = $2 and expires_at > now()',
-        [context.sessionHash, context.userId],
-      );
-      if (!session) throw new Error('Sign in first.');
+    // Refuses unless the project's owner is asking and the project is not in
+    // the bin. The owner is the user of the desktop app's token when the
+    // provider sends one, from anywhere, since a token is not ambient; or
+    // else the live session of the upgrade's cookie, from the public origin
+    // only.
+    async onAuthenticate({ requestHeaders, documentName, context, token }) {
+      let userId: string;
+      let grantId: string | null = null;
+      if (token) {
+        ({ userId, grantId } = await authenticateToken(token, context));
+      } else {
+        if (requestHeaders.get('origin') !== config.publicOrigin) throw new Error('Cross-origin connection refused.');
+        if (!context.sessionHash || !context.userId) throw new Error('Sign in first.');
+        const session = await db.queryOne(
+          'select 1 from sessions where token_hash = $1 and user_id = $2 and expires_at > now()',
+          [context.sessionHash, context.userId],
+        );
+        if (!session) throw new Error('Sign in first.');
+        userId = context.userId;
+      }
       const project =
         UUID.test(documentName) &&
         (await db.queryOne('select 1 from projects where id = $1 and owner_id = $2 and deleted_at is null', [
           documentName,
-          context.userId,
+          userId,
         ]));
       if (!project) throw new Error('Not found.');
+      return { userId, grantId };
     },
 
     async onLoadDocument({ documentName, document }) {
@@ -143,6 +180,15 @@ export function createSync({ config, db, log }: { config: Config; db: Db; log: F
       }
     },
 
+    closeGrants(grantIds) {
+      const revoked = new Set(grantIds);
+      for (const [socket, context] of sockets) {
+        if ([...(context.socketGrants ?? [])].some((id) => revoked.has(id))) {
+          socket.close(SESSION_ENDED.code, SESSION_ENDED.reason);
+        }
+      }
+    },
+
     closeProject(projectId) {
       const document = hocuspocus.documents.get(projectId);
       if (!document) return;
@@ -169,9 +215,12 @@ export function createSync({ config, db, log }: { config: Config; db: Db; log: F
     accept(socket, req) {
       // The auth hook has already resolved the cookie; onAuthenticate checks
       // the session again for every document.
+      const cookie = req.session?.via === 'cookie' ? req.session : null;
       const context: SyncContext = {
-        userId: req.session?.user.id ?? null,
-        sessionHash: req.session?.tokenHash ?? null,
+        userId: cookie?.user.id ?? null,
+        sessionHash: cookie?.tokenHash ?? null,
+        grantId: null,
+        socketGrants: new Set(),
       };
       sockets.set(socket, context);
       const connection = hocuspocus.handleConnection(socket, webRequest(req, config.publicOrigin), { ...context });

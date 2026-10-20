@@ -51,6 +51,11 @@ export async function findUserByUsername(
   return row ? { ...toUser(row), passwordHash: row.password_hash } : null;
 }
 
+export async function findUserById(db: Queryable, id: string): Promise<User | null> {
+  const row = await db.queryOne<UserRow>('select * from users where id = $1', [id]);
+  return row ? toUser(row) : null;
+}
+
 export async function countUsers(db: Queryable): Promise<number> {
   const row = await db.queryOne<{ count: string }>('select count(*) as count from users');
   return Number(row?.count ?? 0);

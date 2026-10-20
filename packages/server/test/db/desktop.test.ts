@@ -1,68 +1,42 @@
 import type { FastifyInstance } from 'fastify';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { readDocument } from 'promptbook-project';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hashToken } from '../../src/accounts/sessions.js';
+import { createUser } from '../../src/accounts/users.js';
 import { sweepUnusedClients } from '../../src/oauth/clients.js';
-import { db, ORIGIN, seedDesktopClient, signedIn, startApp, steve } from './helpers.js';
-import { authorizeParams, cookie, exchange, pkce, registerClient, type Tokens } from './oauth-helpers.js';
+import { APP_RESOURCE, approveDesktop, desktopParams, desktopSignIn, LOOPBACK } from './desktop-helpers.js';
+import { db, ORIGIN, PASSWORD, seedDesktopClient, signedIn, startApp, steve } from './helpers.js';
+import { mcpCall } from './mcp-helpers.js';
+import {
+  authorizeParams,
+  connect as connectClaude,
+  cookie,
+  exchange,
+  FORM,
+  form,
+  pkce,
+  registerClient,
+  type Tokens,
+} from './oauth-helpers.js';
+import { connect, destroyClients, listen, synced, waitFor } from './sync-helpers.js';
 
 // The desktop app's side of the server (desktop-app design decisions 8 and
 // 9): the first-party client and its app resource.
 
-const APP_RESOURCE = `${ORIGIN}/api`;
-const LOOPBACK = 'http://127.0.0.1:51234/callback';
-
 beforeEach(() => seedDesktopClient(db));
+afterEach(destroyClients);
 
-function desktopParams(challenge: string, overrides: Record<string, string> = {}): Record<string, string> {
-  return {
-    client_id: 'promptbook-desktop',
-    redirect_uri: LOOPBACK,
-    response_type: 'code',
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-    resource: APP_RESOURCE,
-    scope: 'app',
-    state: 'desktop-state',
-    device_name: 'studio-mac',
-    ...overrides,
-  };
-}
+const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
-async function approveDesktop(
-  app: FastifyInstance,
-  session: string,
-  params: Record<string, string>,
-  grantedScope = 'app',
-) {
-  return app.inject({
+async function newProject(app: FastifyInstance, session: string, title = 'Il ballo dei Lorenzetti'): Promise<string> {
+  const response = await app.inject({
     method: 'POST',
-    url: '/api/oauth/authorize',
+    url: '/api/projects',
     headers: { ...cookie(session), origin: ORIGIN },
-    payload: { ...params, granted_scope: grantedScope },
+    payload: { category: 'adventure', title },
   });
-}
-
-// The desktop app signed in by a signed-in browser, and its first tokens.
-async function desktopSignIn(
-  app: FastifyInstance,
-  session: string,
-  device = 'studio-mac',
-): Promise<Tokens & { grantId: string }> {
-  const { verifier, challenge } = pkce();
-  const approved = await approveDesktop(app, session, desktopParams(challenge, { device_name: device }));
-  if (approved.statusCode !== 200) throw new Error(`Approval failed: ${approved.statusCode} ${approved.body}`);
-  const code = new URL(approved.json<{ redirect_to: string }>().redirect_to).searchParams.get('code')!;
-  const response = await exchange(app, {
-    grant_type: 'authorization_code',
-    code,
-    redirect_uri: LOOPBACK,
-    client_id: 'promptbook-desktop',
-    code_verifier: verifier,
-    resource: APP_RESOURCE,
-  });
-  if (response.statusCode !== 200) throw new Error(`Exchange failed: ${response.statusCode} ${response.body}`);
-  const [grant] = await db.query<{ id: string }>('select id from oauth_grants order by created_at desc limit 1');
-  return { ...response.json<Tokens>(), grantId: grant!.id };
+  if (response.statusCode !== 201) throw new Error(`Create failed: ${response.statusCode} ${response.body}`);
+  return response.json().project.id as string;
 }
 
 async function setup() {
@@ -228,4 +202,202 @@ describe('the first-party desktop client', () => {
     expect(response.statusCode).toBe(200);
     expect(await db.query('select scope, device_name from oauth_grants')).toEqual([{ scope: 'read', device_name: null }]);
   });
+});
+
+describe('REST with the desktop app’s token', () => {
+  it('acts as the grant’s user, with no cookie and no origin check', async () => {
+    const { app, session } = await setup();
+    const id = await newProject(app, session);
+    const { access_token } = await desktopSignIn(app, session);
+    const listed = await app.inject({ url: '/api/projects', headers: bearer(access_token) });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().projects.map((p: { id: string }) => p.id)).toEqual([id]);
+    expect((await app.inject({ url: '/api/auth/me', headers: bearer(access_token) })).json().user).toMatchObject({
+      username: 'steve',
+    });
+    // A write from anywhere: the header is not ambient.
+    for (const headers of [{}, { origin: 'https://elsewhere.example' }, { referer: 'https://elsewhere.example/x' }]) {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/projects',
+        headers: { ...bearer(access_token), ...headers },
+        payload: { category: 'one-shot', title: 'Dal desktop' },
+      });
+      expect(created.statusCode).toBe(201);
+    }
+  });
+
+  it('answers 401 to an MCP token, an unknown or expired one, and one of a revoked grant', async () => {
+    const { app, session } = await setup();
+    const claude = await connectClaude(app, session, 'read_write');
+    const desktop = await desktopSignIn(app, session);
+    const list = (token: string) => app.inject({ url: '/api/projects', headers: bearer(token) });
+    expect((await list(claude.access_token)).statusCode).toBe(401);
+    expect((await list(desktop.refresh_token)).statusCode).toBe(401);
+    expect((await list('pb_at_nothing')).statusCode).toBe(401);
+    // An MCP token on a public route is no session at all.
+    expect((await app.inject({ url: '/api/auth/me', headers: bearer(claude.access_token) })).json()).toEqual({
+      user: null,
+    });
+    await db.query("update oauth_tokens set expires_at = now() - interval '1 second' where token_hash = $1", [
+      hashToken(desktop.access_token),
+    ]);
+    expect((await list(desktop.access_token)).statusCode).toBe(401);
+    const fresh = await desktopSignIn(app, session);
+    expect((await list(fresh.access_token)).statusCode).toBe(200);
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/auth/grants/${fresh.grantId}`,
+      headers: { ...cookie(session), origin: ORIGIN },
+    });
+    expect((await list(fresh.access_token)).statusCode).toBe(401);
+  });
+
+  it('is refused at the MCP endpoint with the challenge', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const answer = await mcpCall(app, 'tools/list', {}, { token: access_token });
+    expect(answer.status).toBe(401);
+    expect(String(answer.headers['www-authenticate'])).toContain('invalid_token');
+  });
+
+  it('cannot approve, deny or see consent, nor sign out, and records nothing', async () => {
+    const { app, session } = await setup();
+    const { access_token } = await desktopSignIn(app, session);
+    const grantsBefore = await db.query('select id from oauth_grants');
+    const clientId = await registerClient(app);
+    const params = authorizeParams(clientId, pkce().challenge);
+    const desktopRequest = desktopParams(pkce().challenge);
+    for (const [method, url, payload] of [
+      ['GET', `/api/oauth/authorize?${new URLSearchParams(params)}`, undefined],
+      ['POST', '/api/oauth/authorize', { ...params, granted_scope: 'read_write' }],
+      ['POST', '/api/oauth/authorize', { ...desktopRequest, granted_scope: 'app' }],
+      ['POST', '/api/oauth/authorize/deny', params],
+      ['POST', '/api/auth/logout', {}],
+    ] as const) {
+      const response = await app.inject({ method, url, headers: bearer(access_token), ...(payload ? { payload } : {}) });
+      expect(`${method} ${url} ${response.statusCode} ${response.json().error}`).toBe(
+        `${method} ${url} 403 cookie_session_required`,
+      );
+    }
+    expect(await db.query('select id from oauth_grants')).toEqual(grantsBefore);
+    expect((await app.inject({ url: '/api/projects', headers: cookie(session) })).statusCode).toBe(200);
+  });
+
+  it('a cookie wins over a bearer token, and keeps the origin rule', async () => {
+    const { app, session } = await setup();
+    await createUser(db, { username: 'anna', password: PASSWORD, displayName: 'Anna' });
+    const annas = await signedIn(app, 'anna');
+    await newProject(app, annas, 'Di Anna');
+    const { access_token } = await desktopSignIn(app, session);
+    const listed = await app.inject({ url: '/api/projects', headers: { ...cookie(annas), ...bearer(access_token) } });
+    expect(listed.json().projects.map((p: { title: string }) => p.title)).toEqual(['Di Anna']);
+    const crossSite = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { ...cookie(annas), ...bearer(access_token), origin: 'https://evil.example' },
+      payload: { category: 'one-shot', title: 'Cross-site' },
+    });
+    expect(crossSite.statusCode).toBe(403);
+    expect(crossSite.json().error).toBe('cross_origin');
+  });
+
+  it('changing the password from the desktop app ends every cookie session', async () => {
+    const { app, session } = await setup();
+    const other = await signedIn(app);
+    const { access_token } = await desktopSignIn(app, session);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/password',
+      headers: bearer(access_token),
+      payload: { current: PASSWORD, next: 'a brand new passphrase' },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(await db.query('select token_hash from sessions')).toEqual([]);
+    for (const token of [session, other]) {
+      expect((await app.inject({ url: '/api/projects', headers: cookie(token) })).statusCode).toBe(401);
+    }
+    expect((await app.inject({ url: '/api/projects', headers: bearer(access_token) })).statusCode).toBe(200);
+  });
+});
+
+describe('/sync with the desktop app’s token', () => {
+  async function syncSetup() {
+    const { app, session } = await setup();
+    const id = await newProject(app, session);
+    const url = await listen(app);
+    const tokens = await desktopSignIn(app, session);
+    return { app, session, id, url, tokens };
+  }
+
+  it('syncs the owner’s project with no cookie and no Origin, or another Origin', async () => {
+    const { app, session, id, url, tokens } = await syncSetup();
+    const a = connect(url, id, { origin: null, appToken: tokens.access_token });
+    const b = connect(url, id, { origin: 'https://elsewhere.example', appToken: tokens.access_token });
+    const web = connect(url, id, { token: session });
+    await Promise.all([synced(a), synced(b), synced(web)]);
+    a.doc.getText('document').insert(0, 'Dal desktop.\n');
+    await waitFor(() => readDocument(web.doc).startsWith('Dal desktop.'), 'the edit in the web client');
+    expect(app.sync.liveDocument(id)).not.toBeNull();
+  });
+
+  it('refuses an MCP token, a refresh token, another user’s token, and no credential', async () => {
+    const { app, session, id, url, tokens } = await syncSetup();
+    const claude = await connectClaude(app, session, 'read_write');
+    await createUser(db, { username: 'anna', password: PASSWORD, displayName: 'Anna' });
+    const annas = await desktopSignIn(app, await signedIn(app, 'anna'));
+    const refused = [
+      connect(url, id, { origin: null, appToken: claude.access_token }),
+      connect(url, id, { origin: null, appToken: tokens.refresh_token }),
+      connect(url, id, { origin: null, appToken: annas.access_token }),
+      connect(url, id, { origin: null }),
+    ];
+    await waitFor(() => refused.every((c) => c.authFailures.length > 0), 'every connection refused');
+    for (const client of refused) {
+      expect(client.provider.isSynced).toBe(false);
+      expect(client.doc.getText('document').length).toBe(0);
+    }
+  });
+
+  async function revokedCloses(revoke: (s: Awaited<ReturnType<typeof syncSetup>>) => Promise<void>) {
+    const setup = await syncSetup();
+    const { url, id, tokens, session } = setup;
+    const desktop = connect(url, id, { origin: null, appToken: tokens.access_token });
+    const web = connect(url, id, { token: session });
+    await Promise.all([synced(desktop), synced(web)]);
+    await revoke(setup);
+    await waitFor(() => desktop.closes.includes('4401 Unauthorized'), 'the desktop socket to close');
+    // It reconnects with the revoked token and is refused; the web stays.
+    await waitFor(() => desktop.authFailures.length > 0, 'the reconnect refused');
+    expect(web.closes).toEqual([]);
+  }
+
+  it('closes the grant’s sockets when it is revoked in Connected apps', () =>
+    revokedCloses(async ({ app, session, tokens }) => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/auth/grants/${tokens.grantId}`,
+        headers: { ...cookie(session), origin: ORIGIN },
+      });
+      expect(response.statusCode).toBe(204);
+    }));
+
+  it('closes the grant’s sockets when the app revokes its token', () =>
+    revokedCloses(async ({ app, tokens }) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/oauth/revoke',
+        headers: FORM,
+        payload: form({ token: tokens.refresh_token }),
+      });
+      expect(response.statusCode).toBe(200);
+    }));
+
+  it('closes the grant’s sockets when a refresh token is reused', () =>
+    revokedCloses(async ({ app, tokens }) => {
+      const refresh = () =>
+        exchange(app, { grant_type: 'refresh_token', refresh_token: tokens.refresh_token, client_id: 'promptbook-desktop' });
+      expect((await refresh()).statusCode).toBe(200);
+      expect((await refresh()).json()).toMatchObject({ error: 'invalid_grant' });
+    }));
 });

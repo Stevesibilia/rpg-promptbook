@@ -6,7 +6,8 @@ import * as Y from 'yjs';
 import { ORIGIN } from './helpers.js';
 
 // Real Hocuspocus providers against the real server, over the ws package so
-// they can send the cookie and Origin a browser would.
+// they can send the cookie and Origin a browser would, or, as the desktop
+// app does, no cookie and no Origin and an access token as the sync token.
 
 export async function listen(app: FastifyInstance): Promise<string> {
   await app.listen({ host: '127.0.0.1', port: 0 });
@@ -28,9 +29,15 @@ const clients: Client[] = [];
 export function connect(
   url: string,
   projectId: string,
-  { token, origin = ORIGIN, doc = new Y.Doc() }: { token?: string | null; origin?: string; doc?: Y.Doc } = {},
+  {
+    token,
+    origin = ORIGIN,
+    doc = new Y.Doc(),
+    appToken,
+  }: { token?: string | null; origin?: string | null; doc?: Y.Doc; appToken?: string } = {},
 ): Client {
-  const headers: Record<string, string> = { origin };
+  const headers: Record<string, string> = {};
+  if (origin !== null) headers.origin = origin;
   if (token) headers.cookie = `pb_session=${token}`;
   class CookieSocket extends WebSocket {
     constructor(address: string) {
@@ -52,6 +59,7 @@ export function connect(
     name: projectId,
     document: doc,
     WebSocketPolyfill: CookieSocket,
+    ...(appToken === undefined ? {} : { token: appToken }),
     // Reconnect fast, so the tests do not wait on the default back-off.
     delay: 50,
     minDelay: 50,
