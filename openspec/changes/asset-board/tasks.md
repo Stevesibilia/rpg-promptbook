@@ -46,4 +46,6 @@
 - [ ] 4.7 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
 - [ ] 4.8 Docs: README (the board, intake by filename, the connector's board tools, where the desktop keeps files); `docs/design.md` (Asset board and Intake by filename marked built with a pointer to this change, phase 2 built); `docs/deploy-homelab.md` ("Files volume": the claim, size, usage check, kept on uninstall, "No backup yet: the volume's backup is decided later with the infrastructure."); Prettier on the files touched
 - [ ] 4.9 Owner preview: the branch's server as a local compose stack (password mode, seeded user, a seeded adventure with an appendix) and a locally packaged Mac build (`--dir`) against it; give the owner the URLs, the app path and a folder of sample files named as Midjourney and Suno name them; then stop and wait for the owner's go
+- [ ] 4.11 `randomId` in `packages/project` falls back to `crypto.getRandomValues` when `crypto.randomUUID` is missing (plain-HTTP origin), with a unit test
+- [ ] 4.12 The Unmatched tray's «Match again» button: reruns `matchFile` on the tray's files with the current prompts and titles and assigns each one that matches exactly one scene (toast «n files found their scene.»), with unit and e2e coverage
 - [ ] 4.10 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief D

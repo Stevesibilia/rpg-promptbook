@@ -738,6 +738,47 @@ not the volume; give it `app-data` too.
    `export_too_large` ("Export fewer projects at a time") before sending
    anything. A ZIP64 writer is a follow-up.
 
+### Departures accepted in review (brief C, 2026-10-20)
+
+1. The desktop preload exposes `files.put`, `files.status` and
+   `files.onStatus`, and `usage()` returns `files: 0, fileBytes: 0`, marked
+   for brief D; until then a desktop upload fails and shows Retry.
+2. `ProjectShell.tsx` holds the project views' frame and `project/views.ts`
+   the view list, to avoid an import cycle.
+3. One intake per project lives for the page's life: a batch keeps going
+   when the user leaves the board, its result stays while it runs, and the
+   browser asks before closing a tab mid-batch. Every intake stops when the
+   desktop account changes.
+4. `addedAt` follows drop order (batch start + n ms, "title (1).mp3" after
+   "title.mp3"), so takes number as dropped.
+5. A music Save needs a title: an empty one is not written and Title gets
+   the focus.
+6. "Move to another scene…" and "Assign to scene…" act on a pick or Enter,
+   never on arrow keys; the viewer ignores keys aimed at form controls.
+7. "Edit in the document" opens the scene's heading (`?scene=`).
+8. The playing track has a thin seek bar along its row.
+9. Copy outside a secure context copies through a hidden textarea (line
+   breaks kept), and falls back to selecting the text with "Press ⌘C to copy
+   the selected text."
+10. Strings added: "Reading the appendix…"; "No files added." and " N not
+    added."; "Adding n of N" on the desktop; "This prompt changed while you
+    were editing. Save replaces it with yours."; failed-file messages with
+    Retry (not for 413, 415, 507) and Dismiss; Matching help's example
+    starts "you_"; "—" for an unknown "Matched by".
+11. Below 760 px the board hides the rail, the status bar and the top bar's
+    category and status controls.
+
+Review: 8 findings (an intake writing to a released desktop document, a
+stale confirm in the viewer, selects acting on arrow keys, a duplicate
+counted as already here after a failure, a title-less Save, a filter
+unmounting an open editor, line breaks lost in the copy fallback, a third
+copy of the bytes), all fixed.
+
+Added to brief D: `randomId` falls back to `crypto.getRandomValues` outside
+a secure context (a plain-HTTP LAN preview); the Unmatched tray gets "Match
+again", which reruns matching on the tray's files and assigns those that
+now match exactly one scene.
+
 ## Strings not in the mockup
 
 Chosen by the plan, to check at the owner preview: "Scene S6 is not in the
