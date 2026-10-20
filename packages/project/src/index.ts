@@ -11,6 +11,7 @@ export {
   isSha256,
   matchedBy,
   readBoard,
+  readDocumentBoard,
   readFiles,
   removeFile,
   setImagePrompt,
@@ -18,6 +19,7 @@ export {
   unmatchedFiles,
   type BoardEntry,
   type BoardRow,
+  type DocumentBoard,
   type FileEntry,
   type FileKind,
   type HalfStatus,
@@ -69,12 +71,14 @@ export {
   type TodoPatch,
 } from './doc.js';
 export {
+  exportBoard,
   exportFolderName,
   exportProject,
   inspirationMarkdown,
   logMarkdown,
   researchMarkdown,
   todoMarkdown,
+  type ExportFile,
   type ExportOptions,
 } from './export.js';
 export {

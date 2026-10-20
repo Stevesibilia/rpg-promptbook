@@ -1,6 +1,6 @@
-import type { AppendixRow } from 'promptbook-format';
+import { parseAdventure, templates, type AppendixRow } from 'promptbook-format';
 import type * as Y from 'yjs';
-import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, record, str } from './doc.js';
+import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, readDocument, readMeta, record, str } from './doc.js';
 import { matchKey } from './match.js';
 import { authors, CAPS, isIsoDateTime, LIMITS, type Author } from './model.js';
 
@@ -438,4 +438,22 @@ export function unmatchedFiles(appendix: readonly AppendixRow[], files: readonly
     if (scenes.has(file.sceneId)) return [];
     return [{ file, reason: `Scene ${file.sceneId} is not in the appendix.` }];
   });
+}
+
+export interface DocumentBoard {
+  rows: BoardRow[];
+  // The files of the Unmatched tray.
+  unmatched: UnmatchedFile[];
+}
+
+// The board as the stored document gives it: the appendix parsed from the
+// prep document and joined to the prompts and files. A campaign is never
+// parsed and has no rows; its files, if any, are all unmatched.
+export function readDocumentBoard(doc: Y.Doc): DocumentBoard {
+  const files = readFiles(doc);
+  const appendix =
+    readMeta(doc).category === 'campaign'
+      ? []
+      : parseAdventure(readDocument(doc), { template: templates.avventura }).model.appendix;
+  return { rows: boardRows(appendix, readBoard(doc), files), unmatched: unmatchedFiles(appendix, files) };
 }
