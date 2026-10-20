@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { LIMITS, setImagePrompt, setMusicPrompt, type ImagePrompt, type MusicPrompt } from 'promptbook-project';
+import { LIMITS, setFirstScenePrompt, setMusicPrompt, type MusicPrompt } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import type * as Y from 'yjs';
 
 // Screen 7: a prompt edited in place. Save overwrites it as the user's, dated
@@ -32,7 +33,7 @@ export function ImagePromptEditor({
 }: {
   doc: Y.Doc;
   sceneId: string;
-  current: ImagePrompt | null;
+  current: BoardRow['image'];
   onDone(saved: boolean): void;
 }) {
   const base = useRef(current);
@@ -41,7 +42,7 @@ export function ImagePromptEditor({
 
   const save = () => {
     const prompt = draft.trim();
-    if (prompt) setImagePrompt(doc, sceneId, prompt.slice(0, LIMITS.imagePrompt), 'user');
+    if (prompt) setFirstScenePrompt(doc, sceneId, prompt.slice(0, LIMITS.imagePrompt), 'user');
     onDone(prompt !== '');
   };
   const cancel = () => onDone(false);

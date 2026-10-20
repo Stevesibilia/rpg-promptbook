@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { addFiles, readBoard, type NewFile } from 'promptbook-project';
+import { addFiles, readBoard, readImagePrompts, type NewFile } from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { createUser, type User } from '../../src/accounts/users.js';
@@ -58,6 +58,8 @@ const MUSIC = {
 };
 
 const hash = (n: number) => n.toString(16).padStart(64, '0');
+// A scene's first image prompt.
+const firstPrompt = (doc: Y.Doc, sceneId: string) => readImagePrompts(doc).find((p) => p.sceneId === sceneId);
 const file = (n: number, overrides: Partial<NewFile> = {}): NewFile => ({
   sha256: hash(n),
   thumbSha256: hash(1000 + n),
@@ -68,7 +70,8 @@ const file = (n: number, overrides: Partial<NewFile> = {}): NewFile => ({
   width: 1456,
   height: 816,
   duration: null,
-  sceneId: 'S3',
+  sceneId: null,
+  promptId: null,
   matchedBy: 'prompt',
   addedBy: 'user',
   ...overrides,
@@ -152,9 +155,11 @@ describe('get_board', () => {
   it('answers a row per appendix row with the lines, the prompts and the statuses', async () => {
     const s = await setup();
     await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S3', image: { prompt: IMAGE } });
-    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
-      addFiles(doc, [file(1), file(2), file(3), file(4), file(5, { sceneId: null, matchedBy: null })]),
-    );
+    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+      const promptId = firstPrompt(doc, 'S3')!.id;
+      const of = (n: number) => file(n, { promptId });
+      return addFiles(doc, [of(1), of(2), of(3), of(4), file(5, { matchedBy: null })]);
+    });
     const outcome = await s.call('get_board', { projectId: s.id });
     expect(outcome.isError).toBe(false);
     const board = outcome.value;
@@ -228,10 +233,11 @@ describe('set_scene_prompts', () => {
       image: { prompt: IMAGE, by: 'claude', status: 'wanted', files: 0 },
       music: { ...MUSIC, by: 'claude', status: 'wanted', tracks: 0 },
     });
-    const entry = readBoard(await storedDoc(s.id)).get('S1')!;
-    expect(entry.image).toMatchObject({ prompt: IMAGE, by: 'claude' });
+    const stored = await storedDoc(s.id);
+    const entry = readBoard(stored).get('S1')!;
+    expect(firstPrompt(stored, 'S1')).toMatchObject({ prompt: IMAGE, by: 'claude' });
     expect(entry.music).toMatchObject({ ...MUSIC, by: 'claude' });
-    const at = Date.parse(entry.image!.at);
+    const at = Date.parse(firstPrompt(stored, 'S1')!.at);
     expect(at).toBeGreaterThanOrEqual(before - 1000);
     expect(at).toBeLessThanOrEqual(Date.now() + 1000);
     // What get_board says is what was written.
@@ -255,7 +261,8 @@ describe('set_scene_prompts', () => {
 
   it('keeps the choices and files of the scene', async () => {
     const s = await setup();
-    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => addFiles(doc, [file(1)]));
+    await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S3', image: { prompt: 'a first text' } });
+    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => addFiles(doc, [file(1, { promptId: firstPrompt(doc, 'S3')!.id })]));
     await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S3', image: { prompt: IMAGE } });
     expect((await s.call('get_board', { projectId: s.id })).value.rows[2].image).toMatchObject({ status: 'received', files: 1 });
   });
@@ -316,7 +323,7 @@ describe('set_scene_prompts', () => {
     expect(check(ADVENTURE, 'adventure')!.errors).toBeGreaterThan(1);
     const outcome = await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S1', image: { prompt: IMAGE }, music: MUSIC });
     expect(outcome.isError).toBe(false);
-    expect(readBoard(await storedDoc(s.id)).get('S1')!.image!.prompt).toBe(IMAGE);
+    expect(firstPrompt(await storedDoc(s.id), 'S1')!.prompt).toBe(IMAGE);
   });
 
   it('writes the prompt of a scene whose appendix row has no visual: line', async () => {
@@ -364,7 +371,7 @@ describe('set_scene_prompts', () => {
     const text = client.doc.getText('document').toString();
     await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S2', image: { prompt: IMAGE }, music: MUSIC });
     await waitFor(() => readBoard(client.doc).get('S2')?.music?.title === MUSIC.title, 'the board change');
-    expect(readBoard(client.doc).get('S2')!.image).toMatchObject({ prompt: IMAGE, by: 'claude' });
+    expect(firstPrompt(client.doc, 'S2')).toMatchObject({ prompt: IMAGE, by: 'claude' });
     // The prep document is not touched.
     expect(client.doc.getText('document').toString()).toBe(text);
   });
@@ -377,7 +384,7 @@ describe('set_scene_prompts', () => {
     }
     const refused = await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S1', image: { prompt: 'one more' } });
     expect(refused.error).toMatchObject({ code: 'rate_limited' });
-    expect(readBoard(await storedDoc(s.id)).get('S1')!.image!.prompt).toBe('prompt 119');
+    expect(firstPrompt(await storedDoc(s.id), 'S1')!.prompt).toBe('prompt 119');
     // Reads go on.
     expect((await s.call('get_board', { projectId: s.id })).isError).toBe(false);
   });

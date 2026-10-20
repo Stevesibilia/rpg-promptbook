@@ -1,5 +1,5 @@
 import type * as Y from 'yjs';
-import { readDocumentBoard, type FileEntry } from './board.js';
+import { readDocumentBoard, type BoardRow, type FileEntry } from './board.js';
 import {
   readDocument,
   readInspiration,
@@ -158,15 +158,20 @@ export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[]
     names.set(file.id, name);
     files.push({ path: `files/${folder}/${name}`, sha256: file.sha256 });
   };
-  for (const row of rows) for (const file of [...row.images, ...row.tracks]) place(file, fileSafe(row.sceneId));
+  const imagesOf = (row: BoardRow) => row.prompts.flatMap((p) => p.images);
+  for (const row of rows) for (const file of [...imagesOf(row), ...row.tracks]) place(file, fileSafe(row.sceneId));
   for (const { file } of unmatched) place(file, 'unmatched');
 
   const chosen = (id: string | null) => (id === null ? [] : [`Chosen: ${names.get(id) ?? ''}`]);
   const sections = rows.map((row) => {
     const lines = [`## ${row.sceneId} · ${oneLine(row.title)}`, '', '### Image', ''];
-    if (row.image) lines.push(fenced(row.image.prompt), '', `${who(row.image.by)} · ${row.image.at}`);
-    else lines.push('No prompt yet.');
-    lines.push(...(row.chosenImage ? ['', ...chosen(row.chosenImage)] : []));
+    const first = row.prompts[0];
+    if (first && first.prompt.prompt !== '') {
+      lines.push(fenced(first.prompt.prompt), '', `${who(first.prompt.by)} · ${first.prompt.at}`);
+    } else {
+      lines.push('No prompt yet.');
+    }
+    lines.push(...(first?.chosen ? ['', ...chosen(first.chosen)] : []));
     lines.push('', '### Music', '');
     if (row.music) {
       lines.push(

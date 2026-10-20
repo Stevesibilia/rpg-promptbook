@@ -8,12 +8,12 @@ Assisted-by: <agent>/<model-id>
 
 ## 1. Model, migration, matching (brief A)
 
-- [ ] 1.1 `packages/project/src/board.ts` and `model.ts`: `imageCategories`, `ImagePromptEntry`, the `imagePrompts` flat keys of D1, `FileEntry.promptId` and the image-to-prompt resolution (an image with no `promptId` and a `sceneId` belongs to `legacy-<sceneId>`; images read with `sceneId` null), `CAPS.imagePrompts` 500; `readImagePrompts` (the later `at` of `prompt` and `legacy`, `chosen` over `legacy.chosen`), `addImagePrompt`, `updateImagePrompt`, `removeImagePrompt` (keys gone, images keep the removed id), `setFirstScenePrompt`, `chooseImage`, `chooseTrack`, `assignImage`, `assignTrack`, `removeFile`, `addFiles` with `promptId`; the shape comment in `doc.ts`; exported from `index.ts`
-- [ ] 1.2 Rows and tray (D9): `PromptRow`, `BoardRow.prompts`, `boardRows`, `namedPrompts`, `unmatchedFiles` with «Its prompt was removed.» and «Scene S6 is not in the appendix.», `readDocumentBoard` with `named` and `outsideAppendix`
-- [ ] 1.3 `packages/project/src/board-migration.ts` (D2): `needsImageMigration`, `migrateImagePrompts` (steps 1 to 4, files untouched, music untouched), `migratedView`
-- [ ] 1.4 `match.ts` (D3): `MatchPrompt`, `MatchScene`, the new `MatchResult` with `candidates`, `matchFile` over every shown prompt with text, `matchTargets`
-- [ ] 1.5 Unit tests `board.test.ts`, `board-migration.test.ts`, `match.test.ts`: every case under `packages/project` in D10, including the two-Y.Doc concurrent migration with edits on both sides in both client-id orders, idempotence, and an older client's late writes
-- [ ] 1.6 The callers adapted mechanically so the workspace stays green (D11): `server/src/mcp/board.ts` and `export.ts` on the new rows with today's output, the web board showing each scene's first prompt as today, their existing tests updated to the new API only
+- [x] 1.1 `packages/project/src/board.ts` and `model.ts`: `imageCategories`, `ImagePromptEntry`, the `imagePrompts` flat keys of D1, `FileEntry.promptId` and the image-to-prompt resolution (an image with no `promptId` and a `sceneId` belongs to `legacy-<sceneId>`; images read with `sceneId` null), `CAPS.imagePrompts` 500; `readImagePrompts` (the later `at` of `prompt` and `legacy`, `chosen` over `legacy.chosen`), `addImagePrompt`, `updateImagePrompt`, `removeImagePrompt` (keys gone, images keep the removed id), `setFirstScenePrompt`, `chooseImage`, `chooseTrack`, `assignImage`, `assignTrack`, `removeFile`, `addFiles` with `promptId`; the shape comment in `doc.ts`; exported from `index.ts`
+- [x] 1.2 Rows and tray (D9): `PromptRow`, `BoardRow.prompts`, `boardRows`, `namedPrompts`, `unmatchedFiles` with «Its prompt was removed.» and «Scene S6 is not in the appendix.», `readDocumentBoard` with `named` and `outsideAppendix`
+- [x] 1.3 `packages/project/src/board-migration.ts` (D2): `needsImageMigration`, `migrateImagePrompts` (steps 1 to 4, files untouched, music untouched), `migratedView`
+- [x] 1.4 `match.ts` (D3): `MatchPrompt`, `MatchScene`, the new `MatchResult` with `candidates`, `matchFile` over every shown prompt with text, `matchTargets`
+- [x] 1.5 Unit tests `board.test.ts`, `board-migration.test.ts`, `match.test.ts`: every case under `packages/project` in D10, including the two-Y.Doc concurrent migration with edits on both sides in both client-id orders, idempotence, and an older client's late writes
+- [x] 1.6 The callers adapted mechanically so the workspace stays green (D11): `server/src/mcp/board.ts` and `export.ts` on the new rows with today's output, the web board showing each scene's first prompt as today, their existing tests updated to the new API only
 
 ## 2. Server and desktop hooks, connector, export (brief A)
 

@@ -5,16 +5,16 @@ import {
   MAX_FILE_BYTES,
   matchFile,
   parseSuno,
-  readBoard,
   readFiles,
+  readImagePrompts,
   sniff,
   SNIFF_BYTES,
   type FileEntry,
   type FileKind,
-  type MatchRow,
   type NewFile,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
+import { targetsOf } from './actions.js';
 import type { PutFileResult } from '../platform/bridge.js';
 import { PutFileError } from '../platform/index.js';
 import { createStore, type Store } from '../platform/store.js';
@@ -360,8 +360,7 @@ export class Intake {
     probed: Probed,
   ): void {
     const { name } = job.file;
-    const match = matchFile(name, kind, this.matchRows(doc));
-    const sceneId = 'sceneId' in match ? match.sceneId : null;
+    const match = matchFile(name, kind, targetsOf(doc, this.scenes));
     const entry: NewFile = {
       sha256,
       thumbSha256: kind === 'image' ? thumbSha256 : null,
@@ -372,8 +371,9 @@ export class Intake {
       width: kind === 'image' ? probed.width : null,
       height: kind === 'image' ? probed.height : null,
       duration: kind === 'audio' ? probed.duration : null,
-      sceneId,
-      matchedBy: 'sceneId' in match ? match.matchedBy : null,
+      sceneId: 'sceneId' in match ? match.sceneId : null,
+      promptId: 'promptId' in match ? match.promptId : null,
+      matchedBy: 'matchedBy' in match ? match.matchedBy : null,
       addedBy: 'user',
       ...(job.at ? { addedAt: job.at } : {}),
     };
@@ -403,27 +403,20 @@ export class Intake {
     }
     const file = added[0]!;
     this.result.added += 1;
-    if (file.sceneId === null) this.result.toAssign += 1;
+    if (file.sceneId === null && file.promptId === null) this.result.toAssign += 1;
     else {
       this.result.matched += 1;
-      let scene = this.result.scenes.find((s) => s.sceneId === file.sceneId);
-      if (!scene) this.result.scenes.push((scene = { sceneId: file.sceneId, images: 0, tracks: 0 }));
-      if (file.kind === 'image') scene.images += 1;
-      else scene.tracks += 1;
+      // Counted per scene; an image of a PC, an NPC or a handout has none
+      // until the board shows image categories (brief B).
+      const sceneId = file.sceneId ?? readImagePrompts(doc).find((p) => p.id === file.promptId)?.sceneId ?? null;
+      if (sceneId !== null) {
+        let scene = this.result.scenes.find((s) => s.sceneId === sceneId);
+        if (!scene) this.result.scenes.push((scene = { sceneId, images: 0, tracks: 0 }));
+        if (file.kind === 'image') scene.images += 1;
+        else scene.tracks += 1;
+      }
     }
     this.set({ marks: new Set([...this.state.marks, file.id]) });
-  }
-
-  private matchRows(doc: Y.Doc): MatchRow[] {
-    const board = readBoard(doc);
-    return this.scenes.map((sceneId) => {
-      const entry = board.get(sceneId);
-      return {
-        sceneId,
-        image: entry?.image ? { prompt: entry.image.prompt } : null,
-        music: entry?.music ? { title: entry.music.title } : null,
-      };
-    });
   }
 }
 

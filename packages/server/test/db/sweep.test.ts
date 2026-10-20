@@ -50,7 +50,8 @@ const entry = (sha256: string, thumbSha256: string | null = null): NewFile => ({
   width: 1456,
   height: 816,
   duration: null,
-  sceneId: 'S1',
+  sceneId: null,
+  promptId: 'p1',
   matchedBy: 'prompt',
   addedBy: 'user',
 });

@@ -3,7 +3,7 @@ import {
   LIMITS,
   matchKey,
   readDocumentBoard,
-  setImagePrompt,
+  setFirstScenePrompt,
   setMusicPrompt,
   type BoardRow,
 } from 'promptbook-project';
@@ -19,24 +19,31 @@ import type { ToolKit } from './tools.js';
 // Problems in the document never refuse a write, and prompts are not
 // versioned, so no snapshot is stored (decision 8).
 
-const half = (row: BoardRow) => ({
-  image: {
-    prompt: row.image?.prompt ?? null,
-    by: row.image?.by ?? null,
-    at: row.image?.at ?? null,
-    status: row.imageStatus,
-    files: row.images.length,
-  },
-  music: {
-    title: row.music?.title ?? null,
-    style: row.music?.style ?? null,
-    lyrics: row.music?.lyrics ?? null,
-    by: row.music?.by ?? null,
-    at: row.music?.at ?? null,
-    status: row.musicStatus,
-    tracks: row.tracks.length,
-  },
-});
+// Until image categories reach the connector, a scene shows its first prompt
+// and the images of all its prompts.
+const half = (row: BoardRow) => {
+  const first = row.prompts[0]?.prompt;
+  const text = first && first.prompt !== '' ? first : null;
+  const images = row.prompts.flatMap((p) => p.images).length;
+  return {
+    image: {
+      prompt: text?.prompt ?? null,
+      by: text?.by ?? null,
+      at: text?.at ?? null,
+      status: images === 0 ? 'wanted' : row.prompts[0]?.chosen ? 'chosen' : 'received',
+      files: images,
+    },
+    music: {
+      title: row.music?.title ?? null,
+      style: row.music?.style ?? null,
+      lyrics: row.music?.lyrics ?? null,
+      by: row.music?.by ?? null,
+      at: row.music?.at ?? null,
+      status: row.musicStatus,
+      tracks: row.tracks.length,
+    },
+  };
+};
 
 // A row as a model reads it.
 const rowOut = (row: BoardRow) => ({
@@ -113,7 +120,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
             'sceneId',
           );
         }
-        if (args.image) setImagePrompt(doc, row.sceneId, args.image.prompt, 'claude');
+        if (args.image) setFirstScenePrompt(doc, row.sceneId, args.image.prompt, 'claude');
         if (args.music) setMusicPrompt(doc, row.sceneId, args.music, 'claude');
         const { rows } = readDocumentBoard(doc);
         const written = rows.find((r) => r.sceneId === row.sceneId)!;

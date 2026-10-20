@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   addFiles,
-  assignFile,
-  chooseFile,
+  assignImage,
+  chooseImage,
+  chooseTrack,
   exportBoard,
   exportFolderName,
   exportProject,
   readFiles,
-  setImagePrompt,
+  setFirstScenePrompt,
   setMusicPrompt,
   type NewFile,
 } from '../src/index.js';
-import { project } from './helpers.js';
+import { project as newProject } from './helpers.js';
 import type * as Y from 'yjs';
 
 const AT = '2026-10-20T09:00:00.000Z';
@@ -34,6 +35,16 @@ visual: the pier
 mood: calm
 `;
 
+// A project whose scenes S1, S2 and S9 (not in the appendix) have their
+// prompt 1, as migrated from v0.6.
+const project = (overrides: Parameters<typeof newProject>[0] = {}) => {
+  const doc = newProject(overrides);
+  for (const sceneId of ['S1', 'S2', 'S9']) {
+    doc.getMap('imagePrompts').set(`legacy-${sceneId}/def`, { category: 'scene', sceneId });
+  }
+  return doc;
+};
+
 // Files are read oldest first; added together they would be in id order.
 const add = (doc: Y.Doc, files: NewFile[]) =>
   addFiles(
@@ -51,7 +62,8 @@ const image = (n: number, name: string, overrides: Partial<NewFile> = {}): NewFi
   width: 1456,
   height: 816,
   duration: null,
-  sceneId: 'S1',
+  sceneId: null,
+  promptId: 'legacy-S1',
   matchedBy: 'prompt',
   addedBy: 'user',
   ...overrides,
@@ -68,6 +80,7 @@ const track = (n: number, name: string, overrides: Partial<NewFile> = {}): NewFi
   height: null,
   duration: 190,
   sceneId: 'S1',
+  promptId: null,
   matchedBy: 'title',
   addedBy: 'user',
   ...overrides,
@@ -82,12 +95,12 @@ describe('the board in the export', () => {
 
   it('lists each appendix row in order with its prompts, authors, dates and chosen files', () => {
     const doc = project({ document: DOCUMENT });
-    setImagePrompt(doc, 'S1', 'a collapsed library --ar 16:9 --v 8.1', 'claude', AT);
+    setFirstScenePrompt(doc, 'S1', 'a collapsed library --ar 16:9 --v 8.1', 'claude', AT);
     setMusicPrompt(doc, 'S1', { title: 'La casa cede', style: 'dark ambient, low drones', lyrics: '[Intro]\n[End]' }, 'user', AT);
     add(doc, [image(1, 'steve_a_collapsed_library_1.png'), track(2, 'la casa cede.mp3')]);
     const [img, mus] = readFiles(doc);
-    chooseFile(doc, 'S1', 'image', img!.id);
-    chooseFile(doc, 'S1', 'audio', mus!.id);
+    chooseImage(doc, 'legacy-S1', img!.id);
+    chooseTrack(doc, 'S1', mus!.id);
 
     expect(exportProject(doc, { campaignTitle: null })['board.md']).toBe(
       [
@@ -140,7 +153,7 @@ describe('the board in the export', () => {
 
   it('fences a text that holds backticks with a longer fence', () => {
     const doc = project({ document: DOCUMENT });
-    setImagePrompt(doc, 'S1', 'a ``` b', 'claude', AT);
+    setFirstScenePrompt(doc, 'S1', 'a ``` b', 'claude', AT);
     expect(exportBoard(doc).markdown).toContain('````\na ``` b\n````');
   });
 
@@ -149,10 +162,10 @@ describe('the board in the export', () => {
     add(doc, [
       image(1, 'one.png'),
       track(2, 'two.mp3'),
-      image(3, 'three.png', { sceneId: 'S2' }),
+      image(3, 'three.png', { promptId: 'legacy-S2' }),
       track(4, 'lost.mp3', { sceneId: null, matchedBy: null }),
-      // Names a scene the appendix has no row for: shown in the tray.
-      image(5, 'orphan.png', { sceneId: 'S9' }),
+      // Its prompt's scene has no row in the appendix: shown in the tray.
+      image(5, 'orphan.png', { promptId: 'legacy-S9' }),
     ]);
     expect(exportBoard(doc).files).toEqual([
       { path: 'files/S1/one.png', sha256: hash(1) },
@@ -189,7 +202,7 @@ describe('the board in the export', () => {
     const doc = project({ document: DOCUMENT });
     add(doc, [track(1, 'take.mp3'), track(2, 'take.mp3')]);
     const [, second] = readFiles(doc);
-    chooseFile(doc, 'S1', 'audio', second!.id);
+    chooseTrack(doc, 'S1', second!.id);
     expect(exportBoard(doc).markdown).toContain('Chosen: take (2).mp3');
   });
 
@@ -223,9 +236,9 @@ describe('the board in the export', () => {
     const doc = project({ document: DOCUMENT });
     add(doc, [image(1, 'one.png')]);
     const [file] = readFiles(doc);
-    assignFile(doc, file!.id, 'S2');
+    assignImage(doc, file!.id, 'legacy-S2');
     expect(exportBoard(doc).files[0]!.path).toBe('files/S2/one.png');
-    assignFile(doc, file!.id, null);
+    assignImage(doc, file!.id, null);
     expect(exportBoard(doc).files[0]!.path).toBe('files/unmatched/one.png');
   });
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry } from 'promptbook-project';
+import type { FileEntry } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 

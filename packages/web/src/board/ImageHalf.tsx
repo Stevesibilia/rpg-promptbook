@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry } from 'promptbook-project';
+import type { FileEntry } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import { DropIcon, EditIcon, ImageIcon, LaptopIcon } from '../ui/icons.js';
 import { toggleChoice } from './actions.js';
 import { useBoardContext } from './context.js';

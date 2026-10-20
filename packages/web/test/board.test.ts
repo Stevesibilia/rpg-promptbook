@@ -4,9 +4,9 @@ import {
   boardRows,
   readBoard,
   readFiles,
-  setImagePrompt,
+  readImagePrompts,
+  setFirstScenePrompt,
   setMusicPrompt,
-  type BoardRow,
   type NewFile,
 } from 'promptbook-project';
 import type { AppendixRow } from 'promptbook-format';
@@ -22,6 +22,7 @@ import {
 import { countItems, countLine } from '../src/board/DropOverlay.js';
 import { midjourneyWords } from '../src/board/MatchHelp.js';
 import { dims, duration, filterCounts, keeps, shortName, summarize } from '../src/board/summary.js';
+import { withFirstPrompt, type BoardRow } from '../src/board/useBoard.js';
 
 // The board's summary and filters, the track menu's and the viewer's
 // actions, and the drop overlay's count.
@@ -78,6 +79,7 @@ const track = (name: string, sceneId: string, n: number): NewFile => ({
   height: null,
   duration: 180,
   sceneId,
+  promptId: null,
   matchedBy: 'title',
   addedBy: 'user',
 });
@@ -90,7 +92,7 @@ function board() {
     ['S3', "L'ordine di Donato"],
     ['S4', 'Torre Faro e la canzone'],
   ]);
-  const rows = () => boardRows(scenes, readBoard(doc), readFiles(doc));
+  const rows = () => boardRows(scenes, readBoard(doc), readImagePrompts(doc), readFiles(doc)).map(withFirstPrompt);
   return { doc, rows };
 }
 
@@ -159,7 +161,7 @@ describe('Match again', () => {
       { ...track('untitled track.mp3', 'S3', 12), sceneId: null, matchedBy: null },
     ]);
     // Prompts written after the drop.
-    setImagePrompt(doc, 'S4', 'A vast cathedral nave flooded with seawater, torchlight --ar 16:9 --v 8.1', 'claude');
+    const s4 = setFirstScenePrompt(doc, 'S4', 'A vast cathedral nave flooded with seawater, torchlight --ar 16:9 --v 8.1', 'claude');
     setMusicPrompt(doc, 'S3', { title: 'Torre Faro', style: 'folk', lyrics: '[End]' }, 'claude');
 
     const assigned = matchAgain(doc, rows());
@@ -167,7 +169,7 @@ describe('Match again', () => {
     expect(matchAgainToast(assigned.length)).toBe('2 files found their scene.');
     const byName = new Map(readFiles(doc).map((f) => [f.name, f]));
     expect(byName.get('torre faro.mp3')).toMatchObject({ sceneId: 'S3', matchedBy: 'title' });
-    expect([...byName.values()].find((f) => f.kind === 'image')).toMatchObject({ sceneId: 'S4', matchedBy: 'prompt' });
+    expect([...byName.values()].find((f) => f.kind === 'image')).toMatchObject({ promptId: s4.id, matchedBy: 'prompt' });
     expect(byName.get('untitled track.mp3')).toMatchObject({ sceneId: null, matchedBy: null });
     // The files already in a scene are left alone.
     expect(byName.get('ordini del re.mp3')).toMatchObject({ sceneId: 'S3', matchedBy: 'title' });

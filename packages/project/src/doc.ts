@@ -46,16 +46,30 @@ import {
 // and, from the asset-board change (its design decision 1), read and written
 // by board.ts:
 //   board  Y.Map, keys "<sceneId>/<part>", plain JSON values set whole:
-//            "S3/image"        { prompt, by, at }
 //            "S3/music"        { title, style, lyrics, by, at }
-//            "S3/chosenImage"  file id | null
 //            "S3/chosenTrack"  file id | null
+//            "S3/image"        { prompt, by, at }   legacy (v0.6), read only by
+//            "S3/chosenImage"  file id | null       the migration, which deletes them
 //          Flat keys, not a Y.Map per scene: two replicas creating one
 //          scene's map at once would keep only one of them, while two halves
 //          under their own keys merge.
 //   files  Y.Array of Y.Map: id, sha256, thumbSha256, name, kind, mime, size,
-//          width, height, duration, sceneId, matchedBy, addedAt, addedBy.
+//          width, height, duration, sceneId, promptId, matchedBy, addedAt,
+//          addedBy. A track names its scene, an image its prompt; an image
+//          with no promptId and a sceneId (v0.6) belongs to legacy-<sceneId>.
 //          The bytes live outside the document, named by sha256.
+//
+// and, from the image-categories change (its design decisions 1 and 2), read
+// and written by board.ts and board-migration.ts:
+//   imagePrompts  Y.Map, keys "<promptId>/<part>", plain JSON values set whole:
+//            "<id>/def"     { category: scene|pc|npc|handout, sceneId }   set once
+//            "<id>/prompt"  { prompt, by, at }
+//            "<id>/name"    string                          pc, npc and handout
+//            "<id>/order"   number                          absent reads as 0
+//            "<id>/chosen"  file id | null
+//            "<id>/legacy"  { prompt, by, at, chosen }      written only by the migration
+//          Flat keys for the same reason as the board's: a migration and an
+//          edit never write the same key, so replicas migrating at once merge.
 //
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the

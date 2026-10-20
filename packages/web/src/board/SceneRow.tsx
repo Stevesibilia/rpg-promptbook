@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import type { BoardRow } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import { WarningIcon } from '../ui/icons.js';
 import { useBoardContext } from './context.js';
 import { ImageHalf } from './ImageHalf.js';

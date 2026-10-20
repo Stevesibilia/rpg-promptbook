@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { BoardRow } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import { sceneLabel } from './summary.js';
 
 // How matching works (screen 5b): the rules, with examples from the

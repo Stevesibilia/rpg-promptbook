@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoardRow, FileEntry } from 'promptbook-project';
+import type { FileEntry } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 import { Confirm } from '../ui/Confirm.js';
 import { DropIcon, EditIcon, MusicIcon } from '../ui/icons.js';
 import { ActionSelect } from './ActionSelect.js';

@@ -35,7 +35,8 @@ const entry = (bytes: Uint8Array, patch: Partial<NewFile> = {}): NewFile => ({
   width: 1456,
   height: 816,
   duration: null,
-  sceneId: 'S1',
+  sceneId: null,
+  promptId: 'p1',
   matchedBy: 'prompt',
   addedBy: 'user',
   ...patch,
@@ -609,7 +610,16 @@ describe('the local sweep and usage', () => {
     for (const b of [image, thumb, track]) await files!.put(P1, sha(b), b);
     addFiles(doc, [
       entry(image, { thumbSha256: sha(thumb) }),
-      entry(track, { kind: 'audio', mime: 'audio/mpeg', width: null, height: null, duration: 3, name: 'title.mp3' }),
+      entry(track, {
+        kind: 'audio',
+        mime: 'audio/mpeg',
+        width: null,
+        height: null,
+        duration: 3,
+        name: 'title.mp3',
+        sceneId: 'S1',
+        promptId: null,
+      }),
     ]);
     expect(files!.usage()).toEqual({ files: 2, fileBytes: image.length + thumb.length + track.length });
     // Waiting: the image and the track; the thumbnail goes up uncounted.

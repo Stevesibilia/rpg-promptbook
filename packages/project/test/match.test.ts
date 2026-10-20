@@ -1,28 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { matchFile, matchKey, parseMidjourney, parseSuno, type MatchRow } from '../src/index.js';
+import {
+  addImagePrompt,
+  matchFile,
+  matchKey,
+  matchTargets,
+  parseMidjourney,
+  parseSuno,
+  readDocumentBoard,
+  type MatchTargets,
+} from '../src/index.js';
+import { project } from './helpers.js';
 
 const JOB = '8c1e2f40-1b2a-4c3d-9e8f-0a1b2c3d4e5f';
 
-// The mockup's scenes (docs/mockups/board.html).
-const rows: MatchRow[] = [
-  {
-    sceneId: 'S1',
-    image: { prompt: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust --ar 16:9 --v 8.1' },
-    music: { title: 'Cinque e venti' },
-  },
-  {
-    sceneId: 'S2',
-    image: { prompt: "ruined doctor's office in 1908 Messina, anatomical drawings of a sea strait --ar 16:9 --v 8.1" },
-    music: { title: 'Anatomia dello Stretto' },
-  },
-  {
-    sceneId: 'S3',
-    image: { prompt: 'collapsed cathedral facade in 1908 Messina, Italian soldiers --ar 16:9 --v 8.1' },
-    music: { title: 'Ordini del Re' },
-  },
-  { sceneId: 'S4', image: null, music: { title: 'Città più già' } },
-  { sceneId: 'S5', image: { prompt: 'Città sul mare, all’alba' }, music: null },
-];
+// The mockup's prompts (docs/mockups/board.html), in every category.
+const targets: MatchTargets = {
+  prompts: [
+    { id: 's1', prompt: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust --ar 16:9 --v 8.1' },
+    { id: 's2', prompt: "ruined doctor's office in 1908 Messina, anatomical drawings of a sea strait --ar 16:9 --v 8.1" },
+    { id: 's3', prompt: 'collapsed cathedral facade in 1908 Messina, Italian soldiers --ar 16:9 --v 8.1' },
+    { id: 's5', prompt: 'Città sul mare, all’alba' },
+    { id: 'anselmo', prompt: 'portrait of an old Sicilian priest with a cracked rosary --ar 2:3 --v 8.1' },
+    { id: 'rosalia', prompt: 'portrait of a young Sicilian nurse in 1908 --ar 2:3 --v 8.1' },
+    { id: 'letter', prompt: 'handwritten letter on yellowed paper, wax seal --ar 3:4 --v 8.1' },
+  ],
+  scenes: [
+    { sceneId: 'S1', title: 'Cinque e venti' },
+    { sceneId: 'S2', title: 'Anatomia dello Stretto' },
+    { sceneId: 'S3', title: 'Ordini del Re' },
+    { sceneId: 'S4', title: 'Città più già' },
+    { sceneId: 'S5', title: null },
+  ],
+};
 
 describe('matchKey', () => {
   it('drops accents, case, spaces and punctuation', () => {
@@ -91,64 +100,97 @@ describe('parseSuno', () => {
 });
 
 describe('matchFile', () => {
-  it('finds the one scene whose prompt starts with the words', () => {
-    expect(matchFile(`steve_collapsed_1900s_Sicilian_library_at_night_${JOB}_0.png`, 'image', rows)).toEqual({
-      sceneId: 'S1',
+  it('finds the one prompt whose text starts with the words, in any category', () => {
+    expect(matchFile(`steve_collapsed_1900s_Sicilian_library_at_night_${JOB}_0.png`, 'image', targets)).toEqual({
+      promptId: 's1',
+      matchedBy: 'prompt',
+    });
+    expect(matchFile(`steve_portrait_of_an_old_Sicilian_priest_${JOB}_2.png`, 'image', targets)).toEqual({
+      promptId: 'anselmo',
+      matchedBy: 'prompt',
+    });
+    expect(matchFile(`steve_handwritten_letter_on_yellowed_${JOB}_0.png`, 'image', targets)).toEqual({
+      promptId: 'letter',
       matchedBy: 'prompt',
     });
   });
 
   it('matches across the apostrophe Midjourney drops', () => {
     const name = `steve_ruined_doctors_office_in_1908_Messina_anatomical_${JOB}_1.png`;
-    expect(matchFile(name, 'image', rows)).toEqual({ sceneId: 'S2', matchedBy: 'prompt' });
+    expect(matchFile(name, 'image', targets)).toEqual({ promptId: 's2', matchedBy: 'prompt' });
   });
 
   it('matches words cut mid-word', () => {
-    expect(matchFile(`steve_collapsed_cathedral_fac_${JOB}_3.png`, 'image', rows)).toEqual({
-      sceneId: 'S3',
+    expect(matchFile(`steve_collapsed_cathedral_fac_${JOB}_3.png`, 'image', targets)).toEqual({
+      promptId: 's3',
       matchedBy: 'prompt',
     });
   });
 
   it('matches across accents', () => {
-    expect(matchFile(`steve_Citta_sul_mare_${JOB}_0.webp`, 'image', rows)).toEqual({ sceneId: 'S5', matchedBy: 'prompt' });
-    expect(matchFile('citta piu gia.mp3', 'audio', rows)).toEqual({ sceneId: 'S4', matchedBy: 'title' });
+    expect(matchFile(`steve_Citta_sul_mare_${JOB}_0.webp`, 'image', targets)).toEqual({ promptId: 's5', matchedBy: 'prompt' });
+    expect(matchFile('citta piu gia.mp3', 'audio', targets)).toEqual({ sceneId: 'S4', matchedBy: 'title' });
   });
 
-  it('says why when no prompt or several start with the words', () => {
-    expect(matchFile(`steve_a_vast_cathedral_nave_flooded_with_seawater_${JOB}_2.png`, 'image', rows)).toEqual({
+  it('says why when no prompt starts with the words, and names the candidates when several do', () => {
+    expect(matchFile(`steve_a_vast_cathedral_nave_flooded_with_seawater_${JOB}_2.png`, 'image', targets)).toEqual({
       reason: 'No prompt starts with "a vast cathedral nave flooded".',
+      candidates: [],
     });
-    expect(matchFile(`steve_collapsed_${JOB}_2.png`, 'image', rows)).toEqual({
+    expect(matchFile(`steve_collapsed_${JOB}_2.png`, 'image', targets)).toEqual({
       reason: 'Several prompts start with "collapsed".',
+      candidates: ['s1', 's3'],
+    });
+    expect(matchFile(`steve_portrait_of_a_${JOB}_2.png`, 'image', targets)).toEqual({
+      reason: 'Several prompts start with "portrait of a".',
+      candidates: ['anselmo', 'rosalia'],
+    });
+  });
+
+  it('finds the candidates across categories', () => {
+    const shared: MatchTargets = {
+      prompts: [
+        { id: 's4-2', prompt: 'portrait of an old Sicilian fisherwoman singing on the quay --ar 16:9' },
+        { id: 'nina', prompt: 'portrait of an old Sicilian fisherwoman singing, close up --ar 2:3' },
+      ],
+      scenes: [],
+    };
+    expect(matchFile(`steve_portrait_of_an_old_Sicilian_fisherwoman_singing_${JOB}_0.png`, 'image', shared)).toEqual({
+      reason: 'Several prompts start with "portrait of an old Sicilian".',
+      candidates: ['s4-2', 'nina'],
     });
   });
 
   it('drops the words of a user name with underscores, while 12 key characters remain', () => {
-    expect(matchFile(`john_doe_ruined_doctors_office_${JOB}_1.png`, 'image', rows)).toEqual({
-      sceneId: 'S2',
+    expect(matchFile(`john_doe_ruined_doctors_office_${JOB}_1.png`, 'image', targets)).toEqual({
+      promptId: 's2',
       matchedBy: 'prompt',
     });
-    expect(matchFile(`john_doe_smith_ruined_doctors_office_${JOB}_1.png`, 'image', rows)).toEqual({
-      sceneId: 'S2',
+    expect(matchFile(`john_doe_smith_ruined_doctors_office_${JOB}_1.png`, 'image', targets)).toEqual({
+      promptId: 's2',
       matchedBy: 'prompt',
     });
     // "ruined" alone is too short to trust.
-    expect(matchFile(`john_doe_ruined_${JOB}_1.png`, 'image', rows)).toEqual({
+    expect(matchFile(`john_doe_ruined_${JOB}_1.png`, 'image', targets)).toEqual({
       reason: 'No prompt starts with "doe ruined".',
+      candidates: [],
     });
   });
 
   it('finds a track by its title, a second take too', () => {
-    expect(matchFile('cinque e venti.mp3', 'audio', rows)).toEqual({ sceneId: 'S1', matchedBy: 'title' });
-    expect(matchFile('Ordini del re (1).mp3', 'audio', rows)).toEqual({ sceneId: 'S3', matchedBy: 'title' });
-    expect(matchFile('untitled track.mp3', 'audio', rows)).toEqual({ reason: 'No track title "untitled track".' });
+    expect(matchFile('cinque e venti.mp3', 'audio', targets)).toEqual({ sceneId: 'S1', matchedBy: 'title' });
+    expect(matchFile('Ordini del re (1).mp3', 'audio', targets)).toEqual({ sceneId: 'S3', matchedBy: 'title' });
+    expect(matchFile('untitled track.mp3', 'audio', targets)).toEqual({
+      reason: 'No track title "untitled track".',
+      candidates: [],
+    });
   });
 
   it('matches no track whose title two scenes share', () => {
-    const shared = [...rows, { sceneId: 'S6', image: null, music: { title: 'Cinque e Venti!' } }];
+    const shared = { ...targets, scenes: [...targets.scenes, { sceneId: 'S6', title: 'Cinque e Venti!' }] };
     expect(matchFile('cinque e venti (1).mp3', 'audio', shared)).toEqual({
       reason: 'Several scenes have the track title "cinque e venti".',
+      candidates: [],
     });
   });
 
@@ -158,7 +200,50 @@ describe('matchFile', () => {
       ['cinque e venti.mp3', 'image'],
       [`steve_collapsed_1900s_${JOB}_0.png`, 'audio'],
     ] as const) {
-      expect(matchFile(name, kind, rows)).toEqual({ reason: 'Not a Midjourney or Suno name.' });
+      expect(matchFile(name, kind, targets)).toEqual({ reason: 'Not a Midjourney or Suno name.', candidates: [] });
     }
+  });
+});
+
+describe('matchTargets', () => {
+  const APPENDIX = `# L'Ancora di Sabaoth
+
+## Appendice: immagini e musica
+
+### S1. La casa che cede
+
+visual: collapsed library
+
+### S2. L'ordine di Donato
+
+visual: ruined office
+`;
+
+  it('takes the prompts the board shows with a text, scenes first, and the scenes’ titles', () => {
+    const doc = project({ document: APPENDIX });
+    const add = (category: 'scene' | 'pc' | 'npc' | 'handout', prompt: string, sceneId?: string) =>
+      addImagePrompt(
+        doc,
+        category === 'scene' ? { category, sceneId: sceneId ?? null, prompt } : { category, name: 'N', prompt },
+        'claude',
+      ).id;
+    const handout = add('handout', 'handwritten letter');
+    const npc = add('npc', 'portrait of an old priest');
+    const s2 = add('scene', 'ruined office', 'S2');
+    add('scene', '', 'S2');
+    add('scene', 'collapsed cathedral facade', 'S6');
+    const pc = add('pc', 'portrait of a young nurse');
+    add('npc', '   ');
+    const found = matchTargets(readDocumentBoard(doc));
+    expect(found.prompts.map((p) => p.id)).toEqual([s2, pc, npc, handout]);
+    expect(found.scenes).toEqual([
+      { sceneId: 'S1', title: null },
+      { sceneId: 'S2', title: null },
+    ]);
+    // S6 has no row: its prompt is kept, not shown, never matched.
+    expect(matchFile(`steve_collapsed_cathedral_facade_${JOB}_0.png`, 'image', found)).toEqual({
+      reason: 'No prompt starts with "collapsed cathedral facade".',
+      candidates: [],
+    });
   });
 });

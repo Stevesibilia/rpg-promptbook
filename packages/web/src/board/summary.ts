@@ -1,4 +1,5 @@
-import { halfStatuses, type BoardRow, type HalfStatus } from 'promptbook-project';
+import { halfStatuses, type HalfStatus } from 'promptbook-project';
+import type { BoardRow } from './useBoard.js';
 
 // The board's summary line and filters (asset-board specs, status per half):
 // counts per half and state, and the rows each filter keeps.

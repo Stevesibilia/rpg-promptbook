@@ -3,12 +3,18 @@ import type { Model } from 'promptbook-format';
 import {
   boardRows,
   matchFile,
+  matchTargets,
+  namedPrompts,
   readBoard,
   readFiles,
+  readImagePrompts,
   unmatchedFiles,
+  type Author,
   type BoardEntry,
-  type BoardRow,
+  type BoardRow as SceneBoardRow,
   type FileEntry,
+  type HalfStatus,
+  type ImagePromptEntry,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { connectWorker, createAnalysisClient, type Connect } from '../editor/analysis/client.js';
@@ -21,6 +27,30 @@ export interface Parsed {
   // The text the model was parsed from.
   text: string;
   model: Model;
+}
+
+// Until the board shows image categories (image-categories brief B), a scene
+// shows its first image prompt as it showed its one prompt before.
+export interface BoardRow extends SceneBoardRow {
+  // The first prompt's id; null when the scene has none.
+  promptId: string | null;
+  image: { prompt: string; by: Author; at: string } | null;
+  images: FileEntry[];
+  chosenImage: string | null;
+  imageStatus: HalfStatus;
+}
+
+export function withFirstPrompt(row: SceneBoardRow): BoardRow {
+  const first = row.prompts[0];
+  const text = first && first.prompt.prompt !== '' ? first.prompt : null;
+  return {
+    ...row,
+    promptId: first?.prompt.id ?? null,
+    image: text ? { prompt: text.prompt, by: text.by, at: text.at } : null,
+    images: first?.images ?? [],
+    chosenImage: first?.chosen ?? null,
+    imageStatus: first?.status ?? 'wanted',
+  };
 }
 
 export interface TrayFile {
@@ -41,34 +71,44 @@ export interface Board {
 
 const textOf = (doc: Y.Doc) => doc.getText('document');
 
-function useFilesAndBoard(doc: Y.Doc): { files: FileEntry[]; board: Map<string, BoardEntry> } {
-  const read = () => ({ files: readFiles(doc), board: readBoard(doc) });
+interface Read {
+  files: FileEntry[];
+  board: Map<string, BoardEntry>;
+  prompts: ImagePromptEntry[];
+}
+
+function useFilesAndBoard(doc: Y.Doc): Read {
+  const read = (): Read => ({ files: readFiles(doc), board: readBoard(doc), prompts: readImagePrompts(doc) });
   const [value, setValue] = useState(read);
   useEffect(() => {
     const files = doc.getArray('files');
     const board = doc.getMap('board');
-    const update = () => setValue({ files: readFiles(doc), board: readBoard(doc) });
+    const prompts = doc.getMap('imagePrompts');
+    const update = () => setValue(read());
     update();
     files.observeDeep(update);
     board.observe(update);
+    prompts.observe(update);
     return () => {
       files.unobserveDeep(update);
       board.unobserve(update);
+      prompts.unobserve(update);
     };
   }, [doc]);
   return value;
 }
 
-// Why a file left unmatched at intake has no scene, as matchFile says now; ''
-// when its name would match since (a prompt written after the drop).
-function reasonOf(file: FileEntry, rows: BoardRow[]): string {
-  const match = matchFile(file.name, file.kind, rows);
+// Why a file left unmatched at intake has no prompt or scene, as matchFile
+// says now; '' when its name would match since (a prompt written after the
+// drop).
+function reasonOf(file: FileEntry, targets: ReturnType<typeof matchTargets>): string {
+  const match = matchFile(file.name, file.kind, targets);
   return 'reason' in match ? match.reason : '';
 }
 
 export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   const [parsed, setParsed] = useState<Parsed | null>(null);
-  const { files, board } = useFilesAndBoard(doc);
+  const { files, board, prompts } = useFilesAndBoard(doc);
   // Callers of parseNow waiting for the text they asked for.
   const waiting = useRef<{ resolve(p: Parsed): void }[]>([]);
   const client = useRef<ReturnType<typeof createAnalysisClient<string>> | null>(null);
@@ -102,15 +142,20 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
     };
   }, [doc, connect]);
 
-  const rows = useMemo(() => (parsed ? boardRows(parsed.model.appendix, board, files) : []), [parsed, board, files]);
+  const sceneRows = useMemo(
+    () => (parsed ? boardRows(parsed.model.appendix, board, prompts, files) : []),
+    [parsed, board, prompts, files],
+  );
+  const rows = useMemo(() => sceneRows.map(withFirstPrompt), [sceneRows]);
   const tray = useMemo(() => {
     if (!parsed) return [];
-    return unmatchedFiles(parsed.model.appendix, files).map(({ file, reason }) => ({
+    const targets = matchTargets({ rows: sceneRows, named: namedPrompts(prompts, files) });
+    return unmatchedFiles(parsed.model.appendix, prompts, files).map(({ file, reason }) => ({
       file,
       // Left unmatched at intake: the reason matchFile gives now.
-      reason: reason ?? reasonOf(file, rows),
+      reason: reason ?? reasonOf(file, targets),
     }));
-  }, [parsed, files, rows]);
+  }, [parsed, prompts, files, sceneRows]);
 
   const parseNow = () =>
     new Promise<Parsed>((resolve) => {
