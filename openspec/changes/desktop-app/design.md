@@ -853,6 +853,55 @@ against the stack is `npm run prove -w promptbook-desktop`
 (`PROMPTBOOK_PROVE_PROJECTS=60`: 62 projects first-synced, main RSS 194 → 222
 MB, no reconnect storm).
 
+### Departures accepted in review (brief C, 2026-10-20)
+
+Bridge and contract:
+
+1. `DeviceInfo.updates: 'self' | 'manual'` (Windows, or Linux with
+   `APPIMAGE`, update themselves), since the renderer cannot tell deb from
+   AppImage.
+2. `Platform.openPdf` takes a builder, `() => Promise<Uint8Array>`: the
+   browser must open its tab before the build or the popup blocker steps in.
+3. `Platform.startSignIn` answers false when the browser blocked the popup;
+   `Platform.desktop` holds the desktop stores, the registry and a once-only
+   sign-in start. The browser's sign-in popup handle lives in the platform, so
+   reopening the dialog focuses the open popup.
+4. The browser's Hocuspocus registry moved to `platform/webRegistry.ts`,
+   unchanged; `sync/registry.ts` holds the `SyncRegistry` interface;
+   `SyncSnapshot.device` is null in the browser.
+
+UI (each against desktop.html or projects.html):
+
+5. With an account open (session ended), Sign-in failed shows Cancel (back to
+   the projects) instead of Change server, and In browser's Cancel goes back
+   too: re-signing in is for the same account; another server means signing
+   out first (architect's answer during the build).
+6. Sign-in failed's body is main's message (the mockup's string on a timeout).
+7. Syncing popover: "↓" with no count while receiving; "Receiving the latest
+   changes." or "Sending N changes.".
+8. Status bar during first sync: "N of M on this device".
+9. This device's Sign out card when signed out: "Signed out of <host>. Your
+   projects stay on <computer>."; "Sign-in is not remembered on this
+   computer" is an amber line in the Local snapshots card.
+10. History: the hint names the other modes ("every 15 minutes while you
+    edit, kept 2 days", "off"); the offline line's time is `offlineSince`.
+11. Needs the server: a single control is disabled with the hover tip; whole
+    field groups (templates, author, account) get one "Needs the server" line;
+    the Bin list stays readable from the cache, Restore in it is disabled;
+    Connected apps offline shows "Needs the server." and Revoke is disabled.
+12. Toasts from the mockup's script: "Restarting…", "Opened the release
+    page…", "Opened the release notes…".
+13. The popover keeps the web's position.
+14. Desktop CSS sits under the html class `desktop`; desktop-only components
+    live in `packages/web/src/desktop/`; full-window screens cover the routes
+    instead of unmounting them, so signing in again keeps the open project.
+
+Left to brief D (main side): the change count counts Yjs updates (one per
+keystroke) where the UI means edits; a local snapshot sends no event, so
+History shows it only on the next visit; unpackaged, Version shows Electron's
+version; "Offline · 0 changes on this device"; a refused upload (409/400)
+reads "Syncing…" forever.
+
 ## Mockup in words
 
 `desktop.html` shows one app window and, for one screen, a browser window.
