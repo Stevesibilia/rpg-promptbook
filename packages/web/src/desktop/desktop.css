@@ -213,3 +213,51 @@
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* History with two sources */
+.desktop .snap.sources .sr {
+  grid-template-columns: 130px minmax(0, 1fr) 112px 70px 230px;
+}
+.desktop .src-tag {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  justify-self: start;
+  white-space: nowrap;
+  margin-right: 6px;
+}
+.desktop .src-tag .ic {
+  width: 13px;
+  height: 13px;
+}
+.desktop .src-tag.srv .ic {
+  color: var(--info);
+}
+.desktop .src-tag.dev .ic {
+  color: var(--primary);
+}
+.desktop .src-filter {
+  margin-bottom: 10px;
+}
+.desktop .info.offline-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+.desktop .info.offline-line .ic {
+  color: var(--amber);
+  width: 16px;
+  height: 16px;
+}

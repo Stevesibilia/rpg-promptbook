@@ -4,9 +4,15 @@ import { dayOf, snapshotTime } from '../dates.js';
 // How History names a snapshot and says how long it is kept (connector specs,
 // snapshots). The server keeps the raw label; dates are formatted here.
 
-export const kindLabels: Record<SnapshotKind, string> = { claude: 'Claude', user: 'You', restore: 'Restore' };
+// The desktop's hourly snapshots have no chip (desktop.html).
+export const kindLabels: Record<SnapshotKind, string> = {
+  claude: 'Claude',
+  user: 'You',
+  restore: 'Restore',
+  hourly: '',
+};
 // The mockup's chip classes.
-export const kindClasses: Record<SnapshotKind, string> = { claude: 'cl', user: 'you', restore: 'rs' };
+export const kindClasses: Record<SnapshotKind, string> = { claude: 'cl', user: 'you', restore: 'rs', hourly: '' };
 
 const RESTORED = / · (\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2}))$/;
 

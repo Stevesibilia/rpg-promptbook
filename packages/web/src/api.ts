@@ -47,7 +47,8 @@ export interface ImportResult {
   imagesNotImported: number;
 }
 
-export type SnapshotKind = 'claude' | 'user' | 'restore';
+// hourly: taken on the desktop while editing (desktop-app design decision 12).
+export type SnapshotKind = 'claude' | 'user' | 'restore' | 'hourly';
 
 // A snapshot of the prep document, as GET /api/projects/:id/snapshots lists it.
 export interface SnapshotRow {
@@ -62,6 +63,8 @@ export interface SnapshotRow {
   createdAt: string;
   // Null for the user's own.
   expiresAt: string | null;
+  // On the desktop: kept on the server, or on this device.
+  source?: 'server' | 'device';
 }
 
 export interface Snapshot extends SnapshotRow {
