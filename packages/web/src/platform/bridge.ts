@@ -41,6 +41,9 @@ export const channels = {
   // The board's images and tracks (asset-board design decision 13).
   filesPut: 'pb:files:put',
   filesStatus: 'pb:files:status',
+  // A CueBard pack built in main from this computer's files (cuebard-export
+  // design decision 15).
+  filesExportCuebard: 'pb:files:export-cuebard',
   // Main to renderer.
   filesOnStatus: 'pb:files:on-status',
 } as const;
@@ -98,6 +101,14 @@ export interface FilesStatus {
 export interface PutFileResult {
   mime: string;
   state: 'uploaded' | 'waiting';
+}
+
+// pb:files:export-cuebard's answer: false when the user cancelled the save
+// dialog; how many tracks and images were left out (listed in the pack's
+// left-out.txt).
+export interface CuebardSaved {
+  saved: boolean;
+  leftOut: number;
 }
 
 // One REST call through main (design decision 7). The body is JSON text, as
@@ -258,5 +269,8 @@ export interface PromptbookBridge {
     put(projectId: string, sha256: string, bytes: Uint8Array, mime: string): Promise<PutFileResult>;
     status(): Promise<FilesStatus>;
     onStatus(cb: (status: FilesStatus) => void): Unsubscribe;
+    // A save dialog offering `name`, then the project's CueBard pack built
+    // from this computer's copy, online or offline.
+    exportCuebard(projectId: string, name: string): Promise<CuebardSaved>;
   };
 }

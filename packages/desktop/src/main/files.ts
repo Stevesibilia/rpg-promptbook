@@ -124,6 +124,7 @@ export class Files {
   // The protocol's requests waiting for a download, by sha256.
   private waiters = new Map<string, Set<() => void>>();
   private puts = new Set<Promise<unknown>>();
+  private readers = new Set<Promise<unknown>>();
   private uploading: Promise<void> | null = null;
   private counts = new Map<string, { missing: number; bytes: number }>();
   private docTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -593,20 +594,8 @@ export class Files {
   // attempt failed and waits to be tried again.
   async serve(projectId: string, sha256: string, request: Request): Promise<Response> {
     if (request.method !== 'GET' && request.method !== 'HEAD') return answer(405);
-    if (this.closed || !this.allowed(projectId, sha256)) return notFound();
-    if (!this.onDisk.has(sha256)) {
-      if (!this.online()) return notFound();
-      let w = this.wanted.get(sha256);
-      if (!w) {
-        w = { projects: new Set(), attempts: 0, nextAt: 0, notFound: false };
-        this.wanted.set(sha256, w);
-      }
-      if (w.nextAt > this.now()) return notFound();
-      w.projects.add(projectId);
-      await this.turn(sha256);
-      if (!this.onDisk.has(sha256)) return notFound();
-    }
-    const file = this.blobPath(sha256);
+    const file = await this.localPath(projectId, sha256);
+    if (file === null) return notFound();
     let size: number;
     let mime: string;
     try {
@@ -639,6 +628,41 @@ export class Files {
       },
       body,
     );
+  }
+
+  // Where a file the project may read is on disk (cuebard-export design
+  // decision 15): the rules of serve, which uses it. When online and not here
+  // yet, fetched in its turn of the download queue, unless its last attempt
+  // failed and waits to be tried again. Null when it cannot be had.
+  async localPath(projectId: string, sha256: string): Promise<string | null> {
+    if (this.closed || !this.allowed(projectId, sha256)) return null;
+    if (!this.onDisk.has(sha256)) {
+      if (!this.online()) return null;
+      let w = this.wanted.get(sha256);
+      if (!w) {
+        w = { projects: new Set(), attempts: 0, nextAt: 0, notFound: false };
+        this.wanted.set(sha256, w);
+      }
+      if (w.nextAt > this.now()) return null;
+      w.projects.add(projectId);
+      await this.turn(sha256);
+      if (this.closed || !this.onDisk.has(sha256)) return null;
+    }
+    return this.blobPath(sha256);
+  }
+
+  // Work that reads the files from outside (the CueBard export): its signal
+  // aborts at close(), which waits for it to settle, so nothing reads a
+  // folder about to be removed.
+  async reading<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (this.closed) throw new FileError('Signed out.');
+    const running = work(this.abort.signal);
+    this.readers.add(running);
+    try {
+      return await running;
+    } finally {
+      this.readers.delete(running);
+    }
   }
 
   private allowed(projectId: string, sha256: string): boolean {
@@ -781,6 +805,6 @@ export class Files {
     for (const t of [this.uploadTimer, this.downloadTimer, this.statusTimer]) if (t) clearTimeout(t);
     if (this.sweepTimer) clearInterval(this.sweepTimer);
     for (const sha of [...this.waiters.keys()]) this.settle(sha);
-    await Promise.allSettled([...this.fetching.values(), this.uploading, ...this.puts]);
+    await Promise.allSettled([...this.fetching.values(), this.uploading, ...this.puts, ...this.readers]);
   }
 }

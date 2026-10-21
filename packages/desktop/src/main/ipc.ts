@@ -1,10 +1,13 @@
 import { app as electronApp, BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
+import { existsSync } from 'node:fs';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import { MAX_FILE_BYTES as MAX_BOARD_FILE_BYTES } from 'promptbook-project';
 import { channels, type BridgeRequestInit, type DeviceInfo } from 'promptbook-web/src/platform/bridge.js';
 import type { App } from './app.js';
+import { exportCuebard } from './cuebard.js';
+import { FileError } from './files.js';
 import type { Updater } from './updater.js';
 import { isRoutablePath } from './router.js';
 import { isMode } from './snapshots.js';
@@ -78,6 +81,18 @@ export function fileName(v: unknown): string {
   if (typeof v !== 'string') return fail('file name');
   const name = basename(v.replace(/\\/g, '/')).replace(/[\u0000-\u001f<>:"|?*]/g, '_').slice(0, 200);
   return name && name !== '.' && name !== '..' ? name : fail('file name');
+}
+
+// A CueBard pack's name for the save dialog: a file name ending in .cbpack.
+export function packName(v: unknown): string {
+  const name = fileName(v);
+  return /\.cbpack$/i.test(name) ? name : fail('file name');
+}
+
+// The path the save dialog answered, with .cbpack when the user took it off:
+// CueBard imports only that extension.
+export function packTarget(path: string): string {
+  return extname(path).toLowerCase() === '.cbpack' ? path : `${path}.cbpack`;
 }
 
 type Handler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown;
@@ -178,5 +193,31 @@ export function registerIpc(app: App, updater: Updater): void {
     }
     await writeFile(filePath, data);
     return true;
+  });
+  // Built here from this computer's files, online or offline; one export at
+  // a time into one file (each writes its own part file).
+  const exporting = new Set<string>();
+  handle(channels.filesExportCuebard, async (event, id, name) => {
+    const project = projectId(id);
+    const options = { defaultPath: packName(name), filters: [{ name: 'CueBard pack', extensions: ['cbpack'] }] };
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = window
+      ? await dialog.showSaveDialog(window, options)
+      : await dialog.showSaveDialog(options);
+    if (canceled || !filePath) return { saved: false, leftOut: 0 };
+    const target = packTarget(filePath);
+    // The dialog asked about replacing the name without the extension only.
+    if (target !== filePath && existsSync(target)) {
+      throw new FileError(`${basename(target)} exists already: export again and choose another name.`);
+    }
+    const account = app.account;
+    if (!account) throw new FileError('Sign in first.');
+    if (exporting.has(target)) throw new FileError('This pack is being saved already.');
+    exporting.add(target);
+    try {
+      return await exportCuebard(account, project, target);
+    } finally {
+      exporting.delete(target);
+    }
   });
 }

@@ -562,6 +562,77 @@ describe('the protocol file route', () => {
   });
 });
 
+describe('localPath', () => {
+  it('answers the path of a file on disk the project names, and null for another project or once closed', async () => {
+    const { engine, docs } = fakeEngine();
+    engine.isOnline = false;
+    const doc = new Y.Doc();
+    docs.set(P1, doc);
+    docs.set(P2, new Y.Doc());
+    open(engine);
+    const bytes = png();
+    await files!.put(P1, sha(bytes), bytes);
+    addFiles(doc, [entry(bytes)]);
+    const path = await files!.localPath(P1, sha(bytes));
+    expect(path).toBe(join(folder(), sha(bytes).slice(0, 2), sha(bytes)));
+    expect(readFileSync(path!).equals(bytes)).toBe(true);
+    // On disk, but P2 does not name it; a project this account does not have.
+    expect(await files!.localPath(P2, sha(bytes))).toBeNull();
+    expect(await files!.localPath('2d1f4e5a-3b6c-4d7e-8f9a-0b1c2d3e4f5a', sha(bytes))).toBeNull();
+    await files!.close();
+    expect(await files!.localPath(P1, sha(bytes))).toBeNull();
+  });
+
+  it('answers null offline for a named file not here, and asks the server for nothing', async () => {
+    const bytes = png();
+    server.linked.set(`${P1}/${sha(bytes)}`, bytes);
+    const { engine, docs } = fakeEngine();
+    engine.isOnline = false;
+    const doc = new Y.Doc();
+    addFiles(doc, [entry(bytes)]);
+    docs.set(P1, doc);
+    open(engine);
+    expect(await files!.localPath(P1, sha(bytes))).toBeNull();
+    expect(server.hits).toHaveLength(0);
+  });
+
+  it('online, fetches a named file not here in its turn, then answers its path', async () => {
+    const bytes = png();
+    server.linked.set(`${P1}/${sha(bytes)}`, bytes);
+    const { engine, docs } = fakeEngine();
+    open(engine);
+    const doc = new Y.Doc();
+    addFiles(doc, [entry(bytes)]);
+    docs.set(P1, doc);
+    const path = await files!.localPath(P1, sha(bytes));
+    expect(path).not.toBeNull();
+    expect(readFileSync(path!).equals(bytes)).toBe(true);
+    expect(server.hits.filter((h) => h.method === 'GET')).toHaveLength(1);
+  });
+
+  it('aborts a reader at close and waits for it to settle', async () => {
+    const { engine } = fakeEngine();
+    engine.isOnline = false;
+    open(engine);
+    let settled = false;
+    const reading = files!.reading(
+      (signal) =>
+        new Promise<void>((_resolve, reject) => {
+          signal.addEventListener('abort', () =>
+            setTimeout(() => {
+              settled = true;
+              reject(new Error('stopped'));
+            }, 20),
+          );
+        }),
+    );
+    await files!.close();
+    expect(settled).toBe(true);
+    await expect(reading).rejects.toThrow('stopped');
+    await expect(files!.reading(async () => 1)).rejects.toThrow('Signed out.');
+  });
+});
+
 describe('the local sweep and usage', () => {
   it('deletes the files nothing names, and keeps those a document or the queue names', async () => {
     const { engine, docs } = fakeEngine();

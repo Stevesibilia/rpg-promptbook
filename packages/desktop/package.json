@@ -26,6 +26,8 @@
     "electron-builder": "26.15.3",
     "electron-updater": "6.8.9",
     "esbuild": "0.28.2",
+    "fflate": "^0.8.3",
+    "music-metadata": "11.16.1",
     "promptbook-format": "^0.0.0",
     "promptbook-project": "^0.0.0",
     "promptbook-web": "^0.0.0",

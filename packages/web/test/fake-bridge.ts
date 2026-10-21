@@ -71,6 +71,7 @@ export function fakeBridge() {
     update: [] as [string, Uint8Array][],
     release: [] as string[],
     put: [] as [string, string][],
+    exportCuebard: [] as [string, string][],
   };
   const events = {
     update: emitter<[string, Uint8Array]>(),
@@ -151,6 +152,10 @@ export function fakeBridge() {
       },
       status: async (): Promise<FilesStatus> => ({ waiting: [], downloading: 0, refused: [] }),
       onStatus: events.files.on,
+      exportCuebard: async (projectId, name) => {
+        calls.exportCuebard.push([projectId, name]);
+        return { saved: true, leftOut: 0 };
+      },
     },
   };
 

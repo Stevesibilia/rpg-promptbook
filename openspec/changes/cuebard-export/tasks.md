@@ -25,10 +25,10 @@ The repository has no lint script: the checks are `npm run typecheck`,
 
 ## 3. Desktop export (brief B)
 
-- [ ] 3.1 `packages/web/src/platform/bridge.ts`: `filesExportCuebard: 'pb:files:export-cuebard'`, `CuebardSaved`, `files.exportCuebard` in `PromptbookBridge`; `packages/desktop/src/preload/index.ts` forwards it
-- [ ] 3.2 `packages/desktop/src/main/files.ts`: `Files.localPath(projectId, sha256)` (D15), with a unit test in `test/unit/files.test.ts` (on disk, allowed or not, offline and absent, online and fetched in its turn)
-- [ ] 3.3 `packages/desktop/src/main/cuebard.ts` `exportCuebard` (D15), the handler in `main/ipc.ts` with the save dialog and its filter; `fflate` ^0.8.3 and `music-metadata` 11.16.1 (exact) as devDependencies of `promptbook-desktop`; `npm run build -w promptbook-desktop` bundles them
-- [ ] 3.4 `packages/desktop/test/unit/cuebard.test.ts`: every desktop case in D19, each pack through `checkCuebardPack`
+- [x] 3.1 `packages/web/src/platform/bridge.ts`: `filesExportCuebard: 'pb:files:export-cuebard'`, `CuebardSaved`, `files.exportCuebard` in `PromptbookBridge`; `packages/desktop/src/preload/index.ts` forwards it
+- [x] 3.2 `packages/desktop/src/main/files.ts`: `Files.localPath(projectId, sha256)` (D15), with a unit test in `test/unit/files.test.ts` (on disk, allowed or not, offline and absent, online and fetched in its turn)
+- [x] 3.3 `packages/desktop/src/main/cuebard.ts` `exportCuebard` (D15), the handler in `main/ipc.ts` with the save dialog and its filter; `fflate` ^0.8.3 and `music-metadata` 11.16.1 (exact) as devDependencies of `promptbook-desktop`; `npm run build -w promptbook-desktop` bundles them
+- [x] 3.4 `packages/desktop/test/unit/cuebard.test.ts`: every desktop case in D19, each pack through `checkCuebardPack`
 
 ## 4. Web UI (brief B)
 
