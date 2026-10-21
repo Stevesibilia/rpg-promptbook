@@ -36,15 +36,15 @@ The repository has no lint script: the checks are `npm run typecheck`,
 - [x] 4.2 `packages/web/src/export/CuebardDialog.tsx` (D16, D17): the summary, the warnings, the empty and too-large states, the where line per platform, Export and Cancel, the toasts; strings from D17, which follows the agreed mockup (screens 10, 10b, 10c of `docs/mockups/board.html`) and wins where they differ (the length warning)
 - [x] 4.3 The board header's «Export for CueBard…» (`board/BoardView.tsx`) and the projects panel's Actions entry under «Export as a Markdown folder…» (`projects/ProjectPanel.tsx`), not inside `NeedsServer`
 - [x] 4.4 Web unit tests: the dialog's lines and warnings from summaries, its states, the toasts
-- [ ] 4.5 Checks: `npm run typecheck`, `npm test`; screenshots of the dialog (summary with warnings, nothing to export, desktop offline) and of both entries for the architect
+- [x] 4.5 Checks: `npm run typecheck`, `npm test`; screenshots of the dialog (summary with warnings, nothing to export, desktop offline) and of both entries for the architect
 
 ## 5. End-to-end tests and docs (brief B)
 
-- [ ] 5.1 `e2e/board.spec.ts`: D19's browser flow (the dialog's counts and a warning, the download, unzipped and through `checkCuebardPack`, the chosen files alone, the tray's file absent, the projects Actions entry)
-- [ ] 5.2 `e2e/desktop.spec.ts`: D19's desktop flow, offline, with the save dialog stubbed
-- [ ] 5.3 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 5.4 Docs: README (the CueBard export, from the board and from the projects screen, offline on the desktop); `docs/design.md` (CueBard export: built, a pointer to this change, the pack's layout and what goes in; Phases: phase 3 built); Prettier on the files touched
-- [ ] 5.5 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief B, with a pack exported by the desktop app offline saved under the scratchpad for the proof (6.1)
+- [x] 5.1 `e2e/board.spec.ts`: D19's browser flow (the dialog's counts and a warning, the download, unzipped and through `checkCuebardPack`, the chosen files alone, the tray's file absent, the projects Actions entry)
+- [x] 5.2 `e2e/desktop.spec.ts`: D19's desktop flow, offline, with the save dialog stubbed
+- [x] 5.3 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 5.4 Docs: README (the CueBard export, from the board and from the projects screen, offline on the desktop); `docs/design.md` (CueBard export: built, a pointer to this change, the pack's layout and what goes in; Phases: phase 3 built); Prettier on the files touched
+- [x] 5.5 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back of brief B, with a pack exported by the desktop app offline saved under the scratchpad for the proof (6.1)
 
 ## 6. Proof with CueBard and release (architect)
 

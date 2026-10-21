@@ -81,7 +81,9 @@ the account's `files` folder inside the data folder, named by their content.
 They download in the background after the first sync and the board shows
 them offline. Files dropped on the board offline wait there, marked "on this
 device", and upload when the server is back. This device counts them, and
-signing out with removal says how many are not uploaded yet.
+signing out with removal says how many are not uploaded yet. The CueBard
+export works offline from these files (see Images and music); the Markdown
+folder export needs the server.
 
 ## Images and music
 
@@ -121,6 +123,20 @@ export holds `board.md` with the prompts, and the files in
 `files/scenes/<scene>/<prompt number>/`, `files/scenes/<scene>/music/`,
 `files/pcs/<name>/`, `files/npcs/<name>/`, `files/handouts/<name>/` and
 `files/unmatched/`.
+
+**Export for CueBard…**, in the board's header and in a project's Actions on
+the projects screen, makes a CueBard pack, `<title>.cbpack`, that CueBard's
+Import project opens as it is: one cue group per scene of the appendix, in
+its order, with the scene's tracks looping; the images in the visual folders
+Scenes, PCs, NPCs and Handouts, each scene's images linked to its first
+track. Each prompt and scene gives its chosen file, or every matched file
+when nothing is chosen; the Unmatched tray stays out, and so does the prep's
+text. Before exporting, the dialog counts what goes in and warns about each
+gap: a scene with no track, a prompt with no image, a track whose length the
+board did not record (read from the file at export; a track whose length
+cannot be read is left out). Anything left out is listed in the pack's
+`left-out.txt`. The browser downloads the pack from the server; the desktop
+app builds it on the computer and saves it where you choose, offline too.
 
 Boards made before image categories (v0.6) keep everything: each scene's
 prompt and chosen image become its prompt 1, on the server, in the desktop
