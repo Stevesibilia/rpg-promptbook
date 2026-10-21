@@ -45,6 +45,6 @@ architect.
 
 ## 5. Review and release (architect)
 
-- [ ] 5.1 Review against the design and the mockup; failures reported to the implementer, not worked around
-- [ ] 5.2 Owner preview as decided (Open Questions)
+- [x] 5.1 Review against the design and the mockup; failures reported to the implementer, not worked around
+- [x] 5.2 Owner preview as decided (Open Questions)
 - [ ] 5.3 Archive the change (`chore(openspec): archive hide-problems`), merge, release `v0.9.0` (O1)

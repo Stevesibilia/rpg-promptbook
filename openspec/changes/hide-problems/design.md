@@ -555,3 +555,50 @@ documents that had hides, which older code ignores.
   preview: the owner is away from a browser on this machine. Task 3.8's
   screenshots (light and dark) go to the owner as a published page before
   the merge, and the merge waits for their go.
+
+## Departures accepted at review
+
+Brief A (groups 1 and 2):
+
+1. D2's hash takes the message too (recorded in D2).
+2. A range that ends just after a line break covers that line only, so the
+   next line does not join the fingerprint.
+3. `apply`'s plan callback takes `(text, hidden, now)`, read once inside the
+   write; a hide that lands between the plan and the write is not in that
+   result's counts.
+4. `hideProblem` throws when a snooze has no ISO `until`; a dismissal always
+   stores `until: null`.
+5. The writers answer a previous entry only when it was still active: an
+   ended snooze counts as absent, as it does everywhere else.
+6. Housekeeping keeps snoozes that ended less than a day ago (architect's
+   fix, recorded in D3).
+
+Brief B (groups 3 and 4):
+
+1. The pure hide, restore and Undo actions live in
+   `packages/web/src/editor/hiding.ts` (`hidingActions`), so they are unit
+   tested without the page; `useHiding` in `EditorPage.tsx` wraps them.
+2. `Checks` takes a `hiding` prop (hide, restore, restore all) instead of
+   `doc` (D14 already routes the actions through props).
+3. The lint gutter's tooltip (on the margin dot) has no hide row: it stays
+   open after a hide and would keep showing a hidden problem. The hover
+   tooltip on the squiggle has the row, as approved.
+4. Undo puts back only keys that still hold what the action left. A key
+   another device changed since is left alone, and when nothing is left the
+   toast says «Nothing undone: changed on another device». Without this,
+   Undo overwrote a newer snooze from another device.
+5. A toast with an action stays up while the pointer or focus is on it, and
+   focus returns where it came from when its button goes (WCAG 2.2.1).
+6. The toast's action styles are in `shell/shell.css` beside `.toast`.
+7. The row menu is portalled to `body` as `.pmenu` (`.menu` clashes with
+   `board.css`). It flips above «⋯» when there is no room below, closes on
+   focus leaving, resize and Tab, supports Home and End, and focused items
+   get a 2px accent outline (the mockup's hover shade was about 1.05:1).
+8. When a hide or restore removes the focused row, focus goes to the row now
+   in its place, else the one before, else the section's summary.
+9. Hidden rows have a `title` with the full date and time for snoozes only.
+
+The tooltip's divider row is built from Diagnostic actions with a
+`markClass` and the code as the diagnostic's `source`, laid out by CSS flex
+order; no workaround was needed. The owner approved the result on
+screenshots on 2026-10-21.
