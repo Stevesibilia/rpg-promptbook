@@ -210,6 +210,17 @@ describe('expiry', () => {
     expect(write((d) => putHidden(d, new Map(), later))).toEqual(kept);
   });
 
+  it('housekeeping keeps a snooze that ended less than a day ago', () => {
+    const doc = project();
+    const dash = problem(TEXT, '—');
+    hideProblem(doc, dash, TEXT, 'snoozed', at(1000), NOW);
+    const soon = new Date(at(1000 + SNOOZE_MS.day - 1));
+    putHidden(doc, new Map(), soon);
+    expect(doc.getMap('hiddenProblems').size).toBe(1);
+    putHidden(doc, new Map(), new Date(at(1000 + SNOOZE_MS.day)));
+    expect(doc.getMap('hiddenProblems').size).toBe(0);
+  });
+
   it('nextExpiry is the earliest active snooze', () => {
     const map = new Map<string, HiddenEntry>([
       ['a', entry({ how: 'snoozed', until: at(SNOOZE_MS.week) })],

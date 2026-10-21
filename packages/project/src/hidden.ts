@@ -93,11 +93,14 @@ export function isActive(entry: HiddenEntry, now: Date): boolean {
 }
 
 // Housekeeping inside a writer's transaction: expired snoozes are never
-// shown, so deleting them is safe.
+// shown, so deleting them is safe. Only those that ended over a day ago go,
+// so a device whose clock runs fast does not delete another device's snooze
+// that is still running there.
 function dropExpired(map: Y.Map<unknown>, now: Date): void {
+  const before = now.getTime() - SNOOZE_MS.day;
   for (const [key, value] of [...map.entries()]) {
     const entry = parseEntry(value);
-    if (entry && !isActive(entry, now)) map.delete(key);
+    if (entry?.how === 'snoozed' && Date.parse(entry.until!) <= before) map.delete(key);
   }
 }
 

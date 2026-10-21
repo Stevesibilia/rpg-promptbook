@@ -271,8 +271,11 @@ export function nextExpiry(
 
 - An entry is **active** when `how === 'dismissed'`, or when it is snoozed
   and `until` is later than `now`. An expired snooze counts as absent.
-- Each writer runs in one transaction and, in it, deletes every expired
-  snooze (housekeeping; safe, since they are never shown).
+- Each writer runs in one transaction and, in it, deletes every snooze
+  that ended more than a day before its `now` (housekeeping; safe, since
+  they are never shown). The day's margin was added at review: with no
+  margin, a device whose clock runs fast would delete another device's
+  snooze that is still running there, and the delete would win.
 - Entries whose problem no longer exists stay: a problem can vanish while
   the user is mid-edit and come back. They are small and harmless.
 - `partitionProblems` keeps the problems' order in both lists.
