@@ -17,11 +17,11 @@ The repository has no lint script: the checks are `npm run typecheck`,
 
 ## 2. Server route (brief A)
 
-- [ ] 2.1 `packages/server/src/routes/zip.ts`: `attachment`, `send`, `ZIP_BYTES_MAX`, `ZIP_ENTRIES_MAX`, `zipWriter()` moved out of `routes/transfer.ts`; `transfer.ts` uses them; `export-files.test.ts` unchanged and green
-- [ ] 2.2 `music-metadata` 11.16.1 (exact) in `packages/server`'s dependencies; `packages/server/src/files/duration.ts` `trackDuration(stream, mime, size)`, null on any failure or a length not finite or not above 0; unit test with a generated WAV and with bytes that give no length
-- [ ] 2.3 `packages/server/src/routes/cuebard.ts` `GET /api/projects/:id/cuebard` (D14 steps 1 to 5), registered in `app.ts`; the limits and 413 message (D13); `left-out.txt` (D5)
-- [ ] 2.4 `packages/server/test/db/cuebard.test.ts`: every case under the server in D19, each pack through `checkCuebardPack`, including a non-ASCII name with the UTF-8 flag, a length read from a WAV, a track left out for its length, an unlinked file left out, 404, 413, the streamed memory check, the live document's unsaved edit
-- [ ] 2.5 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green; Prettier on the Markdown touched; hand-back of brief A to the architect with the departures from the design, a pack produced from the db test's fixture saved under the scratchpad for the proof (6.1), and the open risks met
+- [x] 2.1 `packages/server/src/routes/zip.ts`: `attachment`, `send`, `ZIP_BYTES_MAX`, `ZIP_ENTRIES_MAX`, `zipWriter()` moved out of `routes/transfer.ts`; `transfer.ts` uses them; `export-files.test.ts` unchanged and green
+- [x] 2.2 `music-metadata` 11.16.1 (exact) in `packages/server`'s dependencies; `packages/server/src/files/duration.ts` `trackDuration(stream, mime, size)`, null on any failure or a length not finite or not above 0; unit test with a generated WAV and with bytes that give no length
+- [x] 2.3 `packages/server/src/routes/cuebard.ts` `GET /api/projects/:id/cuebard` (D14 steps 1 to 5), registered in `app.ts`; the limits and 413 message (D13); `left-out.txt` (D5)
+- [x] 2.4 `packages/server/test/db/cuebard.test.ts`: every case under the server in D19, each pack through `checkCuebardPack`, including a non-ASCII name with the UTF-8 flag, a length read from a WAV, a track left out for its length, an unlinked file left out, 404, 413, the streamed memory check, the live document's unsaved edit
+- [x] 2.5 Checks: `npm run typecheck`, `npm test`, `npm run e2e` with the existing suite green; Prettier on the Markdown touched; hand-back of brief A to the architect with the departures from the design, a pack produced from the db test's fixture saved under the scratchpad for the proof (6.1), and the open risks met
 
 ## 3. Desktop export (brief B)
 

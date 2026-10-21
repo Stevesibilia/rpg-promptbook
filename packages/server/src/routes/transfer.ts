@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { FastifyInstance, FastifyReply } from 'fastify';
-import { Readable } from 'node:stream';
-import { strToU8, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
+import type { FastifyInstance } from 'fastify';
 import {
   categories,
   createProjectDoc,
@@ -30,14 +28,11 @@ import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 import { NOT_FOUND } from './projects.js';
 import { getSettings } from './settings.js';
+import { send, ZIP_BYTES_MAX, ZIP_ENTRIES_MAX, zipWriter } from './zip.js';
 
 // Markdown import and export (design decision 7).
 
 export const IMPORT_BODY_LIMIT = 20 * 1024 * 1024;
-
-// What a zip without ZIP64 can hold, with room for the text files and headers.
-const ZIP_BYTES_MAX = 4_000_000_000;
-const ZIP_ENTRIES_MAX = 65_000;
 
 const importBody = z.object({
   notes: z
@@ -55,15 +50,6 @@ const importBody = z.object({
     .min(1, 'at least one note')
     .max(1000),
 });
-
-// A download name for Content-Disposition: an ASCII fallback and the UTF-8
-// original.
-function attachment(reply: FastifyReply, name: string): FastifyReply {
-  const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
-  return reply
-    .type('application/zip')
-    .header('content-disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
-}
 
 export async function transferRoutes(
   app: FastifyInstance,
@@ -151,21 +137,8 @@ export async function transferRoutes(
     titles: Map<string, string>,
     log: FastifyInstance['log'],
   ): AsyncGenerator<Uint8Array> {
-    const queue: Uint8Array[] = [];
-    let failure: Error | null = null;
-    const zip = new Zip((error, chunk) => {
-      if (error) failure = error;
-      else queue.push(chunk);
-    });
-    const flush = () => {
-      if (failure) throw failure;
-      return queue.splice(0);
-    };
-    const text = (path: string, content: string) => {
-      const entry = new ZipDeflate(path, { level: 6 });
-      zip.add(entry);
-      entry.push(strToU8(content), true);
-    };
+    const zip = zipWriter();
+    const { flush, text } = zip;
     try {
       for (const { project, folder } of projects) {
         const { texts, files, missing } = await plan(project, titles, folder);
@@ -177,14 +150,7 @@ export async function transferRoutes(
             missing.push(file.path);
             continue;
           }
-          const entry = new ZipPassThrough(`${folder}/${file.path}`);
-          zip.add(entry);
-          for await (const chunk of blob.stream) {
-            entry.push(chunk as Uint8Array, false);
-            yield* flush();
-          }
-          entry.push(new Uint8Array(0), true);
-          yield* flush();
+          yield* zip.stored(`${folder}/${file.path}`, blob.stream);
         }
         if (missing.length > 0) {
           log.warn({ project: project.id, missing: missing.length }, 'Export: files without bytes were left out');
@@ -192,23 +158,11 @@ export async function transferRoutes(
           yield* flush();
         }
       }
-      zip.end();
-      yield* flush();
+      yield* zip.end();
     } finally {
       zip.terminate();
     }
   }
-
-  // The first chunk is read before the answer is committed, so a failure in
-  // the first project's own reads is a 500 and not an empty 200.
-  const send = async (reply: FastifyReply, name: string, chunks: AsyncGenerator<Uint8Array>) => {
-    const first = await chunks.next();
-    async function* all() {
-      if (!first.done) yield first.value;
-      yield* chunks;
-    }
-    return attachment(reply, name).send(Readable.from(all(), { objectMode: false }));
-  };
 
   // fflate's Zip writes 32-bit sizes and offsets and a 16-bit entry count, so
   // an archive past them would be silently corrupt: refuse it up front. The
