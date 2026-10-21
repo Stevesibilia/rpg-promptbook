@@ -63,6 +63,22 @@ jobs:
       - run: helm lint charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml
       - run: helm template rpg-promptbook charts/rpg-promptbook --set image.tag=ci > /dev/null
       - run: helm template rpg-promptbook charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml --set image.tag=ci > /dev/null
+      # The database connection is verified TLS (openspec database-tls): the
+      # rendered Deployment must carry it in the init container and the server,
+      # and drop it with cnpg.tls.verify=false.
+      - name: Rendered Deployment verifies the database certificate
+        run: |
+          out=$(helm template rpg-promptbook charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml --set image.tag=ci)
+          url='sslmode=verify-full&sslrootcert=/etc/promptbook/db-ca/ca.crt'
+          n=$(printf '%s\n' "$out" | grep -cF "$url")
+          [ "$n" -eq 2 ] || { echo "expected 2 verified DATABASE_URL, found $n"; exit 1; }
+          printf '%s\n' "$out" | grep -qF 'secretName: rpg-promptbook-db-ca' || { echo "db-ca Secret not mounted"; exit 1; }
+      - name: Rendered Deployment has no TLS settings with cnpg.tls.verify=false
+        run: |
+          out=$(helm template rpg-promptbook charts/rpg-promptbook -f charts/rpg-promptbook/values-homelab.yaml --set image.tag=ci --set cnpg.tls.verify=false)
+          if printf '%s\n' "$out" | grep -qE 'sslmode|db-ca'; then
+            echo "TLS settings rendered with cnpg.tls.verify=false"; exit 1
+          fi
 
   # The end-to-end tests against the compose stack (design decision 11), the
   # desktop app's among them. Not a required check until the owner says so.

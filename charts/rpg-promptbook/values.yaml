@@ -111,6 +111,12 @@ cnpg:
   database: promptbook
   owner: promptbook
 
+  tls:
+    # -- Connect to the database with `sslmode=verify-full`, verified against
+    # the CA the operator writes in the Secret `<cluster>-ca`. `false` keeps the
+    # operator's plain connection string, as a way back.
+    verify: true
+
   imageCatalog:
     name: postgresql
     major: 18

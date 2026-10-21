@@ -1,5 +1,7 @@
 {{- $secret := include "rpg-promptbook.databaseSecretName" . }}
 {{- $oidc := .Values.app.oidc }}
+{{- $verify := .Values.cnpg.tls.verify }}
+{{- $dbUrl := "$(DATABASE_URI)?sslmode=verify-full&sslrootcert=/etc/promptbook/db-ca/ca.crt" }}
 {{- if and $oidc.enabled .Values.app.admin.enabled }}
 {{- fail "app.oidc.enabled and app.admin.enabled cannot both be true: the server refuses a password account beside single sign-on. Set app.admin.enabled=false." }}
 {{- end }}
@@ -71,11 +73,29 @@ spec:
               done
               echo "database is ready"
           env:
+            {{- if $verify }}
+            # DATABASE_URI first: Kubernetes expands $(VAR) only for variables
+            # defined earlier in the same list.
+            - name: DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: uri
+            - name: DATABASE_URL
+              value: {{ $dbUrl | quote }}
+            {{- else }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $secret }}
                   key: uri
+            {{- end }}
+          {{- if $verify }}
+          volumeMounts:
+            - name: db-ca
+              mountPath: /etc/promptbook/db-ca
+              readOnly: true
+          {{- end }}
           resources:
             requests:
               cpu: 10m
@@ -97,11 +117,21 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.service.port | quote }}
+            {{- if $verify }}
+            - name: DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: uri
+            - name: DATABASE_URL
+              value: {{ $dbUrl | quote }}
+            {{- else }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $secret }}
                   key: uri
+            {{- end }}
             - name: PUBLIC_URL
               value: {{ .Values.app.publicUrl | quote }}
             - name: TRUST_PROXY_HOPS
@@ -182,6 +212,11 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /data
+            {{- if $verify }}
+            - name: db-ca
+              mountPath: /etc/promptbook/db-ca
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
@@ -192,6 +227,15 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if $verify }}
+        # Only the public CA: `items` leaves the CA's private key out.
+        - name: db-ca
+          secret:
+            secretName: {{ include "rpg-promptbook.databaseCaSecretName" . }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

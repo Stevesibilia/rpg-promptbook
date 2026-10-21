@@ -11,6 +11,11 @@ Status: the server and the web client run locally and on the homelab
 Mac, Windows and Linux keeps every project on the computer and works offline.
 See [docs/design.md](docs/design.md).
 
+On the homelab the server connects to its database over verified TLS
+(`sslmode=verify-full`, against the CloudNativePG cluster's own CA); the chart
+value `cnpg.tls.verify` turns it off. See "Database connection" in the
+[deploy runbook](docs/deploy-homelab.md).
+
 The name comes from theatre: the promptbook is the stage manager's master copy
 of the script, with every cue for lights and sound. Here it holds the GM's prep
 and the cues that go to CueBard.
