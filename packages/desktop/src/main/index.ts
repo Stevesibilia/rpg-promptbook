@@ -17,7 +17,9 @@ import { createWindow, guardWebContents, lockPermissions } from './window.js';
 // PROMPTBOOK_USER_DATA sets the data folder and PROMPTBOOK_SERVER the server
 // the Sign in screen offers; PROMPTBOOK_E2E=1 hands the authorize URL to the
 // tests instead of opening the browser, and takes local snapshots every
-// PROMPTBOOK_E2E_SNAPSHOT_SECONDS (5 by default).
+// PROMPTBOOK_E2E_SNAPSHOT_SECONDS (5 by default); with it,
+// PROMPTBOOK_E2E_NO_KEYRING=1 acts as Linux with no keyring: the sign-in is
+// kept in memory only.
 
 electronApp.setName('Promptbook');
 const userData = process.env.PROMPTBOOK_USER_DATA || join(electronApp.getPath('appData'), 'Promptbook');
@@ -55,7 +57,14 @@ if (!electronApp.requestSingleInstanceLock()) {
   const app = new App({
     userData,
     defaultServer: process.env.PROMPTBOOK_SERVER ?? '',
-    secrets: safeStorage,
+    secrets:
+      e2e && process.env.PROMPTBOOK_E2E_NO_KEYRING === '1'
+        ? {
+            isEncryptionAvailable: () => false,
+            encryptString: (text: string) => safeStorage.encryptString(text),
+            decryptString: (data: Buffer) => safeStorage.decryptString(data),
+          }
+        : safeStorage,
     hostname: hostname(),
     openExternal: (url) => {
       if (e2e) globalThis.__promptbookAuthorizeUrl = url;

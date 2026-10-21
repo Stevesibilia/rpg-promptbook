@@ -13,6 +13,8 @@
     none, or more than one, waits in Unmatched; assigning it means picking a prompt,
     grouped by category.
   - Existing boards: the single scene prompt becomes that scene's prompt 1. Nothing to show.
+  - Export for CueBard (#38): a header button opens a summary of the .cbpack, with a warning
+    per gap; Export downloads it (the desktop app builds it on the device, offline).
 -->
 <html lang="en">
 <head>
@@ -367,6 +369,25 @@ body.phone .notch { display: flex; }
   padding: 8px 14px; border-radius: var(--radius); font-size: 13px; box-shadow: 0 8px 24px var(--shadow); max-width: calc(100vw - 32px); }
 .toast.big { display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
 
+/* Export for CueBard: summary dialog */
+.tb:disabled { opacity: .45; cursor: default; } .tb.primary:disabled:hover { background: var(--primary); }
+.modal.wide { width: min(540px, calc(100vw - 32px)); }
+.cbx .mb { display: flex; flex-direction: column; gap: 12px; }
+.cbx .mb p { margin: 0; }
+.xsum { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 6px 12px; margin: 0; padding: 10px 12px; font-size: 13.5px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-variant-numeric: tabular-nums; }
+.xsum dt { color: var(--faint); } .xsum dd { margin: 0; color: var(--muted); } .xsum dd b { color: var(--text); font-weight: 600; }
+.xsum .sep { color: var(--faint); margin: 0 4px; }
+.xwarn h4 { margin: 0 0 6px; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); display: flex; gap: 6px; align-items: center; }
+.xwarn h4 .ic { width: 14px; height: 14px; }
+.xwarn ul { list-style: none; margin: 0; padding: 0; max-height: 188px; overflow: auto; border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); border-radius: var(--radius); }
+.xwarn li { padding: 5px 10px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.xwarn li:last-child { border-bottom: 0; } .xwarn li b { color: var(--text); font-weight: 600; }
+.xnote { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--faint); }
+.xnote .ic { width: 15px; height: 15px; }
+.xnote.dev { color: var(--amber); }
+.xnone { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; color: var(--muted); font-size: 13.5px; }
+
 /* Notes for the reviewer: screen switcher (desktop.html) */
 .legend { position: fixed; left: 18px; top: 18px; z-index: 50; width: 280px; background: var(--surface-2); border: 1px solid var(--primary);
   border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px var(--shadow); max-height: calc(100vh - 36px); overflow: auto; }
@@ -458,6 +479,7 @@ body.phone .notch { display: flex; }
           <span class="spacer"></span>
           <span class="row acts">
             <button class="tb line sm" id="helpBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"/></svg>How matching works</button>
+            <button class="tb line sm" id="cbBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export for CueBard…</button>
             <button class="tb primary sm" id="addFiles"><svg viewBox="0 0 24 24"><path d="M12 19V7M7 12l5-5 5 5M5 21h14"/></svg>Add files…</button>
             <input type="file" id="fileIn" multiple accept="image/*,audio/*" hidden>
           </span>
@@ -550,6 +572,11 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
   <div class="mb"><p id="cText"></p><p class="m" id="cNote"></p></div>
   <div class="mf"><button class="tb line" data-cancel>Cancel</button><button class="tb red" id="cOk">Remove</button></div>
 </div></div>
+<div class="cscrim" id="cbx" hidden><div class="modal wide cbx" role="dialog" aria-modal="true" aria-labelledby="cbxTitle">
+  <div class="mh"><h3 id="cbxTitle">Export for CueBard</h3><button class="tb" data-cbx-cancel title="Close">✕</button></div>
+  <div class="mb" id="cbxBody"></div>
+  <div class="mf"><button class="tb line" data-cbx-cancel>Cancel</button><button class="tb primary" id="cbxOk">Export</button></div>
+</div></div>
 <div class="toast" id="toast" hidden></div>
 
 <div class="legend" id="legend">
@@ -560,6 +587,7 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
     <button data-sc="noprompts">2 No prompts yet</button><button data-sc="noappendix">3 No appendix</button>
     <button data-sc="dropping">4 Dropping</button><button data-sc="afterdrop">5 After a drop</button><button data-sc="matching">5b Matching help</button><button data-sc="viewer">6 Image viewer</button>
     <button data-sc="edit">7 Edit a prompt</button><button data-sc="addnpc">7b Add an NPC</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
+    <button data-sc="export">10 Export for CueBard</button><button data-sc="exportempty">10b Nothing to export</button><button data-sc="exportdesk">10c Export, desktop offline</button>
   </div>
   <ul>
     <li>Route <code>/projects/:id/board</code>. Rail entry <b>Images and music</b>, between Research and Brainstorm log.</li>
@@ -575,6 +603,7 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
     <li>Existing boards: the scene's single prompt becomes its prompt 1. Nothing to show.</li>
     <li><b>Desktop, offline</b>: files dropped offline stay on this computer and upload later; choosing and prompts still work.</li>
     <li><b>Phone width</b>: the same board in a 390 px frame. A narrow browser window gets the same layout.</li>
+    <li><b>Export for CueBard</b>: the header button opens a summary of the pack: one cue group per scene with its tracks, the images in four visual folders, then one warning per gap (a scene with no track, a prompt with no image, a track whose length is unknown). Export downloads <code>L'Ancora di Sabaoth.cbpack</code>. With no files on the board, Export is off (10b). The desktop app builds the pack on the device and saves it where you choose, offline too (10c). The projects screen has the same entry in Actions.</li>
     <li>The half-circle in the top bar switches light and dark.</li>
   </ul>
 </div>
@@ -664,7 +693,7 @@ const SCENES = [
     visual: 'collapsed cathedral facade, soldiers in 1908 Italian uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke and grey sky',
     mood: 'oppressive, martial, eerie stillness, a single drum',
     mus: { title: 'Ordini del Re', style: 'dark martial ambient, slow, single snare drum, low brass drone, eerie stillness, oppressive', lyrics: '[Intro: single drum]\n[Instrumental]\n[Outro: the drum stops]\n[End]', by: 'cl', when: '5 min ago',
-      tracks: [{ n: 'ordini del re.mp3', d: '2:54' }, { n: 'ordini del re (1).mp3', d: '3:21' }], chosen: null } },
+      tracks: [{ n: 'ordini del re.mp3', d: '2:54' }, { n: 'ordini del re (1).mp3', d: null }], chosen: null } },
   { id: 'S4', t: 'Torre Faro e la canzone',
     visual: "Sicilian fishing village at the strait's tip, overturned boats, a lighthouse in the distance, the sea with countless glints like eyes, an old woman singing on the shore",
     mood: 'melancholic, haunting folk song, wind, waves, quiet grief',
@@ -753,7 +782,7 @@ const SCREEN_CAT = { pcs: 'pc', npcs: 'npc', handouts: 'handout', addnpc: 'npc' 
 function build(k) {
   const st = { scenes: clone(SCENES), prompts: PROMPTS.map(mk), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false };
   const P = id => st.prompts.find(p => p.pid === id);
-  if (k === 'noprompts') { st.prompts = []; st.scenes.forEach(s => { s.mus = { title: null, tracks: [], chosen: null }; }); }
+  if (k === 'noprompts' || k === 'exportempty') { st.prompts = []; st.scenes.forEach(s => { s.mus = { title: null, tracks: [], chosen: null }; }); }
   if (k === 'noappendix') st.noAppendix = true;
   if (k === 'afterdrop') {
     P('s3a').files.forEach(f => f.new = true); P('s5a').files.forEach(f => f.new = true);
@@ -764,7 +793,7 @@ function build(k) {
   }
   if (k === 'edit') st.editing = 's2a';
   if (k === 'addnpc') { st.prompts.push({ pid: 'new1', cat: 'npc', name: '', p: '', files: [], chosen: null, by: 'you', when: 'just now', fresh: true }); st.editing = 'new1'; }
-  if (k === 'desktop') { st.local = true; P('s1a').files.forEach(f => f.local = true); }
+  if (k === 'desktop' || k === 'exportdesk') { st.local = true; P('s1a').files.forEach(f => f.local = true); }
   return st;
 }
 
@@ -846,7 +875,7 @@ function musHalf(s) {
     ? `<div class="tracks">${h.tracks.map((t, i) => `<div class="trk-r${h.chosen === i ? ' chosen' : ''}" data-trk="${s.id}:${i}">
         <button class="play" data-play title="Play">${IC.play}</button>
         <span class="fn" title="${esc(t.n)}">${esc(t.n)}${t.new ? '<span class="newdot">new</span>' : ''}${t.local ? '<span class="devdot">on this device</span>' : ''}<small>Take ${i + 1}</small></span>
-        <span class="dur">${t.d}</span>
+        <span class="dur"${t.d ? '' : ' title="Length unknown"'}>${t.d || '?:??'}</span>
         ${h.chosen === i ? `<button class="chosen-tag" data-choose-t="${s.id}:${i}" title="Click to unchoose">✓ Chosen</button>` : `<button class="tb sm line" data-choose-t="${s.id}:${i}">Choose</button>`}
         <span class="bar"></span></div>`).join('')}</div>`
     : h.title ? `<div class="empty-drop">${IC.drop}<span>No tracks yet. Drop Suno's downloads anywhere on the board.</span></div>` : '';
@@ -927,7 +956,7 @@ function summary() {
 }
 function strips() {
   let h = '';
-  if (cur === 'noprompts') h += `<div class="card claude"><span class="avatar cl">C</span><div>
+  if (cur === 'noprompts' || cur === 'exportempty') h += `<div class="card claude"><span class="avatar cl">C</span><div>
       <h3>Prompts come from Claude</h3>
       <p>Claude reads the document and writes Midjourney prompts for the scenes, the PCs, the NPCs and the handouts, and one Suno prompt per scene from its <code>mood:</code> line. Ask in a chat on claude.ai:</p>
       <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth», with portraits of the PCs and NPCs and the handouts</span>${copyBtn('ask')}</div>
@@ -969,7 +998,7 @@ function tray() {
 function screen(k) {
   cur = k; S = build(k); filter = 'all'; cat = SCREEN_CAT[k] || 'scene';
   $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === k));
-  document.body.classList.toggle('desk', k === 'desktop');
+  document.body.classList.toggle('desk', k === 'desktop' || k === 'exportdesk');
   document.body.classList.toggle('phone', k === 'phone');
   $('#sync').className = 'sync' + (S.local ? ' local' : '');
   $('#syncT').textContent = S.local ? 'On this device only' : 'Synced';
@@ -978,12 +1007,13 @@ function screen(k) {
   render();
   $('#dropov').hidden = k !== 'dropping';
   setHelp(false);
-  closeLb();
+  closeLb(); closeCbx();
   $('#center').scrollTop = 0;
   if (k === 'viewer') openLb('s3a', 1);
   if (k === 'edit') { const r = $('#row-S2'); $('#center').scrollTop = r.offsetTop - 12; }
   if (k === 'addnpc') { const el = $('#edn-new1'); if (el) el.focus(); }
   if (k === 'matching') setHelp(true);
+  if (k.startsWith('export')) openCbx();
 }
 $$('#screens button').forEach(b => b.onclick = () => screen(b.dataset.sc));
 $('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); document.body.classList.toggle('lmin', l.classList.contains('min')); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
@@ -1057,7 +1087,7 @@ $('#lbRemove').onclick = () => {
 };
 document.addEventListener('keydown', e => {
   if (!$('#lb').hidden) { if (e.key === 'Escape') closeLb(); if (e.key === 'ArrowLeft') lbStep(-1); if (e.key === 'ArrowRight') lbStep(1); return; }
-  if (e.key === 'Escape') { setHelp(false); $('#dropov').hidden = true; $('#confirm').hidden = true; }
+  if (e.key === 'Escape') { setHelp(false); $('#dropov').hidden = true; $('#confirm').hidden = true; closeCbx(); }
   if (e.key === 'Enter' && e.target.matches('[data-open]')) { const [pid, i] = e.target.dataset.open.split(':'); openLb(pid, +i); }
 });
 
@@ -1153,6 +1183,57 @@ document.addEventListener('change', e => {
 $('#addAppendix').onclick = () => { screen('noprompts'); S.emptyAppendix = true; render(); toast('Appendix added with 6 scenes. Fill in visual: and mood:, or ask Claude.'); };
 $('#addFiles').onclick = () => $('#fileIn').click();
 $('#fileIn').onchange = () => screen('afterdrop');
+
+/* Export for CueBard: what goes in the pack, from the board as it is now.
+   Per prompt the chosen image, or every matched image when none is chosen; per scene the same for tracks.
+   A track with an unknown length is left out (CueBard needs it). The Unmatched tray stays out. */
+const PACK = "L'Ancora di Sabaoth.cbpack";
+function cbPlan() {
+  const warn = [], folders = { scene: 0, pc: 0, npc: 0, handout: 0 };
+  const take = (list, ch) => ch != null ? [list[ch]] : list;
+  const live = S.prompts.filter(p => !p.fresh);
+  let tracks = 0;
+  if (!S.noAppendix) S.scenes.forEach(s => {
+    const name = `${s.id}. ${s.t}`;
+    scenePrompts(s.id).filter(p => !p.fresh).forEach(p => { if (!p.files.length) warn.push(`<b>${esc(name)}</b>, prompt ${numOf(p)}, has no image.`); });
+    const all = take(s.mus.tracks, s.mus.chosen), ok = all.filter(t => t.d);
+    all.filter(t => !t.d).forEach(t => warn.push(`<b>${esc(name)}</b>: the length of "${esc(t.n)}" is unknown, so it is left out.`));
+    if (!ok.length) warn.push(`<b>${esc(name)}</b> has no track: its cue group is empty.`);
+    tracks += ok.length;
+  });
+  live.forEach(p => {
+    if (p.cat === 'scene' && S.noAppendix) return;
+    folders[p.cat] += take(p.files, p.chosen).length;
+    if (p.cat !== 'scene' && !p.files.length) warn.push(`${CAT[p.cat].one} <b>"${esc(p.name)}"</b> has no image.`);
+  });
+  const groups = S.noAppendix ? 0 : S.scenes.length, images = Object.values(folders).reduce((a, b) => a + b, 0);
+  return { groups, tracks, folders, images, warn, empty: !tracks && !images };
+}
+function openCbx() {
+  const x = cbPlan(), sep = '<span class="sep">·</span>', f = x.folders;
+  const lead = '<p>A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.</p>';
+  const where = S.local
+    ? `<p class="xnote dev">${IC.dev}Built on this device, works offline.</p>`
+    : `<p class="xnote">${IC.drop}Your browser downloads <code>${esc(PACK)}</code></p>`;
+  $('#cbxBody').innerHTML = x.empty
+    ? `${lead}<div class="xnone">Nothing to export yet: add files to the board first.</div>`
+    : `${lead}
+      <dl class="xsum">
+        <dt>Cue groups</dt><dd><b>${x.groups}</b> scenes${sep}<b>${x.tracks}</b> ${x.tracks === 1 ? 'track' : 'tracks'}</dd>
+        <dt>Visual folders</dt><dd>Scenes <b>${f.scene}</b>${sep}PCs <b>${f.pc}</b>${sep}NPCs <b>${f.npc}</b>${sep}Handouts <b>${f.handout}</b> <span class="hint">images</span></dd>
+      </dl>
+      <p class="m">Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. The Unmatched tray stays out.</p>
+      ${x.warn.length ? `<div class="xwarn"><h4>${IC.warn}${x.warn.length} ${x.warn.length === 1 ? 'warning' : 'warnings'}</h4><ul>${x.warn.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}
+      ${where}`;
+  $('#cbxOk').disabled = x.empty;
+  $('#cbx').hidden = false;
+  (x.empty ? $('#cbx [data-cbx-cancel].line') : $('#cbxOk')).focus();
+}
+function closeCbx() { $('#cbx').hidden = true; }
+$('#cbBtn').onclick = openCbx;
+$$('#cbx [data-cbx-cancel]').forEach(b => b.onclick = closeCbx);
+$('#cbx').onclick = e => { if (e.target.id === 'cbx') closeCbx(); };
+$('#cbxOk').onclick = () => { closeCbx(); toast(S.local ? `Saved ${PACK}.` : `Downloading ${PACK}.`); };
 
 /* Real drag and drop on the page */
 let dragDepth = 0;

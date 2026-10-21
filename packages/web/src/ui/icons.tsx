@@ -115,6 +115,12 @@ export const ExternalIcon = icon(<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" />)
 export const CheckIcon = icon(<path d="M5 12l4 4 10-10" />);
 export const UpIcon = icon(<path d="M12 19V7M7 12l5-5 5 5" />);
 export const DownIcon = icon(<path d="M12 5v12M7 12l5 5 5-5" />);
+export const ExportIcon = icon(
+  <>
+    <path d="M12 15V3M7 8l5-5 5 5" />
+    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+  </>,
+);
 export const DownloadIcon = icon(<path d="M12 3v12M7 10l5 5 5-5M5 21h14" />);
 export const CloudIcon = icon(<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z" />);
 export const LaptopIcon = icon(

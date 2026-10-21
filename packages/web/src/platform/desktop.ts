@@ -1,3 +1,4 @@
+import { cuebardFileName } from 'promptbook-project';
 import type { AuthState, DeviceInfo, FilesStatus, PromptbookBridge, UpdatesState } from './bridge.js';
 import { DesktopSyncRegistry } from './desktopRegistry.js';
 import { asRelease, fileUrl, PutFileError, type Platform } from './index.js';
@@ -34,6 +35,13 @@ const NO_INFO: DeviceInfo = {
   localSnapshots: 'hourly',
   updates: 'manual',
 };
+
+// A handler's error as main threw it: Electron prefixes it with the channel
+// ("Error invoking remote method 'pb:…': Error: …").
+export function mainMessage(error: unknown, fallback: string): string {
+  const text = error instanceof Error ? error.message : '';
+  return text.replace(/^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/, '').trim() || fallback;
+}
 
 export const NO_FILES: FilesStatus = { waiting: [], downloading: 0, refused: [] };
 
@@ -157,6 +165,13 @@ export function createDesktopPlatform(bridge: PromptbookBridge): Platform {
     },
     async download(source, name) {
       await bridge.files.save(typeof source === 'string' ? source : new Uint8Array(await source.arrayBuffer()), name);
+    },
+    async exportCuebard(projectId, title) {
+      try {
+        return await bridge.files.exportCuebard(projectId, cuebardFileName(title));
+      } catch (error) {
+        throw new Error(mainMessage(error, 'The CueBard pack could not be saved.'));
+      }
     },
   };
 }

@@ -54,6 +54,7 @@ const bridge: PromptbookBridge = {
     put: (projectId, sha256, bytes, mime) => invoke(channels.filesPut, projectId, sha256, bytes, mime),
     status: () => invoke(channels.filesStatus),
     onStatus: (cb) => on(channels.filesOnStatus, cb),
+    exportCuebard: (projectId, name) => invoke(channels.filesExportCuebard, projectId, name),
   },
 };
 

@@ -47,6 +47,21 @@ export {
 } from './board.js';
 export { migratedView, migrateImagePrompts, needsImageMigration } from './board-migration.js';
 export {
+  CUEBARD_FOLDERS,
+  cuebardFileName,
+  cuebardFiles,
+  cuebardLeftOut,
+  cuebardPack,
+  cuebardUuid,
+  needsDuration,
+  type CuebardEntry,
+  type CuebardOptions,
+  type CuebardPack,
+  type CuebardSummary,
+  type CuebardWarning,
+} from './cuebard.js';
+export { checkCuebardPack } from './cuebard-check.js';
+export {
   addInspirationItem,
   addLogEntry,
   addQuestionsToTodo,

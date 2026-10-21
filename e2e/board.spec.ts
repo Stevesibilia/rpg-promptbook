@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { unzipSync } from 'fflate';
+import { strFromU8, unzipSync } from 'fflate';
+import { checkCuebardPack } from 'promptbook-project';
 import { connectClaude } from './claude.js';
-import { createProject, signIn, syncPill } from './helpers.js';
+import { createProject, row, signIn, syncPill } from './helpers.js';
 import { midjourneyName, png, portrait, sunoName, wav } from './media.js';
 
 // The images and music board in the browser (asset-board design decision
@@ -11,7 +12,10 @@ import { midjourneyName, png, portrait, sunoName, wav } from './media.js';
 // find their prompt by name whatever the category, the rest wait in the tray
 // (one matching two prompts); adding an NPC by hand, choosing per prompt,
 // the viewer, removing a prompt, the track menu, a file dropped again, a
-// board with no appendix, and the export.
+// board with no appendix, and the export. The CueBard pack (cuebard-export
+// design decision 19): the dialog's counts and warnings, the download
+// checked with CueBard's rules, the chosen files alone, the tray left out,
+// and the projects screen's entry.
 
 const sabaoth = await readFile(
   new URL('../packages/format/fixtures/l-ancora-di-sabaoth.converted.md', import.meta.url),
@@ -331,4 +335,120 @@ test('a document with no appendix: PCs work, and the board adds the appendix', a
   await expect(sceneRow(page, 'S2')).toContainText('La torre');
   await expect(sceneRow(page, 'S1').locator('.srcline').first()).toContainText('visual:empty');
   await expect(page.locator('.status')).toContainText('2 scenes · 1 image prompt');
+});
+
+test('Export for CueBard: the summary, then the pack with the chosen files and not the tray', async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+  const claude = await connectClaude(page);
+  const { id, title } = await createProject(page.request, 'Sabaoth per CueBard');
+  await typeDocument(page, id, sabaoth);
+  await expect(page.locator('.ol li .id', { hasText: /^S5$/ }).first()).toBeVisible();
+  await claude.tool('set_scene_prompts', {
+    projectId: id,
+    sceneId: 'S1',
+    image: { prompt: S1_IMAGE },
+    music: { title: 'La casa che cede', style: 'dark ambient, slow, low drones, dust, dread', lyrics: LYRICS },
+  });
+  await claude.tool('set_scene_prompts', {
+    projectId: id,
+    sceneId: 'S3',
+    image: { prompt: S3_IMAGE },
+    music: { title: 'Il cordone', style: 'martial, slow, a single snare, cold, oppressive', lyrics: LYRICS },
+  });
+  await claude.tool('add_image_prompt', { projectId: id, category: 'scene', sceneId: 'S1', prompt: S1_LAMP });
+  await claude.tool('add_image_prompt', { projectId: id, category: 'npc', name: 'Padre Anselmo', prompt: ANSELMO });
+  await claude.tool('add_image_prompt', { projectId: id, category: 'npc', name: "Za' Nina", prompt: NINA });
+
+  await page.goto(`/projects/${id}/board`);
+  const s1 = [1, 2].map((n) => file(midjourneyName(S1_IMAGE, n), png()));
+  const lamp = file(midjourneyName(S1_LAMP, 0), png());
+  const s3 = file(midjourneyName(S3_IMAGE, 1), png());
+  const anselmo = file(midjourneyName(ANSELMO, 0), portrait());
+  const s1Tracks = [file(sunoName('La casa che cede'), wav()), file(sunoName('La casa che cede', 1), wav())];
+  const s3Track = file(sunoName('Il cordone'), wav());
+  const untitled = file(sunoName('untitled track'), wav());
+  await page
+    .locator('.board input[type=file]')
+    .setInputFiles([...s1, lamp, s3, anselmo, ...s1Tracks, s3Track, untitled]);
+  await expect(page.locator('.info.good')).toContainText('9 files added: 8 matched, 1 to assign.', { timeout: 30_000 });
+
+  // S1's second image of prompt 1 and its second take are chosen.
+  const p1Thumbs = block(page, 'S1', 1).locator('.th-i');
+  await p1Thumbs.nth(1).hover();
+  await p1Thumbs.nth(1).getByRole('button', { name: 'Choose this image' }).click();
+  await expect(p1Thumbs.nth(1)).toHaveClass(/chosen/);
+  await p1Thumbs.nth(1).click();
+  const viewer = page.getByRole('dialog', { name: 'Image viewer' });
+  const chosenImage = (await viewer.locator('.fn').textContent())!;
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  const takes = sceneRow(page, 'S1').locator('.trk-r');
+  await takes.nth(1).getByRole('button', { name: 'Choose' }).click();
+  await expect(takes.nth(1)).toHaveClass(/chosen/);
+  const chosenTrack = (await takes.nth(1).locator('.fn').getAttribute('title'))!;
+  const otherTrack = (await takes.nth(0).locator('.fn').getAttribute('title'))!;
+  await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
+
+  // The summary: five cue groups, the chosen take and S3's, the images by
+  // folder, a warning per gap.
+  await page.getByRole('button', { name: 'Export for CueBard…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export for CueBard' });
+  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·2 tracks');
+  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 3·PCs 0·NPCs 1·Handouts 0 images');
+  await expect(dialog.locator('.xwarn li')).toContainText([
+    "S2. L'ambulatorio di Salvi has no track: its cue group is empty.",
+    'NPC "Za\' Nina" has no image.',
+  ]);
+  await expect(dialog).toContainText(`Your browser downloads ${title}.cbpack`);
+  await expect(dialog.getByRole('button', { name: 'Export' })).toBeFocused();
+
+  const downloading = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Export' }).click();
+  const download = await downloading;
+  await expect(dialog).toHaveCount(0);
+  await expect(toast(page)).toHaveText(`Downloading ${title}.cbpack.`);
+  expect(download.suggestedFilename()).toBe(`${title}.cbpack`);
+  const saved = await download.path();
+  const bytes = new Uint8Array(await readFile(saved));
+  if (process.env.E2E_CUEBARD_OUT) await download.saveAs(`${process.env.E2E_CUEBARD_OUT}/web.cbpack`);
+  expect(checkCuebardPack(bytes)).toEqual([]);
+  const zip = unzipSync(bytes);
+  const names = Object.keys(zip);
+  const project = JSON.parse(strFromU8(zip[`${title}.cuebard`]!));
+  expect(project.items.map((g: { displayName: string }) => g.displayName.slice(0, 2))).toEqual(['S1', 'S2', 'S3', 'S4', 'S5']);
+  // The chosen take alone for S1, the chosen image alone for its prompt 1.
+  expect(names).toContain(`media/${chosenTrack}`);
+  expect(names).not.toContain(`media/${otherTrack}`);
+  expect(names).toContain(`media/${s3Track.name}`);
+  const visuals = names.filter((n) => n.startsWith('media/visuals/'));
+  expect(visuals).toHaveLength(4);
+  expect(visuals.filter((n) => s1.some((f) => n.endsWith(`_${f.name}`)))).toHaveLength(1);
+  expect(visuals.some((n) => n.endsWith(`_${chosenImage}`))).toBe(true);
+  // The tray's track is not in the pack.
+  expect(names.some((n) => n.endsWith(untitled.name))).toBe(false);
+  expect(names).not.toContain('left-out.txt');
+
+  // The projects screen's Actions entry opens the same summary.
+  await page.goto('/');
+  await row(page, title).click();
+  const panel = page.getByTestId('panel');
+  await panel.locator('summary', { hasText: 'Actions' }).click();
+  await panel.getByRole('button', { name: 'Export for CueBard…' }).click();
+  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·2 tracks');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test('Export for CueBard with nothing on the board: Export is off', async ({ page }) => {
+  await signIn(page);
+  const { id } = await createProject(page.request, 'Senza file');
+  await page.goto(`/projects/${id}/board`);
+  await page.getByRole('button', { name: 'Export for CueBard…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export for CueBard' });
+  await expect(dialog).toContainText('Nothing to export yet: add files to the board first.');
+  await expect(dialog.getByRole('button', { name: 'Export' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 });

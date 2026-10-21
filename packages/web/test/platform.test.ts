@@ -81,3 +81,20 @@ describe('hostOf', () => {
     expect(hostOf('')).toBe('');
   });
 });
+
+describe('the CueBard export on the desktop', () => {
+  it('asks main with the pack name the server would give, and answers its message without the IPC prefix', async () => {
+    const fake = fakeBridge();
+    const platform = choosePlatform({ promptbook: fake.bridge });
+    expect(await platform.exportCuebard('p1', 'Notte? 50%')).toEqual({ saved: true, leftOut: 0, name: 'Notte- 50-.cbpack' });
+    expect(fake.calls.exportCuebard).toEqual([['p1', 'Notte- 50-.cbpack']]);
+    fake.bridge.files.exportCuebard = async () => {
+      throw new Error("Error invoking remote method 'pb:files:export-cuebard': Error: This project is not on this computer yet.");
+    };
+    await expect(platform.exportCuebard('p1', 'x')).rejects.toThrow(/^This project is not on this computer yet\.$/);
+    fake.bridge.files.exportCuebard = async () => {
+      throw new Error('');
+    };
+    await expect(platform.exportCuebard('p1', 'x')).rejects.toThrow('The CueBard pack could not be saved.');
+  });
+});

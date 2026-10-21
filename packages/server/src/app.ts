@@ -7,6 +7,7 @@ import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { openBlobStore, type BlobStore } from './files/blobs.js';
 import { authRoutes } from './routes/auth.js';
+import { cuebardRoutes } from './routes/cuebard.js';
 import { filesRoutes } from './routes/files.js';
 import { healthRoutes } from './routes/health.js';
 import { mcpRoutes } from './routes/mcp.js';
@@ -82,6 +83,7 @@ export async function buildApp({ config, db, logger = false, blobs, oidcDiscover
   await app.register(projectsRoutes, { db, sync: app.sync });
   const store = blobs ?? (await openBlobStore(config.dataDir));
   await app.register(transferRoutes, { db, sync: app.sync, blobs: store });
+  await app.register(cuebardRoutes, { db, sync: app.sync, blobs: store });
   await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(filesRoutes, { config, db, blobs: store });
   await app.register(oauthRoutes, { config, db, sync: app.sync });

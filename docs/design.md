@@ -506,13 +506,34 @@ large or slow).
 
 ### CueBard export
 
-A `.cbpack` archive: one cue group per scene, tracks, images sorted into visual
-folders, each image linked to its scene's cue. The board's model is ready for
-one visual folder per image category (#36): each prompt has a category, a
-stable id and, outside Scenes, a name. CueBard source is
-[Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard) (`electron/ipc/project.js` builds and reads `.cbpack`);
-the project file is JSON at `schemaVersion` 5 with `items`, `cartItems`,
-`visualMedia`, `visualFolders`.
+A `.cbpack` archive that CueBard imports as a ready project, following its
+own format at `schemaVersion` 5: CueBard does not depend on Promptbook. CueBard
+source is [Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard)
+(`electron/ipc/project.js` builds and reads `.cbpack`). Built 2026-10-21
+(#38); the decisions are in the archived OpenSpec change `cuebard-export`.
+
+- **Layout:** a zip `<title>.cbpack` holding `<title>.cuebard` (the project
+  file, JSON) at its root, the tracks under `media/`, the images under
+  `media/visuals/<uuid>_<name>`, and `left-out.txt` only when something was
+  left out. No waveforms (CueBard draws them), no thumbnails, no prep text.
+- **What goes in:** per image prompt its chosen image, or every matched one
+  when none is chosen; per scene its chosen track, or every matched one. The
+  Unmatched tray stays out. One cue group per appendix scene, in order, named
+  «S1. Title», its tracks looping and named after the Suno title; visual
+  folders «Scenes», «PCs», «NPCs», «Handouts», each scene's images linked to
+  its first track. Ids are derived from the project and the file, so the same
+  board gives the same pack.
+- **Track lengths:** CueBard needs each cue's length. The board's recorded
+  length, else one read from the file with `music-metadata`; a track with
+  neither is left out and listed.
+- **Where:** one planner in `packages/project` (`cuebardPack`); the browser
+  downloads `GET /api/projects/:id/cuebard` from the server; the desktop app
+  builds the pack in its main process from the files on the computer,
+  offline too, and saves it where the save dialog says. Limits as the
+  Markdown export: 4 GB and 65,000 entries.
+- **UI:** «Export for CueBard…» in the board's header and the projects
+  screen's Actions opens a summary with a warning per gap; warnings never
+  block the export.
 
 ### Send to gdrarchive
 
@@ -554,7 +575,8 @@ and managed from the UI, not in environment variables.
    brainstorm log, desktop app plus browser access.
 2. Asset board with prompts and intake by filename. Built 2026-10-20 (#26);
    image prompts in four categories (#36).
-3. `.cbpack` export.
+3. `.cbpack` export. Built 2026-10-21 (#38): from the browser and, offline,
+   from the desktop app.
 4. PDF in the desktop app with Typst: template ported from `stile.css`,
    checked against today's PDFs (Sabaoth first).
 5. Transcript import, optional generators, in-app research engine, Send to

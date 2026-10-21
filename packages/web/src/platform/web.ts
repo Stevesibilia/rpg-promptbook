@@ -1,3 +1,5 @@
+import { cuebardFileName } from 'promptbook-project';
+import { cuebardUrl } from '../api.js';
 import { startUrl, SIGNED_IN_PATH } from '../auth/oidc.js';
 import { NoticeError, POPUPS_BLOCKED } from '../editor/pdf/notice.js';
 import type { PutFileResult } from './bridge.js';
@@ -112,6 +114,16 @@ export function createWebPlatform(): Platform {
       link.href = typeof source === 'string' ? source : blobUrl(source);
       link.download = typeof source === 'string' ? '' : name;
       link.click();
+    },
+
+    // The server names the pack (Content-Disposition) and lists what it
+    // left out in it.
+    async exportCuebard(projectId, title) {
+      const link = document.createElement('a');
+      link.href = cuebardUrl(projectId);
+      link.download = '';
+      link.click();
+      return { saved: true, leftOut: 0, name: cuebardFileName(title) };
     },
   };
 }

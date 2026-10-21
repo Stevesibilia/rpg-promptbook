@@ -1,8 +1,10 @@
 import { _electron, chromium, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unzipSync } from 'fflate';
+import { checkCuebardPack, cuebardFileName } from 'promptbook-project';
 import * as Y from 'yjs';
 import { createProject, row, signIn, syncPill, throttle } from './helpers.js';
 import { midjourneyName, png } from './media.js';
@@ -17,6 +19,10 @@ import { baseURL, compose, password, username } from './stack.js';
 // this computer across the relaunch, upload once the server is back and show
 // on the web in the same scene; an image added on the web reaches the app;
 // an NPC added offline reaches the web (image-categories design decision 10).
+// Still offline after the relaunch, the CueBard pack is built on this computer
+// and saved where the stubbed save dialog says (cuebard-export design
+// decision 19); on Linux with no keyring, signed out too, which
+// PROMPTBOOK_E2E_NO_KEYRING=1 brings about on any system.
 // Runs the unpackaged app from packages/desktop/dist; in CI under xvfb-run.
 
 const desktop = fileURLToPath(new URL('../packages/desktop/', import.meta.url));
@@ -244,6 +250,42 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await page.goto(`promptbook://app/projects/${mine.id}/board`);
   await expect(page.locator('#row-S1 .th-i .badge.dev')).toHaveCount(2);
   await expect.poll(() => loadedImages(page, 'S1')).toBe(2);
+});
+
+test('offline: Export for CueBard builds the pack on this computer', async () => {
+  await page.goto(`promptbook://app/projects/${mine.id}/board`);
+  await expect(page.locator('#row-S1 .th-i .badge.dev')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Export for CueBard…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export for CueBard' });
+  await expect(dialog).toContainText('Built on this device, works offline.');
+  await expect(dialog.locator('.xsum')).toContainText(/Cue groups\d+ scenes?·0 tracks/);
+  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 2·PCs 0·NPCs 0·Handouts 0 images');
+  await expect(dialog.locator('.xwarn')).toContainText('S1. Il molo has no track: its cue group is empty.');
+  await expect(dialog.locator('.xwarn')).toContainText('NPC "Zu Peppe" has no image.');
+
+  const folder = mkdtempSync(join(tmpdir(), 'promptbook-cuebard-'));
+  try {
+    const target = join(folder, 'Desktop.cbpack');
+    await app.evaluate(({ dialog }, filePath) => {
+      dialog.showSaveDialog = (async () => ({ canceled: false, filePath })) as unknown as typeof dialog.showSaveDialog;
+    }, target);
+    await dialog.getByRole('button', { name: 'Export' }).click();
+    await expect(dialog).toHaveCount(0);
+    // Offered under the project's title, saved as the dialog says.
+    expect(cuebardFileName(mine.title)).not.toBe('Desktop.cbpack');
+    await expect(page.locator('.toast')).toHaveText('Saved Desktop.cbpack.');
+    expect(readdirSync(folder)).toEqual(['Desktop.cbpack']);
+    if (process.env.E2E_CUEBARD_OUT) copyFileSync(target, join(process.env.E2E_CUEBARD_OUT, 'desktop.cbpack'));
+    const bytes = new Uint8Array(readFileSync(target));
+    expect(checkCuebardPack(bytes)).toEqual([]);
+    const visuals = Object.entries(unzipSync(bytes)).filter(([name]) => name.startsWith('media/visuals/'));
+    expect(visuals).toHaveLength(2);
+    for (const image of offlineImages) {
+      expect(visuals.some(([name, data]) => name.endsWith(`_${image.name}`) && Buffer.from(data).equals(image.buffer))).toBe(true);
+    }
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
 
 test('back online: the web client has both edits and the new project', async () => {
