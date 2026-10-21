@@ -109,3 +109,18 @@ Report it, do not work around it:
   `cnpg.tls.verify: false` in `values-homelab.yaml`. The architect watches
   the deploy.
 - **A CA rotation** by the operator needs a pod restart.
+
+## Departures accepted at review
+
+1. README has no deployment section; one paragraph after its Status
+   paragraph names verified TLS and `cnpg.tls.verify` and points to the
+   runbook.
+2. The runbook's new "Database connection" section, before "Rolling back",
+   also states the failure mode and the way back from Risks.
+3. The CI checks are two named steps; the off check also fails on a stray
+   `db-ca`, not only on `sslmode`.
+4. `deployment.yaml` holds the switch and the composed URL in two template
+   variables; the init container gains its first `volumeMounts`.
+
+With `cnpg.tls.verify=false` the homelab render is byte-identical to the
+chart before this change (checked by the implementer against `0c21f22`).

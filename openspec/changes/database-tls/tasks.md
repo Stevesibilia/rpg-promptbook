@@ -20,4 +20,4 @@ Assisted-by: claude-code/<model-id>
 
 ## 3. Release (architect)
 
-- [ ] 3.1 Review, archive, merge, tag `v0.9.1`, watch the deploy and `/api/health`
+- [x] 3.1 Review, archive, merge, tag `v0.9.1`, watch the deploy and `/api/health`
