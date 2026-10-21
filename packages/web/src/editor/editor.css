@@ -243,6 +243,62 @@
 .editor .cm-editor .cm-diagnosticAction:hover {
   border-color: var(--primary);
 }
+/* The tooltip's hide row (hide-problems design decision 8): after the quick
+   fixes, on a line of its own under a thin border, quiet text buttons split
+   by «·», and the problem's code (the diagnostic's source) at its right end.
+   @codemirror/lint renders the message, the actions and the source as
+   siblings, so the row is laid out by order in a wrapping flex box. The
+   margin's tooltip stays open after a hide, so it has no hide row. */
+.editor .cm-editor .cm-tooltip:not(.cm-tooltip-hover) .cm-hideAction,
+.editor .cm-editor .cm-tooltip:not(.cm-tooltip-hover) .cm-diagnosticSource {
+  display: none;
+}
+.editor .cm-editor .cm-tooltip-hover .cm-tooltip-lint .cm-diagnostic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.editor .cm-editor .cm-tooltip-hover .cm-tooltip-lint .cm-diagnosticText {
+  flex: 0 0 100%;
+}
+.editor .cm-editor .cm-tooltip-hover .cm-tooltip-lint .cm-diagnostic::after {
+  content: '';
+  order: 1;
+  flex: 0 0 100%;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.editor .cm-editor .cm-tooltip-hover .cm-tooltip-lint .cm-diagnostic::before {
+  content: '·';
+  order: 3;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--faint);
+}
+.editor .cm-editor .cm-diagnosticAction.cm-hideAction {
+  order: 2;
+  margin: 6px 4px 0 0;
+  padding: 1px 4px;
+  border: 0;
+  color: var(--muted);
+  font: 12px var(--font);
+}
+.editor .cm-editor .cm-diagnosticAction.cm-hideAction-dismiss {
+  order: 4;
+  margin: 6px 0 0 4px;
+}
+.editor .cm-editor .cm-diagnosticAction.cm-hideAction:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.editor .cm-editor .cm-tooltip-hover .cm-tooltip-lint .cm-diagnosticSource {
+  order: 5;
+  margin: 6px 0 0 auto;
+  padding-left: 12px;
+  font: 10.5px var(--mono);
+  color: var(--faint);
+  opacity: 1;
+}
 
 /* Top bar tools */
 .top-tools {
@@ -281,6 +337,26 @@
 }
 .status .counts:hover span {
   text-decoration: underline;
+}
+.status .hcount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font-size: inherit;
+  color: var(--faint);
+}
+.status .hcount:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.status .hcount svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 
 /* Panels: the outline on the left, the inspector on the right. */
@@ -550,6 +626,150 @@
 }
 .prob .where {
   display: block;
+}
+
+/* Checks rows' «⋯», the hidden problems and the row menu (hide-problems
+   design decision 8, from docs/mockups/problems.html). */
+.prow {
+  position: relative;
+}
+.prow .prob {
+  padding-right: 30px;
+}
+.prow .more {
+  position: absolute;
+  right: -4px;
+  top: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--muted);
+  opacity: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.prow:hover .more,
+.prow:focus-within .more,
+.prow .more[aria-expanded='true'] {
+  opacity: 1;
+}
+.prow .more:hover,
+.prow .more[aria-expanded='true'] {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.hid {
+  margin-top: 8px;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+.hid > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--faint);
+  padding: 2px 0;
+}
+.hid > summary::-webkit-details-marker {
+  display: none;
+}
+.hid > summary::before {
+  content: '▸';
+  color: var(--faint);
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.hid[open] > summary::before {
+  transform: rotate(90deg);
+}
+.hid > summary:hover {
+  color: var(--text);
+}
+.hid.flash > summary {
+  color: var(--primary);
+}
+.hid .prow {
+  opacity: 0.62;
+}
+.hid .prow:hover,
+.hid .prow:focus-within {
+  opacity: 1;
+}
+.hid .prob {
+  padding-right: 64px;
+}
+.hid .prob .dot {
+  background: none;
+  border: 1.5px solid var(--amber);
+}
+.hid .prob .dot.err {
+  border-color: var(--danger);
+}
+.hid .hstat {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.hid .restore {
+  position: absolute;
+  right: -2px;
+  top: 5px;
+  font-size: 12px;
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.hid .restore:hover {
+  background: var(--hover);
+}
+.hid .linkbtn {
+  font-size: 12px;
+  color: var(--primary);
+  margin-top: 4px;
+}
+.hid .linkbtn:hover {
+  text-decoration: underline;
+}
+.pmenu {
+  position: fixed;
+  z-index: 30;
+  min-width: 196px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.pmenu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 13px;
+}
+.pmenu button:hover,
+.pmenu button:focus-visible {
+  background: var(--hover);
+}
+.pmenu button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.pmenu button small {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+.pmenu hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 4px 2px;
 }
 .inspector .hint {
   margin: 0;

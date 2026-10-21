@@ -2,6 +2,7 @@ import { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import type { Model, Severity } from 'promptbook-format';
 import { analysisField, type Analysis, type Place } from './analysis/field.js';
+import { hiddenOf, partitionOf, type HiddenState } from './cm/hidden.js';
 
 // One line of the outline (design decision 6), with its positions in the
 // current text.
@@ -25,13 +26,17 @@ export interface OutlineItem {
   to: number;
   // Where a click puts the cursor: the start of the heading.
   head: number;
-  // The problems that start in this item and not in one of its children.
+  // The shown problems that start in this item and not in one of its
+  // children.
   badge: { count: number; severity: Severity } | null;
   // Scenes only: they can be moved.
   movable: boolean;
 }
 
 const cache = new WeakMap<object, readonly OutlineItem[]>();
+// Per analysis, then per hidden state: a hide changes the badges and not the
+// analysis (hide-problems design decision 13).
+const analysed = new WeakMap<Analysis, { hidden: HiddenState; items: readonly OutlineItem[] }>();
 
 // The outline of the document as it is now: from the latest analysis for an
 // adventure or a one-shot (fresh or stale, its positions mapped), from the
@@ -40,9 +45,10 @@ export function outlineOf(state: EditorState): readonly OutlineItem[] {
   const value = state.field(analysisField, false);
   if (value?.checked) {
     if (!value.result) return [];
-    let items = cache.get(value);
-    if (!items) cache.set(value, (items = fromAnalysis(value)));
-    return items;
+    const hidden = hiddenOf(state);
+    let cached = analysed.get(value);
+    if (cached?.hidden !== hidden) analysed.set(value, (cached = { hidden, items: fromAnalysis(value, hidden) }));
+    return cached.items;
   }
   const tree = syntaxTree(state);
   let items = cache.get(tree);
@@ -50,7 +56,8 @@ export function outlineOf(state: EditorState): readonly OutlineItem[] {
   return items;
 }
 
-function fromAnalysis({ result, places, spots }: Analysis): OutlineItem[] {
+function fromAnalysis(analysis: Analysis, hidden: HiddenState): OutlineItem[] {
+  const { result, places, spots } = analysis;
   const model: Model = result!.model;
   const scenesSection = model.sections.findIndex((s) => s.role === 'scenes');
   const sheetsSection = model.sections.findIndex((s) => s.role === 'sheets');
@@ -88,10 +95,10 @@ function fromAnalysis({ result, places, spots }: Analysis): OutlineItem[] {
     if (place.index === sheetsSection) items.push(...children('sheet'));
   }
 
-  // Each problem goes to the deepest item it starts in.
+  // Each shown problem goes to the deepest item it starts in.
   const counts = new Map<OutlineItem, { count: number; severity: Severity }>();
-  result!.problems.forEach((problem, i) => {
-    const at = spots[i]?.from ?? problem.range.start.offset;
+  partitionOf(result!, analysis.doc!, hidden).shown.forEach(({ problem, index }) => {
+    const at = spots[index]?.from ?? problem.range.start.offset;
     const owner = deepest(items, (item) => item.from <= at && at <= item.to);
     if (!owner) return;
     const badge = counts.get(owner) ?? { count: 0, severity: 'warning' as Severity };

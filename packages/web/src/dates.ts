@@ -4,6 +4,7 @@ const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digi
 const dayMonth = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 const monthYear = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' });
 const fullDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const weekdayDate = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 const DAY = 86_400_000;
@@ -73,4 +74,14 @@ export function longDay(day: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
   if (!match) return '';
   return fullDate.format(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}
+
+// «Wed 28 Oct», or «Wed 28 Oct 2027» in another year: when a snooze ends
+// (hide-problems design decision 4). The year is added by hand, since en-GB
+// puts a comma after the weekday when it formats one.
+export function snoozeDate(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const day = weekdayDate.format(date);
+  return date.getFullYear() === now.getFullYear() ? day : `${day} ${date.getFullYear()}`;
 }

@@ -27,14 +27,14 @@ architect.
 
 ## 3. Web editor
 
-- [ ] 3.1 `packages/web/src/dates.ts` `snoozeDate` (D4); `packages/web/src/ui/Toast.tsx` optional action, 6 s with an action (D16)
-- [ ] 3.2 `packages/web/src/editor/cm/hidden.ts`: `hiddenField`, `setHidden`, keys per analysis result against `Analysis.doc` (D11, D12); `Editor.tsx` observes `hiddenProblems` and schedules the `nextExpiry` timer (D7)
-- [ ] 3.3 `cm/problems.ts`: `pushDiagnostics` passes shown problems only and the diagnostics are rebuilt on `setHidden` when fresh; the tooltip's hide row, «Snooze a week» · «Dismiss» and the code, after the quick fixes, as the mockup (D8, Risks)
-- [ ] 3.4 `editor/Checks.tsx`: shown rows with «⋯» and its menu (keys of D8); the «Hidden (n)» disclosure with Restore, Restore all and the status lines; clicking a hidden row jumps to it; `Inspector.tsx` passes `doc` and the Hidden open state
-- [ ] 3.5 `editor/StatusBar.tsx` counts shown problems and shows «n hidden» with the eye-off icon; `editor/outline.ts` badges count shown problems, cache keyed on the hidden state too (D13)
-- [ ] 3.6 `EditorPage.tsx` `useHiding(doc)`: hide, restore, restore all, Undo and the toasts (D14); «n hidden» opens Checks with Hidden expanded; styles in `editor/editor.css` from the mockup
-- [ ] 3.7 Web unit tests of D9
-- [ ] 3.8 Checks: `npm run typecheck`, `npm test`; screenshots of the tooltip, the row menu, the Hidden list and the status bar, light and dark, for the architect
+- [x] 3.1 `packages/web/src/dates.ts` `snoozeDate` (D4); `packages/web/src/ui/Toast.tsx` optional action, 6 s with an action (D16)
+- [x] 3.2 `packages/web/src/editor/cm/hidden.ts`: `hiddenField`, `setHidden`, keys per analysis result against `Analysis.doc` (D11, D12); `Editor.tsx` observes `hiddenProblems` and schedules the `nextExpiry` timer (D7)
+- [x] 3.3 `cm/problems.ts`: `pushDiagnostics` passes shown problems only and the diagnostics are rebuilt on `setHidden` when fresh; the tooltip's hide row, «Snooze a week» · «Dismiss» and the code, after the quick fixes, as the mockup (D8, Risks)
+- [x] 3.4 `editor/Checks.tsx`: shown rows with «⋯» and its menu (keys of D8); the «Hidden (n)» disclosure with Restore, Restore all and the status lines; clicking a hidden row jumps to it; `Inspector.tsx` passes `doc` and the Hidden open state
+- [x] 3.5 `editor/StatusBar.tsx` counts shown problems and shows «n hidden» with the eye-off icon; `editor/outline.ts` badges count shown problems, cache keyed on the hidden state too (D13)
+- [x] 3.6 `EditorPage.tsx` `useHiding(doc)`: hide, restore, restore all, Undo and the toasts (D14); «n hidden» opens Checks with Hidden expanded; styles in `editor/editor.css` from the mockup
+- [x] 3.7 Web unit tests of D9
+- [x] 3.8 Checks: `npm run typecheck`, `npm test`; screenshots of the tooltip, the row menu, the Hidden list and the status bar, light and dark, for the architect
 
 ## 4. End-to-end tests and docs
 

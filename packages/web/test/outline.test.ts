@@ -1,6 +1,10 @@
-import { skeletonDocument } from 'promptbook-project';
+import { StateEffect, type EditorState } from '@codemirror/state';
+import { hideProblem, readHidden, skeletonDocument } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
 import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw';
+import { analysisField } from '../src/editor/analysis/field.js';
+import { hiddenField, setHidden } from '../src/editor/cm/hidden.js';
 import { currentItem, outlineOf } from '../src/editor/outline.js';
 import { analysed, campaign } from './analysed.js';
 
@@ -42,6 +46,30 @@ describe('outlineOf', () => {
       'Prima della sessione',
       'Appendice: immagini e musica',
     ]);
+  });
+
+  it('counts shown problems only in its badges (hide-problems design decision 13)', () => {
+    const now = new Date(2026, 9, 21, 15, 0);
+    const doc = new Y.Doc();
+    let state: EditorState = analysed(sabaoth).state;
+    state = state.update({ effects: StateEffect.appendConfig.of(hiddenField) }).state;
+    const dismiss = (code: string) => {
+      const { result, doc: text } = state.field(analysisField);
+      hideProblem(doc, result!.problems.find((p) => p.code === code)!, text!.toString(), 'dismissed', null, now);
+      state = state.update({ effects: setHidden.of({ entries: readHidden(doc), now }) }).state;
+    };
+    const badges = () =>
+      outlineOf(state)
+        .filter((i) => i.badge)
+        .map(line);
+    const before = outlineOf(state);
+    dismiss('scene.field.unknown');
+    expect(badges()).toContain('  S5 Capo Peloro, la terza scossa [1 warning]');
+    dismiss('ref.threat.outside');
+    expect(badges()).toEqual(['Front matter [1 error]', "A colpo d'occhio [1 warning]", '  Dottor Umberto Salvi [1 warning]']);
+    // The same analysis and the same hidden state give the same items.
+    expect(outlineOf(state)).toBe(outlineOf(state));
+    expect(outlineOf(state)).not.toBe(before);
   });
 
   it('points each item at its heading, and only scenes move', () => {
