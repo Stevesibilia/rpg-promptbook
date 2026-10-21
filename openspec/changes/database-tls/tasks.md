@@ -15,8 +15,8 @@ Assisted-by: claude-code/<model-id>
 
 ## 2. Docs
 
-- [ ] 2.1 The deploy runbook (find it under `docs/`) and README's deployment section: the database connection is verified TLS, the CA's origin, `cnpg.tls.verify` as the way back, and that a CA rotation needs `kubectl rollout restart`
-- [ ] 2.2 Prettier on the Markdown files touched; hand-back
+- [x] 2.1 The deploy runbook (find it under `docs/`) and README's deployment section: the database connection is verified TLS, the CA's origin, `cnpg.tls.verify` as the way back, and that a CA rotation needs `kubectl rollout restart`
+- [x] 2.2 Prettier on the Markdown files touched; hand-back
 
 ## 3. Release (architect)
 

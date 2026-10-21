@@ -169,6 +169,31 @@ kubectl -n rpg-promptbook exec deploy/rpg-promptbook -- node dist/cli.js user:de
 
 A sync connection still open for that account ends at its next reconnect.
 
+## Database connection
+
+The server and its `wait-for-database` init container connect to the
+CloudNativePG database over TLS, with `sslmode=verify-full`. The certificate
+is checked against the CA the operator writes for the cluster, in the Secret
+`rpg-promptbook-db-ca`; the chart mounts its `ca.crt` key only, read-only, at
+`/etc/promptbook/db-ca`, and appends the two parameters to the operator's
+`uri`. The host in the `uri` must be one of the names in the server
+certificate, which the operator keeps in step with the cluster's Services.
+
+If the certificate does not verify, the init container waits
+`waitForDatabase.timeoutSeconds` and the pod fails; the previous pod is already
+gone (the Deployment recreates), so the site is down until it is fixed. The
+way back is `cnpg.tls.verify: false` in `values-homelab.yaml` (the operator's
+plain connection string, as before), or re-running the deploy of the previous
+tag.
+
+The operator renews the server certificate under the same CA, which needs
+nothing from you. A new CA needs a restart of the pod, which reads the file at
+start:
+
+```sh
+kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook
+```
+
 ## Rolling back
 
 Re-run the `helm-deploy` job in the pipeline of an older tag. The chart and
