@@ -161,6 +161,22 @@ On the Mac, Mod is ⌘; elsewhere it is Ctrl.
 Browsers keep Mod-1 and Mod-2 for switching tabs: there, use the top bar's
 buttons or the palette.
 
+## Hiding problems
+
+Checks are guidelines: a problem you have decided to live with can be hidden.
+Hover its underline and choose **Dismiss** (for good) or **Snooze a week**,
+or use the **⋯** on its row in the inspector's Checks, which also snoozes for
+a day. A hidden problem leaves the editor, the Checks list, the outline
+badges and the status bar's counts; **n hidden** in the status bar opens the
+**Hidden** list under Checks, where **Restore** brings one back and
+**Restore all** brings them all. Each hide and restore has an **Undo** in its
+toast. A snoozed problem comes back by itself when its snooze ends, and
+rewriting the line a problem is on brings it back too.
+
+Hidden problems are stored in the project, so every device sees the same
+ones. The projects list leaves them out of its counts; when a snooze ends, the
+list counts the problem again once the project is next edited or opened.
+
 ## Claude connector
 
 Promptbook is its own connector for Claude on the web and Claude Desktop. In
@@ -195,8 +211,10 @@ when it was last used. **Revoke** cuts it off at once; to use it again,
 connect it from claude.ai.
 
 Claude edits one section, scene or sheet at a time, and only the text it has
-read. An edit that adds template errors is refused, and Claude gets the
-problems back.
+read. Checks never refuse an edit: Claude gets the document's errors and
+warnings before and after it, and the problems in the text it wrote. Problems
+you have hidden are left out of those counts and listed marked as dismissed
+or snoozed, so Claude leaves them alone unless you ask.
 
 Before every edit the server saves a snapshot of the document, kept 30 days.
 The Document view then shows a banner: **Compare** opens the change in

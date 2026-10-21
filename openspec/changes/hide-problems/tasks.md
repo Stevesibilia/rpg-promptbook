@@ -38,10 +38,10 @@ architect.
 
 ## 4. End-to-end tests and docs
 
-- [ ] 4.1 `e2e/editor.spec.ts`: the flows of D9, the second browser context through `browser.newContext()` and `signIn`
-- [ ] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.3 Docs: README, a short "Hiding problems" paragraph after "Editor shortcuts" (dismiss, snooze, the Hidden list, synced, the project list's counts after a snooze ends), and the connector section's sentence «An edit that adds template errors is refused» corrected to #27's behaviour plus the hidden marking; `docs/design.md`, the Checks bullet (hidden problems, a pointer to this change) and the connector's «An edit that adds template errors is refused» (`:340-341`) corrected the same way; Prettier on the files touched
-- [ ] 4.4 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back to the architect with the departures from the design and the risks met
+- [x] 4.1 `e2e/editor.spec.ts`: the flows of D9, the second browser context through `browser.newContext()` and `signIn`
+- [x] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.3 Docs: README, a short "Hiding problems" paragraph after "Editor shortcuts" (dismiss, snooze, the Hidden list, synced, the project list's counts after a snooze ends), and the connector section's sentence «An edit that adds template errors is refused» corrected to #27's behaviour plus the hidden marking; `docs/design.md`, the Checks bullet (hidden problems, a pointer to this change) and the connector's «An edit that adds template errors is refused» (`:340-341`) corrected the same way; Prettier on the files touched
+- [x] 4.4 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back to the architect with the departures from the design and the risks met
 
 ## 5. Review and release (architect)
 
