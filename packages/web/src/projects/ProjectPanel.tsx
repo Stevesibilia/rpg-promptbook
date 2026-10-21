@@ -6,8 +6,10 @@ import { useDocValue, useProjectDoc } from '../sync/hooks.js';
 import { DeviceLine } from '../desktop/ProjectDevice.js';
 import { NeedsServer } from '../desktop/NeedsServer.js';
 import { useDeviceProject, useOffline } from '../desktop/useDevice.js';
+import { CuebardDialog } from '../export/CuebardDialog.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
+import { useToast } from '../ui/Toast.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
 import { categoryLabels, statusLabels } from './list.js';
 import { TodoList } from './TodoList.js';
@@ -78,6 +80,8 @@ function LivePanel({
 }) {
   const meta = useDocValue(doc, readMeta);
   const [confirm, setConfirm] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [toast, showToast] = useToast();
   const offline = useOffline();
   return (
     <div data-testid="panel">
@@ -126,6 +130,10 @@ function LivePanel({
               Export as a Markdown folder…
             </DownloadLink>
           </NeedsServer>
+          {/* Built on this computer on the desktop: offline too. */}
+          <button className="tb" aria-haspopup="dialog" onClick={() => setExporting(true)}>
+            Export for CueBard…
+          </button>
           <NeedsServer>
             <button className="tb danger" onClick={() => setConfirm(true)} disabled={offline}>
               Delete…
@@ -134,6 +142,10 @@ function LivePanel({
         </div>
       </details>
 
+      {exporting && (
+        <CuebardDialog projectId={row.id} doc={doc} onClose={() => setExporting(false)} onToast={showToast} />
+      )}
+      {toast}
       {confirm && (
         <DeleteDialog id={row.id} title={meta.title} onClose={() => setConfirm(false)} onDeleted={onDeleted} />
       )}

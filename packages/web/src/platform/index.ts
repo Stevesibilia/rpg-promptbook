@@ -1,5 +1,5 @@
 import type { SyncRegistry } from '../sync/registry.js';
-import type { PromptbookBridge, PutFileResult } from './bridge.js';
+import type { CuebardSaved, PromptbookBridge, PutFileResult } from './bridge.js';
 import { createDesktopPlatform, type Desktop } from './desktop.js';
 import { createWebPlatform } from './web.js';
 
@@ -29,6 +29,11 @@ export interface Platform {
   // An /api/ path's answer (an export) or bytes saved as a file: the
   // browser's download, or the desktop's save dialog.
   download(source: string | Blob, name: string): Promise<void>;
+  // The project's CueBard pack (cuebard-export design decision 16): the
+  // server's download in the browser, answered at once; built on this
+  // computer on the desktop, after its save dialog, online or offline.
+  // Rejects with the message to show.
+  exportCuebard(projectId: string, title: string): Promise<CuebardSaved>;
   // The release this app runs, as `v0.5.1`: the server's from /api/health in
   // the browser (once), the app's own on the desktop. null when unknown, `dev`
   // or on an error; never rejects.

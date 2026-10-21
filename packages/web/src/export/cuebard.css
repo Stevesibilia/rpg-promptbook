@@ -1,0 +1,106 @@
+/* «Export for CueBard»: the summary dialog (docs/mockups/board.html, 10). */
+.modal.cbx {
+  width: min(540px, calc(100vw - 32px));
+}
+.cbx .mb {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cbx .mb p {
+  margin: 0;
+}
+.cbx .m {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.xsum {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+.xsum dt {
+  color: var(--faint);
+}
+.xsum dd {
+  margin: 0;
+  color: var(--muted);
+}
+.xsum dd b {
+  color: var(--text);
+  font-weight: 600;
+}
+.xsum .sep {
+  color: var(--faint);
+  margin: 0 4px;
+}
+.xsum .hint {
+  color: var(--faint);
+}
+.xwarn h4 {
+  margin: 0 0 6px;
+  font: 600 11px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.xwarn h4 .ic {
+  width: 14px;
+  height: 14px;
+}
+.xwarn ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 188px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border-radius: var(--radius);
+}
+.xwarn li {
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.xwarn li:last-child {
+  border-bottom: 0;
+}
+.xwarn li b {
+  color: var(--text);
+  font-weight: 600;
+}
+.cbx .err {
+  margin: 0;
+}
+.xnote {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--faint);
+}
+.xnote .ic {
+  width: 15px;
+  height: 15px;
+}
+.xnote.here {
+  color: var(--amber);
+}
+.xnone {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13.5px;
+}

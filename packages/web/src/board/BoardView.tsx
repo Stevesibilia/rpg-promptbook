@@ -5,7 +5,8 @@ import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import { ProjectShell } from '../project/ProjectShell.js';
 import { projectPath } from '../project/top.js';
-import { BoardIcon, CheckIcon, HelpIcon, ImportIcon, LaptopIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
+import { CuebardDialog } from '../export/CuebardDialog.js';
+import { BoardIcon, CheckIcon, ExportIcon, HelpIcon, ImportIcon, LaptopIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
 import { useToast } from '../ui/Toast.js';
 import { useOffline } from '../desktop/useDevice.js';
 import { ClaudeCard } from './ClaudeCard.js';
@@ -49,6 +50,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const tab = tabParam(params.get('tab'));
   const [filter, setFilter] = useState<Filter>('all');
   const [help, setHelp] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [viewing, setViewing] = useState<{ promptId: string; fileId: string } | null>(null);
   const [adding, setAdding] = useState<Adding | null>(null);
   const player = usePlayer(id);
@@ -173,6 +175,10 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                   <HelpIcon />
                   How matching works
                 </button>
+                <button className="tb line sm" aria-haspopup="dialog" onClick={() => setExporting(true)}>
+                  <ExportIcon />
+                  Export for CueBard…
+                </button>
                 <button className="tb primary sm" onClick={() => picker.current?.click()}>
                   <ImportIcon />
                   Add files…
@@ -192,6 +198,9 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
               </span>
             )}
             {help && loaded && <MatchHelp rows={rows} named={named} shown={shown} onClose={closeHelp} />}
+            {exporting && loaded && (
+              <CuebardDialog projectId={id} doc={doc} onClose={() => setExporting(false)} onToast={showToast} />
+            )}
           </div>
 
           {parsed === null ? (

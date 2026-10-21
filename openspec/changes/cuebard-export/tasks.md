@@ -32,10 +32,10 @@ The repository has no lint script: the checks are `npm run typecheck`,
 
 ## 4. Web UI (brief B)
 
-- [ ] 4.1 `Platform.exportCuebard` (`platform/index.ts`, `web.ts`, `desktop.ts`) and `cuebardUrl` in `api.ts` (D16)
-- [ ] 4.2 `packages/web/src/export/CuebardDialog.tsx` (D16, D17): the summary, the warnings, the empty and too-large states, the where line per platform, Export and Cancel, the toasts; strings from D17, which follows the agreed mockup (screens 10, 10b, 10c of `docs/mockups/board.html`) and wins where they differ (the length warning)
-- [ ] 4.3 The board header's «Export for CueBard…» (`board/BoardView.tsx`) and the projects panel's Actions entry under «Export as a Markdown folder…» (`projects/ProjectPanel.tsx`), not inside `NeedsServer`
-- [ ] 4.4 Web unit tests: the dialog's lines and warnings from summaries, its states, the toasts
+- [x] 4.1 `Platform.exportCuebard` (`platform/index.ts`, `web.ts`, `desktop.ts`) and `cuebardUrl` in `api.ts` (D16)
+- [x] 4.2 `packages/web/src/export/CuebardDialog.tsx` (D16, D17): the summary, the warnings, the empty and too-large states, the where line per platform, Export and Cancel, the toasts; strings from D17, which follows the agreed mockup (screens 10, 10b, 10c of `docs/mockups/board.html`) and wins where they differ (the length warning)
+- [x] 4.3 The board header's «Export for CueBard…» (`board/BoardView.tsx`) and the projects panel's Actions entry under «Export as a Markdown folder…» (`projects/ProjectPanel.tsx`), not inside `NeedsServer`
+- [x] 4.4 Web unit tests: the dialog's lines and warnings from summaries, its states, the toasts
 - [ ] 4.5 Checks: `npm run typecheck`, `npm test`; screenshots of the dialog (summary with warnings, nothing to export, desktop offline) and of both entries for the architect
 
 ## 5. End-to-end tests and docs (brief B)

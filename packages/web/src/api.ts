@@ -198,6 +198,7 @@ const snapshotsPath = (projectId: string) => `/api/projects/${encodeURIComponent
 
 export const exportUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/export`;
 export const exportAllUrl = '/api/export';
+export const cuebardUrl = (id: string) => `/api/projects/${encodeURIComponent(id)}/cuebard`;
 
 // The names the server gives the exports, for the desktop's save dialog.
 export const exportName = (title: string) => `${exportFolderName(title, new Set())}.zip`;
