@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gdrarchive link mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Tokens and layout from projects.html and editor.html; panel styles from
+   packages/web/src/projects/projects.css, top bar from packages/web/src/editor/editor.css. */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --leggi-line: #0f8f69;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-radius: 4px; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+/* Mockup controls (not part of the app) */
+.mock { height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px; white-space: nowrap; overflow-x: auto;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock button:disabled { opacity: .4; cursor: default; }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex: none; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 1fr var(--right, 340px); }
+.app.editor { --right: 0px; }
+.app.editor .right { display: none; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); min-width: 0; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); flex: none; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; }
+.crumbs a { color: var(--muted); text-decoration: none; cursor: pointer; }
+.crumbs a:hover { color: var(--text); text-decoration: underline; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-meta select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.danger { color: var(--danger); }
+.tb.sm { padding: 3px 9px; font-size: 13px; }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail button.dis { opacity: .35; cursor: default; }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+
+/* Center: projects */
+.center { grid-column: 2; grid-row: 2; overflow: auto; min-width: 0; position: relative; }
+.view { display: none; } .view.on { display: block; }
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 160px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.search { position: relative; } .search input { padding-left: 30px; width: 230px; } .search .ic { position: absolute; left: 8px; top: 8px; width: 15px; height: 15px; color: var(--faint); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { padding: 5px 11px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.seg button .n { color: var(--faint); font-size: 11px; margin-left: 4px; }
+.tog { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.tog input { accent-color: var(--primary); }
+.tbl { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.tr { display: grid; grid-template-columns: minmax(0, 1fr) 104px 116px 150px 110px; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.tr:last-child { border-bottom: 0; }
+.tr:hover { background: var(--hover); }
+.tr.sel { background: color-mix(in srgb, var(--primary) 12%, transparent); box-shadow: inset 3px 0 0 var(--primary); }
+.tr.th { background: var(--surface-2); font: 600 11px var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); cursor: default; padding-top: 7px; padding-bottom: 7px; }
+.tr.child .ti { padding-left: 22px; position: relative; }
+.tr.child .ti::before { content: ''; position: absolute; left: 7px; top: -2px; bottom: 50%; width: 9px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.ti { min-width: 0; }
+.ti b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ti .meta { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); justify-self: start; }
+.st { font-size: 12px; display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+.st i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.st.prog { color: var(--amber); } .st.prog i { background: var(--amber); }
+.st.done { color: var(--primary); } .st.done i { background: var(--primary); }
+.prog-cell { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--muted); }
+.mini-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.mini-bar i { display: block; height: 100%; background: var(--primary); }
+.when { font-size: 12px; color: var(--faint); }
+.hint { color: var(--faint); font-size: 12px; margin-top: 8px; }
+
+/* Right: project panel (projects.css) */
+.right { grid-column: 3; grid-row: 2; background: var(--surface); border-left: 1px solid var(--border); overflow: auto; min-width: 0; }
+.rp-h { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
+.rp-h h2 { font: 700 21px/1.15 var(--display); letter-spacing: .02em; margin: 0 0 6px; }
+.rp-h .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rp-h select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.rp-h .sys { font-size: 12px; color: var(--faint); }
+.rp-h .in { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.rp-h .open { margin-top: 12px; display: flex; gap: 8px; }
+.rp-h .open .tb.primary { flex: 1; justify-content: center; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.acc .body { padding: 0 14px 12px; }
+.seed { font: italic 15px/1.45 var(--prose); color: var(--muted); border-left: 3px solid var(--amber); padding-left: 10px; margin: 0; }
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.todo input { accent-color: var(--primary); margin-top: 3px; padding: 0; }
+.todo li.done .t { color: var(--faint); text-decoration: line-through; }
+.links { display: flex; flex-direction: column; gap: 2px; }
+.links .tb { justify-content: flex-start; padding-left: 4px; }
+
+/* NEW: the gdrarchive link */
+.gdr { margin-top: 8px; font-size: 12.5px; color: var(--muted); display: flex; align-items: baseline; gap: 4px 8px; flex-wrap: wrap; }
+.gdr-link { display: inline-flex; align-items: center; gap: 5px; color: var(--primary); text-decoration: none; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.gdr-link:hover { color: var(--primary-hover); text-decoration: underline; }
+.gdr-link .ic { width: 13px; height: 13px; stroke-width: 2; }
+.gdr-link .lb { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gdr .from { color: var(--faint); font-size: 12px; }
+.gdr .q { color: var(--faint); font-size: 12px; padding: 0; }
+.gdr .q:hover { color: var(--primary); text-decoration: underline; }
+.gdr .q.add { font-size: 12.5px; }
+.top-meta .gdr-link { padding: 2px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.top-meta .gdr-link:hover { text-decoration: none; background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.gdr-form { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px; }
+.gdr-form h4 { margin: 0; font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gdr-form label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.gdr-form label .lt i { color: var(--faint); font-style: normal; }
+.gdr-form input { font-size: 13px; padding: 4px 7px; background: var(--surface); }
+.gdr-form input.bad { border-color: var(--danger); }
+.gdr-form .err { color: var(--danger); font-size: 12px; line-height: 1.35; }
+.gdr-form .err { overflow-wrap: anywhere; }
+.gdr-form .fh { color: var(--faint); font-size: 11.5px; }
+.gdr-form .fh b { color: var(--muted); font-weight: 500; }
+.gdr-form .acts { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+
+/* Editor document (editor.html) */
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; }
+.fm .k { color: var(--info); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); }
+.status .r { margin-left: auto; }
+
+/* Annotation (mockup only) */
+.anno { position: fixed; left: 62px; bottom: 36px; width: 380px; z-index: 20; background: var(--surface); border: 1px dashed var(--note); border-radius: 8px; font-size: 12.5px; color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.anno.closed { display: none; }
+.anno h5 { margin: 0; padding: 8px 12px 0; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); }
+.anno ul { margin: 6px 0 10px; padding: 0 12px 0 28px; }
+.anno li { margin: 2px 0; }
+.anno code { font: 11.5px var(--mono); }
+
+@media (max-width: 1100px) {
+  .tr { grid-template-columns: minmax(0, 1fr) 104px 140px; }
+  .tr .c-cat, .tr .c-when { display: none; }
+}
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup</span>
+  <button data-state="1" class="on">1 · Campaign linked</button>
+  <button data-state="2">2 · Inherited</button>
+  <button data-state="3">3 · Editing</button>
+  <button data-state="4">4 · No link</button>
+  <button data-state="5">5 · Editor bar</button>
+  <button data-state="6">6 · One-shot linked</button>
+  <span class="sep"></span>
+  <button id="mErr" title="Put a wrong address in the form and save">Wrong URL</button>
+  <button id="mReset">Reset data</button>
+  <button id="mTheme">Light / dark</button>
+  <button id="mNotes">Notes</button>
+</nav>
+
+<div class="app" id="app">
+  <header class="topbar" id="topbar"></header>
+
+  <nav class="rail" id="rail"></nav>
+
+  <main class="center" id="center">
+    <section class="view on" id="v-projects">
+      <div class="pane">
+        <div class="head">
+          <h1>Projects</h1>
+          <p class="lead" id="count"></p>
+          <span class="spacer"></span>
+          <button class="tb line"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>Import Markdown</button>
+          <button class="tb primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New project</button>
+        </div>
+        <div class="filters">
+          <div class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg><input placeholder="Search titles and seeds" aria-label="Search titles and seeds"></div>
+          <div class="seg" role="tablist" aria-label="Category">
+            <button class="on">All<span class="n">7</span></button><button>Campaigns<span class="n">3</span></button><button>Adventures<span class="n">3</span></button><button>One-shots<span class="n">1</span></button>
+          </div>
+          <span class="spacer"></span>
+          <label class="tog"><input type="checkbox" checked> Group by campaign</label>
+        </div>
+        <div class="tbl" id="tbl" role="table" aria-label="Projects"></div>
+        <p class="hint">Double-click a row, or press Enter, to open it.</p>
+      </div>
+    </section>
+
+    <section class="view" id="v-editor">
+      <div class="doc"><div class="ed" id="ed"></div></div>
+    </section>
+  </main>
+
+  <aside class="right" id="right"></aside>
+
+  <footer class="status" id="status"></footer>
+</div>
+
+<aside class="anno" id="anno" aria-label="Mockup notes">
+  <h5 id="annoH">Mockup note</h5>
+  <ul id="annoL"></ul>
+</aside>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const EXT = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>';
+const GDR = /^https:\/\/gdrarchive\.siberio\.eu\/campaigns\/[A-Za-z0-9_-]+\/?$/;
+const EXAMPLE = 'https://gdrarchive.siberio.eu/campaigns/12';
+
+const INITIAL = [
+  { id: 'ku', t: 'Kulthos', cat: 'campaign', st: 'prog', sys: 'Kulthos', meta: 'Kulthos · 4 sessions played', when: 'today 09:12',
+    gdr: { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' },
+    seed: 'Sicilia, 1908. Gli investigatori seguono le tracce di chi ha svegliato ciò che dorme sotto lo Stretto.',
+    todo: [['Fronti e minacce', 1], ['PNG ricorrenti', 1], ['Fili aperti dopo la sessione 4', 0]] },
+  { id: 'sa', t: 'L’Ancora di Sabaoth', cat: 'adventure', parent: 'ku', st: 'prog', sys: 'Kulthos', meta: 'Kulthos · 5 scenes · 1 error, 3 warnings', when: 'today 12:40', gdr: null,
+    seed: 'Messina, 28 dicembre 1908. Il terremoto non è un caso: qualcuno ha tirato l’ancora che teneva ferma la città.',
+    todo: [['Scrivere le scene', 1], ['Schede dei PNG', 1], ['Prompt Midjourney', 1], ['PDF per il tavolo', 0], ['Rilettura', 0]] },
+  { id: 'si', t: 'Le chiavi di Santa Ilaria', cat: 'adventure', parent: 'ku', st: 'draft', sys: 'Kulthos', meta: 'Kulthos · 2 scenes', when: '2 days ago', gdr: null,
+    seed: 'Un convento sulle colline di Taormina custodisce tre chiavi. Una apre una porta che non c’è.',
+    todo: [['Scrivere le scene', 0], ['Schede dei PNG', 0], ['Rilettura', 0]] },
+  { id: 'cg', t: 'Cronaca del Gabbiano', cat: 'campaign', st: 'prog', sys: 'Historia', meta: 'Historia · 2 sessions played', when: 'yesterday',
+    gdr: { url: 'https://gdrarchive.siberio.eu/campaigns/7', label: '' },
+    seed: 'Giovani forestieri nella Venezia del Cinquecento, raccontati da Zenone Malamocco, che mente quando gli conviene.',
+    todo: [['Fronti e minacce', 1], ['PNG ricorrenti', 0], ['Mappa della laguna', 0]] },
+  { id: 'ca', t: 'Le ali di Ca’ Malamocco', cat: 'adventure', parent: 'cg', st: 'prog', sys: 'Historia', meta: 'Historia · 6 scenes · 1 warning', when: 'yesterday', gdr: null,
+    seed: 'Una macchina volante di Leonardo, mai costruita, viene rubata dal palazzo di famiglia di Zenone.',
+    todo: [['Scrivere le scene', 1], ['Schede dei PNG', 1], ['PDF per il tavolo', 0]] },
+  { id: 'ap', t: 'Apocrypha', cat: 'campaign', st: 'done', sys: 'Vileborn', meta: 'Vileborn · 9 sessions played', when: 'Jan', gdr: null,
+    seed: 'Prima campagna di Vileborn.', todo: [['Epilogo', 1]] },
+  { id: 'ga', t: 'Il pozzo di Ganzirri', cat: 'one-shot', st: 'draft', sys: 'Kulthos', meta: 'Kulthos · 3 scenes', when: '3 days ago', gdr: null,
+    seed: 'Un pozzo che restituisce gli annegati, ma sempre un giorno troppo presto.',
+    todo: [['Scrivere le scene', 1], ['Schede dei PNG', 0], ['PDF per il tavolo', 0], ['Rilettura', 0]] },
+];
+const catLabel = { campaign: 'Campaign', adventure: 'Adventure', 'one-shot': 'One-shot' };
+const stLabel = { draft: 'Draft', prog: 'In progress', done: 'Complete' };
+let P, sel = 'ku', view = 'projects', editing = false, form = null;
+const byId = id => P.find(p => p.id === id);
+const campaigns = () => P.filter(p => p.cat === 'campaign');
+
+// The link a project shows: its own, else its campaign's, marked as inherited.
+function linkOf(p) {
+  if (p.gdr) return { ...p.gdr, from: null };
+  const c = p.cat !== 'campaign' && p.parent && byId(p.parent);
+  return c && c.gdr ? { ...c.gdr, from: c } : null;
+}
+const linkText = l => `<span class="lb">${l.label ? 'gdrarchive · ' + esc(l.label) : 'gdrarchive campaign'}</span>`;
+const linkHtml = (l, extraTitle) =>
+  `<a class="gdr-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc((extraTitle ? extraTitle + '. ' : '') + 'Opens ' + l.url + ' in a new tab')}">${linkText(l)}${EXT}</a>`;
+
+/* Top bar and rail */
+const IC = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  img: '<rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/>',
+  log: '<path d="M4 5h16v11H8l-4 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24">${IC[k]}</svg>`;
+function renderChrome() {
+  const p = byId(sel), ed = view === 'editor';
+  $('#app').classList.toggle('editor', ed);
+  $('#v-projects').classList.toggle('on', !ed);
+  $('#v-editor').classList.toggle('on', ed);
+  const off = ed ? '' : ' class="dis"';
+  $('#rail').innerHTML = `
+    <button${ed ? '' : ' class="on"'} id="toProjects" title="Projects">${svg('grid')}</button>
+    <button${ed ? ' class="on"' : off} title="Document">${svg('doc')}</button>
+    <button${off} title="Inspiration">${svg('bulb')}</button>
+    <button${off} title="Research">${svg('search')}</button>
+    <button${off} title="Images and music">${svg('img')}</button>
+    <button${off} title="Brainstorm log">${svg('log')}</button>
+    <button class="bottom last" title="Settings and templates">${svg('gear')}</button>`;
+  $('#toProjects').onclick = () => { view = 'projects'; render(); };
+  if (!ed) {
+    $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div><div class="crumbs"><b>Projects</b></div>
+      <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span><span class="kbd">⌘K</span><span class="avatar" title="Signed in as Stefano">S</span>`;
+    $('#status').innerHTML = `<span>${P.length} projects</span>`;
+    return;
+  }
+  // ProjectCrumbs + ProjectMetaControls (packages/web/src/project/top.tsx), then the link.
+  const camp = p.parent && p.cat !== 'campaign' ? byId(p.parent) : null, l = linkOf(p);
+  $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><a id="cProj">Projects</a>${camp ? ` › <a id="cCamp">${esc(camp.t)}</a>` : ''} › <b>${esc(p.t)}</b></div>
+    <div class="top-meta">
+      <span class="cat">${catLabel[p.cat]}</span>
+      <select aria-label="Status">${Object.entries(stLabel).map(([k, v]) => `<option${k === p.st ? ' selected' : ''}>${v}</option>`).join('')}</select>
+      ${l ? linkHtml(l, l.from ? `From campaign ${l.from.t}` : '') : ''}
+    </div>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb" title="History and snapshots"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+    <button class="tb" title="Outline"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+    <button class="tb" title="Inspector"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    <button class="tb primary" title="PDF preview"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <button class="tb" title="Focus mode"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>`;
+  $('#cProj').onclick = () => { view = 'projects'; render(); };
+  if (camp) $('#cCamp').onclick = () => { view = 'projects'; sel = camp.id; render(); };
+  $('#status').innerHTML = `<span>${p.meta.split(' · ').slice(1).join(' · ') || ''}</span><span class="r">Saved on the server</span>`;
+  $('#ed').innerHTML = `
+    <div class="l fm"><span class="mk">---</span></div>
+    <div class="l fm"><span class="k">titolo:</span> ${esc(p.t)}</div>
+    <div class="l fm"><span class="k">sistema:</span> ${esc(p.sys)} · <span class="k">formato:</span> ${p.cat === 'one-shot' ? 'one-shot' : 'avventura'}</div>
+    <div class="l fm"><span class="mk">---</span></div>
+    <div class="skip">… A colpo d'occhio, Orologio, Inizio forte, Mappa delle scene …</div>
+    <div class="l h2">Scene</div>
+    <div class="l h3"><span class="sid">S1.</span> La casa che cede</div>
+    <div class="l"><span class="fl">Luogo e momento:</span> casa-biblioteca di Neri, vicino al porto, 5:20 circa.</div>
+    <div class="l"><span class="fl">In gioco:</span> chi esce vivo, Neri, la lettera.</div>
+    <div class="callout leggi"><div class="ct">Da leggere</div>
+      <div>Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano con gli occhiali spezzati ancora stretti fra le dita. Una voce rauca chiama i vostri nomi.</div></div>
+    <div class="l"><span class="fl">Chi c'è</span></div>
+    <div class="l li"><span class="mk">- </span><b>Aleramo Neri</b>, vuole che qualcuno finisca ciò che lui non può.</div>`;
+}
+
+/* Table */
+function row(p, child) {
+  const n = p.todo.filter(x => x[1]).length, tot = p.todo.length;
+  return `<div class="tr${child ? ' child' : ''}${p.id === sel ? ' sel' : ''}" role="row" tabindex="0" data-id="${p.id}">
+    <div class="ti"><b>${esc(p.t)}</b><div class="meta">${esc(p.meta)}</div></div>
+    <span class="cat c-cat">${catLabel[p.cat]}</span>
+    <span class="st ${p.st}"><i></i>${stLabel[p.st]}</span>
+    <span class="prog-cell"><span class="mini-bar"><i style="width:${tot ? n / tot * 100 : 0}%"></i></span>${n}/${tot}</span>
+    <span class="when c-when">${p.when}</span></div>`;
+}
+function renderTable() {
+  let html = `<div class="tr th" role="row"><span>Title</span><span class="c-cat">Category</span><span>Status</span><span>To-do</span><span class="c-when">Edited</span></div>`;
+  P.filter(p => !p.parent || p.cat === 'campaign').forEach(p => {
+    html += row(p);
+    if (p.cat === 'campaign') P.filter(k => k.parent === p.id && k.cat !== 'campaign').forEach(k => { html += row(k, true); });
+  });
+  $('#tbl').innerHTML = html;
+  $('#count').textContent = `${P.length} of ${P.length} projects`;
+  $$('#tbl .tr[data-id]').forEach(r => {
+    const pick = () => { if (sel !== r.dataset.id) { sel = r.dataset.id; editing = false; form = null; } render(); };
+    r.onclick = pick;
+    r.ondblclick = () => { sel = r.dataset.id; openEditor(); };
+    r.onkeydown = e => { if (e.key === 'Enter') (sel === r.dataset.id ? openEditor : pick)(); };
+  });
+}
+function openEditor() { view = 'editor'; editing = false; form = null; render(); }
+
+/* Panel (ProjectPanel.tsx, LivePanel) */
+function gdrRow(p) {
+  const l = linkOf(p);
+  if (editing) return gdrForm(p, l);
+  if (!l) return `<div class="gdr"><button class="q add" id="gEdit">Link to gdrarchive…</button></div>`;
+  if (l.from) return `<div class="gdr">${linkHtml(l)}<span class="from">from campaign ${esc(l.from.t)}</span>
+    <button class="q" id="gEdit" title="Give this ${catLabel[p.cat].toLowerCase()} a link of its own">Set its own…</button></div>`;
+  return `<div class="gdr">${linkHtml(l)}<button class="q" id="gEdit" title="Change or remove the gdrarchive link">Change…</button></div>`;
+}
+function gdrForm(p, l) {
+  if (!form) form = { url: p.gdr ? p.gdr.url : '', label: p.gdr ? p.gdr.label : '', err: false };
+  const inh = l && l.from ? l.from : null;
+  return `<div class="gdr-form" id="gForm">
+    <h4>gdrarchive campaign</h4>
+    <label><span class="lt">Address</span><input id="gUrl" type="url" spellcheck="false" autocomplete="off" class="${form.err ? 'bad' : ''}"
+      placeholder="${inh ? esc(inh.gdr.url) : EXAMPLE}" value="${esc(form.url)}" aria-invalid="${form.err}"${form.err ? ' aria-describedby="gErr"' : ''}></label>
+    ${form.err ? `<div class="err" id="gErr" role="alert">Paste a gdrarchive campaign address, like ${EXAMPLE}</div>` : ''}
+    <label><span class="lt">Label <i>· optional, a short name</i></span><input id="gLab" maxlength="40" placeholder="e.g. Kulthos" value="${esc(form.label)}"></label>
+    <div class="fh" id="gPrev">${preview(inh)}</div>
+    <div class="acts">
+      <button class="tb primary sm" id="gSave">Save</button>
+      <button class="tb sm" id="gCancel">Cancel</button>
+      <span class="spacer"></span>
+      ${p.gdr ? `<button class="tb danger sm" id="gRemove" title="${inh || (p.parent && byId(p.parent) && byId(p.parent).gdr) ? 'Back to the campaign’s link' : 'The project keeps no link'}">Remove link</button>` : ''}
+    </div></div>`;
+}
+function preview(inh) {
+  if (!form.url.trim() && inh) return `Left empty, it keeps the link of campaign ${esc(inh.t)}.`;
+  const lab = form.label.trim();
+  return `Shows as <b>${lab ? 'gdrarchive · ' + esc(lab) : 'gdrarchive campaign'}</b>, opening in a new tab.`;
+}
+function renderPanel() {
+  const p = byId(sel);
+  const n = p.todo.filter(x => x[1]).length;
+  $('#right').innerHTML = `<div data-testid="panel">
+    <div class="rp-h">
+      <h2>${esc(p.t)}</h2>
+      <div class="row">
+        <span class="cat">${catLabel[p.cat]}</span>
+        <select aria-label="Status">${Object.entries(stLabel).map(([k, v]) => `<option${k === p.st ? ' selected' : ''}>${v}</option>`).join('')}</select>
+        <span class="sys">${esc(p.sys)}</span>
+      </div>
+      ${p.cat !== 'campaign' ? `<div class="row in">In <select aria-label="Campaign" id="campSel"><option value="">Stand-alone</option>${campaigns().map(c => `<option value="${c.id}"${c.id === p.parent ? ' selected' : ''}>${esc(c.t)}</option>`).join('')}</select></div>` : ''}
+      ${gdrRow(p)}
+      <div class="open"><button class="tb primary" id="bOpen">Open</button></div>
+    </div>
+    <details class="acc" open><summary>Seed</summary><div class="body"><p class="seed">${esc(p.seed)}</p></div></details>
+    <details class="acc" open><summary>To-do <span class="cnt">${n} of ${p.todo.length}</span></summary><div class="body"><ul class="todo">
+      ${p.todo.map(([t, d]) => `<li class="${d ? 'done' : ''}"><input type="checkbox"${d ? ' checked' : ''}><span class="t">${esc(t)}</span></li>`).join('')}</ul></div></details>
+    <details class="acc"><summary>Actions</summary><div class="body links">
+      <button class="tb">Export as a Markdown folder…</button><button class="tb">Export for CueBard…</button><button class="tb danger">Delete…</button></div></details>
+  </div>`;
+  $('#bOpen').onclick = openEditor;
+  const cs = $('#campSel');
+  if (cs) cs.onchange = () => { p.parent = cs.value || undefined; editing = false; form = null; render(); };
+  const ge = $('#gEdit');
+  if (ge) ge.onclick = () => { editing = true; form = null; render(); $('#gUrl').focus(); };
+  if (editing) wireForm(p);
+}
+function wireForm(p) {
+  const u = $('#gUrl'), lb = $('#gLab');
+  const inh = () => { const l = linkOf(p); return l && l.from ? l.from : null; };
+  const upd = () => { form.url = u.value; form.label = lb.value; $('#gPrev').innerHTML = preview(inh()); };
+  u.oninput = () => { upd(); if (form.err && GDR.test(u.value.trim())) { form.err = false; renderPanel(); focusEnd('#gUrl'); } };
+  lb.oninput = upd;
+  const keys = e => { if (e.key === 'Enter') save(p); if (e.key === 'Escape') cancel(); };
+  u.onkeydown = keys; lb.onkeydown = keys;
+  $('#gSave').onclick = () => save(p);
+  $('#gCancel').onclick = cancel;
+  const rm = $('#gRemove');
+  if (rm) rm.onclick = () => { p.gdr = null; editing = false; form = null; render(); };
+}
+function focusEnd(s) { const el = $(s); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+function save(p) {
+  const url = form.url.trim(), label = form.label.trim();
+  const l = linkOf(p);
+  if (!url && l && l.from && !p.gdr) { cancel(); return; }
+  if (!url && !p.gdr) { cancel(); return; }
+  if (!GDR.test(url)) { form.err = true; renderPanel(); focusEnd('#gUrl'); return; }
+  p.gdr = { url: url.replace(/\/$/, ''), label };
+  editing = false; form = null; render();
+}
+function cancel() { editing = false; form = null; render(); }
+
+function render() { renderChrome(); if (view === 'projects') { renderTable(); renderPanel(); } }
+
+/* Mockup controls */
+const NOTES = {
+  1: ['Campaign <b>Kulthos</b> has a link with the label “Kulthos”. It sits in the panel header, under the status row, where the rest of the meta is edited.',
+      'The link opens <code>gdrarchive.siberio.eu/campaigns/12</code> in a new tab. “Change…” opens the form in place.',
+      '<b>Cronaca del Gabbiano</b> has a link without a label: “gdrarchive campaign”.'],
+  2: ['The adventure has no link of its own, so it shows the campaign’s, marked “from campaign Kulthos”.',
+      'Changing “In” to another campaign or to Stand-alone changes what it inherits, live.',
+      '“Set its own…” opens the same form; leaving the address empty keeps the inherited one.'],
+  3: ['Inline form in the panel header, like the to-do editor (<code>.todo-edit</code>). Enter saves, Escape cancels.',
+      'The address is checked on Save; a trailing slash is accepted and dropped. Try “Wrong URL” in the strip.',
+      '“Remove link” appears only when the project has a link of its own.'],
+  4: ['A stand-alone one-shot with no link: the panel is as today, plus one faint line, “Link to gdrarchive…”.',
+      'The editor’s top bar shows nothing for it.'],
+  5: ['Editor top bar of the adventure: the link sits after the status, inside <code>.top-meta</code>, and hides in focus mode.',
+      'Here it is inherited; the crumbs already say Kulthos, so the mark is in the tooltip (“From campaign Kulthos”).',
+      'Read-only in the editor: the link is edited from the projects panel.'],
+  6: ['A stand-alone one-shot with a link of its own, e.g. a convention game logged in its own gdrarchive campaign “Serate Kulthos”.',
+      'It behaves like a campaign’s link: shown in the panel with “Change…”, and in the editor’s top bar (double-click the row). Nothing inherits it: a one-shot has nothing under it.',
+      'A one-shot placed “In” a Promptbook campaign with no link of its own inherits the campaign’s, exactly like an adventure (view 2); try “In” → Kulthos, then Remove link. Its own link, when set, wins.'],
+};
+let state = 1;
+function setState(n) {
+  state = n;
+  $$('.mock [data-state]').forEach(b => b.classList.toggle('on', b.dataset.state === String(n)));
+  editing = false; form = null; view = 'projects'; $('#mErr').classList.remove('on');
+  sel = { 1: 'ku', 2: 'sa', 3: 'ku', 4: 'ga', 5: 'sa', 6: 'ga' }[n];
+  // The one-shot has no link in view 4 and its own in view 6, stand-alone in both.
+  if (n === 4 || n === 6) {
+    const ga = byId('ga');
+    ga.parent = undefined;
+    ga.gdr = n === 6 ? { url: 'https://gdrarchive.siberio.eu/campaigns/31', label: 'Serate Kulthos' } : null;
+  }
+  if (n === 3) editing = true;
+  if (n === 5) view = 'editor';
+  render();
+  $('#mErr').disabled = n !== 3;
+  $('#annoH').textContent = `Mockup note · state ${n}`;
+  $('#annoL').innerHTML = NOTES[n].map(x => `<li>${x}</li>`).join('');
+}
+$$('.mock [data-state]').forEach(b => b.onclick = () => setState(+b.dataset.state));
+$('#mErr').onclick = () => {
+  if (state !== 3) return;
+  if (form && form.err) { form = null; renderPanel(); $('#mErr').classList.remove('on'); return; }
+  editing = true;
+  form = { url: 'https://gdrarchive.siberio.eu/sessions/48', label: 'Kulthos', err: true };
+  renderPanel(); $('#mErr').classList.add('on');
+};
+$('#mReset').onclick = () => { P = JSON.parse(JSON.stringify(INITIAL)); setState(state); };
+$('#mTheme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; };
+$('#mNotes').onclick = () => $('#anno').classList.toggle('closed');
+
+P = JSON.parse(JSON.stringify(INITIAL));
+const q = new URLSearchParams(location.search);
+if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+if (q.get('notes') === '0') $('#anno').classList.add('closed');
+setState(+q.get('state') || 1);
+if (q.get('err') === '1') $('#mErr').click();
+</script>
+</body>
+</html>
