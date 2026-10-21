@@ -53,6 +53,11 @@ that runs.
 {{- printf "%s-app" (include "rpg-promptbook.cnpgClusterName" .) -}}
 {{- end }}
 
+{{/* The Secret the operator writes with the cluster's CA: `ca.crt` is the public certificate, and the Secret also holds the CA's private key. */}}
+{{- define "rpg-promptbook.databaseCaSecretName" -}}
+{{- printf "%s-ca" (include "rpg-promptbook.cnpgClusterName" .) -}}
+{{- end }}
+
 {{/* The claim the files volume mounts: one made outside the chart, or the chart's own. */}}
 {{- define "rpg-promptbook.dataClaimName" -}}
 {{- .Values.persistence.existingClaim | default (printf "%s-data" (include "rpg-promptbook.fullname" .)) -}}
