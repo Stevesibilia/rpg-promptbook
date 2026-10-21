@@ -105,10 +105,12 @@ export interface PutFileResult {
 
 // pb:files:export-cuebard's answer: false when the user cancelled the save
 // dialog; how many tracks and images were left out (listed in the pack's
-// left-out.txt).
+// left-out.txt); the name of the file saved, as the user chose it ('' when
+// cancelled).
 export interface CuebardSaved {
   saved: boolean;
   leftOut: number;
+  name: string;
 }
 
 // One REST call through main (design decision 7). The body is JSON text, as

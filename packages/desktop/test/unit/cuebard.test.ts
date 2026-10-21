@@ -222,7 +222,7 @@ describe('the CueBard export on the desktop', () => {
     const { doc, bytes } = board();
     open();
     const target = join(out(), `${TITLE}.cbpack`);
-    expect(await exportCuebard(deps(), P1, target, NOW)).toEqual({ saved: true, leftOut: 3 });
+    expect(await exportCuebard(deps(), P1, target, NOW)).toEqual({ saved: true, leftOut: 3, name: `${TITLE}.cbpack` });
     expect(readdirSync(out())).toEqual([`${TITLE}.cbpack`]);
 
     const pack = new Uint8Array(readFileSync(target));
@@ -369,18 +369,19 @@ describe('pb:files:export-cuebard', () => {
 
   it('offers the name with the CueBard filter, and answers nothing saved when cancelled', async () => {
     electron.save = { canceled: true, filePath: '' };
-    expect(await call(P1, `${TITLE}.cbpack`)).toEqual({ saved: false, leftOut: 0 });
+    expect(await call(P1, `${TITLE}.cbpack`)).toEqual({ saved: false, leftOut: 0, name: '' });
     expect(electron.offered).toEqual([
       { defaultPath: `${TITLE}.cbpack`, filters: [{ name: 'CueBard pack', extensions: ['cbpack'] }] },
     ]);
   });
 
-  it('builds the pack where the dialog says, with the extension the user took off', async () => {
+  it('builds the pack where the dialog says, under the name the user chose, adding the extension taken off', async () => {
     board();
     open();
     app.account = { engine: deps().engine, files };
     electron.save = { canceled: false, filePath: join(out(), 'Sabaoth') };
-    expect(await call(P1, `${TITLE}.cbpack`)).toEqual({ saved: true, leftOut: 3 });
+    // Offered «L'Ancora di Sabaoth.cbpack», saved as «Sabaoth».
+    expect(await call(P1, `${TITLE}.cbpack`)).toEqual({ saved: true, leftOut: 3, name: 'Sabaoth.cbpack' });
     expect(readdirSync(out())).toEqual(['Sabaoth.cbpack']);
     expect(checkCuebardPack(new Uint8Array(readFileSync(join(out(), 'Sabaoth.cbpack'))))).toEqual([]);
     // Typed again without the extension: the dialog did not ask about the

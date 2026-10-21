@@ -154,7 +154,7 @@ export function fakeBridge() {
       onStatus: events.files.on,
       exportCuebard: async (projectId, name) => {
         calls.exportCuebard.push([projectId, name]);
-        return { saved: true, leftOut: 0 };
+        return { saved: true, leftOut: 0, name };
       },
     },
   };

@@ -271,7 +271,9 @@ test('offline: Export for CueBard builds the pack on this computer', async () =>
     }, target);
     await dialog.getByRole('button', { name: 'Export' }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.locator('.toast')).toHaveText(`Saved ${cuebardFileName(mine.title)}.`);
+    // Offered under the project's title, saved as the dialog says.
+    expect(cuebardFileName(mine.title)).not.toBe('Desktop.cbpack');
+    await expect(page.locator('.toast')).toHaveText('Saved Desktop.cbpack.');
     expect(readdirSync(folder)).toEqual(['Desktop.cbpack']);
     if (process.env.E2E_CUEBARD_OUT) copyFileSync(target, join(process.env.E2E_CUEBARD_OUT, 'desktop.cbpack'));
     const bytes = new Uint8Array(readFileSync(target));

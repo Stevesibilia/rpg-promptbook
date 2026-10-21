@@ -31,10 +31,12 @@ export function cuebardState(summary: CuebardSummary, entries: number): CuebardS
 }
 
 // The toast once the export answered; null when there is nothing to say
-// (the desktop's save dialog cancelled).
-export function savedToast(kind: 'web' | 'desktop', name: string, saved: CuebardSaved): string | null {
-  if (kind === 'web') return `Downloading ${name}.`;
+// (the desktop's save dialog cancelled). The desktop names the file as the
+// user saved it, which can differ from the name offered.
+export function savedToast(kind: 'web' | 'desktop', offered: string, saved: CuebardSaved): string | null {
+  if (kind === 'web') return `Downloading ${offered}.`;
   if (!saved.saved) return null;
+  const name = saved.name || offered;
   if (saved.leftOut === 0) return `Saved ${name}.`;
   const files = saved.leftOut === 1 ? '1 file was' : `${saved.leftOut} files were`;
   return `Saved ${name}. ${files} left out; the pack's left-out.txt lists them.`;

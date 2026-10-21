@@ -251,5 +251,6 @@ async function build(deps: CuebardDeps, projectId: string, target: string, now: 
   return {
     saved: true,
     leftOut: pack.summary.warnings.filter((w) => w.kind === 'no-duration' || w.kind === 'missing').length,
+    name: basename(target),
   };
 }

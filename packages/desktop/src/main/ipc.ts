@@ -204,7 +204,7 @@ export function registerIpc(app: App, updater: Updater): void {
     const { canceled, filePath } = window
       ? await dialog.showSaveDialog(window, options)
       : await dialog.showSaveDialog(options);
-    if (canceled || !filePath) return { saved: false, leftOut: 0 };
+    if (canceled || !filePath) return { saved: false, leftOut: 0, name: '' };
     const target = packTarget(filePath);
     // The dialog asked about replacing the name without the extension only.
     if (target !== filePath && existsSync(target)) {

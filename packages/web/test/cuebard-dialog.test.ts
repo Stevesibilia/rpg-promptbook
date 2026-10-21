@@ -99,14 +99,16 @@ describe('the CueBard dialog', () => {
 
   it('toasts the download, the save, what was left out, and nothing when cancelled', () => {
     const name = "L'Ancora di Sabaoth.cbpack";
-    expect(savedToast('web', name, { saved: true, leftOut: 0 })).toBe(`Downloading ${name}.`);
-    expect(savedToast('desktop', name, { saved: true, leftOut: 0 })).toBe(`Saved ${name}.`);
-    expect(savedToast('desktop', name, { saved: true, leftOut: 2 })).toBe(
+    expect(savedToast('web', name, { saved: true, leftOut: 0, name })).toBe(`Downloading ${name}.`);
+    expect(savedToast('desktop', name, { saved: true, leftOut: 0, name })).toBe(`Saved ${name}.`);
+    // Renamed in the save dialog: the file as saved.
+    expect(savedToast('desktop', name, { saved: true, leftOut: 0, name: 'Sabaoth.cbpack' })).toBe('Saved Sabaoth.cbpack.');
+    expect(savedToast('desktop', name, { saved: true, leftOut: 2, name })).toBe(
       `Saved ${name}. 2 files were left out; the pack's left-out.txt lists them.`,
     );
-    expect(savedToast('desktop', name, { saved: true, leftOut: 1 })).toBe(
+    expect(savedToast('desktop', name, { saved: true, leftOut: 1, name })).toBe(
       `Saved ${name}. 1 file was left out; the pack's left-out.txt lists them.`,
     );
-    expect(savedToast('desktop', name, { saved: false, leftOut: 0 })).toBeNull();
+    expect(savedToast('desktop', name, { saved: false, leftOut: 0, name: '' })).toBeNull();
   });
 });
