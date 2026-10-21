@@ -364,7 +364,7 @@ describe('set_scene_prompts', () => {
 
   it('writes in a document with errors, and in one with none of the appendix’s checks passing', async () => {
     const s = await setup();
-    expect(check(ADVENTURE, 'adventure')!.errors).toBeGreaterThan(1);
+    expect(check(ADVENTURE, 'adventure', new Map(), new Date())!.errors).toBeGreaterThan(1);
     const outcome = await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S1', image: { prompt: IMAGE }, music: MUSIC });
     expect(outcome.isError).toBe(false);
     expect(firstPrompt(await storedDoc(s.id), 'S1')!.prompt).toBe(IMAGE);

@@ -10,6 +10,7 @@ import {
   isWebUrl,
   LIMITS,
   readDocument,
+  readHidden,
   readInspiration,
   readLog,
   readMeta,
@@ -303,16 +304,19 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'get_outline',
-    'The parts of a project’s prep document you can read and replace one at a time: sections, scenes (by id, S3) and sheets of an adventure or one-shot, with the errors and warnings in each; the ## and ### headings of a campaign, which is not checked.',
+    'The parts of a project’s prep document you can read and replace one at a time: sections, scenes (by id, S3) and sheets of an adventure or one-shot, with the errors and warnings in each; the ## and ### headings of a campaign, which is not checked. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Get the outline', readOnly: true, idempotent: true },
     { projectId },
     async (args) => {
       const project = await projectOf(args.projectId);
-      const text = readDocument(await docOf(project));
-      const checked = check(text, project.category);
+      const doc = await docOf(project);
+      const text = readDocument(doc);
+      const checked = check(text, project.category, readHidden(doc), new Date());
       const targets = targetsOf(text, project.category).map((t) => {
         if (!checked) return { kind: t.kind, target: t.target, title: t.title };
-        const inside = checked.problems.filter((p) => p.range.start.offset >= t.from && p.range.start.offset <= t.to);
+        const inside = checked.problems.filter(
+          (p) => !checked.hidden.has(p) && p.range.start.offset >= t.from && p.range.start.offset <= t.to,
+        );
         return {
           kind: t.kind,
           target: t.target,
@@ -347,7 +351,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'replace_section',
-    'Replace one target of a project’s prep document (a section, a scene or a sheet; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id); the template’s field names stay in Italian. In an adventure or a one-shot the result reports the errors and warnings before and after, and the problems in the new text: problems are reported, never refused, so fix them in later edits when you can. A snapshot of the text before the edit is kept, and the user can undo it.',
+    'Replace one target of a project’s prep document (a section, a scene or a sheet; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id); the template’s field names stay in Italian. In an adventure or a one-shot the result reports the errors and warnings before and after, and the problems in the new text: problems are reported, never refused, so fix them in later edits when you can. A snapshot of the text before the edit is kept, and the user can undo it. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Replace a section', readOnly: false, idempotent: false, destructive: true },
     {
       projectId,
@@ -367,7 +371,8 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       `The body needs, or the result reports an error: ${SCENE_REQUIRED.join('; ')}. ` +
       'Problems never refuse the scene: it is written and the result lists them; fix them in later edits when you can. ' +
       (SCENE_RECOMMENDED.length ? `Recommended (a warning when missing): ${SCENE_RECOMMENDED.join('; ')}. ` : '') +
-      'A snapshot is kept first, and the user can undo it.',
+      'A snapshot is kept first, and the user can undo it. ' +
+      'Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Add a scene', readOnly: false, idempotent: false },
     {
       projectId,

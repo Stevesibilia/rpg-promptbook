@@ -39,18 +39,22 @@ function fnv1a(text: string): string {
   return hash.toString(16).padStart(8, '0');
 }
 
-// The fingerprint of a problem: its code, its scene and the whole source lines
-// its range covers, whitespace collapsed. `text` is the text the problem was
+// The fingerprint of a problem: its code, its scene, and a hash of its message
+// and the whole source lines its range covers, whitespace collapsed. The
+// message tells apart the problems one check raises on one heading (one per
+// missing field). `text` is the text the problem was
 // computed for: the range holds offsets into it. The lines are cut by offset,
 // not by line number, so no line index is built.
 export function problemKey(problem: Problem, text: string): string {
   const clamp = (offset: number) => Math.min(Math.max(offset, 0), text.length);
   const start = clamp(problem.range.start.offset);
-  const end = clamp(problem.range.end.offset);
+  let end = clamp(problem.range.end.offset);
+  // A range that ends just after a line break covers that line only.
+  if (end > start && text[end - 1] === '\n') end--;
   const from = start === 0 ? 0 : text.lastIndexOf('\n', start - 1) + 1;
   const to = text.indexOf('\n', end);
   const lines = text.slice(from, to === -1 ? text.length : to);
-  return `${problem.code}|${problem.sceneId ?? ''}|${fnv1a(lines.replace(/\s+/g, ' ').trim())}`;
+  return `${problem.code}|${problem.sceneId ?? ''}|${fnv1a(`${problem.message}\n${lines.replace(/\s+/g, ' ').trim()}`)}`;
 }
 
 // A value written by another client is not trusted: one that is not a whole

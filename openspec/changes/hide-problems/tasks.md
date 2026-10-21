@@ -19,11 +19,11 @@ architect.
 
 ## 2. Counts and the connector
 
-- [ ] 2.1 `packages/project/src/summary.ts`: `SummarizeOptions.now`; `summarize` counts shown problems only (D15); `test/summary.test.ts` cases from D9
-- [ ] 2.2 `packages/server/src/mcp/edits.ts`: `ProblemOut.hidden` and `until`, `problemOut` marking, `check(text, category, hidden, now)`, `report` and `apply` reading `readHidden(live.doc)` and one `now` (D6)
-- [ ] 2.3 `packages/server/src/mcp/tools.ts`: `get_outline` counts shown problems only, per target and in total; the sentence of D6 in the descriptions of `get_outline`, `replace_section` and `add_scene`
-- [ ] 2.4 `packages/server/test/db/mcp.test.ts`: the connector cases of D9 (marking, `until` on snoozed only, counts, `list_projects` row)
-- [ ] 2.5 Desktop: no code change; confirm `refreshRow` (`packages/desktop/src/main/projects.ts:64`) and `create.ts:112` build on `summarize` alone, and that the desktop unit tests stay green
+- [x] 2.1 `packages/project/src/summary.ts`: `SummarizeOptions.now`; `summarize` counts shown problems only (D15); `test/summary.test.ts` cases from D9
+- [x] 2.2 `packages/server/src/mcp/edits.ts`: `ProblemOut.hidden` and `until`, `problemOut` marking, `check(text, category, hidden, now)`, `report` and `apply` reading `readHidden(live.doc)` and one `now` (D6)
+- [x] 2.3 `packages/server/src/mcp/tools.ts`: `get_outline` counts shown problems only, per target and in total; the sentence of D6 in the descriptions of `get_outline`, `replace_section` and `add_scene`
+- [x] 2.4 `packages/server/test/db/mcp.test.ts`: the connector cases of D9 (marking, `until` on snoozed only, counts, `list_projects` row)
+- [x] 2.5 Desktop: no code change; confirm `refreshRow` (`packages/desktop/src/main/projects.ts:64`) and `create.ts:112` build on `summarize` alone, and that the desktop unit tests stay green
 
 ## 3. Web editor
 

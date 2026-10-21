@@ -198,7 +198,7 @@ a hide. **Rejected:** per-device storage (the owner chose sync); a
 
 `problemKey(problem, text)` answers `${code}|${sceneId ?? ''}|${hash}`.
 `hash` is FNV-1a 32-bit, written as 8 lowercase hex digits, over the
-UTF-16 code units of the source lines the problem's range covers, whole
+problem's message, a newline, then the UTF-16 code units of the source lines the problem's range covers, whole
 lines, from the line holding `range.start` to the line holding
 `range.end`, with every run of whitespace collapsed to one space and the
 ends trimmed.
@@ -207,7 +207,11 @@ ends trimmed.
 flags one dash, and hiding it would hide every dash in the scene. The whole
 line keeps the hide on its spot, and edits elsewhere in the document, which
 shift offsets and line numbers, do not disturb it. Rewriting the line
-brings the problem back, by design (O2). Two identical problems on
+brings the problem back, by design (O2). Several problems one check raises
+on one line (`scene.field.missing` on a scene heading, one per missing
+field) differ only by message; without it they would share a key, and
+hiding one would hide all and overwrite the others' entries. A reworded
+message in a later release brings its hides back once: accepted. Two identical problems on
 identical lines in the same scene share a key and hide together: accepted.
 
 **Plan decision:** the lines are cut by offset, not by line number:
@@ -386,7 +390,9 @@ entries and cleared when the view goes.
 - **`packages/project/test/hidden.test.ts`:** the key is stable when text
   is added above the problem and elsewhere; it changes when the flagged
   line is rewritten; the tiny-span case (two lines each with a dash: hiding
-  one keeps the other shown); a problem with no `sceneId`; a multi-line
+  one keeps the other shown); a problem with no `sceneId`; two problems with one code, one scene and one
+  range but different messages get different keys, and hiding one keeps the
+  other shown; a multi-line
   range; whitespace changes inside the line keep the key; expiry (a snooze
   active one millisecond before `until`, absent at `until`); two replicas
   (`test/helpers.ts` `replica`, `sync`) hiding different problems both
@@ -520,6 +526,8 @@ Report it, do not work around it:
 - **Problems over many lines** (a whole block flagged) are tied to every
   line they cover: any edit inside brings them back. Most checks flag a
   heading or one line.
+- **A check whose message changes between releases** brings its hides back
+  once.
 - **Clocks.** A snooze's `until` comes from the device that wrote it; a
   device with a wrong clock shows it early or late. Accepted.
 - **Stale project list counts** after a snooze ends, until the next store

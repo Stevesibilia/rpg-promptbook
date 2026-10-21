@@ -64,6 +64,17 @@ describe('problemKey', () => {
     expect(problemKey(problem(edited, '—'), edited)).not.toBe(problemKey(problem(TEXT, '—'), TEXT));
   });
 
+  it('tells apart problems of one code, scene and range with different messages', () => {
+    const doc = project();
+    const a = problem(TEXT, 'Uno', { code: 'scene.field.missing', message: 'no In gioco field' });
+    const b = problem(TEXT, 'Uno', { code: 'scene.field.missing', message: 'no Indizi qui field' });
+    expect(problemKey(a, TEXT)).not.toBe(problemKey(b, TEXT));
+    hideProblem(doc, a, TEXT, 'dismissed', null, NOW);
+    const { shown, hidden } = partitionProblems([a, b], TEXT, readHidden(doc), NOW);
+    expect(shown).toEqual([b]);
+    expect(hidden.map((h) => h.problem)).toEqual([a]);
+  });
+
   it('tells two dashes on different lines apart', () => {
     const a = problem(TEXT, '—');
     const b = problem(TEXT, '—', {}, TEXT.indexOf('—') + 1);
@@ -85,6 +96,12 @@ describe('problemKey', () => {
     const key = problemKey(p, TEXT);
     const edited = TEXT.replace('dash qui', 'altro');
     expect(problemKey(problem(edited, 'Il ballo — 3 e il resto.\nUn altro'), edited)).not.toBe(key);
+  });
+
+  it('does not take the next line when a range ends just after a line break', () => {
+    const p = problem(TEXT, 'Il ballo — 3 e il resto.\n');
+    const edited = TEXT.replace('dash qui', 'altro');
+    expect(problemKey(problem(edited, 'Il ballo — 3 e il resto.\n'), edited)).toBe(problemKey(p, TEXT));
   });
 
   it('reads the first line of a problem at offset 0', () => {
