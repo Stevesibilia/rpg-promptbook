@@ -11,9 +11,9 @@ The repository has no lint script: the checks are `npm run typecheck`,
 
 ## 1. Shared planner (brief A)
 
-- [ ] 1.1 `packages/project/src/cuebard.ts` (D4): `CUEBARD_FOLDERS`, the types `CuebardEntry`, `CuebardWarning`, `CuebardSummary`, `CuebardOptions`, `CuebardPack`; `cuebardUuid` (D11); the internal `cuebardSafe`, track names unique without case, the extension from the MIME type, `cuebardFileName` (D12); `needsDuration`; `cuebardPack` on `readDocumentBoard(migratedView(doc))`: contents (D1), project file (D6), groups (D7), tracks (D8), visuals and folders (D3, D9), lengths and `durations` (D10), `missing`, the names-before-leaving-out invariant, the summary and its warnings in board order; exported from `index.ts`
-- [ ] 1.2 `packages/project/src/cuebard-check.ts`: `checkCuebardPack(zip)` with CueBard's rules (D19), its own reader of the zip's headers; exported from `index.ts`
-- [ ] 1.3 `packages/project/test/cuebard.test.ts` and `cuebard-check.test.ts`: every case under `packages/project` and `checkCuebardPack` in D19, including the whole project file compared as text, the invariant (a `missing` track removed, the other names unchanged, the visual relinked), a campaign, a v0.6 board read migrated and the document unchanged, and one broken pack per rule
+- [x] 1.1 `packages/project/src/cuebard.ts` (D4): `CUEBARD_FOLDERS`, the types `CuebardEntry`, `CuebardWarning`, `CuebardSummary`, `CuebardOptions`, `CuebardPack`; `cuebardUuid` (D11); the internal `cuebardSafe`, track names unique without case, the extension from the MIME type, `cuebardFileName` (D12); `needsDuration`; `cuebardPack` on `readDocumentBoard(migratedView(doc))`: contents (D1), project file (D6), groups (D7), tracks (D8), visuals and folders (D3, D9), lengths and `durations` (D10), `missing`, the names-before-leaving-out invariant, the summary and its warnings in board order; exported from `index.ts`
+- [x] 1.2 `packages/project/src/cuebard-check.ts`: `checkCuebardPack(zip)` with CueBard's rules (D19), its own reader of the zip's headers; exported from `index.ts`
+- [x] 1.3 `packages/project/test/cuebard.test.ts` and `cuebard-check.test.ts`: every case under `packages/project` and `checkCuebardPack` in D19, including the whole project file compared as text, the invariant (a `missing` track removed, the other names unchanged, the visual relinked), a campaign, a v0.6 board read migrated and the document unchanged, and one broken pack per rule
 
 ## 2. Server route (brief A)
 
