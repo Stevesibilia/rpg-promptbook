@@ -739,6 +739,40 @@ server'`) and the desktop (`'not on this computer'`) share one format.
 Not done, and accepted: one export per user at a time. The worst case per
 request is bounded by the 4 GB limit.
 
+## Accepted departures (brief B, reviewed by the architect)
+
+Brief B (groups 3 to 5) departed from the decisions above as follows. Each
+was accepted; where a decision and this list disagree, this list wins.
+
+- **Test hook.** `PROMPTBOOK_E2E_NO_KEYRING=1`, honoured only with
+  `PROMPTBOOK_E2E=1`, makes the desktop's secret store report no encryption,
+  so the Mac runs the sign-in path Linux CI takes. CI does not set it.
+- **Part file.** The desktop writes `.<name>.<uuid>.part` beside the target,
+  opened `wx`, then renames it (D15 said `<target>.part`): a user's file of
+  that name is never touched, and two exports cannot swap parts.
+- **Early refusal on the desktop.** It checks the document's own sizes
+  against the limits before fetching anything, then the files' real sizes.
+  Lookups of missing files run in parallel, one per content.
+- **Save path.** A path without `.cbpack` gets it (CueBard imports only that
+  extension); if that file exists already, the export is refused rather
+  than overwrite a file the dialog never asked about.
+- **Strings beyond D17:** "<name>.cbpack exists already: export again and
+  choose another name.", "<name>.cbpack is being saved already.", "Signed
+  out: the CueBard pack was not saved.", "The CueBard pack could not be
+  written. Check the folder and the free space, then try again.", and the
+  `missing` warning "<label>: "<file>" is not available, so it is left
+  out." Raw Node errors never reach the toast.
+- **Sign-out mid-export.** `Files.reading(work)` lets `close()` abort and
+  wait for an export, so sign-out stops reading the account folder.
+  `serve()` now goes through `Files.localPath` with unchanged behaviour.
+- **The dialog follows the document while open** (D16 said computed when
+  it opens), and refuses past 65,000 entries as well as past 4 GB.
+- **Toasts.** On the desktop the result goes to the app-level toast, so it
+  survives leaving the board; it names the file actually saved
+  (`CuebardSaved.name`).
+- **Concurrency.** Main allows one export per target path at a time; the
+  web one per project.
+
 ## Migration Plan
 
 None: no database migration, no document change. Release `v0.8.0`;
