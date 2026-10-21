@@ -1,5 +1,16 @@
 import type { FastifyInstance } from 'fastify';
-import { findTarget, readDocument, readLog, readNotes, readTodo, readTopics } from 'promptbook-project';
+import { parseAdventure, templates, type Problem } from 'promptbook-format';
+import {
+  findTarget,
+  hideProblem,
+  problemKey,
+  readDocument,
+  readLog,
+  readNotes,
+  readTodo,
+  readTopics,
+  SNOOZE_MS,
+} from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { createUser, type User } from '../../src/accounts/users.js';
@@ -15,6 +26,10 @@ import { db, ORIGIN, PASSWORD, signedIn, startApp, steve, testConfig } from './h
 import { mcpCall, mcpCallTool, mcpInitialize, mcpListTools } from './mcp-helpers.js';
 import { connect as connectClient, cookie, FORM, form, type Tokens } from './oauth-helpers.js';
 import { connect, destroyClients, listen, synced, waitFor } from './sync-helpers.js';
+
+// No hides, and a fixed clock for the direct calls of check().
+const NONE = new Map();
+const NOW = new Date();
 
 const METADATA_URL = `${ORIGIN}/.well-known/oauth-protected-resource/api/mcp`;
 
@@ -374,7 +389,7 @@ describe('replace_section', () => {
     const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown: `${markdown}\n\n\n`, hash });
     expect(outcome.isError).toBe(false);
     expect(outcome.value).toMatchObject({ target: 'S1', title: 'La casa che crolla', hash: textHash(markdown) });
-    expect(outcome.value.errors).toBe(check(ADVENTURE, 'adventure')!.errors);
+    expect(outcome.value.errors).toBe(check(ADVENTURE, 'adventure', NONE, NOW)!.errors);
     // The problems answered are the ones inside the new scene.
     expect(outcome.value.problems.length).toBeGreaterThan(0);
     for (const problem of outcome.value.problems) expect(problem.line).toBeGreaterThanOrEqual(7);
@@ -437,7 +452,7 @@ describe('replace_section', () => {
     const markdown = ['### S2. Il molo', '', '**Luogo e momento:** il porto, alba.'].join('\n');
     const outcome = await s.call('replace_section', { projectId: s.id, target: 'S2', markdown, hash });
     expect(outcome.error).toBeUndefined();
-    const before = check(ADVENTURE, 'adventure')!;
+    const before = check(ADVENTURE, 'adventure', NONE, NOW)!;
     expect(outcome.value).toMatchObject({
       errorsBefore: before.errors,
       warningsBefore: before.warnings,
@@ -722,5 +737,96 @@ describe('a token used by the token endpoint as the MCP endpoint sees it', () =>
     });
     const next = refreshed.json().access_token as string;
     expect((await mcpCallTool(s.app, next, 'list_projects')).isError).toBe(false);
+  });
+});
+
+describe('hidden problems', () => {
+  const problemsOf = (text: string) => parseAdventure(text, { template: templates.avventura }).problems;
+  const hide = (s: Setup, text: string, problem: Problem, how: 'dismissed' | 'snoozed') =>
+    withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+      const now = new Date();
+      hideProblem(doc, problem, text, how, how === 'snoozed' ? new Date(now.getTime() + SNOOZE_MS.week).toISOString() : null, now);
+    });
+  // A problem no other problem shares a hide key with, so a hide takes away
+  // exactly one.
+  const lone = (problems: Problem[], text: string, severity: Problem['severity'], inside = (_: Problem) => true) =>
+    problems.find((p) => p.severity === severity && inside(p));
+
+  it('marks hidden problems in an edit result and leaves them out of its counts', async () => {
+    const s = await setup();
+    const { hash } = (await s.call('read_document', { projectId: s.id, target: 'S2' })).value;
+    const markdown = ['### S2. Il molo', '', '**Luogo e momento:** il porto, alba.'].join('\n');
+    const target = findTarget(ADVENTURE, 'adventure', 'S2');
+    if (!target.ok) throw new Error('no S2');
+    const next = ADVENTURE.slice(0, target.target.from) + markdown + ADVENTURE.slice(target.target.to);
+    const end = target.target.from + markdown.length;
+    const inScene = (p: Problem) => p.range.start.offset >= target.target.from && p.range.start.offset <= end;
+    const all = problemsOf(next);
+    const error = lone(all, next, 'error', inScene)!;
+    const warning = lone(all, next, 'warning', inScene)!;
+    expect(error && warning).toBeTruthy();
+    await hide(s, next, error, 'dismissed');
+    await hide(s, next, warning, 'snoozed');
+
+    const outcome = await s.call('replace_section', { projectId: s.id, target: 'S2', markdown, hash });
+    expect(outcome.error).toBeUndefined();
+    const listed = outcome.value.problems as Array<{ code: string; hidden?: string; until?: string; severity: string }>;
+    const dismissed = listed.filter((p) => p.hidden === 'dismissed');
+    const snoozed = listed.filter((p) => p.hidden === 'snoozed');
+    expect(dismissed.length).toBeGreaterThanOrEqual(1);
+    expect(snoozed.length).toBeGreaterThanOrEqual(1);
+    for (const p of dismissed) expect(p).not.toHaveProperty('until');
+    for (const p of snoozed) expect(p.until).toMatch(/^\d{4}-\d\d-\d\dT/);
+    for (const p of listed.filter((p) => !p.hidden)) expect(p).not.toHaveProperty('until');
+    const shown = (severity: string) => listed.filter((p) => !p.hidden && p.severity === severity).length;
+    const total = (severity: string) => all.filter((p) => p.severity === severity).length;
+    // The counts are the whole document's, shown problems only.
+    const hiddenIn = (severity: string) => listed.filter((p) => p.hidden && p.severity === severity).length;
+    expect(outcome.value.errors).toBe(total('error') - hiddenIn('error'));
+    expect(outcome.value.warnings).toBe(total('warning') - hiddenIn('warning'));
+    expect(shown('error')).toBeLessThanOrEqual(outcome.value.errors);
+  });
+
+  it('leaves them out of get_outline, per target and in total, and of the stored counts', async () => {
+    const s = await setup();
+    const problems = problemsOf(ADVENTURE);
+    const inScene = (p: Problem) => p.sceneId !== undefined;
+    const error = lone(problems, ADVENTURE, 'error', inScene)!;
+    const warning = lone(problems, ADVENTURE, 'warning', inScene)!;
+    const before = (await s.call('get_outline', { projectId: s.id })).value;
+    const listedBefore = ((await s.call('list_projects')).value as Array<{ id: string; errors: number; warnings: number }>).find((p) => p.id === s.id)!;
+    await hide(s, ADVENTURE, error, 'dismissed');
+    await hide(s, ADVENTURE, warning, 'snoozed');
+    const hidden = (hidden: Problem[]) => hidden.length;
+    const same = (a: Problem, b: Problem) => problemKey(a, ADVENTURE) === problemKey(b, ADVENTURE);
+    const gone = problems.filter((p) => same(p, error) || same(p, warning));
+    const key = (severity: string) => gone.filter((p) => p.severity === severity).length;
+    expect(hidden(gone)).toBeGreaterThanOrEqual(2);
+
+    const after = (await s.call('get_outline', { projectId: s.id })).value;
+    expect(after.errors).toBe(before.errors - key('error'));
+    expect(after.warnings).toBe(before.warnings - key('warning'));
+    const sum = (o: typeof after, k: 'errors' | 'warnings') =>
+      o.targets
+        .filter((t: { kind: string }) => t.kind === 'scene')
+        .reduce((n: number, t: { errors: number; warnings: number }) => n + t[k], 0);
+    expect(sum(before, 'errors') - sum(after, 'errors')).toBe(key('error'));
+    expect(sum(before, 'warnings') - sum(after, 'warnings')).toBe(key('warning'));
+
+    // The stored row, which list_projects and get_project read.
+    const listed = ((await s.call('list_projects')).value as Array<{ id: string; errors: number; warnings: number }>).find((p) => p.id === s.id)!;
+    expect(listed.errors).toBe(listedBefore.errors - key('error'));
+    expect(listed.warnings).toBe(listedBefore.warnings - key('warning'));
+    const one = (await s.call('get_project', { projectId: s.id })).value;
+    expect(one.counts.errors).toBe(listed.errors);
+    expect(one.counts.warnings).toBe(listed.warnings);
+  });
+
+  it('says in the descriptions that counts leave hidden problems out', async () => {
+    const s = await setup();
+    const tools = await mcpListTools(s.app, s.tokens.access_token);
+    for (const name of ['get_outline', 'replace_section', 'add_scene']) {
+      expect(tools.find((t) => t.name === name)!.description, name).toContain('Counts leave out problems the user hid');
+    }
   });
 });

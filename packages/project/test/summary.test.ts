@@ -1,6 +1,15 @@
 import { parseAdventure, templates } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
-import { addSeedVersion, countWords, readTodo, summarize, updateTodo } from '../src/index.js';
+import {
+  addSeedVersion,
+  countWords,
+  hideProblem,
+  problemKey,
+  readTodo,
+  SNOOZE_MS,
+  summarize,
+  updateTodo,
+} from '../src/index.js';
 import { fixture, project } from './helpers.js';
 
 const campaign = { id: '00000000-0000-4000-8000-0000000000c1', title: 'Cronaca del Gabbiano' };
@@ -32,6 +41,32 @@ describe('summary', () => {
       errors: problems.filter((p) => p.severity === 'error').length,
       warnings: problems.filter((p) => p.severity === 'warning').length,
     });
+  });
+
+  it('leaves hidden problems out of the counts, and counts a snooze again once it ends', () => {
+    const text = fixture('l-ancora-di-sabaoth.converted.md');
+    const doc = project({ document: text });
+    const { problems } = parseAdventure(text, { template: templates.avventura });
+    // Problems whose key no other problem shares, so a hide takes away one.
+    const keys = problems.map((p) => problemKey(p, text));
+    const alone = (severity: string) =>
+      problems.find((p, i) => p.severity === severity && keys.filter((k) => k === keys[i]).length === 1);
+    const error = alone('error');
+    const warning = alone('warning');
+    expect(error && warning).toBeTruthy();
+    const all = summarize(doc, { campaigns: [] });
+    const now = new Date('2026-10-21T10:00:00.000Z');
+    const until = new Date(now.getTime() + SNOOZE_MS.day).toISOString();
+    hideProblem(doc, error!, text, 'dismissed', null, now);
+    hideProblem(doc, warning!, text, 'snoozed', until, now);
+
+    const hidden = summarize(doc, { campaigns: [], now });
+    expect(hidden.errors).toBe(all.errors! - 1);
+    expect(hidden.warnings).toBe(all.warnings! - 1);
+
+    const later = summarize(doc, { campaigns: [], now: new Date(Date.parse(until) + 1) });
+    expect(later.warnings).toBe(all.warnings);
+    expect(later.errors).toBe(hidden.errors);
   });
 
   it('counts words after the front matter, tokens with a letter only', () => {

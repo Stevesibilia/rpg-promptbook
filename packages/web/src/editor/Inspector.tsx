@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { EditorView } from '@codemirror/view';
 import type * as Y from 'yjs';
 import { TodoList } from '../projects/TodoList.js';
-import { Checks } from './Checks.js';
+import { Checks, type Hiding } from './Checks.js';
 import { ResearchSection } from './ResearchSection.js';
 import { SeedView } from './SeedView.js';
 import type { UpdateSource } from './StatusBar.js';
@@ -81,6 +81,10 @@ export function Inspector({
   updates,
   sections,
   setSection,
+  hiding,
+  hiddenOpen,
+  onHiddenToggle,
+  hiddenFlash,
 }: {
   doc: Y.Doc;
   projectId: string;
@@ -89,13 +93,28 @@ export function Inspector({
   updates: UpdateSource;
   sections: Sections;
   setSection(id: SectionId, open: boolean): void;
+  // The hide actions, and whether Checks' hidden problems are listed, held by
+  // the page so the status bar can open them (hide-problems decision 14).
+  hiding: Hiding;
+  hiddenOpen: boolean;
+  onHiddenToggle(open: boolean): void;
+  hiddenFlash: boolean;
 }) {
   return (
     <div className="inspector" aria-label="Inspector">
       {checked && (
         <>
           <ThisScene view={view} updates={updates} open={sections.scene} onToggle={(o) => setSection('scene', o)} />
-          <Checks view={view} updates={updates} open={sections.checks} onToggle={(o) => setSection('checks', o)} />
+          <Checks
+            view={view}
+            updates={updates}
+            open={sections.checks}
+            onToggle={(o) => setSection('checks', o)}
+            hiding={hiding}
+            hiddenOpen={hiddenOpen}
+            onHiddenToggle={onHiddenToggle}
+            flash={hiddenFlash}
+          />
         </>
       )}
       <TodoSection doc={doc} open={sections.todo} onToggle={(o) => setSection('todo', o)} />

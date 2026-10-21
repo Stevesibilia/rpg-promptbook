@@ -4,6 +4,7 @@ import type { EditorView, ViewUpdate } from '@codemirror/view';
 import { templates } from 'promptbook-format';
 import { countWords } from 'promptbook-project';
 import { analysisField } from './analysis/field.js';
+import { problemsOf } from './cm/hidden.js';
 import { frontMatterOf } from './cm/preview.js';
 import { currentItem } from './outline.js';
 
@@ -16,20 +17,25 @@ interface Snapshot {
   checked: boolean;
   errors: number;
   warnings: number;
+  hidden: number;
 }
 
-function snapshotOf(state: EditorState): Snapshot {
+// The counts leave out the hidden problems, counted apart (hide-problems
+// design decision 8).
+export function snapshotOf(state: EditorState): Snapshot {
   const head = state.selection.main.head;
   const line = state.doc.lineAt(head);
   const value = state.field(analysisField, false);
-  const problems = value?.result?.problems ?? [];
+  const parts = problemsOf(state);
+  const shown = parts?.shown ?? [];
   return {
     place: currentItem(state, head)?.place ?? '',
     line: line.number,
     column: head - line.from + 1,
     checked: !!value?.checked,
-    errors: problems.filter((p) => p.severity === 'error').length,
-    warnings: problems.filter((p) => p.severity === 'warning').length,
+    errors: shown.filter((s) => s.problem.severity === 'error').length,
+    warnings: shown.filter((s) => s.problem.severity === 'warning').length,
+    hidden: parts?.hidden.length ?? 0,
   };
 }
 
@@ -52,10 +58,12 @@ export function StatusBar({
   view,
   updates,
   onProblems,
+  onHidden,
 }: {
   view: EditorView | null;
   updates: UpdateSource;
   onProblems(): void;
+  onHidden(): void;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [words, setWords] = useState<number | null>(null);
@@ -98,6 +106,14 @@ export function StatusBar({
         <button className="counts" onClick={onProblems} title="Show the checks">
           <span className={snapshot.errors ? 'd' : ''}>● {plural(snapshot.errors, 'error')}</span>
           <span className={snapshot.warnings ? 'a' : ''}>● {plural(snapshot.warnings, 'warning')}</span>
+        </button>
+      )}
+      {snapshot.checked && snapshot.hidden > 0 && (
+        <button className="hcount" onClick={onHidden} title="Show the hidden problems">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4.5 9.5 6-.5.8-1.6 2.2-3.1 3.5M6.6 7.6C4.6 8.9 3.2 10.8 2.5 12c1 1.5 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1" />
+          </svg>
+          {snapshot.hidden} hidden
         </button>
       )}
       {words !== null && <span>{plural(words, 'word')}</span>}

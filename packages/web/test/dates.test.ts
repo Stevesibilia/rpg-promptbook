@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { purgeDate, relativeTime, shortDate } from '../src/dates.js';
+import { purgeDate, relativeTime, shortDate, snoozeDate } from '../src/dates.js';
 
 const now = new Date(2026, 9, 19, 15, 0);
 const at = (...args: [number, number, number, number, number]) => new Date(...args).toISOString();
@@ -22,5 +22,15 @@ describe('shortDate and purgeDate', () => {
   it('formats a due date and the day the bin removes a project', () => {
     expect(shortDate('2026-10-24')).toBe('24 Oct');
     expect(purgeDate(at(2026, 9, 1, 12, 0))).toBe('31 Oct 2026');
+  });
+});
+
+describe('snoozeDate', () => {
+  it('says the weekday and the day, and the year when it is not this one', () => {
+    const today = new Date(2026, 9, 21, 15, 0);
+    expect(snoozeDate(at(2026, 9, 28, 15, 0), today)).toBe('Wed 28 Oct');
+    expect(snoozeDate(at(2026, 9, 22, 15, 0), today)).toBe('Thu 22 Oct');
+    expect(snoozeDate(at(2027, 0, 4, 15, 0), today)).toBe('Mon 4 Jan 2027');
+    expect(snoozeDate('not a date', today)).toBe('');
   });
 });

@@ -12,8 +12,12 @@ import { platform } from '../platform/index.js';
 import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
+import { useToast, type ToastAction } from '../ui/Toast.js';
+import type { Hiding } from './Checks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
+import { hideHandler } from './cm/problems.js';
 import { CommandPalette } from './CommandPalette.js';
+import { hidingActions } from './hiding.js';
 import { Editor } from './Editor.js';
 import { Inspector, useSections } from './Inspector.js';
 import { outlineOf } from './outline.js';
@@ -34,6 +38,13 @@ import './editor.css';
 import './pdf/pdf.css';
 
 const label = (id: Parameters<typeof shortcut>[0]) => `${shortcut(id).label} (${keyLabel(shortcut(id).keys)})`;
+
+// Hide, restore and restore all with their toasts (hide-problems design
+// decision 14): one toast and one Undo for the tooltip, Checks and the status
+// bar.
+export function useHiding(doc: Y.Doc, toast: (message: string, action?: ToastAction) => void): Hiding {
+  return useMemo(() => hidingActions(doc, toast), [doc, toast]);
+}
 
 // The live project page (design decisions 1 and 11): the top bar with its
 // toggles, the outline, the editor, the inspector or the PDF preview, and the
@@ -56,6 +67,16 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const [pdfOptions, setPdfOptions] = usePdfOptions(meta.id);
   // The pane takes the inspector's place for adventures and one-shots.
   const pane = checked && pdfOpen;
+  const [toast, showToast] = useToast();
+  const hiding = useHiding(doc, showToast);
+  const latestHiding = useRef(hiding);
+  latestHiding.current = hiding;
+  // Checks' hidden problems listed, and briefly marked when the status bar
+  // opened them; not remembered across visits.
+  const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [hiddenFlash, setHiddenFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
 
   // The editor's updates, for the status bar.
   const listeners = useRef(new Set<(update: ViewUpdate) => void>());
@@ -188,6 +209,19 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     setSection('checks', true);
     requestAnimationFrame(() => document.querySelector('.inspector .checks')?.scrollIntoView({ block: 'nearest' }));
   };
+  // «n hidden» opens them, listed and in view.
+  const showHidden = () => {
+    setFocus(false);
+    setInspector(true);
+    setSection('checks', true);
+    setHiddenOpen(true);
+    setHiddenFlash(true);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setHiddenFlash(false), 1400);
+    requestAnimationFrame(() =>
+      document.querySelector('.inspector .checks .hid')?.scrollIntoView({ block: 'nearest' }),
+    );
+  };
 
   // `?scene=S3` (asset-board design decision 12): once the first analysis is
   // in, the cursor goes to that scene's heading as the outline's jump puts
@@ -236,6 +270,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     () => [
       Prec.high(keymap.of(editorKeymap(() => latest.current))),
       EditorView.updateListener.of((update) => listeners.current.forEach((listener) => listener(update))),
+      hideHandler.of((problem, text, as) => latestHiding.current.hide(problem, text, as)),
     ],
     [],
   );
@@ -333,10 +368,14 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
             updates={updates}
             sections={sections}
             setSection={setSection}
+            hiding={hiding}
+            hiddenOpen={hiddenOpen}
+            onHiddenToggle={setHiddenOpen}
+            hiddenFlash={hiddenFlash}
           />
         ) : undefined
       }
-      status={<StatusBar view={view} updates={updates} onProblems={showChecks} />}
+      status={<StatusBar view={view} updates={updates} onProblems={showChecks} onHidden={showHidden} />}
     >
       <Editor doc={doc} checked={checked} extensions={extensions} onView={setView} />
       {pdfSnapshot && <PdfSource svg={pdfSnapshot.good?.svg ?? null} />}
@@ -352,6 +391,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
           onPrint={printPdf}
         />
       )}
+      {toast}
       {dialog === 'syntax' && <SyntaxSheet checked={checked} onClose={closeDialog} />}
       {dialog === 'palette' && (
         <CommandPalette view={view} updates={updates} checked={checked} onRun={runPalette} onClose={closeDialog} />

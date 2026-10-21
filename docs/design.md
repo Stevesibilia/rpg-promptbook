@@ -218,6 +218,9 @@ The main use is editing, so the editor takes most of the screen:
     static recap of the template rules; the full syntax is one key away (⌘/),
     and `/` at the start of a line inserts.
   - **Checks:** errors and warnings for the whole document; click to jump.
+    A problem can be dismissed or snoozed for a day or a week, and is then
+    listed under **Hidden** with Restore; hidden problems are stored in the
+    project and left out of every count (#31, the hide-problems change).
   - **To-do:** the list with its progress bar.
   - **Research:** the research notes whose topic shares a word of four
     letters or more with the scene under the cursor (case and accents
@@ -337,8 +340,11 @@ README says how to connect it.
   (`remove_image_prompt`, #36), whose images go to the Unmatched tray.
 - **Section-scoped edits:** Claude replaces one section, scene or sheet, or
   adds a scene. The edit carries the hash of the text Claude read, so text
-  the user changed in between is never overwritten. An edit that adds
-  template errors is refused with the new problems; warnings pass.
+  the user changed in between is never overwritten. Checks never refuse an
+  edit (#27): the result reports the errors and warnings before and after
+  and the problems in the edited text, as information. Problems the user
+  hid are left out of the counts and listed marked `hidden` (dismissed, or
+  snoozed with its `until`) (#31).
 
 ### Brainstorm memory
 

@@ -72,6 +72,14 @@ import {
 //          Flat keys for the same reason as the board's: a migration and an
 //          edit never write the same key, so replicas migrating at once merge.
 //
+// and, from the hide-problems change (its design decision 1), read and
+// written by hidden.ts:
+//   hiddenProblems  Y.Map, keys "<code>|<sceneId>|<hash>" (hidden.ts
+//          problemKey), plain JSON values set whole:
+//            { code, sceneId, how: dismissed|snoozed, until, at }
+//          One key per hidden problem: hides of different problems merge;
+//          two writes of one key keep the last. Restoring deletes the key.
+//
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
 // moved item. Changing one key merges like any other field.

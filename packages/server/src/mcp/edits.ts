@@ -1,5 +1,13 @@
 import { parseAdventure, templates, type Problem } from 'promptbook-format';
-import { findTarget, targetsOf, type Category, type Target } from 'promptbook-project';
+import {
+  findTarget,
+  partitionProblems,
+  readHidden,
+  targetsOf,
+  type Category,
+  type HiddenEntry,
+  type Target,
+} from 'promptbook-project';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
 import { openLiveDocument } from '../live.js';
@@ -15,36 +23,56 @@ import { ToolRefusal } from './errors.js';
 
 export const MARKDOWN_MAX = 100_000;
 
-// A problem as a model reads it.
+// A problem as a model reads it. One the user hid is still listed, marked:
+// `hidden` says how, and `until` when it is a snooze (hide-problems design
+// decision 6).
 export interface ProblemOut {
   code: string;
   severity: Problem['severity'];
   message: string;
   line: number;
+  hidden?: 'dismissed' | 'snoozed';
+  until?: string;
 }
 
-const problemOut = (p: Problem): ProblemOut => ({
-  code: p.code,
-  severity: p.severity,
-  message: p.message,
-  line: p.range.start.line,
-});
+const problemOut = (p: Problem, hidden: ReadonlyMap<Problem, HiddenEntry>): ProblemOut => {
+  const entry = hidden.get(p);
+  return {
+    code: p.code,
+    severity: p.severity,
+    message: p.message,
+    line: p.range.start.line,
+    ...(entry && { hidden: entry.how }),
+    ...(entry?.how === 'snoozed' && entry.until !== null && { until: entry.until }),
+  };
+};
 
 export interface Check {
+  // Of the problems the user has not hidden.
   errors: number;
   warnings: number;
+  // Every problem, hidden ones too.
   problems: Problem[];
+  // The active entry of each hidden problem.
+  hidden: ReadonlyMap<Problem, HiddenEntry>;
 }
 
 // The checks of an adventure or a one-shot; null for a campaign, which is
-// never parsed.
-export function check(text: string, category: Category): Check | null {
+// never parsed. The counts leave out the problems the user hid.
+export function check(
+  text: string,
+  category: Category,
+  hidden: ReadonlyMap<string, HiddenEntry>,
+  now: Date,
+): Check | null {
   if (category === 'campaign') return null;
   const { problems } = parseAdventure(text, { template: templates.avventura });
+  const parts = partitionProblems(problems, text, hidden, now);
   return {
-    errors: problems.filter((p) => p.severity === 'error').length,
-    warnings: problems.filter((p) => p.severity === 'warning').length,
+    errors: parts.shown.filter((p) => p.severity === 'error').length,
+    warnings: parts.shown.filter((p) => p.severity === 'warning').length,
     problems,
+    hidden: new Map(parts.hidden.map((h) => [h.problem, h.entry])),
   };
 }
 
@@ -140,15 +168,23 @@ interface Report {
   problems: ProblemOut[];
 }
 
-function report(before: string, after: string, category: Category, from: number, to: number): Report {
-  const old = check(before, category);
-  const next = check(after, category);
+function report(
+  before: string,
+  after: string,
+  category: Category,
+  from: number,
+  to: number,
+  hidden: ReadonlyMap<string, HiddenEntry>,
+  now: Date,
+): Report {
+  const old = check(before, category, hidden, now);
+  const next = check(after, category, hidden, now);
   return {
     errorsBefore: old?.errors ?? null,
     warningsBefore: old?.warnings ?? null,
     errors: next?.errors ?? null,
     warnings: next?.warnings ?? null,
-    problems: next ? inSpan(next.problems, from, to).map(problemOut) : [],
+    problems: next ? inSpan(next.problems, from, to).map((p) => problemOut(p, next.hidden)) : [],
   };
 }
 
@@ -197,7 +233,7 @@ async function apply(
   userId: string,
   grantId: string,
   tool: 'replace_section' | 'add_scene',
-  plan: (text: string) => Planned,
+  plan: (text: string, hidden: ReadonlyMap<string, HiddenEntry>, now: Date) => Planned,
 ): Promise<EditResult> {
   const live = await openLiveDocument(sync, project.id, userId);
   try {
@@ -206,7 +242,9 @@ async function apply(
       attempts: 1,
       moved: CHANGED_SINCE_READ,
       next: (text) => {
-        planned = plan(text);
+        // The hides as the open clients have them, and one clock for the
+        // whole plan.
+        planned = plan(text, readHidden(live.doc), new Date());
         return planned.text;
       },
       snapshot: (text) =>
@@ -241,7 +279,7 @@ export function replaceSection(
   input: { target: string; markdown: string; hash: string },
 ): Promise<EditResult> {
   const markdown = withoutTrailingBlanks(input.markdown);
-  return apply(db, sync, project, userId, grantId, 'replace_section', (text) => {
+  return apply(db, sync, project, userId, grantId, 'replace_section', (text, hidden, now) => {
     const target = locate(text, project.category, input.target);
     const before = text.slice(target.from, target.to);
     // The caller's hash, checked against the live text every time.
@@ -250,7 +288,7 @@ export function replaceSection(
     const next = text.slice(0, target.from) + markdown + text.slice(target.to);
     const end = target.from + markdown.length;
     const after = spanAfter(next, project.category, target.target, target.from, end);
-    const reported = report(text, next, project.category, target.from, end);
+    const reported = report(text, next, project.category, target.from, end, hidden, now);
     const afterHash = textHash(markdown);
     return {
       text: next,
@@ -281,7 +319,7 @@ export function addScene(
   }
   const body = withoutLeadingBlankLines(withoutTrailingBlanks(input.markdown));
   const title = input.title.trim();
-  return apply(db, sync, project, userId, grantId, 'add_scene', (text) => {
+  return apply(db, sync, project, userId, grantId, 'add_scene', (text, hidden, now) => {
     const { model } = parseAdventure(text, { template: templates.avventura });
     const section = model.sections.find((s) => s.role === 'scenes');
     if (!section) {
@@ -301,7 +339,7 @@ export function addScene(
     const from = at + 2;
     const end = from + scene.length;
     const after = spanAfter(next, project.category, id, from, end);
-    const reported = report(text, next, project.category, from, end);
+    const reported = report(text, next, project.category, from, end, hidden, now);
     const afterHash = textHash(scene);
     return {
       text: next,

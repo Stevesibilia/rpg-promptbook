@@ -3,6 +3,7 @@ import { indentWithTab } from '@codemirror/commands';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
 import { templates } from 'promptbook-format';
+import { nextExpiry, readHidden } from 'promptbook-project';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
 import * as Y from 'yjs';
 import { analysis } from './analysis/field.js';
@@ -10,14 +11,20 @@ import { connectWorker } from './analysis/client.js';
 import { baseKeymap } from './cm/keymap.js';
 import { markdownWithTables } from './cm/language.js';
 import { preview, previewConfigOf } from './cm/preview.js';
-import { problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
+import { hiddenField, hiddenOf, type HiddenState } from './cm/hidden.js';
+import { hiddenEffects, problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
 import { slashMenu } from './cm/slash.js';
 import { tables } from './cm/tables.js';
 import { editorHighlight } from './cm/theme.js';
 
+// The longest the snooze timer waits before looking again: a day, well under
+// setTimeout's limit of 2^31-1 ms.
+const MAX_WAIT = 86_400_000;
+
 // The prep document's editor: CodeMirror 6 bound to the document's Y.Text,
 // with the live preview, and for adventures and one-shots the problems found
-// by the parse worker. Undo covers this tab's own edits only.
+// by the parse worker, less those the owner hid. Undo covers this tab's own
+// edits only.
 export function Editor({
   doc,
   checked,
@@ -50,6 +57,7 @@ export function Editor({
           editorHighlight,
           preview(previewConfigOf(templates.avventura, checked)),
           tables,
+          hiddenField.init(() => ({ entries: readHidden(doc), now: new Date() })),
           analysis({ checked, connect: connectWorker, onResult: pushDiagnostics }),
           checked ? problems : [],
           slashMenu(templates.avventura, checked),
@@ -63,7 +71,36 @@ export function Editor({
       }),
     });
     latest.current.onView?.(view);
+
+    // The hidden problems follow the project's map, and come back when a
+    // snooze ends without a reload (hide-problems design decision 7).
+    const hidden = doc.getMap('hiddenProblems');
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = ({ entries, now }: HiddenState) => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      const next = nextExpiry(entries, now);
+      if (!next) return;
+      // A snooze may end years away, past what setTimeout can wait: the wait
+      // is cut to a day and checked again then.
+      const wait = Math.min(Math.max(next.getTime() - Date.now(), 0), MAX_WAIT);
+      timer = setTimeout(() => {
+        timer = null;
+        if (Date.now() >= next.getTime()) refresh();
+        else schedule(hiddenOf(view.state));
+      }, wait);
+    };
+    const refresh = () => {
+      const value: HiddenState = { entries: readHidden(doc), now: new Date() };
+      view.dispatch({ effects: hiddenEffects(view.state, value) });
+      schedule(value);
+    };
+    hidden.observe(refresh);
+    schedule(hiddenOf(view.state));
+
     return () => {
+      hidden.unobserve(refresh);
+      if (timer !== null) clearTimeout(timer);
       latest.current.onView?.(null);
       view.destroy();
       undoManager.destroy();

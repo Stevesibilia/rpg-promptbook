@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { templates } from 'promptbook-format';
 import { createProject, signIn, syncPill } from './helpers.js';
 
@@ -299,4 +299,133 @@ test('counts follow the text', async ({ page }) => {
       description: `${tasks.length}, longest ${longest} ms`,
     });
   console.log(`main-thread tasks over 50 ms while typing in Sabaoth: ${tasks.length}, longest ${longest} ms`);
+});
+
+// Hiding problems (hide-problems design decision 9), on a project of the
+// test's own with the Sabaoth text.
+
+const checksRow = (page: Page, text: string) => page.locator('.inspector .plist .prow', { hasText: text });
+const hiddenList = (page: Page) => page.locator('.inspector .hid');
+const hiddenCount = (page: Page) => page.locator('.status .hcount');
+const toast = (page: Page) => page.locator('.toast');
+const UNKNOWN = 'Se il tempo stringe';
+const THREAT = 'has a grade but is not listed';
+
+// «Wed 28 Oct»: a snooze's end as the app shows it, this year.
+const snoozeDay = (ms: number) =>
+  new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(
+    new Date(Date.now() + ms),
+  );
+const DAY = 86_400_000;
+
+// Dismisses «Se il tempo stringe» from its tooltip.
+async function dismissFromTooltip(page: Page): Promise<Locator> {
+  await checksRow(page, UNKNOWN).locator('.prob').click();
+  const squiggle = page.locator('.cm-line', { hasText: 'Se il tempo stringe:' }).locator('.cm-lintRange-error').first();
+  await squiggle.hover();
+  const tooltip = page.locator('.cm-tooltip-lint');
+  await expect(tooltip.locator('.cm-diagnosticSource')).toHaveText('scene.field.unknown');
+  await tooltip.getByRole('button', { name: /Dismiss/ }).click();
+  return squiggle;
+}
+
+test('hide and restore problems', async ({ page }) => {
+  await projectWith(page, sabaoth);
+  await expect.poll(() => problemCount(page)).toBeGreaterThan(0);
+  const before = await problemCount(page);
+
+  // Dismissed from the tooltip: its squiggle, its row and one count go.
+  const squiggle = await dismissFromTooltip(page);
+  await expect(toast(page)).toContainText('Problem dismissed');
+  await expect(squiggle).toHaveCount(0);
+  await expect(page.locator('.cm-tooltip-lint')).toHaveCount(0);
+  await expect(checksRow(page, UNKNOWN)).toHaveCount(0);
+  await expect.poll(() => problemCount(page)).toBe(before - 1);
+  await expect(hiddenCount(page)).toHaveText('1 hidden');
+
+  // Undo of a dismissal.
+  await toast(page).getByRole('button', { name: 'Undo' }).click();
+  await expect(toast(page)).toHaveText('Undone');
+  await expect(checksRow(page, UNKNOWN)).toHaveCount(1);
+  await expect(hiddenCount(page)).toHaveCount(0);
+  await expect.poll(() => problemCount(page)).toBe(before);
+  await dismissFromTooltip(page);
+  await expect(hiddenCount(page)).toHaveText('1 hidden');
+
+  // Snoozed from a row's menu, opened and moved through with the keyboard.
+  const row = checksRow(page, THREAT);
+  const more = row.getByRole('button', { name: 'More actions' });
+  await more.focus();
+  await page.keyboard.press('Enter');
+  const menu = page.getByRole('menu');
+  await expect(menu.getByRole('menuitem')).toHaveText([
+    `Snooze for a day until ${snoozeDay(DAY)}`,
+    `Snooze for a week until ${snoozeDay(7 * DAY)}`,
+    'Dismiss for good',
+  ]);
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(more).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem', { name: /Snooze for a week/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toast(page)).toContainText(`Snoozed until ${snoozeDay(7 * DAY)}`);
+  await expect(menu).toHaveCount(0);
+  await expect(row).toHaveCount(0);
+  await expect(hiddenCount(page)).toHaveText('2 hidden');
+  await expect.poll(() => problemCount(page)).toBe(before - 2);
+
+  // «2 hidden» opens the list, with each one's status.
+  await hiddenCount(page).click();
+  await expect(hiddenList(page)).toHaveAttribute('open', '');
+  await expect(hiddenList(page).locator('summary')).toHaveText('Hidden (2)');
+  await expect(hiddenList(page)).toBeInViewport();
+  const hiddenRows = hiddenList(page).locator('.prow');
+  await expect(hiddenRows.locator('.hstat')).toHaveText([`Snoozed until ${snoozeDay(7 * DAY)}`, 'Dismissed']);
+
+  // Restore one, and Undo the restore.
+  await hiddenRows.filter({ hasText: UNKNOWN }).getByRole('button', { name: 'Restore' }).click();
+  await expect(toast(page)).toContainText('Problem restored');
+  await expect(hiddenList(page).locator('summary')).toHaveText('Hidden (1)');
+  await expect(checksRow(page, UNKNOWN)).toHaveCount(1);
+  await toast(page).getByRole('button', { name: 'Undo' }).click();
+  await expect(hiddenList(page).locator('summary')).toHaveText('Hidden (2)');
+  await expect(checksRow(page, UNKNOWN)).toHaveCount(0);
+
+  // A reload keeps the hides.
+  await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
+  await page.reload();
+  await expect(outlineItem(page, 'S5')).toBeVisible();
+  await expect(hiddenCount(page)).toHaveText('2 hidden');
+  await expect(checksRow(page, UNKNOWN)).toHaveCount(0);
+  await expect(checksRow(page, THREAT)).toHaveCount(0);
+
+  // Restore all.
+  await hiddenCount(page).click();
+  await hiddenList(page).getByRole('button', { name: 'Restore all' }).click();
+  await expect(toast(page)).toContainText('2 problems restored');
+  await expect(hiddenList(page)).toHaveCount(0);
+  await expect(hiddenCount(page)).toHaveCount(0);
+  await expect.poll(() => problemCount(page)).toBe(before);
+});
+
+test('a hide seen in another browser', async ({ page, browser }) => {
+  const id = await projectWith(page, sabaoth);
+  const context = await browser.newContext();
+  const other = await context.newPage();
+  await signIn(other);
+  await open(other, id);
+  await expect(checksRow(other, THREAT)).toHaveCount(1);
+
+  await checksRow(page, THREAT).hover();
+  await checksRow(page, THREAT).getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: /Dismiss/ }).click();
+  await expect(checksRow(page, THREAT)).toHaveCount(0);
+
+  await expect(checksRow(other, THREAT)).toHaveCount(0);
+  await expect(hiddenCount(other)).toHaveText('1 hidden');
+  await context.close();
 });

@@ -1,6 +1,7 @@
 import { parseAdventure, templates } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { currentSeed, readDocument, readMeta, readTodo } from './doc.js';
+import { partitionProblems, readHidden } from './hidden.js';
 import type { CampaignRef, Category, Status } from './model.js';
 
 // The fields of the server's projects row, derived from the document, which
@@ -35,9 +36,12 @@ export interface SummarizeOptions {
   // The user's campaigns. A campaign link to anything else, or from a
   // campaign, is summarised as stand-alone; the document is not rewritten.
   campaigns: readonly CampaignRef[];
+  // The clock the hidden problems are judged by; a snooze that has ended
+  // counts again. Defaults to the real one.
+  now?: Date;
 }
 
-export function summarize(doc: Y.Doc, { campaigns }: SummarizeOptions): Summary {
+export function summarize(doc: Y.Doc, { campaigns, now = new Date() }: SummarizeOptions): Summary {
   const meta = readMeta(doc);
   const todo = readTodo(doc);
   const linked =
@@ -72,7 +76,10 @@ export function summarize(doc: Y.Doc, { campaigns }: SummarizeOptions): Summary 
   const body = model.meta.range ? text.slice(model.meta.range.end.offset) : text;
   summary.scenes = model.scenes.length;
   summary.words = countWords(body);
-  summary.errors = problems.filter((p) => p.severity === 'error').length;
-  summary.warnings = problems.filter((p) => p.severity === 'warning').length;
+  // Problems the owner hid are left out of the counts (hide-problems design
+  // decision 5).
+  const { shown } = partitionProblems(problems, text, readHidden(doc), now);
+  summary.errors = shown.filter((p) => p.severity === 'error').length;
+  summary.warnings = shown.filter((p) => p.severity === 'warning').length;
   return summary;
 }
