@@ -39,10 +39,10 @@ architect.
 
 ## 4. End-to-end tests and docs
 
-- [ ] 4.1 `e2e/projects.spec.ts`: the flows of D9, on a campaign and an adventure the test creates
-- [ ] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.3 Docs: README, a short "gdrarchive link" paragraph after "Hiding problems" (set it in the panel, the address rule, inheritance, the top bar, `get_project`); `docs/design.md`, under "Send to gdrarchive", one line on the link from #32 and that sending items is still later; Prettier on the files touched
-- [ ] 4.4 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back to the architect with the departures from the design and the risks met
+- [x] 4.1 `e2e/projects.spec.ts`: the flows of D9, on a campaign and an adventure the test creates
+- [x] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.3 Docs: README, a short "gdrarchive link" paragraph after "Hiding problems" (set it in the panel, the address rule, inheritance, the top bar, `get_project`); `docs/design.md`, under "Send to gdrarchive", one line on the link from #32 and that sending items is still later; Prettier on the files touched
+- [x] 4.4 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back to the architect with the departures from the design and the risks met
 
 ## 5. Review and release (architect)
 

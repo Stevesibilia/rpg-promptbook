@@ -182,6 +182,21 @@ Hidden problems are stored in the project, so every device sees the same
 ones. The projects list leaves them out of its counts; when a snooze ends, the
 list counts the problem again once the project is next edited or opened.
 
+## gdrarchive link
+
+A project can link to its campaign in
+[gdrarchive](https://gdrarchive.siberio.eu), where play is logged. Select it in
+the projects list and choose **Link to gdrarchive…** in the panel: paste the
+campaign's address (`https://gdrarchive.siberio.eu/campaigns/<id>`; any other
+address is refused) and, if you like, a short label. **Change…** edits it or
+**Remove link** takes it away. An adventure or a one-shot in a campaign, with
+no link of its own, shows the campaign's, marked **from campaign …**; **Set
+its own…** gives it one of its own. The link also shows, read-only, in the top
+bar of every view of the project, and opens in a new tab (in the system
+browser in the desktop app). Promptbook never calls gdrarchive. The
+connector's `get_project` returns the link, marked `inherited` when it comes
+from the campaign, and an export's `project.json` holds the project's own.
+
 ## Claude connector
 
 Promptbook is its own connector for Claude on the web and Claude Desktop. In

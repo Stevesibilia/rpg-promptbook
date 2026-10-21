@@ -225,3 +225,104 @@ test('signing out in another tab asks to sign in, and typed text still arrives',
   await context.close();
   await check.close();
 });
+
+test('link a campaign to gdrarchive, inherit it in an adventure, override and remove', async ({ page }) => {
+  await signIn(page);
+  const campaign = await createProject(page.request, 'Kulthos', { category: 'campaign' });
+  const adventure = await createProject(page.request, "L'Ancora di Sabaoth", {
+    category: 'adventure',
+    campaignId: campaign.id,
+  });
+  const kulthos = 'https://gdrarchive.siberio.eu/campaigns/6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b';
+  const own = 'https://gdrarchive.siberio.eu/campaigns/31';
+  const panel = page.getByTestId('panel');
+  const link = panel.locator('a.gdr-link');
+
+  // The campaign: a labelled link, pasted with a trailing slash.
+  await page.reload();
+  await page.getByLabel('Search titles and seeds').fill(campaign.title);
+  await row(page, campaign.title).click();
+  await panel.getByRole('button', { name: 'Link to gdrarchive…' }).click();
+  await expect(panel.getByLabel('Address')).toBeFocused();
+  await panel.getByLabel('Address').fill(`${kulthos}/`);
+  await panel.getByLabel(/^Label/).fill('Kulthos');
+  await expect(panel.locator('.gdr-form .fh')).toHaveText('Shows as gdrarchive · Kulthos, opening in a new tab.');
+  await panel.getByLabel(/^Label/).press('Enter');
+  await expect(link).toHaveText('gdrarchive · Kulthos');
+  await expect(link).toHaveAttribute('href', kulthos);
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('title', `Opens ${kulthos} in a new tab`);
+  await expect(panel.getByRole('button', { name: 'Change…' })).toBeFocused();
+
+  // The adventure inherits it once the list carries the campaign's link.
+  await page.getByLabel('Search titles and seeds').fill(adventure.title);
+  await row(page, adventure.title).click();
+  await expect(panel.getByText(`from campaign ${campaign.title}`)).toBeVisible({ timeout: 20_000 });
+  await expect(link).toHaveText('gdrarchive · Kulthos');
+  await expect(link).toHaveAttribute('href', kulthos);
+
+  // Empty on Save keeps the campaign's link.
+  await panel.getByRole('button', { name: 'Set its own…' }).click();
+  await expect(panel.getByLabel('Address')).toHaveAttribute('placeholder', kulthos);
+  await expect(panel.locator('.gdr-form .fh')).toHaveText(
+    `Left empty, it keeps the link of campaign ${campaign.title}.`,
+  );
+  await expect(panel.getByRole('button', { name: 'Remove link' })).toHaveCount(0);
+  await panel.getByLabel('Address').press('Enter');
+  await expect(panel.getByText(`from campaign ${campaign.title}`)).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Set its own…' })).toBeFocused();
+
+  // Escape cancels from the buttons too.
+  await panel.getByRole('button', { name: 'Set its own…' }).click();
+  await panel.getByRole('button', { name: 'Save' }).focus();
+  await page.keyboard.press('Escape');
+  await expect(panel.locator('.gdr-form')).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'Set its own…' })).toBeFocused();
+
+  // A wrong address is refused with the message, and stores nothing.
+  await panel.getByRole('button', { name: 'Set its own…' }).click();
+  const address = panel.getByLabel('Address');
+  await address.fill('https://gdrarchive.siberio.eu/sessions/48');
+  await address.press('Enter');
+  await expect(panel.getByRole('alert')).toHaveText(
+    'Paste a gdrarchive campaign address, like https://gdrarchive.siberio.eu/campaigns/12',
+  );
+  await expect(address).toHaveAttribute('aria-invalid', 'true');
+  await expect(address).toHaveAccessibleDescription(/Paste a gdrarchive campaign address/);
+  await address.fill(own);
+  await expect(address).toHaveAttribute('aria-invalid', 'false');
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+
+  // Its own link wins over the campaign's.
+  await address.press('Enter');
+  await expect(link).toHaveText('gdrarchive campaign');
+  await expect(link).toHaveAttribute('href', own);
+  await expect(panel.getByText(/from campaign/)).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'Change…' })).toBeVisible();
+
+  // Remove link brings back the campaign's.
+  await panel.getByRole('button', { name: 'Change…' }).click();
+  const remove = panel.getByRole('button', { name: 'Remove link' });
+  await expect(remove).toHaveAttribute('title', "Back to the campaign's link");
+  await remove.click();
+  await expect(panel.getByText(`from campaign ${campaign.title}`)).toBeVisible();
+  await expect(link).toHaveAttribute('href', kulthos);
+
+  // The editor's top bar shows the inherited link, read-only, and focus mode hides it.
+  await page.goto(`/projects/${adventure.id}`);
+  const pill = page.locator('.top-meta a.gdr-link');
+  await expect(pill).toHaveText('gdrarchive · Kulthos');
+  await expect(pill).toHaveAttribute('href', kulthos);
+  await expect(pill).toHaveAttribute('target', '_blank');
+  await expect(pill).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(pill).toHaveAttribute('title', `From campaign ${campaign.title}. Opens ${kulthos} in a new tab`);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+.');
+  await expect(pill).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(pill).toBeVisible();
+
+  // A reload keeps it.
+  await page.reload();
+  await expect(page.locator('.top-meta a.gdr-link')).toHaveAttribute('href', kulthos);
+});
