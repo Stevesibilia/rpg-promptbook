@@ -697,6 +697,48 @@ Report it, do not work around it:
   differences are exactly the `no-duration` and `missing` items, listed in
   `left-out.txt`.
 
+## Accepted departures (brief A, reviewed by the architect)
+
+Brief A (groups 1 and 2, `43db48e`, `d116329`) departed from the decisions
+above as follows. Each was accepted; where a decision and this list
+disagree, this list wins.
+
+- **Shared helpers.** `cuebardFiles(doc)` returns every file D1 picks, in
+  project-file order (`needsDuration` filters it); `cuebardLeftOut(pack,
+missingReason)` writes `left-out.txt`, so the server (`'not on the
+server'`) and the desktop (`'not on this computer'`) share one format.
+  `checkCuebardPack` reads the zip with fflate, now a dependency of
+  `promptbook-project`; the web bundle does not grow (tree-shaken).
+- **`summary.empty`** means nothing picked at all, whatever `durations` or
+  `missing` say: the server reads lengths from the files. With no
+  durations, the dialog's track count leaves out tracks with no recorded
+  length (they appear as `no-duration` warnings), so it can be lower than
+  the pack's.
+- **D12 names**, from a security review: the stem is also cut to 150 UTF-8
+  bytes; Windows device names (`CON`, `AUX`…) get a `_` prefix; leading dots
+  are stripped; duplicates compare under NFKC with an upper-then-lower case
+  fold; `visuals` is reserved among track names; an extension is `.` plus 1
+  to 10 ASCII letters or digits; a duplicate file id in the document keeps
+  its first entry.
+- **Texts clipped.** Scene titles, prompt names, music titles, file names in
+  warnings and the project name are clipped to the board's `LIMITS`, so the
+  project file cannot grow without bound. A scene with an empty title is
+  labelled with its id alone.
+- **D13 and D14 limits.** The route checks the size twice: on every picked
+  file it holds before reading any length, then on the final entries plus
+  three times the characters of the project file and `left-out.txt`. A
+  file's size and type come from the server's `files` row, never the
+  document; only `audio/*` is parsed, each content once; parsing stops when
+  the client has gone. The route plans on a frozen copy of the live
+  document, so the files checked against the project's links are the ones
+  streamed.
+- **Warnings order.** Within a scene or category, prompt by prompt, then
+  the scene's music. A track with no Suno title is named after its file
+  without the extension.
+
+Not done, and accepted: one export per user at a time. The worst case per
+request is bounded by the 4 GB limit.
+
 ## Migration Plan
 
 None: no database migration, no document change. Release `v0.8.0`;
