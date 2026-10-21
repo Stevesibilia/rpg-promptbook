@@ -1,3 +1,5 @@
+import type { GdrarchiveLink } from './gdrarchive.js';
+
 // The values a project's metadata can take, and the plain shapes the readers
 // return. Everything here is JSON-safe: it crosses the REST API and, later,
 // the Electron IPC.
@@ -26,6 +28,9 @@ export interface ProjectMeta {
   system: string;
   // ISO date-time.
   createdAt: string;
+  // The project's own link to its gdrarchive campaign (gdrarchive-link design
+  // decision 1).
+  gdrarchive: GdrarchiveLink | null;
 }
 
 export interface TodoItem {
@@ -137,6 +142,8 @@ export const LIMITS = {
   style: 1000,
   lyrics: 3000,
   fileName: 255,
+  // The label of a gdrarchive link (gdrarchive-link design decision 2).
+  gdrarchiveLabel: 40,
 } as const;
 
 // The most items each collection takes; past it a writer refuses and a reader

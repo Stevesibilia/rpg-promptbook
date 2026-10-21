@@ -13,11 +13,11 @@ architect.
 
 ## 1. The link in the project
 
-- [ ] 1.1 `packages/project/src/gdrarchive.ts` (D2, D4, D10): `GDRARCHIVE_ORIGIN`, `GdrarchiveLink`, `ResolvedGdrarchive`, `parseGdrarchiveUrl`, `readGdrarchive`, `gdrarchiveOf`; `LIMITS.gdrarchiveLabel = 40` in `model.ts`; exported from `index.ts`
-- [ ] 1.2 `model.ts` `ProjectMeta.gdrarchive`; `doc.ts` `readMeta` reads it through `readGdrarchive`; new `setGdrarchive` (D3); the layout comment at `doc.ts:30-31` gains the key and the paragraph of D1
-- [ ] 1.3 `summary.ts`: `Summary.gdrarchive`, set by `summarize` for every category (D5); `row.ts` needs no code change
-- [ ] 1.4 Tests of D9 under `packages/project`: new `test/gdrarchive.test.ts`; cases in `doc.test.ts`, `summary.test.ts`, `row.test.ts`
-- [ ] 1.5 So the typecheck stays green: the fixture that builds a `ProjectRow` by hand gains `gdrarchive: null` (`packages/web/test/list.test.ts:13`), and the server's `toRow` (`packages/server/src/projects.ts:52-76`) passes `gdrarchive: null` until group 2 reads the columns
+- [x] 1.1 `packages/project/src/gdrarchive.ts` (D2, D4, D10): `GDRARCHIVE_ORIGIN`, `GdrarchiveLink`, `ResolvedGdrarchive`, `parseGdrarchiveUrl`, `readGdrarchive`, `gdrarchiveOf`; `LIMITS.gdrarchiveLabel = 40` in `model.ts`; exported from `index.ts`
+- [x] 1.2 `model.ts` `ProjectMeta.gdrarchive`; `doc.ts` `readMeta` reads it through `readGdrarchive`; new `setGdrarchive` (D3); the layout comment at `doc.ts:30-31` gains the key and the paragraph of D1
+- [x] 1.3 `summary.ts`: `Summary.gdrarchive`, set by `summarize` for every category (D5); `row.ts` needs no code change
+- [x] 1.4 Tests of D9 under `packages/project`: new `test/gdrarchive.test.ts`; cases in `doc.test.ts`, `summary.test.ts`, `row.test.ts`
+- [x] 1.5 So the typecheck stays green: the fixture that builds a `ProjectRow` by hand gains `gdrarchive: null` (`packages/web/test/list.test.ts:13`), and the server's `toRow` (`packages/server/src/projects.ts:52-76`) passes `gdrarchive: null` until group 2 reads the columns
 
 ## 2. Server, connector, export
 

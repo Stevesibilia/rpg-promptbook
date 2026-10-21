@@ -66,6 +66,7 @@ const toRow = (r: DbRow): ProjectRow =>
       words: r.words,
       errors: r.errors,
       warnings: r.warnings,
+      gdrarchive: null,
     },
     {
       createdAt: r.created_at.toISOString(),

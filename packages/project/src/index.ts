@@ -87,6 +87,7 @@ export {
   saveNote,
   seedVersions,
   setCampaign,
+  setGdrarchive,
   setStatus,
   setTitle,
   setTopicState,
@@ -101,6 +102,15 @@ export {
   type ProjectInput,
   type TodoPatch,
 } from './doc.js';
+export {
+  GDRARCHIVE_ORIGIN,
+  gdrarchiveOf,
+  isGdrarchiveLabel,
+  parseGdrarchiveUrl,
+  readGdrarchive,
+  type GdrarchiveLink,
+  type ResolvedGdrarchive,
+} from './gdrarchive.js';
 export {
   hideProblem,
   isActive,
