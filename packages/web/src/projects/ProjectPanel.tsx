@@ -11,6 +11,7 @@ import { DownloadLink } from '../ui/DownloadLink.js';
 import { Modal } from '../ui/Modal.js';
 import { useToast } from '../ui/Toast.js';
 import { CampaignSelect, StatusSelect, TitleInput } from './controls.js';
+import { GdrarchiveField } from './GdrarchiveLink.js';
 import { categoryLabels, statusLabels } from './list.js';
 import { TodoList } from './TodoList.js';
 
@@ -79,6 +80,10 @@ function LivePanel({
   onDeleted(): void;
 }) {
   const meta = useDocValue(doc, readMeta);
+  // The campaign the live document names, as the list has it: what an
+  // adventure or a one-shot inherits its gdrarchive link from.
+  const campaign =
+    meta.category === 'campaign' ? undefined : campaigns.find((c) => c.id === meta.campaignId && c.id !== meta.id);
   const [confirm, setConfirm] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [toast, showToast] = useToast();
@@ -97,6 +102,8 @@ function LivePanel({
             In <CampaignSelect doc={doc} meta={meta} campaigns={campaigns} />
           </div>
         )}
+        {/* Keyed by the campaign: moving the project closes an open form. */}
+        <GdrarchiveField key={campaign?.id ?? ''} doc={doc} meta={meta} campaign={campaign} />
         <div className="open">
           <button className="tb primary" onClick={onOpen}>
             Open

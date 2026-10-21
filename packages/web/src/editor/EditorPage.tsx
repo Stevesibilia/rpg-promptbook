@@ -9,7 +9,7 @@ import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
 import { useWindowTitle } from '../desktop/title.js';
 import { platform } from '../platform/index.js';
-import { HistoryButton, ProjectCrumbs, ProjectMetaControls } from '../project/top.js';
+import { HistoryButton, ProjectCrumbs, ProjectMetaControls, useCampaignRow } from '../project/top.js';
 import { Shell } from '../shell/Shell.js';
 import { useDocValue } from '../sync/hooks.js';
 import { useToast, type ToastAction } from '../ui/Toast.js';
@@ -51,6 +51,7 @@ export function useHiding(doc: Y.Doc, toast: (message: string, action?: ToastAct
 // status bar; the PDF review over them.
 export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
+  const campaign = useCampaignRow(meta);
   useWindowTitle(meta.title);
   const checked = meta.category !== 'campaign';
 
@@ -282,8 +283,8 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       category={meta.category}
       focus={focus}
       wideRight={pane}
-      crumbs={<ProjectCrumbs meta={meta} />}
-      topExtra={<ProjectMetaControls doc={doc} meta={meta} />}
+      crumbs={<ProjectCrumbs meta={meta} campaign={campaign} />}
+      topExtra={<ProjectMetaControls doc={doc} meta={meta} campaign={campaign} />}
       banner={<ClaudeBanner projectId={meta.id} />}
       topEnd={
         <div className="top-tools">

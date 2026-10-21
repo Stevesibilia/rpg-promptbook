@@ -30,12 +30,12 @@ architect.
 
 ## 3. Web panel and top bar
 
-- [ ] 3.1 `packages/web/src/projects/gdrarchive.ts`: `linkText`, `linkTitle`, `formPreview`, `saveAction` (D12); `packages/web/test/gdrarchive.test.ts`
-- [ ] 3.2 `packages/web/src/projects/GdrarchiveLink.tsx`: `GdrarchiveLink`, `GdrarchiveField` (own, inherited, none) and `GdrarchiveForm` with the texts, titles, keys, error message, preview and «Remove link» rule of "The mockup in words"; focus as D14
-- [ ] 3.3 `ProjectPanel.tsx` `LivePanel`: `GdrarchiveField` under the "In" row, or under the status row for a campaign, with the campaign row from `campaigns` by the live `meta.campaignId`
-- [ ] 3.4 `project/top.tsx`: `useCampaignRow`; `ProjectCrumbs` and `ProjectMetaControls` take `campaign` (D13); the read-only pill after `StatusSelect` inside `.top-meta`; `EditorPage.tsx:285-286` and `ProjectShell.tsx:29-30` pass the row
-- [ ] 3.5 Styles from the mockup's `.gdr`, `.gdr-link`, `.gdr-form` rules in `projects/projects.css`, and the pill's in `editor/editor.css` beside `.top-meta`; light and dark
-- [ ] 3.6 Checks: `npm run typecheck`, `npm test`; screenshots of the panel (views 1 to 4 and 6, the form with its error) and the editor's top bar (view 5), light and dark, as PNG files for the architect (Settled questions)
+- [x] 3.1 `packages/web/src/projects/gdrarchive.ts`: `linkText`, `linkTitle`, `formPreview`, `saveAction` (D12); `packages/web/test/gdrarchive.test.ts`
+- [x] 3.2 `packages/web/src/projects/GdrarchiveLink.tsx`: `GdrarchiveLink`, `GdrarchiveField` (own, inherited, none) and `GdrarchiveForm` with the texts, titles, keys, error message, preview and «Remove link» rule of "The mockup in words"; focus as D14
+- [x] 3.3 `ProjectPanel.tsx` `LivePanel`: `GdrarchiveField` under the "In" row, or under the status row for a campaign, with the campaign row from `campaigns` by the live `meta.campaignId`
+- [x] 3.4 `project/top.tsx`: `useCampaignRow`; `ProjectCrumbs` and `ProjectMetaControls` take `campaign` (D13); the read-only pill after `StatusSelect` inside `.top-meta`; `EditorPage.tsx:285-286` and `ProjectShell.tsx:29-30` pass the row
+- [x] 3.5 Styles from the mockup's `.gdr`, `.gdr-link`, `.gdr-form` rules in `projects/projects.css`, and the pill's in `editor/editor.css` beside `.top-meta`; light and dark
+- [x] 3.6 Checks: `npm run typecheck`, `npm test`; screenshots of the panel (views 1 to 4 and 6, the form with its error) and the editor's top bar (view 5), light and dark, as PNG files for the architect (Settled questions)
 
 ## 4. End-to-end tests and docs
 

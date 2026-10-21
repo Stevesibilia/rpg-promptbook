@@ -11,6 +11,16 @@
   padding: 2px 8px;
   border-radius: 999px;
 }
+/* The gdrarchive link as a pill; its base rules are in projects.css. */
+.top-meta .gdr-link {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+.top-meta .gdr-link:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
 
 /* The editor */
 .editor {
