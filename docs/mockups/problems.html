@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook · hide problems mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Tokens and layout copied from editor.html; lint styles from packages/web/src/editor/editor.css. */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  --doc: rgba(245,166,35,.09); --doc-line: #f5a623;
+  --box: rgba(106,168,255,.09); --box-line: #6aa8ff;
+  --note: #c08cff;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --doc: rgba(185,116,10,.08); --box: rgba(47,111,209,.07);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-radius: 4px; }
+
+/* Mockup controls (not part of the app) */
+.mock { height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 236px 1fr 340px; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+.crumbs b { color: var(--text); font-weight: 600; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail .bottom { margin-top: auto; margin-bottom: 8px; }
+
+/* Outline */
+.left { grid-column: 2; grid-row: 2; background: var(--surface); border-right: 1px solid var(--border); overflow: auto; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px;
+  font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.ol { list-style: none; margin: 0; padding: 0 6px 12px; }
+.ol li { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; color: var(--muted); cursor: pointer; }
+.ol li:hover { background: var(--hover); color: var(--text); }
+.ol li.cur { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); }
+.ol li.sub { padding-left: 22px; }
+.ol li .id { font: 500 11px var(--mono); color: var(--primary); min-width: 20px; }
+.ol li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { font: 600 10px var(--font); min-width: 16px; height: 16px; border-radius: 8px; display: grid; place-items: center; padding: 0 4px; }
+.badge.err { background: var(--danger); color: #fff; } .badge.warn { background: var(--amber); color: #1a1205; }
+.ol .grp { padding: 10px 8px 4px; color: var(--faint); font-size: 12px; cursor: default; }
+.ol .grp:hover { background: none; color: var(--faint); }
+
+/* Editor */
+.center { grid-column: 3; grid-row: 2; overflow: auto; position: relative; }
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 160px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; position: relative; transition: background .4s; }
+.ed .l.flash { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+.ed .l.err::before, .ed .l.warn::before { content: ''; position: absolute; left: -26px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.ed .l.warn::before { background: var(--amber); }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.ed .mk { display: none; } .ed .fm .mk { display: inline; }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; }
+.fm .k { color: var(--info); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 18px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.task { display: inline-block; width: 13px; height: 13px; border: 1.5px solid var(--faint); border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.quote { border-left: 3px solid var(--border); padding-left: 12px; color: var(--muted); margin: 6px 0; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.ref { color: var(--info); text-decoration: underline dotted; text-underline-offset: 3px; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+/* cm-lintRange */
+.sq.squig { text-decoration: underline wavy var(--danger); text-decoration-skip-ink: none; text-underline-offset: 4px; cursor: default; }
+.sq.squig.w { text-decoration-color: var(--amber); }
+.sq.squig.act { background: color-mix(in srgb, var(--amber) 12%, transparent); }
+.sq.sel { background: color-mix(in srgb, var(--primary) 22%, transparent); }
+
+/* cm-tooltip-lint */
+.cm-tooltip { position: fixed; z-index: 30; max-width: 380px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.35); color: var(--text); display: none; }
+.cm-tooltip.on { display: block; }
+.cm-diagnostic { font: 13px/1.4 var(--font); padding: 8px 10px; }
+.cm-diagnosticText { display: block; font-weight: 600; color: var(--amber); }
+.cm-diagnostic-error .cm-diagnosticText { color: var(--danger); }
+.cm-diagnostic .detail { color: var(--muted); margin-top: 2px; }
+.cm-diagnosticAction { display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);
+  color: var(--primary); font: 12.5px var(--font); }
+.cm-diagnosticAction:hover { border-color: var(--primary); }
+.hide-acts { display: flex; align-items: center; gap: 4px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 12px; color: var(--faint); }
+.hide-acts button { color: var(--muted); padding: 1px 4px; border-radius: 4px; }
+.hide-acts button:hover { color: var(--text); background: var(--hover); }
+.hide-acts code { margin-left: auto; font: 10.5px var(--mono); color: var(--faint); }
+
+/* Inspector */
+.right { grid-column: 4; grid-row: 2; background: var(--surface); border-left: 1px solid var(--border); overflow: auto; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker, .hid > summary::-webkit-details-marker { display: none; }
+.acc > summary::before, .hid > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; display: inline-block; }
+.acc[open] > summary::before, .hid[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.cnt .d { color: var(--danger); } .cnt .a { color: var(--amber); }
+.acc .body { padding: 0 12px 12px; }
+.hint { font-size: 12px; color: var(--faint); margin: 4px 0; }
+.prow { position: relative; }
+.prob { display: flex; gap: 8px; padding: 6px 30px 6px 8px; margin: 0 -8px; border-radius: 5px; cursor: pointer; text-align: left; width: calc(100% + 16px); }
+.prob:hover { background: var(--hover); }
+.prob .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--amber); }
+.prob .dot.err { background: var(--danger); }
+.prob .where { display: block; font: 11px var(--mono); color: var(--faint); }
+.more { position: absolute; right: -4px; top: 4px; width: 24px; height: 24px; border-radius: 4px; color: var(--muted); opacity: 0; font-size: 16px; line-height: 1; }
+.prow:hover .more, .prow:focus-within .more, .more[aria-expanded="true"] { opacity: 1; }
+.more:hover, .more[aria-expanded="true"] { background: var(--surface-2); color: var(--text); outline: 1px solid var(--border); }
+.hid { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.hid > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); padding: 2px 0; }
+.hid > summary:hover { color: var(--text); }
+.hid.flash > summary { color: var(--primary); }
+.hid .prow { opacity: .62; } .hid .prow:hover, .hid .prow:focus-within { opacity: 1; }
+.hid .prob { padding-right: 64px; }
+.hid .prob .dot { background: none; border: 1.5px solid var(--amber); }
+.hid .prob .dot.err { border-color: var(--danger); }
+.hid .hstat { display: block; font-size: 11.5px; color: var(--muted); }
+.restore { position: absolute; right: -2px; top: 5px; font-size: 12px; color: var(--primary); padding: 1px 6px; border-radius: 4px; }
+.restore:hover { background: var(--hover); }
+.linkbtn { font-size: 12px; color: var(--primary); margin-top: 4px; }
+.linkbtn:hover { text-decoration: underline; }
+.rules { list-style: none; margin: 0; padding: 0; }
+.rules li { display: flex; gap: 8px; padding: 3px 0; } .rules .ok { color: var(--primary); width: 14px; } .rules .no { color: var(--faint); width: 14px; }
+
+/* Row menu */
+.menu { position: fixed; z-index: 30; min-width: 196px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.35); display: none; }
+.menu.on { display: block; }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 5px 8px; border-radius: 4px; text-align: left; font-size: 13px; }
+.menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+.menu button small { color: var(--faint); font-size: 11.5px; }
+.menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 2px; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; }
+.status .counts { display: flex; gap: 16px; font-size: inherit; color: inherit; }
+.status .counts:hover span { text-decoration: underline; }
+.status .d { color: var(--danger); } .status .a { color: var(--amber); }
+.status .hcount { display: flex; align-items: center; gap: 4px; color: var(--faint); }
+.status .hcount:hover { color: var(--text); text-decoration: underline; }
+.status .hcount svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.status .hcount.ping { color: var(--note); }
+.status .r { margin-left: auto; }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: 42px; transform: translateX(-50%) translateY(10px); z-index: 40; opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; border-radius: var(--radius); font-size: 13px;
+  background: var(--text); color: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,.35); transition: opacity .15s, transform .15s; }
+.toast.on { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+.toast button { font-weight: 600; color: color-mix(in srgb, var(--primary) 70%, var(--bg)); padding: 2px 6px; border-radius: 4px; }
+:root[data-theme="light"] .toast button { color: #6ee7bf; }
+.toast button:hover { text-decoration: underline; }
+
+/* Annotation (mockup only) */
+.anno { position: fixed; left: 54px; bottom: 32px; z-index: 20; width: 226px; background: var(--surface-2); border: 1px dashed var(--note);
+  border-radius: 8px; font-size: 11.5px; line-height: 1.35; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.anno > button { width: 100%; display: flex; justify-content: space-between; padding: 8px 12px; font: 600 11px var(--font);
+  color: var(--note); text-transform: uppercase; letter-spacing: .08em; }
+.anno ul { margin: 0; padding: 0 10px 8px 22px; color: var(--muted); } .anno li { margin: 3px 0; }
+.anno b { color: var(--text); font-weight: 600; } .anno code { font: 10px var(--mono); }
+.anno.closed ul { display: none; }
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup</span>
+  <button data-state="1" class="on">1 · Editor</button>
+  <button data-state="2">2 · Tooltip</button>
+  <button data-state="3">3 · Row menu</button>
+  <button data-state="4">4 · Hidden list</button>
+  <span class="sep"></span>
+  <button id="mReset" title="Put every problem back as it was">Reset data</button>
+  <button id="mTheme">Light / dark</button>
+  <button id="mNotes">Notes</button>
+  <span class="spacer"></span>
+  <span>Today is Wed 21 Oct 2026</span>
+</nav>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span>Kulthos</span><span>›</span><b>Le chiavi di Santa Ilaria</b></div>
+    <span class="chip">One-shot</span>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb" title="History and snapshots"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+    <button class="tb primary"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <span class="kbd">⌘K</span>
+  </header>
+
+  <nav class="rail">
+    <button class="on" title="Document"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+    <button title="Inspiration"><svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+    <button title="Research"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+    <button class="bottom" title="Projects"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+    <button title="Light / dark" id="theme"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+
+  <aside class="left">
+    <div class="panel-h">Outline <span class="kbd">⌘1</span></div>
+    <ul class="ol" id="outline">
+      <li><span class="nm">Front matter</span></li>
+      <li><span class="nm">A colpo d'occhio</span></li>
+      <li><span class="nm">Orologio</span></li>
+      <li><span class="nm">Inizio forte</span></li>
+      <li class="grp">Scene</li>
+      <li class="sub" data-scene="S1" data-jump="L31"><span class="id">S1</span><span class="nm">Il portone della foresteria</span></li>
+      <li class="sub cur" data-scene="S2" data-jump="L44"><span class="id">S2</span><span class="nm">Lo scriptorium di notte</span></li>
+      <li class="sub" data-scene="S3" data-jump="L57"><span class="id">S3</span><span class="nm">La cripta del reliquiario</span></li>
+      <li class="grp">Riferimenti</li>
+      <li><span class="nm">Indizi</span></li>
+      <li><span class="nm">PNG</span></li>
+      <li><span class="nm">Schede</span></li>
+    </ul>
+  </aside>
+
+  <main class="center" id="center">
+    <div class="doc"><div class="ed" id="ed">
+      <div class="l fm"><span class="mk">---</span></div>
+      <div class="l fm"><span class="k">titolo:</span> Le chiavi di Santa Ilaria</div>
+      <div class="l fm"><span class="k">sistema:</span> Kulthos · <span class="k">formato:</span> one-shot · <span class="k">durata:</span> 4 ore</div>
+      <div class="l fm"><span class="mk">---</span></div>
+      <div class="skip">… A colpo d'occhio, Orologio, Inizio forte, Mappa delle scene …</div>
+      <div class="l h2">Scene</div>
+
+      <div class="l h3" id="L31" data-p="p5"><span class="sq" data-p="p5"><span class="sid">S1.</span> Il portone della foresteria</span></div>
+      <div class="l"><span class="fl">Luogo e momento:</span> la foresteria del monastero di Santa Ilaria, dopo Compieta; piove fitto.</div>
+      <div class="l"><span class="fl">In gioco:</span> entrare senza svegliare fra' Anselmo, il portinaio.</div>
+      <div class="l"><span class="fl">Da non perdere qui</span></div>
+      <div class="l li"><span class="task"></span>Il registro degli ospiti, con un nome cancellato di fresco.</div>
+      <div class="l quote" id="L36" data-p="p4"><span class="sq" data-p="p4">Il portone è socchiuso. Dentro, una lanterna a olio illumina il registro aperto sul leggio; l'inchiostro dell'ultima riga non è ancora asciutto. Da qualche parte, un uomo russa.</span></div>
+      <div class="l"><span class="fl">Chi c'è</span></div>
+      <div class="l li">• <b>Fra' Anselmo</b>, portinaio, sordo da un orecchio; dorme con le chiavi al collo.</div>
+      <div class="l"><span class="fl">Se deragliano:</span> la campana di Mattutino suona in anticipo e il chiostro si riempie di monaci.</div>
+
+      <div class="l h3" id="L44" data-p="p1"><span class="sq" data-p="p1"><span class="sid">S2.</span> Lo scriptorium di notte</span></div>
+      <div class="l"><span class="fl">Luogo e momento:</span> lo scriptorium dopo Mattutino; candele spente, inchiostro fresco.</div>
+      <div class="l"><span class="fl">In gioco:</span> trovare la pianta della cripta prima che il bibliotecario torni.</div>
+      <div class="callout leggi"><div class="ct">Da leggere</div><div class="tx">Trenta leggii in fila, come monaci che dormono in piedi. Su uno solo c'è un libro aperto, e accanto una candela ancora tiepida.</div></div>
+      <div class="l"><span class="fl">Indizi qui</span></div>
+      <div class="l li" id="L49" data-p="p2">• <b>I1.</b> <span class="sq" data-p="p2">Nel margine del salterio aperto sul leggio, qualcuno ha tracciato a punta d'argento la pianta della cripta, con tre croci sulle nicchie del lato nord e una nota in latino sulla «chiave che non apre porte», siglata dal priore morto in primavera.</span> <span class="ref">(R2)</span></div>
+      <div class="l li">• <b>I2.</b> Il bibliotecario conta le candele: ne manca una. <span class="ref">(R1)</span></div>
+      <div class="l"><span class="fl">Chi c'è</span></div>
+      <div class="l li">• <b>Fra' Ugo</b>, bibliotecario insonne; tiene al salterio più che alla propria vita.</div>
+      <div class="l"><span class="fl">Se deragliano:</span> fra' Ugo li sorprende, ma scambia i PG per novizi in ritardo.</div>
+
+      <div class="l h3" id="L57" data-p="p6"><span class="sq" data-p="p6"><span class="sid">S3.</span> La cripta del reliquiario</span></div>
+      <div class="l"><span class="fl">Luogo e momento:</span> la cripta sotto l'altare maggiore, durante le Laudi; sopra, il coro.</div>
+      <div class="l"><span class="fl">In gioco:</span> il reliquiario, e uscire prima dell'alba.</div>
+      <div class="callout leggi"><div class="ct">Da leggere</div><div class="tx">Il canto arriva attutito dalla pietra. Tre nicchie, tre croci incise; nella terza, qualcosa riflette la luce della vostra lanterna.</div></div>
+      <div class="l"><span class="fl">Cosa succede da sé</span></div>
+      <div class="l li" id="L63" data-p="p3">• Il coro tace a metà salmo: qualcuno scende a controllare. Se i PG si nascondono, vedi <span class="ref"><span class="sq" data-p="p3">S9</span></span>; se vengono scoperti, torna a S1.</div>
+      <div class="l"><span class="fl">Se deragliano:</span> il priore offre un patto, il reliquiario in cambio del nome cancellato.</div>
+      <div class="skip">… Indizi, PNG, Schede …</div>
+    </div></div>
+  </main>
+
+  <aside class="right" id="right">
+    <details class="acc checks" id="checks" open>
+      <summary>Checks <span class="cnt" id="checksCnt"></span></summary>
+      <div class="body">
+        <div id="probList"></div>
+        <details class="hid" id="hid">
+          <summary id="hidSum">Hidden (2)</summary>
+          <div id="hidList"></div>
+          <button class="linkbtn" id="restoreAll">Restore all</button>
+        </details>
+      </div>
+    </details>
+    <details class="acc">
+      <summary>This scene · S2 <span class="cnt">template rules</span></summary>
+      <div class="body"><ul class="rules">
+        <li><span class="ok">✓</span>Luogo e momento</li><li><span class="ok">✓</span>In gioco</li>
+        <li><span class="ok">✓</span>Da leggere</li><li><span class="ok">✓</span>Indizi qui</li>
+        <li><span class="no">○</span>Reazioni</li><li><span class="ok">✓</span>Se deragliano</li>
+      </ul></div>
+    </details>
+    <details class="acc"><summary>To-do <span class="cnt">3 / 7</span></summary><div class="body"><p class="hint">…</p></div></details>
+  </aside>
+
+  <footer class="status">
+    <span>S2 · Lo scriptorium di notte</span><span>Ln 44, Col 1</span>
+    <button class="counts" id="counts" title="Show the checks"></button>
+    <button class="hcount" id="hcount" title="Show the hidden problems"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4.5 9.5 6-.5.8-1.6 2.2-3.1 3.5M6.6 7.6C4.6 8.9 3.2 10.8 2.5 12c1 1.5 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1"/></svg><span></span></button>
+    <span>2 806 words</span>
+    <span class="r">Template: Avventura (Kulthos) v1</span><span>Synced 12:41</span>
+  </footer>
+</div>
+
+<div class="cm-tooltip cm-tooltip-lint" id="tip" role="tooltip"></div>
+<div class="menu" id="menu" role="menu">
+  <button role="menuitem" data-act="day">Snooze for a day <small>until Thu 22 Oct</small></button>
+  <button role="menuitem" data-act="week">Snooze for a week <small>until Wed 28 Oct</small></button>
+  <hr>
+  <button role="menuitem" data-act="dismiss">Dismiss <small>for good</small></button>
+</div>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="undo">Undo</button></div>
+
+<aside class="anno" id="anno">
+  <button id="annoT" aria-expanded="true">Mockup note · rules <span id="annoI">▾</span></button>
+  <ul>
+    <li><b>Dismiss</b> hides a problem for good; <b>Snooze</b> hides it for a day or a week, then it comes back by itself.</li>
+    <li>A hidden problem leaves the editor (no dot, no squiggle), the Checks list, the outline badges and the status bar counts.</li>
+    <li>Matched by <b>check code + scene + the flagged line's text</b> (e.g. <code>scene.reactions.missing</code> · S2 · the heading). Rewriting that line brings the problem back.</li>
+    <li>Synced with the project: every device sees the same hidden problems.</li>
+    <li>Claude's connector still lists hidden problems, marked <code>dismissed</code> or <code>snoozed until …</code>.</li>
+    <li>The project list's counts exclude hidden problems.</li>
+    <li>The PDF review's layout checks are not affected.</li>
+    <li>Try: hover a squiggle, use the ⋯ on a Checks row, click "2 hidden" in the status bar.</li>
+  </ul>
+</aside>
+
+<script>
+const TODAY = 'Wed 21 Oct', DAY = 'Thu 22 Oct', WEEK = 'Wed 28 Oct';
+const INITIAL = [
+  { id: 'p4', code: 'callout.plain', sev: 'warning', scene: 'S1', line: 36, msg: 'Callout quote written as plain text',
+    detail: 'A quote at the start of a scene reads like a [!leggi] callout without its marker.', fix: 'Turn into [!leggi]', state: 'visible' },
+  { id: 'p1', code: 'scene.reactions.missing', sev: 'warning', scene: 'S2', line: 44, msg: 'Scene S2 has no «Reazioni» field',
+    detail: 'Adventure scenes expect a reactions table.', fix: 'Add «Reazioni»', state: 'visible' },
+  { id: 'p2', code: 'clue.text.long', sev: 'warning', scene: 'S2', line: 49, msg: '«Indizio» text over the limit (231 of 160 characters)',
+    detail: 'Long clues wrap badly in the PDF side box.', state: 'visible' },
+  { id: 'p3', code: 'ref.unknown', sev: 'error', scene: 'S3', line: 63, msg: 'Unknown reference «S9»',
+    detail: 'No scene, clue or sheet has that id.', fix: 'Change to S2', state: 'visible' },
+  { id: 'p5', code: 'scene.derail.missing', sev: 'warning', scene: 'S1', line: 31, msg: 'Scene S1 has no «Se deragliano» field',
+    detail: 'Every scene should say what happens if the players go off track.', state: 'dismissed' },
+  { id: 'p6', code: 'scene.mustsee.missing', sev: 'warning', scene: 'S3', line: 57, msg: 'Scene S3 has no «Da non perdere qui» field',
+    detail: 'Scenes list what must not be missed at the table.', state: 'snoozed', until: 'Mon 26 Oct' },
+];
+let P = JSON.parse(JSON.stringify(INITIAL));
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const byId = id => P.find(p => p.id === id);
+const vis = p => p.state === 'visible';
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const statusOf = p => p.state === 'dismissed' ? 'Dismissed' : `Snoozed until ${p.until}`;
+
+function render() {
+  // Editor: margin dot and squiggle only for visible problems.
+  $$('.ed .l[data-p]').forEach(l => {
+    const p = byId(l.dataset.p);
+    l.classList.toggle('err', vis(p) && p.sev === 'error');
+    l.classList.toggle('warn', vis(p) && p.sev === 'warning');
+  });
+  $$('.ed .sq').forEach(s => {
+    const p = byId(s.dataset.p);
+    s.classList.toggle('squig', vis(p));
+    s.classList.toggle('w', p.sev === 'warning');
+  });
+  // Outline badges.
+  $$('#outline li[data-scene]').forEach(li => {
+    const ps = P.filter(p => vis(p) && p.scene === li.dataset.scene);
+    let b = $('.badge', li);
+    if (!ps.length) { b && b.remove(); return; }
+    if (!b) { b = document.createElement('span'); li.appendChild(b); }
+    b.className = 'badge ' + (ps.some(p => p.sev === 'error') ? 'err' : 'warn');
+    b.textContent = ps.length; b.title = plural(ps.length, 'problem');
+  });
+  const shown = P.filter(vis).sort((a, b) => a.line - b.line);
+  const hidden = P.filter(p => !vis(p)).sort((a, b) => a.line - b.line);
+  const errors = shown.filter(p => p.sev === 'error').length, warnings = shown.length - errors;
+  // Checks summary and list.
+  $('#checksCnt').innerHTML = !shown.length ? 'none' :
+    [errors && `<span class="d">${plural(errors, 'error')}</span>`, warnings && `<span class="a">${plural(warnings, 'warning')}</span>`].filter(Boolean).join(' · ');
+  const row = p => `<span class="dot${p.sev === 'error' ? ' err' : ''}"></span><span>${esc(p.msg)}<span class="where">${p.scene} · line ${p.line}</span>`;
+  $('#probList').innerHTML = shown.length ? shown.map(p =>
+    `<div class="prow"><button class="prob" data-go="${p.id}">${row(p)}</span></button>` +
+    `<button class="more" data-more="${p.id}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions" title="Snooze or dismiss">⋯</button></div>`).join('')
+    : `<p class="hint">No problems found.</p>`;
+  // Hidden section.
+  const hid = $('#hid');
+  hid.hidden = !hidden.length;
+  if (!hidden.length) hid.open = false;
+  $('#hidSum').textContent = `Hidden (${hidden.length})`;
+  $('#hidList').innerHTML = hidden.map(p =>
+    `<div class="prow"><button class="prob" data-go="${p.id}">${row(p)}<span class="hstat">${statusOf(p)}</span></span></button>` +
+    `<button class="restore" data-restore="${p.id}">Restore</button></div>`).join('');
+  $('#restoreAll').hidden = hidden.length < 2;
+  // Status bar.
+  $('#counts').innerHTML = `<span class="${errors ? 'd' : ''}">● ${plural(errors, 'error')}</span><span class="${warnings ? 'a' : ''}">● ${plural(warnings, 'warning')}</span>`;
+  $('#hcount').hidden = !hidden.length;
+  $('#hcount span').textContent = `${hidden.length} hidden`;
+}
+
+/* Hide, restore, undo */
+let undoStack = null, toastTimer = null;
+function change(ids, next, message) {
+  undoStack = ids.map(id => { const p = byId(id); return { id, state: p.state, until: p.until }; });
+  ids.forEach(id => Object.assign(byId(id), next));
+  closeTip(true); closeMenu(); render(); toast(message, true);
+}
+function hide(id, how) {
+  if (how === 'dismiss') change([id], { state: 'dismissed', until: undefined }, 'Problem dismissed');
+  else { const until = how === 'day' ? DAY : WEEK; change([id], { state: 'snoozed', until }, `Snoozed until ${until}`); }
+}
+function toast(message, undo) {
+  $('#toastMsg').textContent = message; $('#undo').hidden = !undo;
+  $('#toast').classList.add('on'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').classList.remove('on'), 6000);
+}
+$('#undo').onclick = () => {
+  if (!undoStack) return;
+  undoStack.forEach(s => Object.assign(byId(s.id), { state: s.state, until: s.until }));
+  undoStack = null; render(); toast('Undone', false);
+};
+
+/* Jump to a problem: scroll, flash the line, select the range. */
+function jump(id) {
+  const p = byId(id), line = $(`.ed .l[data-p="${id}"]`), sq = $(`.ed .sq[data-p="${id}"]`);
+  line.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  line.classList.add('flash'); sq.classList.add('sel');
+  setTimeout(() => { line.classList.remove('flash'); sq.classList.remove('sel'); }, 1400);
+  $$('#outline li[data-scene]').forEach(li => li.classList.toggle('cur', li.dataset.scene === p.scene));
+}
+
+/* Lint tooltip */
+const tip = $('#tip'); let tipFor = null, tipPinned = false, tipTimer = null;
+function openTip(sq, pin) {
+  const p = byId(sq.dataset.p); if (!vis(p)) return;
+  clearTimeout(tipTimer); tipFor = sq; tipPinned = !!pin;
+  $$('.sq.act').forEach(s => s.classList.remove('act')); sq.classList.add('act');
+  tip.innerHTML = `<div class="cm-diagnostic cm-diagnostic-${p.sev}"><span class="cm-diagnosticText">${esc(p.msg)}</span>` +
+    `<div class="detail">${esc(p.detail)}</div>` + (p.fix ? `<button class="cm-diagnosticAction" data-fix>${esc(p.fix)}</button>` : '') +
+    `<div class="hide-acts"><button data-hide="week">Snooze a week</button><span>·</span><button data-hide="dismiss">Dismiss</button><code>${p.code}</code></div></div>`;
+  tip.classList.add('on');
+  const rects = sq.getClientRects(), r = rects[rects.length - 1] || sq.getBoundingClientRect();
+  const w = tip.offsetWidth;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  tip.style.top = (r.bottom + 6) + 'px';
+}
+function closeTip(force) {
+  if (tipPinned && !force) return;
+  tip.classList.remove('on'); tipFor && tipFor.classList.remove('act'); tipFor = null; tipPinned = false;
+}
+$('#ed').addEventListener('mouseover', e => { const sq = e.target.closest('.sq.squig'); if (sq && sq !== tipFor && !tipPinned) openTip(sq); else if (sq) clearTimeout(tipTimer); });
+$('#ed').addEventListener('mouseout', e => { if (e.target.closest('.sq.squig')) tipTimer = setTimeout(() => closeTip(), 300); });
+tip.addEventListener('mouseenter', () => clearTimeout(tipTimer));
+tip.addEventListener('mouseleave', () => { tipTimer = setTimeout(() => closeTip(), 300); });
+tip.addEventListener('click', e => {
+  const id = tipFor && tipFor.dataset.p; if (!id) return;
+  const h = e.target.closest('[data-hide]'); if (h) return hide(id, h.dataset.hide);
+  if (e.target.closest('[data-fix]')) { closeTip(true); toast('Quick fix applied (not simulated in this mockup)', false); }
+});
+$('#center').addEventListener('scroll', () => closeTip(true));
+
+/* Row menu */
+const menu = $('#menu'); let menuFor = null;
+function openMenu(btn) {
+  closeMenu(); menuFor = btn.dataset.more; btn.setAttribute('aria-expanded', 'true');
+  menu.classList.add('on');
+  const r = btn.getBoundingClientRect();
+  menu.style.left = Math.min(r.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8) + 'px';
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.querySelector('button').focus({ preventScroll: true });
+}
+function closeMenu() {
+  menu.classList.remove('on'); menuFor = null;
+  $$('.more[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+menu.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && menuFor) hide(menuFor, b.dataset.act); });
+$('#right').addEventListener('click', e => {
+  const more = e.target.closest('[data-more]');
+  if (more) { e.stopPropagation(); return more.getAttribute('aria-expanded') === 'true' ? closeMenu() : openMenu(more); }
+  const res = e.target.closest('[data-restore]');
+  if (res) return change([res.dataset.restore], { state: 'visible', until: undefined }, 'Problem restored');
+  const go = e.target.closest('[data-go]'); if (go) jump(go.dataset.go);
+});
+$('#right').addEventListener('scroll', closeMenu);
+$('#restoreAll').onclick = () => {
+  const ids = P.filter(p => !vis(p)).map(p => p.id);
+  change(ids, { state: 'visible', until: undefined }, `${plural(ids.length, 'problem')} restored`);
+};
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) closeMenu(); if (!e.target.closest('#tip, .sq')) closeTip(true); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); closeTip(true); } });
+
+/* Status bar and outline */
+$('#counts').onclick = () => { $('#checks').open = true; $('#checks').scrollIntoView({ block: 'start' }); };
+function showHidden() {
+  $('#checks').open = true; const hid = $('#hid'); hid.open = true;
+  hid.classList.add('flash'); setTimeout(() => hid.classList.remove('flash'), 1400);
+  hid.scrollIntoView({ block: 'nearest' });
+}
+$('#hcount').onclick = showHidden;
+$$('#outline li[data-jump]').forEach(li => li.onclick = () => {
+  $('#' + li.dataset.jump).scrollIntoView({ block: 'start', behavior: 'smooth' });
+  $$('#outline li').forEach(x => x.classList.toggle('cur', x === li));
+});
+
+/* Mockup controls */
+function setState(n) {
+  $$('.mock [data-state]').forEach(b => b.classList.toggle('on', b.dataset.state === String(n)));
+  closeMenu(); closeTip(true); $('#hid').open = false; $('#hcount').classList.remove('ping');
+  if (n === 1) $('#center').scrollTop = 0;
+  if (n === 2) {
+    const sq = $('.ed .sq.squig[data-p="p1"]') || $('.ed .sq.squig');
+    if (!sq) return toast('Every problem is hidden: use Reset data', false);
+    $('#' + sq.closest('.l').id).scrollIntoView({ block: 'center' });
+    requestAnimationFrame(() => openTip(sq, true));
+  }
+  if (n === 3) {
+    const btn = $('[data-more="p2"]') || $('[data-more]');
+    if (!btn) return toast('Every problem is hidden: use Reset data', false);
+    requestAnimationFrame(() => openMenu(btn));
+  }
+  if (n === 4) { showHidden(); $('#hcount').classList.add('ping'); }
+}
+$$('.mock [data-state]').forEach(b => b.onclick = e => { e.stopPropagation(); setState(+b.dataset.state); });
+$('#mReset').onclick = () => { P = JSON.parse(JSON.stringify(INITIAL)); undoStack = null; render(); setState(1); };
+const flipTheme = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; };
+$('#mTheme').onclick = flipTheme; $('#theme').onclick = flipTheme;
+const anno = $('#anno');
+function toggleAnno() { const c = anno.classList.toggle('closed'); $('#annoT').setAttribute('aria-expanded', String(!c)); $('#annoI').textContent = c ? '▸' : '▾'; }
+$('#annoT').onclick = toggleAnno; $('#mNotes').onclick = toggleAnno;
+
+render();
+const q = new URLSearchParams(location.search);
+if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+if (q.get('notes') === '0') toggleAnno();
+if (q.get('state')) setState(+q.get('state'));
+</script>
+</body>
+</html>
