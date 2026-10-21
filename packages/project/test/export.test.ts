@@ -12,6 +12,7 @@ import {
   readFiles,
   removeImagePrompt,
   setFirstScenePrompt,
+  setGdrarchive,
   setMusicPrompt,
   type NewFile,
 } from '../src/index.js';
@@ -80,6 +81,23 @@ const scenePrompt = (doc: Y.Doc, sceneId: string, prompt: string) =>
   addImagePrompt(doc, { category: 'scene', sceneId, prompt }, 'claude', AT).id;
 const named = (doc: Y.Doc, category: 'pc' | 'npc' | 'handout', name: string, prompt: string) =>
   addImagePrompt(doc, { category, name, prompt }, 'claude', AT).id;
+
+describe('the gdrarchive link in the export', () => {
+  it('writes the own link in project.json, and no key without one', () => {
+    const link = { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' };
+    const kulthos = project({ id: '00000000-0000-4000-8000-0000000000c1', category: 'campaign', title: 'Kulthos' });
+    setGdrarchive(kulthos, link);
+    const json = JSON.parse(exportProject(kulthos, { campaignTitle: null })['project.json']!);
+    expect(json.gdrarchive).toEqual(link);
+    expect(Object.keys(json).indexOf('gdrarchive')).toBe(Object.keys(json).indexOf('system') + 1);
+
+    // An adventure inherits Kulthos's link but exports none of its own.
+    const adventure = project({ category: 'adventure', campaignId: '00000000-0000-4000-8000-0000000000c1' });
+    const plain = JSON.parse(exportProject(adventure, { campaignTitle: 'Kulthos' })['project.json']!);
+    expect(plain).not.toHaveProperty('gdrarchive');
+    expect(plain.campaign).toBe('Kulthos');
+  });
+});
 
 describe('the board in the export', () => {
   it('has a board.md before project.json, empty when there is nothing to say', () => {

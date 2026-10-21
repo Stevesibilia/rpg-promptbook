@@ -21,12 +21,12 @@ architect.
 
 ## 2. Server, connector, export
 
-- [ ] 2.1 `packages/server/migrations/006_gdrarchive.sql`: `gdrarchive_url text`, `gdrarchive_label text`, both nullable, and the check of D11, with a header comment naming this change
-- [ ] 2.2 `packages/server/src/projects.ts`: `DbRow`, `toRow`, `SELECT`, `summaryParams`, the `INSERT` of `insertProject` and the `UPDATE` of `storeProjectDoc` carry the two columns (D5)
-- [ ] 2.3 `packages/server/src/mcp/tools.ts` `get_project`: `gdrarchive` resolved with `gdrarchiveOf` and marked `inherited` (D7); the sentence of D7 in its description; `list_projects` unchanged
-- [ ] 2.4 `packages/project/src/export.ts` `exportProject`: `project.json` gains the own link, omitted when there is none (D8); `test/export.test.ts`
-- [ ] 2.5 Server tests of D9: `migrations.test.ts` (`:55` and the check), the row after a store (`projects.test.ts` or `sync.test.ts`), `mcp.test.ts` (`get_project` own, inherited, null)
-- [ ] 2.6 Desktop: no code change. Confirm `refreshRow` (`packages/desktop/src/main/projects.ts:64-84`) carries the link through `summarize`; add the case of D9 to `test/unit/router.test.ts`; confirm `window.ts:29-32` sends https links to the system browser
+- [x] 2.1 `packages/server/migrations/006_gdrarchive.sql`: `gdrarchive_url text`, `gdrarchive_label text`, both nullable, and the check of D11, with a header comment naming this change
+- [x] 2.2 `packages/server/src/projects.ts`: `DbRow`, `toRow`, `SELECT`, `summaryParams`, the `INSERT` of `insertProject` and the `UPDATE` of `storeProjectDoc` carry the two columns (D5)
+- [x] 2.3 `packages/server/src/mcp/tools.ts` `get_project`: `gdrarchive` resolved with `gdrarchiveOf` and marked `inherited` (D7); the sentence of D7 in its description; `list_projects` unchanged
+- [x] 2.4 `packages/project/src/export.ts` `exportProject`: `project.json` gains the own link, omitted when there is none (D8); `test/export.test.ts`
+- [x] 2.5 Server tests of D9: `migrations.test.ts` (`:55` and the check), the row after a store (`projects.test.ts` or `sync.test.ts`), `mcp.test.ts` (`get_project` own, inherited, null)
+- [x] 2.6 Desktop: no code change. Confirm `refreshRow` (`packages/desktop/src/main/projects.ts:64-84`) carries the link through `summarize`; add the case of D9 to `test/unit/router.test.ts`; confirm `window.ts:29-32` sends https links to the system browser
 
 ## 3. Web panel and top bar
 

@@ -52,7 +52,13 @@ describe('migrations', () => {
       await hashPassword(PASSWORD),
     ]);
 
-    expect(await runMigrations(old)).toEqual(['002_oidc.sql', '003_connector.sql', '004_desktop.sql', '005_files.sql']);
+    expect(await runMigrations(old)).toEqual([
+      '002_oidc.sql',
+      '003_connector.sql',
+      '004_desktop.sql',
+      '005_files.sql',
+      '006_gdrarchive.sql',
+    ]);
 
     const user = await findUserByUsername(old, 'steve');
     expect(user).toMatchObject({ username: 'steve', displayName: 'Stefano' });
@@ -100,5 +106,20 @@ describe('migrations', () => {
     await grant('read', null);
     await expect(grant('admin', null)).rejects.toMatchObject({ code: '23514' });
     await expect(grant('app', 'x'.repeat(81))).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('006 reads existing rows as no gdrarchive link, and takes both columns or neither', async () => {
+    const user = await findUserByUsername(old, 'steve');
+    const insert = (url: string | null, label: string | null) =>
+      old.query(
+        `insert into projects (id, owner_id, category, title, status, gdrarchive_url, gdrarchive_label)
+         values (gen_random_uuid(), $1, 'campaign', 'Kulthos', 'draft', $2, $3) returning gdrarchive_url, gdrarchive_label`,
+        [user!.id, url, label],
+      );
+    const url = 'https://gdrarchive.siberio.eu/campaigns/12';
+    expect(await insert(null, null)).toEqual([{ gdrarchive_url: null, gdrarchive_label: null }]);
+    expect(await insert(url, '')).toEqual([{ gdrarchive_url: url, gdrarchive_label: '' }]);
+    await expect(insert(url, null)).rejects.toMatchObject({ code: '23514' });
+    await expect(insert(null, 'Kulthos')).rejects.toMatchObject({ code: '23514' });
   });
 });

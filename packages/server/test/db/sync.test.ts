@@ -1,4 +1,13 @@
-import { addTodo, readDocument, readFiles, readImagePrompts, readMeta, readTodo, updateTodo } from 'promptbook-project';
+import {
+  addTodo,
+  readDocument,
+  readFiles,
+  readImagePrompts,
+  readMeta,
+  readTodo,
+  setGdrarchive,
+  updateTodo,
+} from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createUser } from '../../src/accounts/users.js';
 import { loadProjectDoc, storeProjectDoc } from '../../src/projects.js';
@@ -125,6 +134,40 @@ describe('sync between clients', () => {
     updateTodo(a.doc, readTodo(a.doc)[5]!.id, { done: true });
     await waitFor(() => a.stateless.includes(STORED), 'the second store');
     expect(await row()).toMatchObject({ todoDone: 6, todoTotal: 9, status: 'draft' });
+  });
+
+  it('carries the gdrarchive link in the list once stored, and null once cleared', async () => {
+    await steve();
+    const app = await startApp();
+    const token = await signedIn(app);
+    const id = await newProject(app, token, { category: 'campaign', title: 'Kulthos' });
+    const url = await listen(app);
+    const row = async () =>
+      (await app.inject({ url: '/api/projects', headers: auth(token) })).json().projects.find((p: { id: string }) => p.id === id);
+    expect((await row()).gdrarchive).toBeNull();
+
+    const a = connect(url, id, { token });
+    await synced(a);
+    const link = { url: 'https://gdrarchive.siberio.eu/campaigns/6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b', label: 'Kulthos' };
+    setGdrarchive(a.doc, link);
+    await waitFor(() => a.stateless.includes(STORED), 'the first store');
+    expect((await row()).gdrarchive).toEqual(link);
+    expect(
+      await db.queryOne('select gdrarchive_url, gdrarchive_label from projects where id = $1', [id]),
+    ).toEqual({ gdrarchive_url: link.url, gdrarchive_label: 'Kulthos' });
+
+    a.stateless.length = 0;
+    setGdrarchive(a.doc, { url: link.url, label: '' });
+    await waitFor(() => a.stateless.includes(STORED), 'the second store');
+    expect((await row()).gdrarchive).toEqual({ url: link.url, label: '' });
+
+    a.stateless.length = 0;
+    setGdrarchive(a.doc, null);
+    await waitFor(() => a.stateless.includes(STORED), 'the third store');
+    expect((await row()).gdrarchive).toBeNull();
+    expect(
+      await db.queryOne('select gdrarchive_url, gdrarchive_label from projects where id = $1', [id]),
+    ).toEqual({ gdrarchive_url: null, gdrarchive_label: null });
   });
 });
 

@@ -42,6 +42,8 @@ interface DbRow {
   words: number | null;
   errors: number | null;
   warnings: number | null;
+  gdrarchive_url: string | null;
+  gdrarchive_label: string | null;
   created_at: Date;
   edited_at: Date;
   deleted_at: Date | null;
@@ -66,7 +68,7 @@ const toRow = (r: DbRow): ProjectRow =>
       words: r.words,
       errors: r.errors,
       warnings: r.warnings,
-      gdrarchive: null,
+      gdrarchive: r.gdrarchive_url === null ? null : { url: r.gdrarchive_url, label: r.gdrarchive_label ?? '' },
     },
     {
       createdAt: r.created_at.toISOString(),
@@ -83,7 +85,8 @@ const SELECT = `
   select p.id, p.title, p.category, p.status,
          case when c.id is null then null else p.campaign_id end as campaign_id,
          p.system, p.seed, p.todo_done, p.todo_total, to_char(p.next_due, 'YYYY-MM-DD') as next_due,
-         p.scenes, p.words, p.errors, p.warnings, p.created_at, p.edited_at, p.deleted_at
+         p.scenes, p.words, p.errors, p.warnings, p.gdrarchive_url, p.gdrarchive_label,
+         p.created_at, p.edited_at, p.deleted_at
   from projects p
   left join projects c on c.id = p.campaign_id and c.owner_id = p.owner_id
                       and c.category = 'campaign' and c.deleted_at is null`;
@@ -133,6 +136,8 @@ const summaryParams = (s: Summary) => [
   s.words,
   s.errors,
   s.warnings,
+  s.gdrarchive?.url ?? null,
+  s.gdrarchive?.label ?? null,
 ];
 
 // A new project's row and document. The category column is written here
@@ -155,8 +160,9 @@ export async function insertProject(
   }
   await tx.query(
     `insert into projects (id, owner_id, category, title, status, campaign_id, system, seed,
-                           todo_done, todo_total, next_due, scenes, words, errors, warnings)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+                           todo_done, todo_total, next_due, scenes, words, errors, warnings,
+                           gdrarchive_url, gdrarchive_label)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
     [summary.id, ownerId, summary.category, ...summaryParams(summary)],
   );
   await tx.query('insert into project_docs (project_id, state) values ($1, $2)', [
@@ -303,7 +309,7 @@ export async function storeProjectDoc(db: Db, projectId: string, doc: Y.Doc): Pr
     await tx.query(
       `update projects set title = $2, status = $3, campaign_id = $4, system = $5, seed = $6,
               todo_done = $7, todo_total = $8, next_due = $9, scenes = $10, words = $11,
-              errors = $12, warnings = $13, edited_at = now()
+              errors = $12, warnings = $13, gdrarchive_url = $14, gdrarchive_label = $15, edited_at = now()
        where id = $1`,
       [projectId, ...summaryParams(summary)],
     );
