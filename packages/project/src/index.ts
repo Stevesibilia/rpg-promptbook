@@ -102,6 +102,20 @@ export {
   type TodoPatch,
 } from './doc.js';
 export {
+  hideProblem,
+  isActive,
+  nextExpiry,
+  partitionProblems,
+  problemKey,
+  putHidden,
+  readHidden,
+  restoreAll,
+  restoreProblem,
+  SNOOZE_MS,
+  type HiddenEntry,
+  type HiddenHow,
+} from './hidden.js';
+export {
   exportBoard,
   exportFolderName,
   exportProject,

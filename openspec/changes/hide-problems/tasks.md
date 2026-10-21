@@ -13,9 +13,9 @@ architect.
 
 ## 1. Hidden problems in the project
 
-- [ ] 1.1 `packages/project/src/hidden.ts` (D1 to D4): `HiddenHow`, `HiddenEntry`, `SNOOZE_MS`, `problemKey` (FNV-1a 32-bit over the whole lines, cut by offset, whitespace collapsed), `readHidden` (skips malformed values), `isActive`, `hideProblem`, `restoreProblem`, `restoreAll`, `putHidden` (each one transaction, deleting expired snoozes), `partitionProblems`, `nextExpiry`; exported from `index.ts`
-- [ ] 1.2 The layout comment in `packages/project/src/doc.ts:30-77` gains `hiddenProblems` in the style of the board and image-categories entries (D1)
-- [ ] 1.3 `packages/project/test/hidden.test.ts`: every case under `packages/project` in D9, including two replicas merging and housekeeping
+- [x] 1.1 `packages/project/src/hidden.ts` (D1 to D4): `HiddenHow`, `HiddenEntry`, `SNOOZE_MS`, `problemKey` (FNV-1a 32-bit over the whole lines, cut by offset, whitespace collapsed), `readHidden` (skips malformed values), `isActive`, `hideProblem`, `restoreProblem`, `restoreAll`, `putHidden` (each one transaction, deleting expired snoozes), `partitionProblems`, `nextExpiry`; exported from `index.ts`
+- [x] 1.2 The layout comment in `packages/project/src/doc.ts:30-77` gains `hiddenProblems` in the style of the board and image-categories entries (D1)
+- [x] 1.3 `packages/project/test/hidden.test.ts`: every case under `packages/project` in D9, including two replicas merging and housekeeping
 
 ## 2. Counts and the connector
 
