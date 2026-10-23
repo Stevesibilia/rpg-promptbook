@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document templates mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Chrome, settings, editor document and modal copied from
+   licence.html (tokens.css, settings.css, editor.css, ui/modal.css). The
+   rules marked NEW are the template editor. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --leggi-line: #0f8f69;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+    --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+    --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+    --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+    --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+a { color: var(--primary); }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus { outline: none; border-color: var(--primary); }
+code { font: .92em var(--mono); }
+.spacer { flex: 1; }
+
+/* Mockup controls (not part of the app) */
+.mock { height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px; white-space: nowrap; overflow-x: auto;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; flex: none; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock button:disabled { opacity: .4; cursor: default; }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex: none; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 1fr; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); min-width: 0; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); flex: none; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-meta select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); flex: none; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; text-decoration: none; }
+.tb:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover:not(:disabled) { background: var(--primary-hover); color: var(--on-primary); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); flex: none; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+
+.center { grid-column: 2; grid-row: 2; overflow: auto; min-width: 0; position: relative; }
+.view { display: none; } .view.on { display: block; }
+
+/* Settings (settings.css) */
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 160px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.card.narrow { max-width: 520px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+.field .with-btn { display: flex; gap: 8px; }
+.field .with-btn input { flex: 1; min-width: 0; }
+.saved { color: var(--primary); }
+
+/* Editor document (editor.html, editor.css) */
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; overflow-wrap: anywhere; }
+.fm.fence { color: var(--faint); }
+.fm .k { color: var(--info); }
+.fm.active { background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
+.fm .caret { display: inline-block; width: 2px; height: 16px; background: var(--primary); vertical-align: -3px; margin-left: 1px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.fm-more { display: block; width: 100%; text-align: left; font: 13px/26px var(--mono); color: var(--faint); background: var(--surface); border-left: 3px solid var(--border); padding: 0 0 0 16px; }
+.fm-more:hover { color: var(--primary); }
+.fm .val.changed { background: color-mix(in srgb, var(--primary) 14%, transparent); border-radius: 3px; }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; }
+
+/* Scrim and modal (ui/modal.css) */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(5,10,8,.62); display: flex; align-items: flex-start; justify-content: center; padding-top: 6vh; }
+.scrim[hidden] { display: none; }
+.modal { width: min(880px, calc(100vw - 32px)); max-height: 86vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex: none; }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 12px 18px 14px; overflow: auto; min-height: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); flex: none; flex-wrap: wrap; }
+.modal .mf .note { margin-right: auto; color: var(--faint); font-size: 12.5px; }
+
+
+.mock { position: relative; z-index: 60; }
+
+/* Annotation (mockup only) */
+.anno { position: fixed; left: 62px; bottom: 36px; width: 410px; z-index: 50; background: var(--surface); border: 1px dashed var(--note); border-radius: 8px; font-size: 12.5px; color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.anno.closed { display: none; }
+.anno h5 { margin: 0; padding: 8px 12px 0; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); display: flex; }
+.anno h5 button { margin-left: auto; color: var(--faint); font-size: 12px; }
+.anno ul { margin: 6px 0 10px; padding: 0 12px 0 28px; }
+.anno li { margin: 2px 0; }
+.anno code { font: 11.5px var(--mono); }
+
+/* NEW: template list */
+.tgroup { margin-bottom: 20px; }
+.tgroup h3 { font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-bottom-width: 0; }
+.trow:first-of-type { border-radius: 8px 8px 0 0; } .trow:last-of-type { border-radius: 0 0 8px 8px; border-bottom-width: 1px; }
+.trow:only-of-type { border-radius: 8px; }
+.trow .tn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.trow .tn b { font: 600 15px var(--font); }
+.trow .tm { grid-column: 1; color: var(--faint); font-size: 12.5px; }
+.trow .acts { grid-column: 2; grid-row: 1 / 3; display: flex; gap: 6px; align-items: center; }
+.chip { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.chip.def { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.chip.ver { font: 500 11px var(--mono); text-transform: none; letter-spacing: 0; }
+.chip.amber { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); }
+
+/* NEW: template editor */
+.pane.wide { max-width: 1480px; }
+.pane.wide .set { grid-template-columns: 160px 1fr; }
+.te-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.te-head .back { color: var(--muted); }
+.te-head h2 { margin: 0; }
+.banner { margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--info) 9%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border)); color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.banner b { color: var(--text); }
+.banner .tb { margin-left: auto; }
+.te-gen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.te-gen .field { margin: 0; }
+.te-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 310px); gap: 16px; align-items: start; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.tabs button { padding: 7px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--primary); font-weight: 600; }
+.tabs .n { font-size: 11px; color: var(--faint); margin-left: 3px; }
+.rows { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.rh, .rr { display: grid; gap: 8px; align-items: center; padding: 6px 10px; }
+.rh { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--border); }
+.rr { border-bottom: 1px solid var(--border); }
+.rr:last-child { border-bottom: 0; }
+.rr.changed { box-shadow: inset 3px 0 0 var(--amber); }
+.rr.added { box-shadow: inset 3px 0 0 var(--primary); }
+.rr input, .rr select { width: 100%; min-width: 0; padding: 4px 7px; font-size: 13.5px; }
+.rr input:disabled, .rr select:disabled { background: transparent; border-color: transparent; color: var(--text); opacity: 1; }
+.g-sec { grid-template-columns: 44px minmax(0, 1fr) 118px 112px 150px 30px; }
+.g-fld { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 70px 30px; }
+.g-box { grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.3fr) 82px 30px; }
+.g-key { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 30px; }
+.mv { display: flex; flex-direction: column; }
+.mv button { color: var(--faint); font-size: 10px; line-height: 12px; padding: 0 6px; border-radius: 3px; }
+.mv button:hover:not(:disabled) { color: var(--text); background: var(--hover); }
+.role { font: 500 11.5px var(--font); color: var(--muted); display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.role .ic { width: 13px; height: 13px; }
+.role.custom { color: var(--faint); font-style: italic; }
+.pdf { display: flex; flex-wrap: wrap; gap: 3px; }
+.tg { font: 500 11.5px var(--font); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); white-space: nowrap; }
+.tg.on { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); background: color-mix(in srgb, var(--primary) 9%, transparent); }
+.tg.fixed { border-style: dashed; cursor: default; }
+.tg:disabled { opacity: .55; }
+.del { color: var(--faint); padding: 2px 6px; border-radius: 4px; }
+.del:hover:not(:disabled) { color: var(--danger); background: var(--hover); }
+.places { display: flex; flex-wrap: wrap; gap: 3px; }
+.add { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px dashed var(--border); }
+.add input { flex: 1; min-width: 0; }
+.sub { color: var(--faint); font-size: 12.5px; margin: 8px 2px 0; }
+.lim { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 14px; }
+.lim .field { margin: 0; }
+.lim .pair { display: flex; gap: 6px; align-items: center; }
+.lim .pair input { width: 80px; }
+
+/* NEW: the starting document preview */
+.pv { position: sticky; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pv .ph { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.pv .ph .chip { margin-left: auto; }
+.pv .pb { max-height: calc(100vh - 290px); overflow: auto; padding: 10px 14px 14px; font: 14px/22px var(--prose); }
+.pv .l { min-height: 22px; overflow-wrap: anywhere; }
+.pv .fm { font: 12px/22px var(--mono); }
+.pv .h2 { font: 700 19px/28px var(--display); margin-top: 10px; }
+.pv .h3 { font: 600 16px/24px var(--prose); margin-top: 6px; }
+.pv .fl { font-size: 14px; }
+.pv .callout { margin: 4px 0; padding: 2px 10px 4px; }
+.pv .callout .ct { font-size: 11px; line-height: 20px; }
+.pv .tbl { font: 12px/20px var(--mono); color: var(--muted); }
+.pv .hl { background: color-mix(in srgb, var(--amber) 16%, transparent); border-radius: 3px; }
+.pv .new { background: color-mix(in srgb, var(--primary) 14%, transparent); border-radius: 3px; }
+.pv .out { color: var(--faint); font: italic 12px var(--font); margin-left: 6px; }
+
+/* NEW: the save bar */
+.savebar { position: sticky; bottom: 0; margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border)); border-radius: 8px; box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
+.savebar .msg { margin-right: auto; color: var(--muted); font-size: 13px; }
+.savebar .msg b { color: var(--amber); }
+
+/* NEW: dialogs */
+.modal.sm { width: min(560px, calc(100vw - 32px)); }
+.chg { list-style: none; margin: 0 0 12px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); }
+.chg li { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: baseline; }
+.chg li:last-child { border-bottom: 0; }
+.chg .k { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; width: 62px; flex: none; }
+.chg .k.a { color: var(--primary); } .chg .k.c { color: var(--amber); } .chg .k.r { color: var(--danger); }
+.chk { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; }
+.chk input { margin-top: 3px; }
+.chk small { display: block; color: var(--faint); }
+.mb p { margin: 0 0 10px; color: var(--muted); }
+.mb .field select, .mb .field input { width: 100%; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { flex: 1; padding: 6px 8px; color: var(--muted); }
+.seg button.on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); font-weight: 600; }
+
+/* NEW: editor top bar template chip */
+.tpl-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--amber) 50%, var(--border)); color: var(--amber); white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; }
+.tpl-chip:hover { background: color-mix(in srgb, var(--amber) 10%, transparent); }
+
+@media (max-width: 980px) {
+  .te-body { grid-template-columns: 1fr; }
+  .pv { position: static; }
+  .pv .pb { max-height: 360px; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: 0 1fr; }
+  .rail { display: none; }
+  .logo { width: 40px; }
+  .hide-narrow { display: none !important; }
+  .pane { padding: 16px 16px 160px; }
+  .set { grid-template-columns: 1fr; gap: 12px; }
+  .set nav { flex-direction: row; flex-wrap: wrap; }
+  .set nav button { padding: 4px 8px; font-size: 13px; }
+  .doc { padding: 16px 16px 120px; }
+  .te-gen { grid-template-columns: 1fr; }
+  .rows { overflow-x: auto; }
+  .rh, .rr { min-width: 620px; }
+  .trow { grid-template-columns: 1fr; }
+  .trow .acts { grid-column: 1; grid-row: auto; flex-wrap: wrap; }
+  .scrim { padding-top: 2vh; }
+  .modal .mh, .modal .mb, .modal .mf { padding-left: 14px; padding-right: 14px; }
+  .anno { left: 16px; right: 16px; width: auto; bottom: 32px; }
+}
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup</span>
+  <button data-state="1" class="on">1 · Template list</button>
+  <button data-state="2">2 · Built-in</button>
+  <button data-state="3">3 · Sections</button>
+  <button data-state="4">4 · Scene fields</button>
+  <button data-state="5">5 · Boxes</button>
+  <button data-state="6">6 · Campaign</button>
+  <button data-state="7">7 · Save version</button>
+  <button data-state="8">8 · Project update</button>
+  <button data-state="9">9 · New project</button>
+  <span class="sep"></span>
+  <button id="mReset">Reset data</button>
+  <button id="mTheme">Light / dark</button>
+  <button id="mNotes">Notes</button>
+</nav>
+
+<div class="app" id="app">
+  <header class="topbar" id="topbar"></header>
+  <nav class="rail" id="rail"></nav>
+  <main class="center" id="center">
+    <section class="view" id="v-settings"><div class="pane">
+      <div class="head"><h1>Settings</h1></div>
+      <div class="set">
+        <nav aria-label="Settings">
+          <button>To-do templates</button><button class="on">Document templates</button><button>Game systems</button><button>Author and licence</button>
+          <button>Account</button><button>Connected apps</button><button>Sync and storage</button><button>Appearance</button>
+        </nav>
+        <section id="setBody"></section>
+      </div>
+    </div></section>
+    <section class="view" id="v-editor"><div class="doc"><div class="ed" id="ed"></div></div></section>
+  </main>
+  <footer class="status" id="status"></footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="mh"><h3 id="dlgTitle"></h3><button class="tb" id="dlgX" aria-label="Close">✕</button></div>
+    <div class="mb" id="dlgBody"></div>
+    <div class="mf" id="dlgFoot"></div>
+  </div>
+</div>
+
+<aside class="anno" id="anno" aria-label="Mockup notes">
+  <h5><span id="annoH">Mockup note</span><button id="annoX" aria-label="Hide notes">✕</button></h5>
+  <ul id="annoL"></ul>
+</aside>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const LOCK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+
+/* Roles: what the code (checks, PDF, connector) needs to find. A section with a
+   role keeps its place in the PDF; a section without one is the user's own. */
+const ROLE = {
+  synopsis: ['Synopsis', 'Cover'], backstory: ['Backstory', 'Cover'], overview: ['Overview', 'Night page'],
+  reminders: ['Reminders', 'Night page, side'], clock: ['Clock', 'Night page'], truths: ['Truths', 'Night page'],
+  strongStart: ['Strong start', 'Start page'], sceneMap: ['Scene map', 'Start page'], rules: ['Rules', 'Own page, side boxes'],
+  scenes: ['Scenes', 'A page per scene'], clues: ['Clues', 'References'], npcs: ['NPCs', 'References'],
+  sheets: ['Sheets', 'References'], before: ['Before the session', 'References'], appendix: ['Appendix', 'Not printed'],
+  cast: ['Cast', ''], clueField: ['Clues', ''],
+};
+let uid = 0;
+const S = (name, req, role) => ({ id: 's' + (++uid), name, req, role, newPage: true, side: false, inPdf: role !== 'appendix' });
+const F = (label, form, req, climax, role) => ({ id: 'f' + (++uid), label, form, req, climax: !!climax, role: role || null });
+const B = (type, label, column, places, min, title) => ({ id: 'b' + (++uid), type, label, column, places, min, title });
+const K = (key, type, req) => ({ id: 'k' + (++uid), key, type, req });
+
+const AVV_SECTIONS = () => [
+  S('La vicenda in breve', 'required', 'synopsis'), S('Antefatto', 'optional', 'backstory'), S("A colpo d'occhio", 'required', 'overview'),
+  S('Da non perdere stasera', 'required', 'reminders'), S('Orologio', 'required', 'clock'), S('Verità del mondo', 'required', 'truths'),
+  S('Inizio forte', 'required', 'strongStart'), S('Mappa delle scene', 'required', 'sceneMap'), S('Regole della notte', 'optional', 'rules'),
+  S('Scene', 'required', 'scenes'), S('Indizi', 'required', 'clues'), S('PNG', 'required', 'npcs'), S('Schede', 'optional', 'sheets'),
+  S('Prima della sessione', 'optional', 'before'), S('Appendice: immagini e musica', 'required', 'appendix'),
+];
+const AVV_FIELDS = () => [
+  F('Luogo e momento', 'inline', 'required'), F('In gioco', 'inline', 'required'), F('Da non perdere qui', 'block', 'required'),
+  F('Cosa succede da sé', 'block', 'required'), F("Chi c'è", 'block', 'optional', false, 'cast'), F('Indizi qui', 'block', 'recommended', false, 'clueField'),
+  F('Prove e regole', 'inline', 'optional'), F('Se deragliano', 'inline', 'required'),
+  F('Regole della situazione', 'block', 'optional', true), F('Cosa decide la notte', 'inline', 'optional', true),
+];
+const AVV_BOXES = () => [
+  B('leggi', 'Da leggere', 'main', ['scenes', 'Inizio forte'], 1, 'none'),
+  B('documento', 'Documento da consegnare', 'main', ['scenes', 'Inizio forte'], 0, 'expected'),
+  B('riquadro', 'Riquadro', 'main', ['scenes', 'any section'], 0, 'optional'),
+  B('riquadro|laterale', 'Riquadro laterale', 'side', ['scenes', "A colpo d'occhio", 'Regole della notte'], 0, 'optional'),
+];
+const AVV_KEYS = () => [
+  K('titolo', 'text', 'required'), K('sottotitolo', 'text', 'optional'), K('sistema', 'text', 'optional'), K('formato', 'text', 'optional'),
+  K('durata', 'text', 'optional'), K('giocatori', 'text', 'optional'), K('ambientazione', 'text', 'optional'), K('tempi', 'text', 'optional'),
+  K('linguetta', 'text', 'optional'), K('campagna', 'text', 'optional'), K('arco', 'text', 'optional'), K('fronti', 'list', 'optional'),
+  K('fili', 'list', 'optional'), K('autore', 'text', 'optional'), K('copyright', 'text', 'optional'), K('licenza', 'licence', 'optional'),
+];
+const AVV_LIMITS = () => ({ synMin: 300, synMax: 600, preamble: 700, reminders: 5, revClues: 3, revScenes: 2, dashes: true });
+const CAMP_SECTIONS = () => ['Premessa', 'Fronti', 'PNG ricorrenti', 'Fili aperti', 'Sessioni'].map(n => S(n, 'optional', null));
+
+function seed() {
+  uid = 0;
+  const avv = { id: 'avventura', name: 'Avventura', cat: 'adventure', builtin: true, version: 1, used: 4, def: false, system: 'Kulthos',
+    sections: AVV_SECTIONS(), fields: AVV_FIELDS(), boxes: AVV_BOXES(), keys: AVV_KEYS(), limits: AVV_LIMITS() };
+  const kul = { ...clone(avv), id: 'kulthos', name: 'Avventura Kulthos', builtin: false, version: 2, used: 3, def: true, from: 'Avventura' };
+  const dnd = { ...clone(avv), id: 'dnd', name: 'One-shot D&D 5e', builtin: false, version: 1, used: 0, def: false, from: 'Avventura', system: 'D&D 5e' };
+  const camp = { id: 'campagna', name: 'Campagna', cat: 'campaign', builtin: true, version: 1, used: 1, def: false, system: '',
+    sections: CAMP_SECTIONS(), fields: [], boxes: [], keys: AVV_KEYS().filter(k => !['formato', 'linguetta', 'arco', 'campagna'].includes(k.key)), limits: null };
+  const lunga = { ...clone(camp), id: 'lunga', name: 'Campagna lunga', builtin: false, version: 1, used: 1, def: true, from: 'Campagna', system: 'Kulthos' };
+  lunga.sections.splice(4, 0, S('Calendario', 'optional', null));
+  return [avv, kul, dnd, camp, lunga];
+}
+let T = seed();
+// Drafts: the template as saved, and the one being edited.
+let saved = null, draft = null, tab = 'sections', state = 1, view = 'settings';
+
+function demoDraft() {
+  // State 3 opens with three edits already made, so the save and update flows have something to show.
+  draft = clone(T.find(t => t.id === 'kulthos'));
+  saved = clone(draft);
+  const truths = draft.sections.findIndex(s => s.role === 'truths');
+  draft.sections.splice(truths + 1, 0, { ...S('Atmosfera', 'optional', null), newPage: false, side: true });
+  draft.sections.find(s => s.role === 'strongStart').name = 'Apertura';
+  draft.fields.find(f => f.label === 'Prove e regole').req = 'required';
+}
+function open(id) { draft = clone(T.find(t => t.id === id)); saved = clone(draft); }
+
+/* Changes between the saved template and the draft */
+function changes(a = saved, b = draft) {
+  if (!a || !b) return [];
+  const out = [];
+  const diff = (list, key, what, kind) => {
+    const before = new Map(a[list].map(x => [x.id, x])), after = new Map(b[list].map(x => [x.id, x]));
+    for (const x of b[list]) {
+      const o = before.get(x.id);
+      if (!o) { out.push(['a', `${what} «${x[key]}»${x.req ? ', ' + x.req : ''}`]); continue; }
+      if (o[key] !== x[key]) out.push(['c', `${what} «${o[key]}» renamed «${x[key]}»`]);
+      if (o.req !== x.req) out.push(['c', `${what} «${x[key]}» now ${x.req}`]);
+      if (kind === 'sec' && (o.newPage !== x.newPage || o.side !== x.side || o.inPdf !== x.inPdf)) out.push(['c', `PDF options of «${x[key]}»`]);
+      if (kind === 'fld' && o.form !== x.form) out.push(['c', `${what} «${x[key]}» now ${x.form}`]);
+    }
+    for (const o of a[list]) if (!after.has(o.id)) out.push(['r', `${what} «${o[key]}»`]);
+  };
+  diff('sections', 'name', 'Section', 'sec');
+  diff('fields', 'label', 'Scene field', 'fld');
+  diff('boxes', 'label', 'Box');
+  diff('keys', 'key', 'Front matter key');
+  return out;
+}
+const changedIds = () => {
+  const ids = new Set(), added = new Set();
+  for (const list of ['sections', 'fields', 'boxes', 'keys']) {
+    const before = new Map(saved[list].map(x => [x.id, JSON.stringify(x)]));
+    for (const x of draft[list]) {
+      if (!before.has(x.id)) added.add(x.id); else if (before.get(x.id) !== JSON.stringify(x)) ids.add(x.id);
+    }
+  }
+  return { ids, added };
+};
+
+/* Chrome */
+const IC = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  img: '<rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/>',
+  log: '<path d="M4 5h16v11H8l-4 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24">${IC[k]}</svg>`;
+function renderChrome() {
+  const ed = view === 'editor', pr = view === 'projects';
+  $('#v-settings').classList.toggle('on', !ed);
+  $('#v-editor').classList.toggle('on', ed);
+  $('#rail').innerHTML = `
+    <button${pr ? ' class="on"' : ''} title="Projects">${svg('grid')}</button>
+    <button${ed ? ' class="on"' : ''} title="Document">${svg('doc')}</button>
+    <button title="Inspiration">${svg('bulb')}</button><button title="Research">${svg('search')}</button>
+    <button title="Images and music">${svg('img')}</button><button title="Brainstorm log">${svg('log')}</button>
+    <button class="bottom last${ed || pr ? '' : ' on'}" title="Settings and templates">${svg('gear')}</button>`;
+  if (!ed) {
+    $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div><div class="crumbs"><b>${pr ? 'Projects' : 'Settings'}</b></div>
+      <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span><span class="kbd hide-narrow">⌘K</span><span class="avatar" title="Signed in as Stefano">S</span>`;
+    $('#status').innerHTML = '';
+    return;
+  }
+  $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span class="hide-narrow">Projects ›</span> <span class="hide-narrow">Kulthos ›</span> <b>L’Ancora di Sabaoth</b></div>
+    <div class="top-meta"><span class="cat hide-narrow">Adventure</span>
+      <button class="tpl-chip" id="tplChip" title="Template of this project; a newer version is available">Avventura Kulthos v2 · v3 available</button></div>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb primary hide-narrow" title="PDF preview"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <span class="kbd hide-narrow">⌘K</span>`;
+  $('#tplChip').onclick = openUpdate;
+  $('#status').innerHTML = `<span>5 scenes · 1 error, 3 warnings</span><span class="r">Avventura Kulthos v2 · Saved on the server</span>`;
+}
+
+/* 1 · The template list */
+const CAT = { adventure: 'Adventures and one-shots', campaign: 'Campaigns' };
+function renderList() {
+  const row = t => `<div class="trow">
+      <div class="tn"><b>${esc(t.name)}</b><span class="chip ver">v${t.version}</span>${t.builtin ? '<span class="chip">Built-in</span>' : ''}${t.def ? '<span class="chip def">Default</span>' : ''}</div>
+      <div class="tm">${t.builtin ? 'Comes with Promptbook' : `Copied from ${esc(t.from)}`}${t.system ? ' · ' + esc(t.system) : ''} · ${t.used ? `${t.used} project${t.used > 1 ? 's' : ''}` : 'no projects'}</div>
+      <div class="acts">
+        ${t.def ? '' : `<button class="tb" data-def="${t.id}">Make default</button>`}
+        <button class="tb line" data-dup="${t.id}">Duplicate</button>
+        <button class="tb line" data-open="${t.id}">${t.builtin ? 'View' : 'Edit'}</button>
+        ${!t.builtin && !t.used ? `<button class="tb del" data-delt="${t.id}" title="Delete this template">Delete</button>` : ''}
+      </div></div>`;
+  $('#setBody').innerHTML = `<h2>Document templates</h2>
+    <p class="lead">A template sets a prep document's sections, scene fields and boxes, the checks, and the PDF. A new project starts from its category's default. To make your own, duplicate one.</p>
+    ${Object.entries(CAT).map(([c, label]) => `<div class="tgroup"><h3>${label}</h3>${T.filter(t => t.cat === c).map(row).join('')}</div>`).join('')}
+    <p class="sub">Editing a template never changes existing projects: each keeps the version it was made with until you update it from the project.</p>`;
+  $$('[data-open]').forEach(b => b.onclick = () => { open(b.dataset.open); tab = 'sections'; $('.pane').classList.add('wide'); renderEditorPane(); });
+  $$('[data-dup]').forEach(b => b.onclick = () => {
+    const src = T.find(t => t.id === b.dataset.dup);
+    const copy = { ...clone(src), id: 'copy' + (++uid), name: `Copia di ${src.name}`, builtin: false, version: 1, used: 0, def: false, from: src.name };
+    T.push(copy); open(copy.id); tab = 'sections'; $('.pane').classList.add('wide'); renderEditorPane();
+  });
+  $$('[data-def]').forEach(b => b.onclick = () => { const t = T.find(x => x.id === b.dataset.def); T.filter(x => x.cat === t.cat).forEach(x => x.def = x === t); renderList(); });
+  $$('[data-delt]').forEach(b => b.onclick = () => { T = T.filter(t => t.id !== b.dataset.delt); renderList(); });
+}
+
+/* 2-6 · The template editor */
+const REQ = ['required', 'recommended', 'optional'];
+const sel = (val, opts, attrs) => `<select ${attrs}>${opts.map(o => `<option${o === val ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+function renderEditorPane() {
+  const ro = draft.builtin, camp = draft.cat === 'campaign';
+  const dis = ro ? 'disabled' : '';
+  const ch = changes();
+  const { ids, added } = changedIds();
+  const mark = id => added.has(id) ? ' added' : ids.has(id) ? ' changed' : '';
+  const mv = (list, i) => ro ? '<span></span>' : `<span class="mv"><button data-up="${list}:${i}" aria-label="Move up" ${i ? '' : 'disabled'}>▲</button><button data-dn="${list}:${i}" aria-label="Move down" ${i < draft[list].length - 1 ? '' : 'disabled'}>▼</button></span>`;
+  const tabs = [['sections', 'Sections', draft.sections.length], ...(camp ? [] : [['fields', 'Scene fields', draft.fields.length], ['boxes', 'Boxes', draft.boxes.length]]),
+    ['keys', 'Front matter', draft.keys.length], ...(camp ? [] : [['limits', 'Limits and style', '']])];
+  let body = '';
+  if (tab === 'sections') {
+    body = `<div class="rows"><div class="rh g-sec"><span></span><span>Heading</span><span>Needed</span><span>Used for</span><span>${camp ? '' : 'In the PDF'}</span><span></span></div>
+      ${draft.sections.map((s, i) => {
+        const r = s.role ? ROLE[s.role] : null;
+        const pdf = camp ? '' : r
+          ? `<span class="pdf"><span class="tg fixed" title="This section's place in the PDF is set by the layout">${r[1]}</span>${s.role === 'appendix' ? '' : `<button class="tg${s.inPdf ? ' on' : ''}" data-tog="${i}:inPdf" ${dis}>${s.inPdf ? 'Printed' : 'Left out'}</button>`}</span>`
+          : `<span class="pdf"><button class="tg${s.inPdf ? ' on' : ''}" data-tog="${i}:inPdf" ${dis}>${s.inPdf ? 'Printed' : 'Left out'}</button>${s.inPdf ? `<button class="tg${s.newPage ? ' on' : ''}" data-tog="${i}:newPage" ${dis}>New page</button><button class="tg${s.side ? ' on' : ''}" data-tog="${i}:side" ${dis}>Side column</button>` : ''}</span>`;
+        return `<div class="rr g-sec${mark(s.id)}">${mv('sections', i)}
+          <input value="${esc(s.name)}" data-name="sections:${i}" aria-label="Heading" ${dis}>
+          ${sel(s.req, REQ, `data-req="sections:${i}" aria-label="Needed" ${dis}`)}
+          <span class="role${r ? '' : ' custom'}" title="${r ? 'The checks and the PDF find this section by its role, whatever its heading says' : 'Your own section: checked for presence only'}">${r ? LOCK + r[0] : 'Your own'}</span>
+          ${pdf}
+          ${ro ? '<span></span>' : `<button class="del" data-del="sections:${i}" aria-label="Remove" title="${r ? 'Needed by the checks and the PDF: set it optional instead' : 'Remove this section'}" ${r ? 'disabled' : ''}>✕</button>`}</div>`;
+      }).join('')}
+      ${ro ? '' : `<form class="add" id="addForm"><input id="addIn" placeholder="+ Add a section, e.g. Atmosfera" aria-label="New section"><button class="tb line">Add</button></form>`}</div>
+      <p class="sub">${camp ? 'Campaigns have no PDF yet; their sections are checked for presence only.' : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}</p>`;
+  } else if (tab === 'fields') {
+    body = `<div class="rows"><div class="rh g-fld"><span></span><span>Bold label in a scene</span><span>Form</span><span>Needed</span><span>Climax</span><span></span></div>
+      ${draft.fields.map((f, i) => `<div class="rr g-fld${mark(f.id)}">${mv('fields', i)}
+        <input value="${esc(f.label)}" data-name="fields:${i}" aria-label="Label" ${dis}>
+        ${sel(f.form, ['inline', 'block'], `data-form="${i}" aria-label="Form" ${dis}`)}
+        ${sel(f.req, REQ, `data-req="fields:${i}" aria-label="Needed" ${dis}`)}
+        <label class="role"><input type="checkbox" ${f.climax ? 'checked' : ''} data-climax="${i}" ${dis} style="width:auto"> only</label>
+        ${ro ? '<span></span>' : `<button class="del" data-del="fields:${i}" aria-label="Remove" ${f.role ? 'disabled title="Used by the side column"' : ''}>✕</button>`}</div>`).join('')}
+      ${ro ? '' : `<form class="add" id="addForm"><input id="addIn" placeholder="+ Add a scene field, e.g. Atmosfera" aria-label="New field"><button class="tb line">Add</button></form>`}</div>
+      <p class="sub"><b>Inline</b>: <code>**Label:** text</code> on one line. <b>Block</b>: <code>**Label**</code> then a list or a table. <b>Climax only</b>: expected in the last scene, allowed in any.</p>`;
+  } else if (tab === 'boxes') {
+    body = `<div class="rows"><div class="rh g-box"><span>Box</span><span>Column</span><span>Allowed in</span><span>Per place</span><span></span></div>
+      ${draft.boxes.map((b, i) => `<div class="rr g-box${mark(b.id)}">
+        <span><code>[!${esc(b.type)}]</code><br><span class="role">${esc(b.label)}</span></span>
+        ${sel(b.column, ['main', 'side'], `aria-label="Column" ${dis}`)}
+        <span class="places">${b.places.map(p => `<span class="tg on">${esc(p)}</span>`).join('')}${ro ? '' : '<button class="tg">+ place</button>'}</span>
+        <input value="${b.min ? 'at least ' + b.min : 'any'}" aria-label="Per place" ${dis}>
+        ${ro ? '<span></span>' : `<button class="del" data-del="boxes:${i}" aria-label="Remove" ${b.min ? 'disabled title="Each scene needs one"' : ''}>✕</button>`}</div>`).join('')}
+      ${ro ? '' : `<form class="add" id="addForm"><input id="addIn" placeholder="+ Add a box type, e.g. mappa" aria-label="New box type"><button class="tb line">Add</button></form>`}</div>
+      <p class="sub">Written as <code>&gt; [!type] Title</code>. The look of each kind (read-aloud, handout, box) stays the app's.</p>`;
+  } else if (tab === 'keys') {
+    body = `<div class="rows"><div class="rh g-key"><span></span><span>Key</span><span>Type</span><span>Needed</span><span></span></div>
+      ${draft.keys.map((k, i) => `<div class="rr g-key${mark(k.id)}">${mv('keys', i)}
+        <input value="${esc(k.key)}" data-name="keys:${i}" aria-label="Key" ${dis}>
+        ${sel(k.type, ['text', 'list', 'licence'], `aria-label="Type" ${dis}`)}
+        ${sel(k.req, REQ, `data-req="keys:${i}" aria-label="Needed" ${dis}`)}
+        ${ro ? '<span></span>' : `<button class="del" data-del="keys:${i}" aria-label="Remove" ${k.key === 'titolo' ? 'disabled' : ''}>✕</button>`}</div>`).join('')}</div>`;
+  } else {
+    const l = draft.limits;
+    body = `<div class="rows"><div class="lim">
+      <div class="field"><label>Synopsis length (words)</label><span class="pair"><input value="${l.synMin}" ${dis}> to <input value="${l.synMax}" ${dis}></span></div>
+      <div class="field"><label>Text before the scenes (words, at most)</label><span class="pair"><input value="${l.preamble}" ${dis}></span></div>
+      <div class="field"><label>Reminders, at most</label><span class="pair"><input value="${l.reminders}" ${dis}></span></div>
+      <div class="field"><label>Each revelation: clues and scenes, at least</label><span class="pair"><input value="${l.revClues}" ${dis}> clues <input value="${l.revScenes}" ${dis}> scenes</span></div>
+      <div class="field"><label>Style</label><label class="chk"><input type="checkbox" ${l.dashes ? 'checked' : ''} ${dis}> Warn on em and en dashes</label></div>
+    </div></div>`;
+  }
+  $('#setBody').innerHTML = `
+    <div class="te-head"><button class="tb back" id="back">← Document templates</button></div>
+    ${ro ? `<div class="banner"><span><b>Built-in template.</b> It can't be changed; duplicate it to make your own.</span><button class="tb primary" data-dup2="${draft.id}">Duplicate</button></div>` : ''}
+    <div class="card"><div class="te-gen">
+      <div class="field"><label for="tName">Name</label><input id="tName" value="${esc(draft.name)}" ${dis}></div>
+      <div class="field"><label for="tCat">For</label>${sel(CAT[draft.cat], [CAT[draft.cat]], 'id="tCat" disabled')}</div>
+      <div class="field"><label for="tSys">Game system</label>${sel(draft.system || 'None', ['None', 'Kulthos', 'D&D 5e'], `id="tSys" ${dis}`)}<span class="hint">Grades and wounds come from Settings → Game systems.</span></div>
+    </div></div>
+    <div class="te-body">
+      <div style="min-width:0">
+        <div class="tabs" role="tablist">${tabs.map(([k, n, c]) => `<button role="tab" class="${tab === k ? 'on' : ''}" data-tab="${k}">${n}${c !== '' ? `<span class="n">${c}</span>` : ''}</button>`).join('')}</div>
+        ${body}
+      </div>
+      ${preview()}
+    </div>
+    ${!ro && ch.length ? `<div class="savebar"><span class="msg"><b>${ch.length} unsaved change${ch.length > 1 ? 's' : ''}</b> · ${draft.used ? `${draft.used} project${draft.used > 1 ? 's' : ''} use v${draft.version} and keep it until updated` : 'no projects use it yet'}</span>
+      <button class="tb line" id="discard">Discard</button><button class="tb primary" id="saveV">Save as v${draft.version + 1}</button></div>` : ''}`;
+  wireEditor();
+}
+
+/* The starting document the template creates, as the editor shows it */
+function preview() {
+  const { ids, added } = changedIds();
+  const cls = id => added.has(id) ? ' new' : ids.has(id) ? ' hl' : '';
+  const camp = draft.cat === 'campaign';
+  const fmv = { titolo: 'Nuova avventura', sistema: draft.system || '', formato: camp ? 'campagna' : 'avventura', autore: 'Stefano Sibilia', copyright: '© 2026 Stefano Sibilia', licenza: 'CC-BY-NC-SA-4.0' };
+  const fm = draft.keys.filter(k => k.key in fmv || k.req === 'required').map(k => `<div class="l fm${cls(k.id)}"><span class="k">${esc(k.key)}:</span> ${esc(fmv[k.key] ?? '')}</div>`).join('');
+  const lead = draft.boxes.filter(b => b.min > 0);
+  const boxLines = where => lead.filter(b => b.places.includes(where)).map(b => `<div class="callout leggi${cls(b.id)}"><div class="ct"><span class="mk">&gt; [!${esc(b.type)}]</span> ${esc(b.label)}</div><div class="tx">&nbsp;</div></div>`).join('');
+  const lines = draft.sections.map(s => {
+    const out = s.role === 'appendix' || (!camp && !s.inPdf) ? `<span class="out">not in the PDF</span>` : '';
+    let h = `<div class="l h2${cls(s.id)}"><span class="mk">## </span>${esc(s.name)}${s.req === 'optional' ? '<span class="out">optional</span>' : ''}${out}</div>`;
+    if (s.role === 'strongStart') h += boxLines('Inizio forte');
+    if (s.role === 'scenes') {
+      h += `<div class="l h3"><span class="mk">### </span><span class="sid">S1.</span> Prima scena</div>`;
+      h += draft.fields.filter(f => f.req !== 'optional' && !f.climax).map(f => `<div class="l${cls(f.id)}"><span class="fl">**${esc(f.label)}${f.form === 'inline' ? ':' : ''}**</span></div>`).join('');
+      h += boxLines('scenes');
+      h += `<div class="l tbl">| Se i PG | Allora |</div>`;
+    }
+    return h;
+  }).join('');
+  return `<aside class="pv" aria-label="Starting document"><div class="ph">Starting document<span class="chip">${draft.builtin ? 'v' + draft.version : 'live'}</span></div>
+    <div class="pb ed"><div class="l fm fence">---</div>${fm}<div class="l fm fence">---</div>${lines}</div></aside>`;
+}
+
+function wireEditor() {
+  $('#back').onclick = () => { draft = saved = null; $('.pane').classList.remove('wide'); renderList(); };
+  $$('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderEditorPane(); });
+  $$('[data-dup2]').forEach(b => b.onclick = () => {
+    const src = T.find(t => t.id === b.dataset.dup2);
+    const copy = { ...clone(src), id: 'copy' + (++uid), name: `Copia di ${src.name}`, builtin: false, version: 1, used: 0, def: false, from: src.name };
+    T.push(copy); open(copy.id); renderEditorPane();
+  });
+  const at = s => { const [l, i] = s.split(':'); return [l, +i]; };
+  $$('[data-name]').forEach(inp => inp.oninput = () => {
+    const [l, i] = at(inp.dataset.name); draft[l][i][l === 'sections' ? 'name' : l === 'keys' ? 'key' : 'label'] = inp.value;
+    const pos = inp.selectionStart; renderEditorPane(); const again = $(`[data-name="${inp.dataset.name}"]`); again.focus(); again.setSelectionRange(pos, pos);
+  });
+  $$('[data-req]').forEach(s => s.onchange = () => { const [l, i] = at(s.dataset.req); draft[l][i].req = s.value; renderEditorPane(); });
+  $$('[data-form]').forEach(s => s.onchange = () => { draft.fields[+s.dataset.form].form = s.value; renderEditorPane(); });
+  $$('[data-climax]').forEach(c => c.onchange = () => { draft.fields[+c.dataset.climax].climax = c.checked; renderEditorPane(); });
+  $$('[data-tog]').forEach(b => b.onclick = () => { const [i, k] = b.dataset.tog.split(':'); draft.sections[+i][k] = !draft.sections[+i][k]; renderEditorPane(); });
+  const move = (s, d) => { const [l, i] = at(s); const a = draft[l]; [a[i], a[i + d]] = [a[i + d], a[i]]; renderEditorPane(); };
+  $$('[data-up]').forEach(b => b.onclick = () => move(b.dataset.up, -1));
+  $$('[data-dn]').forEach(b => b.onclick = () => move(b.dataset.dn, 1));
+  $$('[data-del]').forEach(b => b.onclick = () => { const [l, i] = at(b.dataset.del); draft[l].splice(i, 1); renderEditorPane(); });
+  const f = $('#addForm');
+  if (f) f.onsubmit = e => {
+    e.preventDefault(); const v = $('#addIn').value.trim(); if (!v) return;
+    if (tab === 'sections') draft.sections.splice(draft.sections.findIndex(s => s.role === 'scenes'), 0, { ...S(v, 'optional', null), newPage: false });
+    else if (tab === 'fields') draft.fields.push(F(v, 'inline', 'optional'));
+    else if (tab === 'boxes') draft.boxes.push(B(v, v[0].toUpperCase() + v.slice(1), 'main', ['scenes'], 0, 'optional'));
+    renderEditorPane(); $('#addIn').focus();
+  };
+  const d = $('#discard'); if (d) d.onclick = () => { draft = clone(saved); renderEditorPane(); };
+  const sv = $('#saveV'); if (sv) sv.onclick = openSave;
+}
+
+/* Dialogs */
+let back = null;
+function dialog(title, body, foot) {
+  back = document.activeElement;
+  $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = body; $('#dlgFoot').innerHTML = foot;
+  $('#scrim').hidden = false;
+  ($('#dlgFoot .primary') || $('#dlgX')).focus();
+}
+function closeDialog() { $('#scrim').hidden = true; if (back && document.contains(back)) back.focus(); }
+$('#dlgX').onclick = closeDialog;
+$('#scrim').onclick = e => { if (e.target.id === 'scrim') closeDialog(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#scrim').hidden) closeDialog(); });
+const chgList = ch => `<ul class="chg">${ch.map(([k, t]) => `<li><span class="k ${k}">${{ a: 'Added', c: 'Changed', r: 'Removed' }[k]}</span><span>${esc(t)}</span></li>`).join('')}</ul>`;
+
+function openSave() {
+  const ch = changes();
+  dialog(`Save ${draft.name} v${draft.version + 1}`,
+    `${chgList(ch)}
+     <div class="field"><label for="vNote">Note for this version (optional)</label><input id="vNote" placeholder="e.g. Atmosfera on the night page"></div>
+     <p>${draft.used ? `${draft.used} project${draft.used > 1 ? 's' : ''} use v${draft.version}. They keep it; each shows «v${draft.version + 1} available» in its top bar.` : 'No project uses this template yet.'} New projects start from v${draft.version + 1}.</p>`,
+    `<button class="tb line" id="dCancel">Cancel</button><button class="tb primary" id="dSave">Save v${draft.version + 1}</button>`);
+  $('#dCancel').onclick = closeDialog;
+  $('#dSave').onclick = () => {
+    draft.version++; const i = T.findIndex(t => t.id === draft.id); T[i] = clone(draft); saved = clone(draft);
+    closeDialog(); renderEditorPane();
+  };
+}
+
+function openUpdate() {
+  if (!draft || draft.id !== 'kulthos') demoDraft();
+  const ch = changes();
+  dialog('Update to Avventura Kulthos v3',
+    `<p>This project uses v2. Updating changes the rules it is checked against; your text changes only where you tick below.</p>
+     ${chgList(ch)}
+     <label class="chk"><input type="checkbox" checked> <span>Add the new sections' headings to the document<small>«## Atmosfera» after «Verità del mondo», empty</small></span></label>
+     <label class="chk"><input type="checkbox" checked> <span>Rename the headings that changed<small>«## Inizio forte» becomes «## Apertura»</small></span></label>
+     <p>After the update: <b style="color:var(--amber)">1 new warning</b>, «Prove e regole» missing in S2. Undo puts the document back.</p>`,
+    `<button class="tb line" id="dCancel">Not now</button><button class="tb primary" id="dUpd">Update to v3</button>`);
+  $('#dCancel').onclick = closeDialog;
+  $('#dUpd').onclick = () => { closeDialog(); $('#tplChip').textContent = 'Avventura Kulthos v3'; $('#tplChip').style.color = 'var(--muted)'; $('#tplChip').style.borderColor = 'var(--border)'; };
+}
+
+function openNew() {
+  const opts = c => T.filter(t => t.cat === c).map(t => `<option${t.def ? ' selected' : ''}>${esc(t.name)} · v${t.version}${t.def ? ' (default)' : ''}</option>`).join('');
+  let cat = 'adventure';
+  const draw = () => {
+    dialog('New project',
+      `<div class="field"><label for="nTitle">Title</label><input id="nTitle" value="Il faro di Capo Peloro"></div>
+       <div class="field"><label>Category</label><div class="seg" id="nCat">${[['adventure', 'Adventure'], ['one-shot', 'One-shot'], ['campaign', 'Campaign']].map(([k, n]) => `<button class="${k === cat ? 'on' : ''}" data-c="${k}">${n}</button>`).join('')}</div></div>
+       <div class="field"><label for="nTpl">Template</label><select id="nTpl">${opts(cat === 'campaign' ? 'campaign' : 'adventure')}</select><span class="hint">The project keeps this version until you update it.</span></div>`,
+      `<button class="tb line" id="dCancel">Cancel</button><button class="tb primary">Create</button>`);
+    $('#dCancel').onclick = closeDialog;
+    $$('#nCat [data-c]').forEach(b => b.onclick = () => { cat = b.dataset.c; draw(); });
+  };
+  draw();
+}
+
+/* 8 · The project's editor, with the update chip */
+function renderDoc() {
+  $('#ed').innerHTML = `<div class="l fm fence">---</div>
+    <div class="l fm"><span class="k">titolo:</span> L’Ancora di Sabaoth</div><div class="l fm"><span class="k">sistema:</span> Kulthos</div>
+    <div class="l fm"><span class="k">formato:</span> avventura</div><div class="l fm fence">---</div>
+    <div class="l h2"><span class="mk">## </span>Verità del mondo</div>
+    <div class="l li">- La città dorme sotto le macerie del 1908.</div>
+    <div class="l h2"><span class="mk">## </span>Inizio forte</div>
+    <div class="callout leggi"><div class="ct"><span class="mk">&gt; [!leggi]</span> Da leggere</div><div class="tx">La terra trema ancora, piano, come un cane che sogna.</div></div>`;
+}
+function renderProjects() {
+  $('#setBody').innerHTML = `<h2>Kulthos</h2><p class="lead">Campaign · 3 adventures</p>
+    <div class="card"><b>L’Ancora di Sabaoth</b> · <span class="muted">Adventure · Avventura Kulthos v2</span></div>
+    <div class="card"><b>Il pozzo di Santa Lucia</b> · <span class="muted">One-shot · Avventura Kulthos v2</span></div>
+    <button class="tb primary" id="newP">New project</button>`;
+  $('#newP').onclick = openNew;
+}
+
+/* States and notes */
+const NOTES = {
+  1: ['Template list', [
+    'Settings → Document templates, per category. Built-ins come with the app and are read-only; <b>Duplicate</b> makes an editable copy.',
+    'One default per category; <b>New project</b> preselects it. Several templates per category, campaigns included.',
+    '<b>Delete</b> only on your templates that no project uses.',
+    'Game systems (grades, wounds) get their own Settings page, so any template can use any system.']],
+  2: ['Built-in, read-only', [
+    'Same editor, every control disabled, and a <b>Duplicate</b> banner.',
+    'The right side is the <b>starting document</b> a new project gets, built from the rules: front matter, the sections in order, one scene with its required fields, the required boxes and the reactions table.',
+    '«Used for» shows each section\'s role with a lock: the checks and the PDF find the section by role, so renaming it is safe.']],
+  3: ['Your template: sections', [
+    'Opens with three demo edits: «Atmosfera» added (green bar), «Inizio forte» renamed «Apertura» (amber), and on Scene fields «Prove e regole» made required.',
+    'Type in a heading, change «Needed», move rows with ▲▼, add a section: the preview follows.',
+    '<b>PDF controls</b>: sections with a role keep their place (dashed tag) and can only be left out; your own sections get <b>Printed / Left out</b>, <b>New page</b> and <b>Side column</b> (for <code>[!riquadro|laterale]</code>).',
+    'Sections with a role can\'t be removed (set them optional instead).',
+    'The save bar counts the changes; saving makes a new version.']],
+  4: ['Scene fields', [
+    'Bold labels inside a scene, in order. <b>Inline</b> or <b>block</b>, required / recommended / optional, and <b>climax only</b>.',
+    'Required fields appear empty in the starting document\'s first scene.',
+    '«Chi c\'è» and «Indizi qui» feed the scene page\'s side column, so they can be renamed but not removed.']],
+  5: ['Boxes', [
+    'The callout types: column, places they\'re allowed in, how many per place, title.',
+    'A new type picks a look among the app\'s three (read-aloud, handout, box); colours and fonts stay the app\'s.',
+    'Boxes with «at least 1» go into the starting document.']],
+  6: ['A campaign template', [
+    'Campaigns get their own templates: front matter and sections, no scenes, no boxes, no limits.',
+    'Campaigns have no PDF yet, so there are no PDF controls.',
+    '«Campagna lunga» is a copy of the built-in with a «Calendario» section.']],
+  7: ['Save a version', [
+    'The change list comes from comparing the draft with the saved version.',
+    'Projects on the old version keep it and see «vN available»; new projects start from the new one.',
+    'Versions are kept, so a project can always be checked against the one it uses.']],
+  8: ['A project on an older version', [
+    'The top bar shows the template and «v3 available»; click it.',
+    'Updating changes the rules. The text changes only where ticked: add the new sections\' headings, rename the changed ones. One undo step.',
+    'The dialog says what the checks will report after the update. Checks never block, so updating is always allowed.']],
+  9: ['New project', [
+    'The template list follows the category: Adventure and One-shot share the adventure templates, Campaign has its own.',
+    'The category\'s default is preselected, with its version.']],
+};
+const anno = (n) => { const [h, l] = NOTES[n]; $('#annoH').textContent = `Mockup note · ${h}`; $('#annoL').innerHTML = l.map(x => `<li>${x}</li>`).join(''); };
+
+function setState(n) {
+  closeDialog();
+  if (n !== null) {
+    state = n;
+    $$('.mock [data-state]').forEach(b => b.classList.toggle('on', +b.dataset.state === n));
+    anno(n);
+  }
+  view = state === 8 ? 'editor' : state === 9 ? 'projects' : 'settings';
+  renderChrome();
+  $('.pane').classList.toggle('wide', state !== 1 && view === 'settings');
+  if (n === 1) { draft = saved = null; renderList(); return; }
+  if (n === 2) { open('avventura'); tab = 'sections'; }
+  if (n === 3) { demoDraft(); tab = 'sections'; }
+  if (n === 4) { if (!draft || draft.id !== 'kulthos') demoDraft(); tab = 'fields'; }
+  if (n === 5) { if (!draft || draft.id !== 'kulthos') demoDraft(); tab = 'boxes'; }
+  if (n === 6) { open('lunga'); tab = 'sections'; }
+  if (n === 7) { if (!draft || draft.id !== 'kulthos') demoDraft(); tab = 'sections'; }
+  if (view === 'editor') { renderDoc(); openUpdate(); return; }
+  if (view === 'projects') { renderProjects(); openNew(); return; }
+  renderEditorPane();
+  if (n === 7) openSave();
+}
+$$('.mock [data-state]').forEach(b => b.onclick = () => setState(+b.dataset.state));
+$('#mReset').onclick = () => { T = seed(); setState(state); };
+$('#mTheme').onclick = () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+};
+$('#mNotes').onclick = () => $('#anno').classList.toggle('closed');
+$('#annoX').onclick = () => $('#anno').classList.add('closed');
+setState(1);
+</script>
+</body>
+</html>
