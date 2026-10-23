@@ -32,7 +32,7 @@ describe('the syntax sheet', () => {
       '> [!leggi] | Da leggere | no title · in scenes, Inizio forte · at least 1 per place',
       '> [!documento] Title | Documento da consegnare | title expected · in scenes, Inizio forte · any number per place',
       '> [!riquadro] Title | Riquadro | title optional · in scenes, any section · any number per place',
-      "> [!riquadro|laterale] Title | Riquadro laterale | title optional · in scenes, A colpo d'occhio · any number per place · side column",
+      "> [!riquadro|laterale] Title | Riquadro laterale | title optional · in scenes, A colpo d'occhio, Regole della notte · any number per place · side column",
     ]);
   });
 

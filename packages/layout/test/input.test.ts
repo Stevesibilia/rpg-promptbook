@@ -143,6 +143,21 @@ describe('toLayoutInput on a small adventure', () => {
   });
 });
 
+describe('Regole della notte', () => {
+  const rules = (body: string) => layout(sabaoth().replace(/^## Scene/m, `## Regole della notte\n\n${body}\n\n## Scene`)).rules;
+
+  it('moves the side boxes to the side column', () => {
+    const input = rules('**Paura.** Si tira Volontà.\n\n> [!riquadro|laterale] Promemoria\n> La marea sale.\n\n**Marea.** Sale.');
+    expect(markdown(input?.blocks)).toBe('**Paura.** Si tira Volontà.\n\n**Marea.** Sale.');
+    expect(markdown(input?.sideBoxes)).toBe('La marea sale.');
+    expect(input?.sideBoxes[0]!.box?.title).toBe('Promemoria');
+  });
+
+  it('has no side boxes when the section holds none', () => {
+    expect(rules('**Paura.** Si tira Volontà.')?.sideBoxes).toEqual([]);
+  });
+});
+
 describe('several read-alouds', () => {
   // A box of the given text put before the first read-aloud found after `after`.
   const withBoxBefore = (text: string, after: string, box: string) => {

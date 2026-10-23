@@ -148,7 +148,9 @@ export interface LayoutInput {
     strongStart: LayoutPart | null;
     sceneMap: LayoutPart | null;
   };
-  rules: LayoutPart | null;
+  // The side column holds the side boxes; without any, the rules print full
+  // width.
+  rules: (LayoutPart & { sideBoxes: LayoutBlock[] }) | null;
   scenes: LayoutScene[];
   references: {
     from: number;
@@ -397,6 +399,9 @@ export function toLayoutInput(model: Model, options: LayoutOptions, project: Lay
   const revelationBlocks = split >= 0 ? [overview!.blocks[split]!] : [];
   const overviewSide = overviewBlocks.filter((b) => box(b)?.side);
 
+  const rules = role('rules');
+  const rulesSide = rules?.blocks.filter((b) => box(b)?.side) ?? [];
+
   const synopsis = role('synopsis');
   const backstory = section('Antefatto');
   const strongStart = role('strongStart');
@@ -438,7 +443,7 @@ export function toLayoutInput(model: Model, options: LayoutOptions, project: Lay
       truths: part(section('Verità del mondo')),
     },
     start: { from: from(strongStart, sceneMap), strongStart: part(strongStart), sceneMap: part(sceneMap) },
-    rules: part(section('Regole della notte')),
+    rules: rules ? { ...part(rules, rules.blocks.filter((b) => !box(b)?.side))!, sideBoxes: rulesSide.map((b) => toBlock(b)) } : null,
     scenes: model.scenes.map((s) => scene(model, s)),
     references: {
       from: from(clues, npcs, sheets),
