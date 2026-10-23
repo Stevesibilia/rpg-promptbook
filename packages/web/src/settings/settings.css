@@ -34,6 +34,15 @@
 .card.narrow {
   max-width: 520px;
 }
+/* An input and its button on one row: the input stretches. */
+.field .with-btn {
+  display: flex;
+  gap: 8px;
+}
+.field .with-btn input {
+  flex: 1;
+  min-width: 0;
+}
 .card.wide-card {
   max-width: 560px;
 }

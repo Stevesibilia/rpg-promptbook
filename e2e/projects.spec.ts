@@ -326,3 +326,41 @@ test('link a campaign to gdrarchive, inherit it in an adventure, override and re
   await page.reload();
   await expect(page.locator('.top-meta a.gdr-link')).toHaveAttribute('href', kulthos);
 });
+
+test('choose the default licence in Settings', async ({ page }) => {
+  await signIn(page, '/settings/author');
+  const field = page.getByLabel('Licence', { exact: true });
+  await expect(field).toBeVisible();
+  const previous = await field.inputValue();
+  const choose = page.getByRole('button', { name: 'Choose…' });
+
+  // A typed value is saved as the field is left, here by pressing «Choose…»,
+  // and the pane opens on it.
+  await field.fill('CC-BY-NC-SA-4.0');
+  await choose.click();
+  const pane = page.getByRole('dialog', { name: 'Choose a licence' });
+  const list = pane.getByRole('listbox', { name: 'Licences' });
+  await expect(list).toBeFocused();
+  await expect(list.getByRole('option', { selected: true })).toContainText('CC BY-NC-SA 4.0');
+  await expect(list.getByRole('option', { selected: true })).toContainText('Current');
+  await expect(list.getByRole('option', { selected: true })).toContainText('Writes CC-BY-NC-SA-4.0');
+  await expect(pane.getByRole('button', { name: 'Use licence' })).toBeDisabled();
+  await expect(pane).toContainText('Not legal advice. Free text still works: type anything in the field.');
+
+  await list.getByRole('option', { name: /CC BY 4\.0/ }).click();
+  await pane.getByRole('button', { name: 'Use licence' }).click();
+  await expect(pane).toHaveCount(0);
+  await expect(choose).toBeFocused();
+  await expect(field).toHaveValue('CC-BY-4.0');
+  await expect(page.locator('.status')).toContainText('Saved');
+
+  await page.reload();
+  await expect(page.getByLabel('Licence', { exact: true })).toHaveValue('CC-BY-4.0');
+
+  // Other tests make projects from the default: it is put back.
+  await page.getByLabel('Licence', { exact: true }).fill(previous);
+  await page.getByLabel('Licence', { exact: true }).press('Enter');
+  await expect(page.locator('.status')).toContainText('Saved');
+  await page.reload();
+  await expect(page.getByLabel('Licence', { exact: true })).toHaveValue(previous);
+});

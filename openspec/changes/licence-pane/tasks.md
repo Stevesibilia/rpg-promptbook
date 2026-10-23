@@ -22,10 +22,10 @@ is committed by the architect.
 
 ## 2. Settings
 
-- [ ] 2.1 `settings/SettingsPage.tsx` `AuthorDefaults` (D5): «Choose…» beside the Licence input in a `.with-btn` row, the hint under it; the pane with `context: 'settings'` and `current` from the input at the click; a pick saves as the blur does and shows in the input; focus back on «Choose…»; typed values of the other fields kept
-- [ ] 2.2 `settings/settings.css`: the mockup's `.field .with-btn` rules
-- [ ] 2.3 E2E in `e2e/projects.spec.ts` (D11): open from Settings, the current row selected, pick CC BY 4.0, the field shows `CC-BY-4.0`, a reload keeps it; the previous default put back at the end
-- [ ] 2.4 Commit `feat(web): choose the default licence in Settings`
+- [x] 2.1 `settings/SettingsPage.tsx` `AuthorDefaults` (D5): «Choose…» beside the Licence input in a `.with-btn` row, the hint under it; the pane with `context: 'settings'` and `current` from the input at the click; a pick saves as the blur does and shows in the input; focus back on «Choose…»; typed values of the other fields kept
+- [x] 2.2 `settings/settings.css`: the mockup's `.field .with-btn` rules
+- [x] 2.3 E2E in `e2e/projects.spec.ts` (D11): open from Settings, the current row selected, pick CC BY 4.0, the field shows `CC-BY-4.0`, a reload keeps it; the previous default put back at the end
+- [x] 2.4 Commit `feat(web): choose the default licence in Settings`
 
 ## 3. Editor
 
