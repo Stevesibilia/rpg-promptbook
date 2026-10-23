@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Licence pane mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Tokens from packages/web/src/styles/tokens.css (light here, dark
+   below); top bar and rail from gdrarchive-link.html; settings from settings.css;
+   modal from ui/modal.css; palette and front matter from editor/editor.css. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --leggi-line: #0f8f69;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+    --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+    --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+    --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+    --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+a { color: var(--primary); }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus { outline: none; border-color: var(--primary); }
+code { font: .92em var(--mono); }
+.spacer { flex: 1; }
+
+/* Mockup controls (not part of the app) */
+.mock { height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px; white-space: nowrap; overflow-x: auto;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; flex: none; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock button:disabled { opacity: .4; cursor: default; }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex: none; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 1fr; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); min-width: 0; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); flex: none; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-meta select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); flex: none; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; text-decoration: none; }
+.tb:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover:not(:disabled) { background: var(--primary-hover); color: var(--on-primary); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); flex: none; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+
+.center { grid-column: 2; grid-row: 2; overflow: auto; min-width: 0; position: relative; }
+.view { display: none; } .view.on { display: block; }
+
+/* Settings (settings.css) */
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 160px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.card.narrow { max-width: 520px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+/* NEW: the input and its Choose… button on one row */
+.field .with-btn { display: flex; gap: 8px; }
+.field .with-btn input { flex: 1; min-width: 0; }
+.saved { color: var(--primary); }
+
+/* Editor document (editor.html, editor.css) */
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; overflow-wrap: anywhere; }
+.fm.fence { color: var(--faint); }
+.fm .k { color: var(--info); }
+.fm.active { background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
+.fm .caret { display: inline-block; width: 2px; height: 16px; background: var(--primary); vertical-align: -3px; margin-left: 1px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.fm-more { display: block; width: 100%; text-align: left; font: 13px/26px var(--mono); color: var(--faint); background: var(--surface); border-left: 3px solid var(--border); padding: 0 0 0 16px; }
+.fm-more:hover { color: var(--primary); }
+.fm .val.changed { background: color-mix(in srgb, var(--primary) 14%, transparent); border-radius: 3px; }
+/* NEW: the widget at the end of the licenza line */
+.lic-choose { font: 500 12px var(--font); color: var(--faint); margin-left: 12px; padding: 1px 6px; border-radius: 4px; vertical-align: 1px; }
+.lic-choose:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; }
+
+/* Scrim and modal (ui/modal.css) */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(5,10,8,.62); display: flex; align-items: flex-start; justify-content: center; padding-top: 6vh; }
+.scrim[hidden] { display: none; }
+.modal { width: min(880px, calc(100vw - 32px)); max-height: 86vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal.lic { width: min(820px, calc(100vw - 32px)); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex: none; }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 12px 18px 14px; overflow: auto; min-height: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); flex: none; flex-wrap: wrap; }
+.modal .mf .note { margin-right: auto; color: var(--faint); font-size: 12.5px; }
+
+/* NEW: the licence list */
+.cur-note { margin: 0 0 10px; padding: 7px 10px; border-radius: var(--radius); background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--border)); font-size: 13px; color: var(--muted); }
+.cur-note b { color: var(--text); font: 500 13px var(--mono); }
+.lic-head, .lic-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) repeat(5, 54px); column-gap: 8px; align-items: start; }
+.lic-head { padding: 0 10px 6px; font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--border);
+  position: sticky; top: -12px; background: var(--surface); z-index: 1; padding-top: 4px; }
+.lic-head span { text-align: center; line-height: 1.2; }
+.lic-list { list-style: none; margin: 0; padding: 0; outline: none; }
+.lic-row { scroll-margin-top: 44px; padding: 9px 10px; border-bottom: 1px solid var(--border); cursor: pointer; border-radius: 0; }
+.lic-row:last-child { border-bottom: 0; }
+.lic-row:hover { background: var(--hover); }
+.lic-row[aria-selected="true"] { background: color-mix(in srgb, var(--primary) 14%, transparent); box-shadow: inset 3px 0 0 var(--primary); }
+.lic-list:focus-visible .lic-row[aria-selected="true"] { outline: 2px solid var(--primary); outline-offset: -2px; }
+.radio { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--faint); margin-top: 3px; display: grid; place-items: center; }
+.lic-row[aria-selected="true"] .radio { border-color: var(--primary); }
+.lic-row[aria-selected="true"] .radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+.lic-main { min-width: 0; }
+.lic-t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.lic-t b { font: 600 15px var(--font); }
+.lic-t .pw { color: var(--muted); font-size: 13px; }
+.lic-t .curchip { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--primary); border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); border-radius: 999px; padding: 0 7px; }
+.lic-d { margin: 2px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.lic-w { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: 12px; color: var(--faint); }
+.lic-w code { font: 12px var(--mono); color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+.lic-w a { color: var(--primary); text-decoration: none; display: inline-flex; gap: 3px; align-items: center; }
+.lic-w a:hover { text-decoration: underline; }
+.lic-w a .ic { width: 12px; height: 12px; stroke-width: 2; }
+.mark { text-align: center; font: 600 14px/22px var(--font); }
+.mark.y { color: var(--primary); } .mark.n { color: var(--danger); } .mark.na { color: var(--faint); font-weight: 400; }
+.mark .ml { display: none; }
+
+/* Command palette (editor.css) */
+.palette { width: min(600px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); overflow: hidden; }
+.palette input { display: block; width: 100%; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; color: var(--text); font: 16px var(--font); outline: none; }
+.palette ul { list-style: none; margin: 0; padding: 6px 0; max-height: min(420px, 60vh); overflow: auto; }
+.palette li { display: flex; align-items: center; gap: 12px; padding: 7px 16px; font: 14px var(--font); cursor: pointer; }
+.palette li[aria-selected="true"] { background: color-mix(in srgb, var(--primary) 18%, transparent); }
+.palette li .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette li .new { font: 600 10px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--note); }
+.palette li.none { color: var(--faint); cursor: default; }
+
+/* Annotation (mockup only) */
+.anno { position: fixed; left: 62px; bottom: 36px; width: 400px; z-index: 50; background: var(--surface); border: 1px dashed var(--note); border-radius: 8px; font-size: 12.5px; color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.anno.closed { display: none; }
+.anno h5 { margin: 0; padding: 8px 12px 0; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); display: flex; }
+.anno h5 button { margin-left: auto; color: var(--faint); font-size: 12px; }
+.anno ul { margin: 6px 0 10px; padding: 0 12px 0 28px; }
+.anno li { margin: 2px 0; }
+.anno code { font: 11.5px var(--mono); }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 0 1fr; }
+  .rail { display: none; }
+  .logo { width: 40px; }
+  .hide-narrow { display: none !important; }
+  .pane { padding: 16px 16px 160px; }
+  .set { grid-template-columns: 1fr; gap: 12px; }
+  .set nav { flex-direction: row; flex-wrap: wrap; }
+  .set nav button { padding: 4px 8px; font-size: 13px; }
+  .doc { padding: 16px 16px 120px; }
+  .scrim { padding-top: 2vh; }
+  .modal { max-height: 94vh; }
+  .modal .mh, .modal .mb, .modal .mf { padding-left: 14px; padding-right: 14px; }
+  .lic-head { display: none; }
+  .lic-row { grid-template-columns: 18px minmax(0, 1fr); padding: 9px 4px; }
+  .lic-row .marks { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+  .mark { font-size: 12px; line-height: 18px; border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; text-align: left; }
+  .mark .ml { display: inline; color: var(--muted); font-weight: 500; margin-left: 3px; }
+  .anno { left: 16px; right: 16px; width: auto; bottom: 32px; }
+}
+@media (min-width: 761px) { .lic-row .marks { display: contents; } }
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup</span>
+  <button data-state="1" class="on">1 · Settings</button>
+  <button data-state="2">2 · Editor line</button>
+  <button data-state="3">3 · Palette</button>
+  <button data-state="4">4 · The pane</button>
+  <button data-state="5">5 · After picking</button>
+  <span class="sep"></span>
+  <button id="mFree" title="Make the current licence free text, not one of the eight">Free-text current</button>
+  <button id="mFold" title="Caret outside the front matter: past the fourth key the rest folds, as the app renders it">Folded front matter</button>
+  <button id="mReset">Reset data</button>
+  <button id="mTheme">Light / dark</button>
+  <button id="mNotes">Notes</button>
+</nav>
+
+<div class="app" id="app">
+  <header class="topbar" id="topbar"></header>
+  <nav class="rail" id="rail"></nav>
+  <main class="center">
+    <section class="view" id="v-settings"><div class="pane">
+      <div class="head"><h1>Settings</h1></div>
+      <div class="set">
+        <nav aria-label="Settings">
+          <button>To-do templates</button><button>Document templates</button><button class="on">Author and licence</button>
+          <button>Account</button><button>Connected apps</button><button>Sync and storage</button><button>Appearance</button>
+        </nav>
+        <section>
+          <h2>Author and licence</h2>
+          <p class="lead">Copied into a new project's front matter (<code>autore</code>, <code>copyright</code>, <code>licenza</code>), where each project can change them.</p>
+          <div class="card narrow">
+            <div class="field"><label for="set-author">Author</label><input id="set-author" value="Stefano Sibilia"></div>
+            <div class="field"><label for="set-copyright">Copyright</label><input id="set-copyright" value="© 2026 Stefano Sibilia"></div>
+            <div class="field"><label for="set-licence">Licence</label>
+              <div class="with-btn"><input id="set-licence" spellcheck="false"><button class="tb line" id="setChoose" aria-haspopup="dialog">Choose…</button></div>
+              <span class="hint">An SPDX id, or free text.</span></div>
+            <div class="field"><label for="set-system">Default system</label><input id="set-system" placeholder="e.g. Kulthos"><span class="hint">Pre-fills <code>sistema</code>; leave empty to choose each time.</span></div>
+          </div>
+        </section>
+      </div>
+    </div></section>
+
+    <section class="view" id="v-editor"><div class="doc"><div class="ed" id="ed"></div></div></section>
+  </main>
+  <footer class="status" id="status"></footer>
+</div>
+
+<!-- The licence pane -->
+<div class="scrim" id="licScrim" hidden>
+  <div class="modal lic" role="dialog" aria-modal="true" aria-labelledby="licTitle">
+    <div class="mh"><h3 id="licTitle">Choose a licence</h3><button class="tb" id="licX" aria-label="Close">✕</button></div>
+    <div class="mb" id="licBody"></div>
+    <div class="mf">
+      <span class="note" id="licNote"></span>
+      <button class="tb line" id="licCancel">Cancel</button>
+      <button class="tb primary" id="licUse">Use licence</button>
+    </div>
+  </div>
+</div>
+
+<!-- The command palette -->
+<div class="scrim" id="palScrim" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <input id="palIn" type="text" placeholder="Go to a scene, a section, a sheet, or run a command" aria-label="Search commands" aria-controls="palList" autocomplete="off">
+    <ul id="palList" role="listbox"></ul>
+  </div>
+</div>
+
+<aside class="anno" id="anno" aria-label="Mockup notes">
+  <h5><span id="annoH">Mockup note</span><button id="annoX" aria-label="Hide notes">✕</button></h5>
+  <ul id="annoL"></ul>
+</aside>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const EXT = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>';
+
+/* The eight entries. Marks: 1 yes, 0 no, null does not apply.
+   Share = copy and pass on; Change = share changed versions; Sell = commercial use;
+   Credit = must name the author; Same licence = changed versions keep this licence. */
+const MARKS = [
+  ['Share', 'Copy it and pass it on'],
+  ['Change', 'Share changed versions (adaptations)'],
+  ['Sell', 'Use it commercially, for money'],
+  ['Credit', 'Credit required: anyone using it must name you'],
+  ['Same licence', 'Same licence required: changed versions must carry this licence'],
+];
+const LIC = [
+  { v: 'CC0-1.0', short: 'CC0 1.0', pw: 'Public Domain Dedication', url: 'https://creativecommons.org/publicdomain/zero/1.0/', m: [1, 1, 1, 0, 0],
+    d: 'You give up your rights: anyone may copy, change and sell the adventure, even without naming you.' },
+  { v: 'CC-BY-4.0', short: 'CC BY 4.0', pw: 'Attribution', url: 'https://creativecommons.org/licenses/by/4.0/', m: [1, 1, 1, 1, 0],
+    d: 'Anyone may copy, change and sell it, as long as they credit you.' },
+  { v: 'CC-BY-SA-4.0', short: 'CC BY-SA 4.0', pw: 'Attribution-ShareAlike', url: 'https://creativecommons.org/licenses/by-sa/4.0/', m: [1, 1, 1, 1, 1],
+    d: 'Anyone may copy, change and sell it, crediting you. Changed versions must carry this same licence.' },
+  { v: 'CC-BY-NC-4.0', short: 'CC BY-NC 4.0', pw: 'Attribution-NonCommercial', url: 'https://creativecommons.org/licenses/by-nc/4.0/', m: [1, 1, 0, 1, 0],
+    d: 'Anyone may copy and change it, crediting you, but not sell it or use it to make money.' },
+  { v: 'CC-BY-NC-SA-4.0', short: 'CC BY-NC-SA 4.0', pw: 'Attribution-NonCommercial-ShareAlike', url: 'https://creativecommons.org/licenses/by-nc-sa/4.0/', m: [1, 1, 0, 1, 1],
+    d: 'Anyone may copy and change it, crediting you, but not for money. Changed versions must carry this same licence.' },
+  { v: 'CC-BY-ND-4.0', short: 'CC BY-ND 4.0', pw: 'Attribution-NoDerivatives', url: 'https://creativecommons.org/licenses/by-nd/4.0/', m: [1, 0, 1, 1, null],
+    d: 'Anyone may pass it on as it is, even for money, crediting you. Nobody may share a changed version.' },
+  { v: 'CC-BY-NC-ND-4.0', short: 'CC BY-NC-ND 4.0', pw: 'Attribution-NonCommercial-NoDerivatives', url: 'https://creativecommons.org/licenses/by-nc-nd/4.0/', m: [1, 0, 0, 1, null],
+    d: 'The narrowest CC licence: anyone may pass it on as it is, crediting you, not for money. No changed versions.' },
+  { v: 'Tutti i diritti riservati', short: 'All rights reserved', pw: 'No licence, copyright only', url: null, m: [0, 0, 0, null, null],
+    d: 'Nobody may copy, change or pass it on without asking you first. Free text: the PDF prints it as written, with no link.' },
+];
+const FREE = 'Uso personale';
+
+const INITIAL = { settingsLic: 'CC-BY-NC-SA-4.0', docLic: 'CC-BY-NC-SA-4.0' };
+let D, state = 1, view = 'settings', folded = true, caret = null, free = false, saved = false, changed = false;
+let pane = null; // { where: 'settings'|'editor', cur, sel, back }
+let pal = null;  // { q, sel }
+
+/* Chrome */
+const IC = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  img: '<rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/>',
+  log: '<path d="M4 5h16v11H8l-4 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24">${IC[k]}</svg>`;
+function renderChrome() {
+  const ed = view === 'editor';
+  $('#v-settings').classList.toggle('on', !ed);
+  $('#v-editor').classList.toggle('on', ed);
+  $('#rail').innerHTML = `
+    <button${ed ? '' : ''} title="Projects">${svg('grid')}</button>
+    <button${ed ? ' class="on"' : ''} title="Document">${svg('doc')}</button>
+    <button title="Inspiration">${svg('bulb')}</button>
+    <button title="Research">${svg('search')}</button>
+    <button title="Images and music">${svg('img')}</button>
+    <button title="Brainstorm log">${svg('log')}</button>
+    <button class="bottom last${ed ? '' : ' on'}" title="Settings and templates">${svg('gear')}</button>`;
+  if (!ed) {
+    $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div><div class="crumbs"><b>Settings</b></div>
+      <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span><span class="kbd hide-narrow">⌘K</span><span class="avatar" title="Signed in as Stefano">S</span>`;
+    $('#status').innerHTML = saved ? '<span class="saved">Saved</span>' : '';
+    return;
+  }
+  $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span class="hide-narrow">Projects ›</span> <span class="hide-narrow">Kulthos ›</span> <b>L’Ancora di Sabaoth</b></div>
+    <div class="top-meta hide-narrow"><span class="cat">Adventure</span>
+      <select aria-label="Status"><option>Draft</option><option selected>In progress</option><option>Complete</option></select></div>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb hide-narrow" title="Outline"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+    <button class="tb hide-narrow" title="Inspector"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    <button class="tb primary hide-narrow" title="PDF preview"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <button class="kbd" id="kOpen" title="Command palette">⌘K</button>`;
+  $('#kOpen').onclick = () => openPalette();
+  $('#status').innerHTML = `<span>5 scenes · 1 error, 3 warnings</span><span class="r">Saved on the server</span>`;
+}
+
+/* Settings */
+function renderSettings() {
+  const inp = $('#set-licence');
+  inp.value = D.settingsLic;
+  inp.oninput = () => { D.settingsLic = inp.value; };
+  inp.onblur = () => { D.settingsLic = inp.value.trim(); saved = true; renderChrome(); };
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+  $('#setChoose').onclick = () => openPane('settings', D.settingsLic.trim(), $('#setChoose'));
+}
+
+/* Editor: the front matter as the CodeMirror preview draws it */
+const FM = () => [
+  ['titolo', 'L’Ancora di Sabaoth'], ['sottotitolo', 'Messina, 1908'], ['sistema', 'Kulthos'], ['formato', 'avventura'],
+  ['campagna', 'Kulthos'], ['autore', 'Stefano Sibilia'], ['copyright', '© 2026 Stefano Sibilia'], ['licenza', D.docLic],
+];
+function renderEditor() {
+  const keys = FM();
+  const line = ([k, v], i) => {
+    const lic = k === 'licenza';
+    const active = !folded && i === caret;
+    return `<div class="l fm${active ? ' active' : ''}"><span class="k">${k}:</span> <span class="val${lic && changed ? ' changed' : ''}">${esc(v)}</span>${active ? '<span class="caret"></span>' : ''}${lic ? `<button class="lic-choose" id="licWidget" title="Choose a licence for this project" aria-haspopup="dialog">Choose…</button>` : ''}</div>`;
+  };
+  const shown = folded ? keys.slice(0, 4) : keys;
+  $('#ed').innerHTML = `
+    <div class="l fm fence">---</div>
+    ${shown.map(line).join('')}
+    ${folded ? `<button class="fm-more" id="fmMore">▸ ${keys.length - 4} more keys</button>` : ''}
+    <div class="l fm fence">---</div>
+    <div class="skip">… A colpo d'occhio, Orologio, Inizio forte, Mappa delle scene …</div>
+    <div class="l h2">Scene</div>
+    <div class="l h3"><span class="sid">S1.</span> La casa che cede</div>
+    <div class="l"><span class="fl">Luogo e momento:</span> casa-biblioteca di Neri, vicino al porto, 5:20 circa.</div>
+    <div class="l"><span class="fl">In gioco:</span> chi esce vivo, Neri, la lettera.</div>
+    <div class="callout leggi"><div class="ct">Da leggere</div>
+      <div class="tx">Una trave è venuta giù di traverso, fra gli scaffali rovesciati. Sotto, fra i libri e la polvere, si muove una mano con gli occhiali spezzati ancora stretti fra le dita. Una voce rauca chiama i vostri nomi.</div></div>
+    <div class="l"><span class="fl">Chi c'è</span></div>
+    <div class="l li">- <b>Aleramo Neri</b>, vuole che qualcuno finisca ciò che lui non può.</div>`;
+  const w = $('#licWidget');
+  if (w) w.onclick = () => openPane('editor', D.docLic.trim(), w);
+  const more = $('#fmMore');
+  // As FoldWidget: a click puts the caret on the first folded key, which unfolds the front matter.
+  if (more) more.onmousedown = e => { e.preventDefault(); folded = false; caret = 4; $('#mFold').classList.remove('on'); renderEditor(); };
+}
+
+/* The pane */
+const idxOf = v => LIC.findIndex(l => l.v === v);
+function openPane(where, cur, back) {
+  closePalette();
+  const i = idxOf(cur);
+  pane = { where, cur, sel: i, back };
+  renderPane();
+  $('#licScrim').hidden = false;
+  $('#licList').focus({ preventScroll: true });
+  $('#licBody').scrollTop = 0;
+  if (i >= 0) $('#lic-' + i).scrollIntoView({ block: 'nearest' });
+}
+function closePane() {
+  const back = pane && pane.back;
+  pane = null;
+  $('#licScrim').hidden = true;
+  if (back && document.body.contains(back)) back.focus();
+}
+function renderPane() {
+  const { where, cur, sel } = pane;
+  const inList = idxOf(cur) >= 0;
+  const writes = l => where === 'editor' ? `licenza: ${l.v}` : l.v;
+  $('#licBody').innerHTML = `
+    ${cur && !inList ? `<p class="cur-note">Current: <b>${esc(cur)}</b> — not one of these; picking one replaces it.</p>` : ''}
+    <div class="lic-head" aria-hidden="true"><span></span><span style="text-align:left">Licence</span>${MARKS.map(([n, t]) => `<span title="${esc(t)}">${n}</span>`).join('')}</div>
+    <ul class="lic-list" id="licList" role="listbox" tabindex="0" aria-label="Licences" aria-activedescendant="${sel >= 0 ? 'lic-' + sel : ''}">
+      ${LIC.map((l, i) => `<li class="lic-row" id="lic-${i}" role="option" aria-selected="${i === sel}" data-i="${i}">
+        <span class="radio" aria-hidden="true"></span>
+        <div class="lic-main">
+          <div class="lic-t"><b>${esc(l.short)}</b><span class="pw">${esc(l.pw)}</span>${l.v === cur ? '<span class="curchip">Current</span>' : ''}</div>
+          <p class="lic-d">${esc(l.d)}</p>
+          <div class="lic-w"><span>Writes <code>${esc(writes(l))}</code></span>${l.url ? `<a href="${l.url}" target="_blank" rel="noopener noreferrer" title="Opens ${l.url} in a new tab">Full text${EXT}</a>` : ''}</div>
+        </div>
+        <span class="marks">${l.m.map((m, k) => {
+          const [n, t] = MARKS[k];
+          const word = m === null ? 'does not apply' : m ? 'yes' : 'no';
+          return `<span class="mark ${m === null ? 'na' : m ? 'y' : 'n'}" title="${esc(t)}: ${word}" aria-label="${n}: ${word}">${m === null ? '—' : m ? '✓' : '✕'}<span class="ml">${n}</span></span>`;
+        }).join('')}</span>
+      </li>`).join('')}
+    </ul>`;
+  $('#licNote').textContent = `Not legal advice. Free text still works: type anything in the ${where === 'editor' ? 'front matter' : 'field'}.`;
+  const use = $('#licUse');
+  use.disabled = sel < 0 || LIC[sel].v === cur;
+  use.title = sel >= 0 && LIC[sel].v === cur ? 'Already the licence' : '';
+  const list = $('#licList');
+  $$('.lic-row').forEach(r => {
+    r.onclick = e => { if (e.target.closest('a')) return; select(+r.dataset.i); };
+    r.ondblclick = e => { if (e.target.closest('a')) return; pick(+r.dataset.i); };
+  });
+  list.onkeydown = e => {
+    const n = LIC.length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); select(pane.sel < 0 ? 0 : (pane.sel + (e.key === 'ArrowDown' ? 1 : -1) + n) % n); }
+    else if (e.key === 'Home') { e.preventDefault(); select(0); }
+    else if (e.key === 'End') { e.preventDefault(); select(n - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (pane.sel >= 0) pick(pane.sel); }
+  };
+}
+function select(i) {
+  pane.sel = i;
+  renderPane();
+  const list = $('#licList');
+  list.focus({ preventScroll: true });
+  const row = $('#lic-' + i);
+  if (row) row.scrollIntoView({ block: 'nearest' });
+}
+function pick(i) {
+  const l = LIC[i];
+  if (!pane || l.v === pane.cur) { closePane(); return; }
+  if (pane.where === 'settings') { D.settingsLic = l.v; saved = true; renderSettings(); renderChrome(); }
+  else { D.docLic = l.v; changed = true; renderEditor(); }
+  closePane();
+}
+$('#licUse').onclick = () => { if (pane && pane.sel >= 0) pick(pane.sel); };
+$('#licCancel').onclick = closePane;
+$('#licX').onclick = closePane;
+$('#licScrim').onmousedown = e => { if (e.target === e.currentTarget) closePane(); };
+
+/* The palette (palette.ts order, with the new command before Back to projects) */
+const CMDS = [
+  ['Toggle outline', '⌘1'], ['Toggle inspector', '⌘2'], ['Focus mode', '⌘.'], ['Syntax sheet', '⌘/'],
+  ['Set status: Draft'], ['Set status: In progress'], ['Set status: Complete'],
+  ['Next problem', 'F8'], ['Previous problem', '⇧F8'], ['PDF preview'], ['Review PDF', '⌘⇧P'],
+  ['Choose licence…', null, 'lic'], ['Back to projects'],
+  ['Go to A colpo d’occhio'], ['Go to Orologio'], ['Go to Inizio forte'], ['Go to S1 La casa che cede'], ['Go to S2 Il molo'],
+];
+const fold = t => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const matches = (t, q) => { let from = 0; const h = fold(t); for (const w of fold(q).split(/\s+/).filter(Boolean)) { const at = h.indexOf(w, from); if (at < 0) return false; from = at + w.length; } return true; };
+function openPalette(highlight) {
+  pal = { q: '', sel: highlight ? CMDS.findIndex(c => c[2] === 'lic') : 0 };
+  $('#palIn').value = '';
+  renderPalette();
+  $('#palScrim').hidden = false;
+  $('#palIn').focus();
+}
+function closePalette() { pal = null; $('#palScrim').hidden = true; }
+function shownCmds() { return CMDS.map((c, i) => ({ c, i })).filter(x => matches(x.c[0], pal.q)); }
+function renderPalette() {
+  const shown = shownCmds();
+  let at = shown.findIndex(x => x.i === pal.sel);
+  if (at < 0) { at = 0; pal.sel = shown[0] ? shown[0].i : -1; }
+  $('#palList').innerHTML = shown.length ? shown.map((x, k) => `<li role="option" id="pal-${k}" data-i="${x.i}" aria-selected="${k === at}"><span class="lb">${esc(x.c[0])}</span>${x.c[2] ? '<span class="new">new</span>' : ''}${x.c[1] ? `<span class="kbd">${x.c[1]}</span>` : ''}</li>`).join('') : '<li class="none">Nothing matches.</li>';
+  $('#palIn').setAttribute('aria-activedescendant', shown.length ? 'pal-' + at : '');
+  $$('#palList li[data-i]').forEach(li => {
+    li.onmousemove = () => { if (pal.sel !== +li.dataset.i) { pal.sel = +li.dataset.i; renderPalette(); } };
+    li.onmousedown = e => { e.preventDefault(); runCmd(+li.dataset.i); };
+  });
+  const s = $('#palList [aria-selected="true"]');
+  if (s) s.scrollIntoView({ block: 'nearest' });
+}
+function runCmd(i) {
+  if (CMDS[i][2] === 'lic') { openPane('editor', D.docLic.trim(), null); return; }
+  closePalette();
+}
+$('#palIn').oninput = () => { pal.q = $('#palIn').value; renderPalette(); };
+$('#palIn').onkeydown = e => {
+  const shown = shownCmds();
+  const at = Math.max(0, shown.findIndex(x => x.i === pal.sel));
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); if (!shown.length) return;
+    pal.sel = shown[(at + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length].i; renderPalette();
+  } else if (e.key === 'Enter') { e.preventDefault(); if (shown[at]) runCmd(shown[at].i); }
+  else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+};
+$('#palScrim').onmousedown = e => { if (e.target === e.currentTarget) closePalette(); };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && pane) { e.preventDefault(); closePane(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && view === 'editor' && !pane) { e.preventDefault(); openPalette(); }
+});
+
+/* Mockup controls */
+const NOTES = {
+  1: ['The Licence field gets a <b>Choose…</b> button beside it; the field and its hint stay as today, so free text still works.',
+      'Choose… opens the pane (try it). Picking writes the value into the field and saves it, like leaving the field: the status bar says “Saved”.',
+      'This is the default copied into new projects’ <code>licenza</code>; projects already made keep theirs.',
+      'Desktop offline: the card is in NeedsServerGroup, so Choose… is disabled with the field (“Needs the server”). The editor path works offline.'],
+  2: ['Caret inside the front matter, so it is unfolded: the <code>licenza:</code> line shows a faint <b>Choose…</b> at its end, a CodeMirror widget. It opens the same pane.',
+      'Picking rewrites only that line’s value: one transaction, one undo step.',
+      'With the caret outside, the front matter shows its first 4 keys and folds the rest behind “▸ 4 more keys” (preview.ts). <code>licenza</code> is the last key, so the widget is usually hidden: the palette is the main path. Try “Folded front matter”, then click the fold.'],
+  3: ['The main editor path. ⌘K palette with the new command <b>Choose licence…</b> highlighted; it works with the front matter folded, as here. Enter, or a click, opens the pane.',
+      'It sits with the commands, before “Back to projects”, and is offered in every project: campaigns have <code>licenza</code> too.',
+      'When the front matter has no <code>licenza</code> line, picking adds one after <code>copyright</code> (the template’s order), or last.'],
+  4: ['Like the app’s other dialogs (New project, CueBard export): click a row to select it, then <b>Use licence</b>. Double-click, or Enter, picks at once.',
+      'The shared Modal (ui/Modal.tsx), opened from the editor like the Syntax sheet. Keyboard: ↑ ↓ move, Home/End, Enter picks, Esc closes. The row matching the current value is marked “Current” and starts selected.',
+      'Marks: ✓ yes, ✕ no, — does not apply. Hover a column for its meaning. Try “Free-text current”.'],
+  5: ['Picked CC BY-SA 4.0 from the widget: only the value changed (tinted here for the mockup only). ⌘Z undoes it in one step.',
+      'No toast, as with fixes and inserts: the edit is visible where it happened. The app’s editor toasts are only for hiding problems.',
+      'The caret stays where it was (on the line, from the widget), so the front matter stays open. From the palette with the caret in the body it stays folded and the change is out of sight until unfolded.'],
+};
+function setState(n) {
+  state = n;
+  $$('.mock [data-state]').forEach(b => b.classList.toggle('on', b.dataset.state === String(n)));
+  closePalette(); if (pane) { pane = null; $('#licScrim').hidden = true; }
+  view = n === 1 ? 'settings' : 'editor';
+  saved = false; changed = false;
+  // States 2 and 5: the caret is on the licenza line, so the front matter is open. Elsewhere it sits in the body: folded.
+  folded = !(n === 2 || n === 5); caret = folded ? null : 7;
+  $('#mFold').classList.toggle('on', folded && n !== 1);
+  if (n === 5) { D.docLic = 'CC-BY-SA-4.0'; changed = true; }
+  else D.docLic = free ? FREE : INITIAL.docLic;
+  renderAll();
+  if (n === 3) openPalette(true);
+  if (n === 4) openPane('editor', D.docLic.trim(), null);
+  $('#mFold').disabled = n === 1;
+  $('#annoH').textContent = `Mockup note · state ${n}`;
+  $('#annoL').innerHTML = NOTES[n].map(x => `<li>${x}</li>`).join('');
+}
+function renderAll() { renderChrome(); renderSettings(); renderEditor(); }
+$$('.mock [data-state]').forEach(b => b.onclick = () => setState(+b.dataset.state));
+$('#mFree').onclick = () => {
+  free = !free; $('#mFree').classList.toggle('on', free);
+  D.settingsLic = free ? FREE : INITIAL.settingsLic;
+  setState(state);
+};
+$('#mFold').onclick = () => { folded = !folded; caret = folded ? null : 7; $('#mFold').classList.toggle('on', folded); renderEditor(); };
+$('#mReset').onclick = () => { D = { ...INITIAL }; free = false; $('#mFree').classList.remove('on'); setState(state); };
+$('#mTheme').onclick = () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+};
+$('#mNotes').onclick = () => $('#anno').classList.toggle('closed');
+$('#annoX').onclick = () => $('#anno').classList.add('closed');
+
+D = { ...INITIAL };
+const q = new URLSearchParams(location.search);
+if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+if (q.get('notes') === '0') $('#anno').classList.add('closed');
+if (q.get('free') === '1') { free = true; $('#mFree').classList.add('on'); D.settingsLic = FREE; }
+setState(+q.get('state') || 1);
+</script>
+</body>
+</html>
