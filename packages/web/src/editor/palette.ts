@@ -12,6 +12,7 @@ export type PaletteAction =
   | { kind: 'shortcut'; id: Exclude<ShortcutId, 'palette' | 'escape'> }
   | { kind: 'status'; status: Status }
   | { kind: 'pdf' }
+  | { kind: 'licence' }
   | { kind: 'projects' };
 
 export interface PaletteEntry {
@@ -51,6 +52,7 @@ export function paletteEntries(items: readonly OutlineItem[], { checked }: { che
           fromTable('pdfReview'),
         ]
       : []),
+    { key: 'licence', label: 'Choose licence…', keys: null, action: { kind: 'licence' } },
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
     ...items.map((item): PaletteEntry => ({
       key: `go:${item.key}`,

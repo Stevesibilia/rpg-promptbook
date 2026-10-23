@@ -29,12 +29,12 @@ is committed by the architect.
 
 ## 3. Editor
 
-- [ ] 3.1 `packages/web/src/editor/licence.ts` (D6, D13): `licenceEdits` and `currentLicence`; `packages/web/test/licence.test.ts` with the cases of D11
-- [ ] 3.2 `editor/palette.ts` (D7): `{ kind: 'licence' }` and «Choose licence…» before «Back to projects» for every category; `test/palette.test.ts`
-- [ ] 3.3 `editor/cm/preview.ts` (D8): the `licence` item, `LicenceChoose`, `licenceHandler`; `test/preview.test.ts` cases of D11; the `.cm-fm-licence` style in `editor/editor.css` from the mockup's `.lic-choose`
-- [ ] 3.4 `editor/EditorPage.tsx` (D7, D8, D14): `dialog` gains `'licence'`; `runPalette` opens it; `licenceHandler.of(...)` in the extensions memo through a ref; the pane with `context: 'editor'`, `current` from `currentLicence`; a pick writes with `write(view, licenceEdits(view.state.doc, value), { userEvent: 'input.licence' })` and closes with `closeDialog`
-- [ ] 3.5 E2E in `e2e/editor.spec.ts` on a project made with `projectWith` (D11): palette pick rewrites the line; ⌘Z restores it in one step; the caret did not move; the widget shown with the caret in the front matter and gone with it in the body; the free-text note; the line added after `copyright:`
-- [ ] 3.6 Commit `feat(web): choose the licence from the editor`
+- [x] 3.1 `packages/web/src/editor/licence.ts` (D6, D13): `licenceEdits` and `currentLicence`; `packages/web/test/licence.test.ts` with the cases of D11
+- [x] 3.2 `editor/palette.ts` (D7): `{ kind: 'licence' }` and «Choose licence…» before «Back to projects» for every category; `test/palette.test.ts`
+- [x] 3.3 `editor/cm/preview.ts` (D8): the `licence` item, `LicenceChoose`, `licenceHandler`; `test/preview.test.ts` cases of D11; the `.cm-fm-licence` style in `editor/editor.css` from the mockup's `.lic-choose`
+- [x] 3.4 `editor/EditorPage.tsx` (D7, D8, D14): `dialog` gains `'licence'`; `runPalette` opens it; `licenceHandler.of(...)` in the extensions memo through a ref; the pane with `context: 'editor'`, `current` from `currentLicence`; a pick writes with `write(view, licenceEdits(view.state.doc, value), { userEvent: 'input.licence' })` and closes with `closeDialog`
+- [x] 3.5 E2E in `e2e/editor.spec.ts` on a project made with `projectWith` (D11): palette pick rewrites the line; ⌘Z restores it in one step; the caret did not move; the widget shown with the caret in the front matter and gone with it in the body; the free-text note; the line added after `copyright:`
+- [x] 3.6 Commit `feat(web): choose the licence from the editor`
 
 ## 4. Specs, docs, review and checks
 

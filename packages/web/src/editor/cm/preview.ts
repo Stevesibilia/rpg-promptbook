@@ -1,5 +1,5 @@
 import { syntaxTree } from '@codemirror/language';
-import { StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state';
+import { Facet, StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import type { CalloutDefinition, Template } from 'promptbook-format';
 
@@ -25,7 +25,9 @@ export type PreviewItem =
   | { kind: 'line'; from: number; className: string }
   | { kind: 'mark'; from: number; to: number; className: string }
   | { kind: 'callout'; from: number; to: number; label: string }
-  | { kind: 'fold'; from: number; to: number; keys: number };
+  | { kind: 'fold'; from: number; to: number; keys: number }
+  // «Choose…» at the end of the `licenza:` line.
+  | { kind: 'licence'; at: number };
 
 // Whether the editor has focus, kept in the state so the preview stays a
 // function of the state.
@@ -96,12 +98,12 @@ export function frontMatterOf(doc: Text): FrontMatter | null {
   return null;
 }
 
-const KEY = /^([A-Za-z_][\w-]*)[ \t]*:/;
+export const KEY = /^([A-Za-z_][\w-]*)[ \t]*:/;
 const SHOWN_KEYS = 4;
 
 // The front matter's look and fold: fences faint, keys coloured, and past
 // the fourth key the rest folded behind «▸ N more keys» while no selection
-// is inside it. A function of the state, used by a field (a fold hides line
+// is inside it; «Choose…» after `licenza:` while its line shows. A function of the state, used by a field (a fold hides line
 // breaks, which a view plugin may not).
 export function frontMatterItems(state: EditorState): PreviewItem[] {
   const fm = frontMatterOf(state.doc);
@@ -109,6 +111,7 @@ export function frontMatterItems(state: EditorState): PreviewItem[] {
   const { doc } = state;
   const items: PreviewItem[] = [];
   const keyLines: number[] = [];
+  let licence: number | null = null;
   for (let n = fm.open; n <= fm.close; n++) {
     const line = doc.line(n);
     const fence = n === fm.open || n === fm.close;
@@ -116,14 +119,19 @@ export function frontMatterItems(state: EditorState): PreviewItem[] {
     const key = fence ? null : KEY.exec(line.text);
     if (key) {
       keyLines.push(n);
+      if (key[1] === 'licenza' && licence === null) licence = n;
       items.push({ kind: 'mark', from: line.from, to: line.from + key[0].length, className: 'cm-fm-key' });
     }
   }
   const inside = activeLines(state).some(([a, b]) => b >= fm.open && a <= fm.close);
-  if (!inside && keyLines.length > SHOWN_KEYS) {
+  const folded = !inside && keyLines.length > SHOWN_KEYS;
+  if (folded) {
     const from = doc.line(keyLines[SHOWN_KEYS]!).from;
     const to = doc.line(fm.close - 1).to;
     items.push({ kind: 'fold', from, to, keys: keyLines.length - SHOWN_KEYS });
+  }
+  if (licence !== null && !(folded && licence >= keyLines[SHOWN_KEYS]!)) {
+    items.push({ kind: 'licence', at: doc.line(licence).to });
   }
   return items;
 }
@@ -305,6 +313,34 @@ class FoldWidget extends WidgetType {
   }
 }
 
+// Opens the licence pane: the page's, read from the state so the widget
+// never holds a stale one.
+export const licenceHandler = Facet.define<() => void>();
+
+class LicenceChoose extends WidgetType {
+  // One per document, so a rebuild keeps its DOM.
+  eq() {
+    return true;
+  }
+  toDOM(view: EditorView) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'cm-fm-licence';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.title = 'Choose a licence for this project';
+    button.textContent = 'Choose…';
+    // The cursor and the fold stay as they are.
+    button.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      view.state.facet(licenceHandler).forEach((open) => open());
+    });
+    return button;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
 const hide = Decoration.replace({});
 
 function toDecorations(items: readonly PreviewItem[]): DecorationSet {
@@ -327,6 +363,9 @@ function toDecorations(items: readonly PreviewItem[]): DecorationSet {
         ranges.push(
           Decoration.replace({ widget: new FoldWidget(item.keys, item.from), block: true }).range(item.from, item.to),
         );
+        break;
+      case 'licence':
+        ranges.push(Decoration.widget({ widget: new LicenceChoose(), side: 1 }).range(item.at));
         break;
     }
   }

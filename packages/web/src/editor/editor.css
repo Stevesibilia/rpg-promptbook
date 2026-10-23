@@ -114,6 +114,18 @@
 .editor .cm-fm-more:hover {
   color: var(--primary);
 }
+.editor .cm-fm-licence {
+  font: 500 12px var(--font);
+  color: var(--faint);
+  margin-left: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  vertical-align: 1px;
+}
+.editor .cm-fm-licence:hover {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
 
 /* Quotes, and callout boxes */
 .editor .cm-quote {
