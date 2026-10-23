@@ -490,3 +490,28 @@ ignores.
   private page, not a LAN preview: the owner reviews away from this
   machine's browser. Task 3.6's screenshots cover views 1 to 6, light and
   dark, and the merge waits for the owner's go.
+
+## Departures accepted at review
+
+1. `saveAction(address, label, own)` takes three parameters, not D12's four:
+   an empty address with no own link cancels whether or not one is
+   inherited.
+2. `packages/server/test/db/cli.test.ts` also lists the migrations by name
+   and gains `006_gdrarchive.sql`.
+3. `isGdrarchiveLabel` is an extra export of the project package, shared by
+   `setGdrarchive` and `readGdrarchive`.
+4. The base `.gdr-link` rules and the form's small buttons live in
+   `projects.css`, which is always loaded; `views.css` is not loaded on the
+   projects list. The top-bar pill override stays in `editor.css`.
+5. "Back to the campaign's link" keeps a straight apostrophe, as elsewhere
+   in the UI.
+6. The form is keyed by the campaign id, so moving the project to another
+   campaign closes an open form, as in the mockup. The same happens if
+   another device moves the project or bins its campaign while the form is
+   open: the typed text is lost. Rare; accepted.
+7. The form snapshots the own link when it opens; Save and "Remove link"
+   act on that snapshot, and a Save with nothing changed writes nothing, so
+   a form left open never overwrites another device's change.
+8. Escape cancels from anywhere in the form, Enter during IME composition
+   does not save, and a repeated wrong Save is announced again.
+9. `get_project` also checks that the campaign row is a campaign.
