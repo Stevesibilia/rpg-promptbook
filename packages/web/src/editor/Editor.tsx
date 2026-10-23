@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { indentWithTab } from '@codemirror/commands';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
-import { templates } from 'promptbook-format';
+import type { AdventureTemplate } from 'promptbook-format';
 import { nextExpiry, readHidden } from 'promptbook-project';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
 import * as Y from 'yjs';
@@ -27,11 +27,14 @@ const MAX_WAIT = 86_400_000;
 // edits only.
 export function Editor({
   doc,
+  template,
   checked,
   extensions = [],
   onView,
 }: {
   doc: Y.Doc;
+  // The project's template: the preview, the `/` menu and every parse use it.
+  template: AdventureTemplate;
   // False for a campaign: no parsing, no problems (design decision 2).
   checked: boolean;
   // The page's own extensions (shortcuts, listeners), read when the view is
@@ -55,12 +58,12 @@ export function Editor({
           keymap.of([...yUndoManagerKeymap, ...baseKeymap, indentWithTab]),
           markdownWithTables(),
           editorHighlight,
-          preview(previewConfigOf(templates.avventura, checked)),
+          preview(previewConfigOf(template, checked)),
           tables,
           hiddenField.init(() => ({ entries: readHidden(doc), now: new Date() })),
-          analysis({ checked, connect: connectWorker, onResult: pushDiagnostics }),
+          analysis({ checked, template, connect: connectWorker, onResult: pushDiagnostics }),
           checked ? problems : [],
-          slashMenu(templates.avventura, checked),
+          slashMenu(template, checked),
           undoBoundary.of(() => undoManager.stopCapturing()),
           highlightActiveLine(),
           EditorView.lineWrapping,
@@ -105,7 +108,7 @@ export function Editor({
       view.destroy();
       undoManager.destroy();
     };
-  }, [doc, checked]);
+  }, [doc, template, checked]);
 
   return <div className="editor" ref={host} />;
 }

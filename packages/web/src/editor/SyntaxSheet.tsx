@@ -1,13 +1,20 @@
 import { useEffect, useMemo } from 'react';
-import { templates } from 'promptbook-format';
+import type { AdventureTemplate } from 'promptbook-format';
 import { Modal } from '../ui/Modal.js';
 import { syntaxOf } from './syntax.js';
 
-const template = templates.avventura;
-
-// The template's full syntax (design decision 10), generated from its data.
-export function SyntaxSheet({ checked, onClose }: { checked: boolean; onClose(): void }) {
-  const groups = useMemo(() => syntaxOf(template), []);
+// The project's template's full syntax (design decision 10), generated from
+// its data.
+export function SyntaxSheet({
+  template,
+  checked,
+  onClose,
+}: {
+  template: AdventureTemplate;
+  checked: boolean;
+  onClose(): void;
+}) {
+  const groups = useMemo(() => syntaxOf(template), [template]);
   // The dialog takes the focus, so the page's shortcuts stand aside and
   // Escape closes it.
   useEffect(() => {

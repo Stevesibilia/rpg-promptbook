@@ -1,4 +1,4 @@
-import type { ParseResult } from 'promptbook-format';
+import { templates, type ParseResult } from 'promptbook-format';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAnalysisClient, type ParseAnswer, type ParseRequest } from '../src/editor/analysis/client.js';
 
@@ -38,7 +38,7 @@ function setup() {
   const applied: string[] = [];
   const client = createAnalysisClient({
     connect: (r, f) => worker.connect(r, f),
-    read: () => ({ text, tag: text }),
+    read: () => ({ text, template: templates.avventura, tag: text }),
     apply: (tag, result) => applied.push(`${tag}:${(result as unknown as { text: string }).text}`),
   });
   return {
@@ -65,6 +65,7 @@ describe('the parse worker client', () => {
     expect(worker.sent).toHaveLength(0);
     vi.advanceTimersByTime(50);
     expect(worker.sent.map((r) => r.text)).toEqual(['abc']);
+    expect(worker.sent[0]!.template).toBe(templates.avventura);
   });
 
   it('keeps one request in flight and sends the newest text after its answer, dropping the old answer', () => {
@@ -91,7 +92,7 @@ describe('the parse worker client', () => {
     type('one');
     vi.advanceTimersByTime(250);
     type('two'); // still within the delay
-    worker.answer({ version: 99, text: 'stray' });
+    worker.answer({ version: 99, text: 'stray', template: templates.avventura });
     worker.answer(worker.sent[0]!);
     expect(applied).toEqual(['one:one']);
     worker.answer(worker.sent[0]!); // twice

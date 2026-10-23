@@ -5,10 +5,14 @@ import type { AdventureTemplate, CalloutDefinition, Model, Scene, TextEdit } fro
 // references marker, the reactions table's first header and the scene id
 // prefix come from the template.
 
-// The template has no data for these two yet (design decision 8): where the
-// read-aloud box goes among the scene fields, and the reactions table's
-// second header.
-export const READ_ALOUD_AFTER = 'Da non perdere qui';
+// Where the read-aloud box goes among the scene fields: after the field with
+// the mustHave role, whatever the template calls it (template-registry design
+// decision 1).
+export const readAloudAfter = (template: AdventureTemplate): string | undefined =>
+  template.sceneFields.find((f) => f.role === 'mustHave')?.label;
+
+// The template has no data for the reactions table's second header yet
+// (design decision 8).
 export const REACTIONS_THEN = 'Allora…';
 
 export type Insert =
@@ -142,7 +146,8 @@ export function placeInsert(what: Insert, ctx: InsertContext): Placed | null {
 // own; `null` stands for that slot.
 function slots(template: AdventureTemplate): (string | null)[] {
   const labels = template.sceneFields.map((f) => f.label);
-  const i = labels.indexOf(READ_ALOUD_AFTER);
+  const after = readAloudAfter(template);
+  const i = after === undefined ? -1 : labels.indexOf(after);
   return i < 0 ? [...labels, null] : [...labels.slice(0, i + 1), null, ...labels.slice(i + 1)];
 }
 

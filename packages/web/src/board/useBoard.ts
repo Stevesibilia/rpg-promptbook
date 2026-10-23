@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AppendixRow, Model } from 'promptbook-format';
 import {
+  adventureTemplateOf,
   boardRows,
   matchFile,
   matchTargets,
@@ -10,6 +11,7 @@ import {
   readBoard,
   readFiles,
   readImagePrompts,
+  readMeta,
   unmatchedFiles,
   type BoardEntry,
   type BoardRow,
@@ -21,8 +23,8 @@ import { connectWorker, createAnalysisClient, type Connect } from '../editor/ana
 import { shownPrompts, type Named, type ShownPrompt } from './summary.js';
 
 // The board's data (asset-board design decision 2, image-categories design
-// decisions 7 and 9): the appendix parsed by the editor's worker, never on
-// the main thread, joined to the image prompts and files of the Yjs
+// decisions 7 and 9): the appendix parsed by the editor's worker with the
+// project's template, never on the main thread, joined to the image prompts and files of the Yjs
 // document, which are read again on every change.
 
 export interface Parsed {
@@ -133,7 +135,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
       connect,
       read: () => {
         const current = text.toString();
-        return { text: current, tag: current };
+        return { text: current, template: adventureTemplateOf(readMeta(doc)), tag: current };
       },
       apply: (tag, result) => {
         const next = { text: tag, model: result.model };

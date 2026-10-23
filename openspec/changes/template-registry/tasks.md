@@ -44,9 +44,9 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 4. Web
 
-- [ ] 4.1 `Editor.tsx`, `SyntaxSheet.tsx`, `StatusBar.tsx`, `ThisScene.tsx`, `PdfReview.tsx`, `analysis/field.ts`, `inserts.ts`: the template from the project (D6); `READ_ALOUD_AFTER` from the `mustHave` role (D1)
-- [ ] 4.2 Parse and PDF workers receive the template with each request (D7)
-- [ ] 4.3 Commit `refactor(web): the editor uses the project's template`
+- [x] 4.1 `Editor.tsx`, `SyntaxSheet.tsx`, `StatusBar.tsx`, `ThisScene.tsx`, `PdfReview.tsx`, `analysis/field.ts`, `inserts.ts`: the template from the project (D6); `READ_ALOUD_AFTER` from the `mustHave` role (D1)
+- [x] 4.2 Parse and PDF workers receive the template with each request (D7)
+- [x] 4.3 Commit `refactor(web): the editor uses the project's template`
 
 ## 5. Server and desktop
 

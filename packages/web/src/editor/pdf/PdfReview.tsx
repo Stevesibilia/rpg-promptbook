@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import { templates } from 'promptbook-format';
+import type { AdventureTemplate } from 'promptbook-format';
 import type { LayoutOptions } from 'promptbook-layout';
 import type { PdfSnapshot } from './client.js';
 import { checkedPages, pageLabels, pagesLabel, shownPages, stepPage, type StageMode } from './pages.js';
@@ -9,7 +9,6 @@ import { PdfSheet } from './PdfSheet.js';
 
 const ZOOMS = [50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300];
 const GAP = 14;
-const template = templates.avventura;
 
 interface Size {
   width: number;
@@ -47,6 +46,7 @@ function baseWidth(mode: StageMode, room: Size, aspect: number, shown: number): 
 export function PdfReview({
   snapshot,
   initialPage,
+  template,
   options,
   setOptions,
   onClose,
@@ -56,6 +56,8 @@ export function PdfReview({
 }: {
   snapshot: PdfSnapshot | null;
   initialPage: number;
+  // The project's template, named in the options.
+  template: AdventureTemplate;
   options: LayoutOptions;
   setOptions(change: Partial<LayoutOptions>): void;
   onClose(): void;

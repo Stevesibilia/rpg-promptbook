@@ -4,7 +4,7 @@ import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { blockAt, pageOf } from 'promptbook-layout';
-import { readMeta, setStatus } from 'promptbook-project';
+import { adventureTemplateOf, readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
 import { LicencePane } from '../licence/LicencePane.js';
@@ -57,6 +57,13 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const campaign = useCampaignRow(meta);
   useWindowTitle(meta.title);
   const checked = meta.category !== 'campaign';
+  // The project's template (template-registry design decision 6); a campaign
+  // is never parsed, and its preview and syntax use the built-in adventure's.
+  const { category, template: ref } = meta;
+  const template = useMemo(
+    () => adventureTemplateOf({ category, template: { id: ref.id, version: ref.version } }),
+    [category, ref.id, ref.version],
+  );
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
   const [inspector, setInspector] = usePanel(INSPECTOR_KEY);
@@ -101,6 +108,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     active: checked && ((pane && !focus) || review !== null),
     options: pdfOptions,
     title: meta.title,
+    template,
   });
   const openReview = (page?: number) => {
     const good = pdfSnapshot?.good;
@@ -405,12 +413,13 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       }
       status={<StatusBar view={view} updates={updates} onProblems={showChecks} onHidden={showHidden} />}
     >
-      <Editor doc={doc} checked={checked} extensions={extensions} onView={setView} />
+      <Editor doc={doc} template={template} checked={checked} extensions={extensions} onView={setView} />
       {pdfSnapshot && <PdfSource svg={pdfSnapshot.good?.svg ?? null} />}
       {review !== null && (
         <PdfReview
           snapshot={pdfSnapshot}
           initialPage={review}
+          template={template}
           options={pdfOptions}
           setOptions={setPdfOptions}
           onClose={closeReview}
@@ -420,7 +429,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         />
       )}
       {toast}
-      {dialog === 'syntax' && <SyntaxSheet checked={checked} onClose={closeDialog} />}
+      {dialog === 'syntax' && <SyntaxSheet template={template} checked={checked} onClose={closeDialog} />}
       {dialog === 'licence' && (
         <LicencePane current={licence} context="editor" onPick={pickLicence} onClose={closeDialog} />
       )}

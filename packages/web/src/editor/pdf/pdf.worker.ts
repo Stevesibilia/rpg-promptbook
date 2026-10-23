@@ -1,7 +1,7 @@
 import { createTypstRenderer, type TypstRenderer } from '@myriaddreamin/typst.ts';
 import compilerWasmUrl from '@myriaddreamin/typst-ts-web-compiler/wasm?url';
 import rendererWasmUrl from '@myriaddreamin/typst-ts-renderer/wasm?url';
-import { parseAdventure, templates } from 'promptbook-format';
+import { parseAdventure } from 'promptbook-format';
 import { createEngine, layoutChecks, loadAssets, toLayoutInput, type Engine } from 'promptbook-layout';
 import { prepareSvg } from './pages.js';
 import type { PdfAnswer, PdfBuild, PdfRequest } from './protocol.js';
@@ -35,8 +35,8 @@ let tools: Promise<Tools> | null = null;
 
 const post = (answer: PdfAnswer, transfer: Transferable[] = []) => self.postMessage(answer, { transfer });
 
-const inputOf = ({ text, options, project }: PdfRequest) =>
-  toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project, templates.avventura);
+const inputOf = ({ text, options, project, template }: PdfRequest) =>
+  toLayoutInput(parseAdventure(text, { template }).model, options, project, template);
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const failedBuild = (diagnostics: PdfBuild['diagnostics']): PdfBuild => ({

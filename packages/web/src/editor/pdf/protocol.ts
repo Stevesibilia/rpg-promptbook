@@ -1,3 +1,4 @@
+import type { AdventureTemplate } from 'promptbook-format';
 import type { Diagnostic, LayoutCheck, LayoutOptions, LayoutProject, Position } from 'promptbook-layout';
 
 // The messages between the editor and the PDF worker (design decision 9).
@@ -6,6 +7,9 @@ export interface PdfSource {
   text: string;
   options: LayoutOptions;
   project: LayoutProject;
+  // The project's template, sent with every request like the text
+  // (template-registry design decision 7).
+  template: AdventureTemplate;
 }
 
 export type PdfRequest = ({ kind: 'build' } | { kind: 'pdf' }) & PdfSource & { version: number };

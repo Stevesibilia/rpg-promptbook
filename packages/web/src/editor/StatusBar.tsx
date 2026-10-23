@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { EditorState } from '@codemirror/state';
 import type { EditorView, ViewUpdate } from '@codemirror/view';
-import { templates } from 'promptbook-format';
 import { countWords } from 'promptbook-project';
 import { analysisField } from './analysis/field.js';
 import { problemsOf } from './cm/hidden.js';
@@ -15,6 +14,8 @@ interface Snapshot {
   line: number;
   column: number;
   checked: boolean;
+  // The project's template, as «Avventura v1».
+  template: string;
   errors: number;
   warnings: number;
   hidden: number;
@@ -33,6 +34,7 @@ export function snapshotOf(state: EditorState): Snapshot {
     line: line.number,
     column: head - line.from + 1,
     checked: !!value?.checked,
+    template: value?.template ? `${value.template.name} v${value.template.version}` : '',
     errors: shown.filter((s) => s.problem.severity === 'error').length,
     warnings: shown.filter((s) => s.problem.severity === 'warning').length,
     hidden: parts?.hidden.length ?? 0,
@@ -50,7 +52,6 @@ function wordsOf(state: EditorState): number {
 
 const WORDS_DELAY = 300;
 const plural = (n: number, word: string) => `${n.toLocaleString('en')} ${word}${n === 1 ? '' : 's'}`;
-const template = templates.avventura;
 
 // The status bar's left part (design decision 12); the shell adds the sync
 // state on the right.
@@ -118,7 +119,7 @@ export function StatusBar({
       )}
       {words !== null && <span>{plural(words, 'word')}</span>}
       <span className="r">
-        {snapshot.checked ? `Template: ${template.name} v${template.version}` : 'Campaign · not checked'}
+        {snapshot.checked ? `Template: ${snapshot.template}` : 'Campaign · not checked'}
       </span>
     </>
   );

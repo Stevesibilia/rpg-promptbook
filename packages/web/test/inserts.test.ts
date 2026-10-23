@@ -1,5 +1,5 @@
 import { EditorState } from '@codemirror/state';
-import { templates } from 'promptbook-format';
+import { defineTemplate, templates, type AdventureTemplateInput } from 'promptbook-format';
 import { skeletonDocument } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw';
@@ -7,7 +7,7 @@ import {
   insertText,
   nextSceneNumber,
   placeInsert,
-  READ_ALOUD_AFTER,
+  readAloudAfter,
   readAloudOf,
   sceneAt,
   type Insert,
@@ -52,8 +52,14 @@ describe('insertText', () => {
     expect(text({ kind: 'scene' })).toBe('### S1. ‸');
   });
 
-  it('places the read-aloud after a field the template still has', () => {
-    expect(template.sceneFields.map((f) => f.label)).toContain(READ_ALOUD_AFTER);
+  it('follows the mustHave role when a template renames the field', () => {
+    const definition = JSON.parse(JSON.stringify(template)) as AdventureTemplateInput;
+    definition.sceneFields.find((f) => f.role === 'mustHave')!.label = 'Imperdibile';
+    expect(readAloudAfter(defineTemplate(definition))).toBe('Imperdibile');
+  });
+
+  it('places the read-aloud after the field with the mustHave role', () => {
+    expect(readAloudAfter(template)).toBe('Da non perdere qui');
     expect(readAloudOf(template).type).toBe('leggi');
   });
 

@@ -15,7 +15,7 @@ const CODE = 'scene.field.unknown';
 // A state whose analysis is the result for its own text: fresh.
 function analysed(doc: string): { state: EditorState; result: ParseResult } {
   const result = parse(doc);
-  let state = EditorState.create({ doc, extensions: analysis({ checked: true, connect: () => fail() }) });
+  let state = EditorState.create({ doc, extensions: analysis({ checked: true, template: templates.avventura, connect: () => fail() }) });
   state = state.update({
     effects: setAnalysis.of({ doc: state.doc, result, changes: ChangeSet.empty(state.doc.length) }),
   }).state;
@@ -77,7 +77,7 @@ describe('fixEdits', () => {
   });
 
   it('applies nothing to a campaign', () => {
-    const state = EditorState.create({ doc: text, extensions: analysis({ checked: false, connect: fail }) });
+    const state = EditorState.create({ doc: text, extensions: analysis({ checked: false, template: templates.avventura, connect: fail }) });
     expect(fixEdits(state, { code: CODE, from: 0, title: 'x' })).toBeNull();
   });
 });
@@ -92,7 +92,7 @@ describe('the analysis field', () => {
   });
 
   it('maps a late result through the edits made while it was computed', () => {
-    let state = EditorState.create({ doc: text, extensions: analysis({ checked: true, connect: fail }) });
+    let state = EditorState.create({ doc: text, extensions: analysis({ checked: true, template: templates.avventura, connect: fail }) });
     const sent = state.doc;
     const result = parse(sent.toString());
     const typing = state.update({ changes: { from: 0, insert: 'ab' } });

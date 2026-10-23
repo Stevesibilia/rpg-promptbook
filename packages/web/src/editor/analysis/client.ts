@@ -1,9 +1,12 @@
-import type { ParseResult } from 'promptbook-format';
+import type { AdventureTemplate, ParseResult } from 'promptbook-format';
 
-// The messages between the editor and the parse worker.
+// The messages between the editor and the parse worker. The template goes
+// with every text: it is a few kilobytes of plain data (template-registry
+// design decision 7).
 export interface ParseRequest {
   version: number;
   text: string;
+  template: AdventureTemplate;
 }
 
 export type ParseAnswer = { version: number; result: ParseResult } | { version: number; error: string };
@@ -19,9 +22,10 @@ export type Connect = (receive: (answer: ParseAnswer) => void, fail: (reason: st
 
 export interface AnalysisClientOptions<T> {
   connect: Connect;
-  // The text to parse and a tag the answer is given back with, read when the
-  // request is sent rather than when the text changed.
-  read(): { text: string; tag: T };
+  // The text to parse, the template to parse it with and a tag the answer is
+  // given back with, read when the request is sent rather than when the text
+  // changed.
+  read(): { text: string; template: AdventureTemplate; tag: T };
   apply(tag: T, result: ParseResult): void;
   delay?: number;
 }
@@ -55,11 +59,11 @@ export function createAnalysisClient<T>({
   const send = () => {
     waiting = false;
     if (disposed || broken) return;
-    const { text, tag } = read();
+    const { text, template, tag } = read();
     version += 1;
     inFlight = { version, tag };
     port ??= connect(receive, fail);
-    port.send({ version, text });
+    port.send({ version, text, template });
   };
 
   const due = () => {

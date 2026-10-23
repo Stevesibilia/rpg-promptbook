@@ -1,3 +1,4 @@
+import { templates } from 'promptbook-format';
 import { defaultLayoutOptions } from 'promptbook-layout';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPdfClient, noAnswer } from '../src/editor/pdf/client.js';
@@ -46,7 +47,7 @@ function setup() {
   let options = defaultLayoutOptions;
   const client = createPdfClient({
     connect: (r, f) => worker.connect(r, f),
-    read: () => ({ text, options, project: { title: 'T' } }),
+    read: () => ({ text, options, project: { title: 'T' }, template: templates.avventura }),
   });
   const builds = () => worker.sent.filter((r) => r.kind === 'build').map((r) => r.text);
   return {
@@ -241,7 +242,7 @@ describe('the PDF worker client', () => {
         attempts += 1;
         throw new Error('Worker refused');
       },
-      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' } }),
+      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' }, template: templates.avventura }),
     });
     client.setActive(true);
     expect(client.get()).toMatchObject({ engine: 'failed', error: 'Worker refused' });
@@ -264,7 +265,7 @@ describe('the PDF worker client', () => {
         },
         dispose: () => {},
       }),
-      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' } }),
+      read: () => ({ text: 'a', options: defaultLayoutOptions, project: { title: 'T' }, template: templates.avventura }),
     });
     client.setActive(true);
     await expect(client.pdf()).rejects.toThrow('DataCloneError');
