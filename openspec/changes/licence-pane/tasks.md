@@ -38,13 +38,13 @@ is committed by the architect.
 
 ## 4. Specs, docs, review and checks
 
-- [ ] 4.1 Check the spec deltas against what was built (`specs/editor/spec.md`, `specs/projects-screen/spec.md`); report any other spec the change touches
-- [ ] 4.2 Docs: README, a short "Choosing a licence" paragraph after "gdrarchive link" (the palette command, «Choose…» on the `licenza:` line, Settings, free text still works, not legal advice); `docs/design.md`, under "Author, copyright and licence", one line on the pane from #33; Prettier on the files touched
-- [ ] 4.3 Self-review by a reviewer subagent given the diff, the design and the mockup, for races (Settings save and pick, document changed while the pane is open), focus and accessibility (listbox, marks, return of focus, narrow layout); every finding fixed or reported
-- [ ] 4.4 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.5 Checks: `npm run typecheck`, `npm test`, `npm run e2e`
-- [ ] 4.6 Preview for the owner: stack up from the working tree with the seed, reachable from the LAN (`PUBLIC_URL` and the relay), the URL, username and password and the pages to look at (Settings → Author and licence; a project's front matter, the palette and the pane, light and dark, wide and narrow); a status note with them; stop and wait for the owner's go
-- [ ] 4.7 Commit `docs: licence pane`; hand-back to the architect with the departures from the design and the risks met
+- [x] 4.1 Check the spec deltas against what was built (`specs/editor/spec.md`, `specs/projects-screen/spec.md`); report any other spec the change touches
+- [x] 4.2 Docs: README, a short "Choosing a licence" paragraph after "gdrarchive link" (the palette command, «Choose…» on the `licenza:` line, Settings, free text still works, not legal advice); `docs/design.md`, under "Author, copyright and licence", one line on the pane from #33; Prettier on the files touched
+- [x] 4.3 Self-review by a reviewer subagent given the diff, the design and the mockup, for races (Settings save and pick, document changed while the pane is open), focus and accessibility (listbox, marks, return of focus, narrow layout); every finding fixed or reported
+- [x] 4.4 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.5 Checks: `npm run typecheck`, `npm test`, `npm run e2e`
+- [x] 4.6 Preview for the owner: stack up from the working tree with the seed, reachable from the LAN (`PUBLIC_URL` and the relay), the URL, username and password and the pages to look at (Settings → Author and licence; a project's front matter, the palette and the pane, light and dark, wide and narrow); a status note with them; stop and wait for the owner's go
+- [x] 4.7 Commit `docs: licence pane`; hand-back to the architect with the departures from the design and the risks met
 
 ## 5. Review and release (architect)
 

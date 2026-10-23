@@ -103,8 +103,9 @@ const SHOWN_KEYS = 4;
 
 // The front matter's look and fold: fences faint, keys coloured, and past
 // the fourth key the rest folded behind «▸ N more keys» while no selection
-// is inside it; «Choose…» after `licenza:` while its line shows. A function of the state, used by a field (a fold hides line
-// breaks, which a view plugin may not).
+// is inside it; «Choose…» after `licenza:` while its line shows. A function
+// of the state, used by a field (a fold hides line breaks, which a view
+// plugin may not).
 export function frontMatterItems(state: EditorState): PreviewItem[] {
   const fm = frontMatterOf(state.doc);
   if (!fm) return [];
