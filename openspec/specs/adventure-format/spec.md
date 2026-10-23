@@ -135,7 +135,8 @@ error saying a blank line is missing.
 
 The parser SHALL read as a callout a blockquote whose first line is `[!type]`, `[!type] Title` or `[!type|meta] Title`. The template SHALL define the types:
 `leggi` (read-aloud), `documento` (handout, title expected), `riquadro` (box)
-and `riquadro|laterale` (box in the side column). Each scene and «Inizio
+and `riquadro|laterale` (box in the side column, allowed in scenes, «A colpo
+d'occhio» and «Regole della notte»). Each scene and «Inizio
 forte» SHALL have at least one `leggi`, and MAY have several; none SHALL be
 an error, and the model SHALL keep every `leggi` of a place in the order
 written. A `documento` without a title SHALL be a warning. An unknown type
@@ -176,6 +177,11 @@ warning (`callout.place`).
 
 - **WHEN** «Orologio» holds a `[!riquadro|laterale]` callout
 - **THEN** a warning with code `callout.place` names the places it is allowed
+
+#### Scenario: Side box in «Regole della notte»
+
+- **WHEN** «Regole della notte» holds a `[!riquadro|laterale]` callout
+- **THEN** no `callout.place` problem is reported
 
 ### Requirement: Tables are recognised by their header
 
