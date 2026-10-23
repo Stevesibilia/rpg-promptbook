@@ -1,11 +1,11 @@
-import { parseAdventure, templates } from 'promptbook-format';
+import { defineTemplate, parseAdventure, templates, type AdventureTemplateInput } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
 import { defaultLayoutOptions, toLayoutInput, type LayoutBlock } from '../src/index.js';
 import { sabaoth } from './helpers.js';
 
 const project = { title: 'Nome del progetto' };
 const layout = (text: string, options = defaultLayoutOptions) =>
-  toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project);
+  toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project, templates.avventura);
 const markdown = (blocks: LayoutBlock[] | undefined) => (blocks ?? []).map((b) => b.markdown).join('\n\n');
 
 describe('toLayoutInput on Sabaoth', () => {
@@ -178,5 +178,40 @@ describe('several read-alouds', () => {
     const reads = blocks.filter((b) => b.box?.role === 'readAloud');
     expect(reads).toHaveLength(2);
     expect(reads[0]!.markdown).toBe('Un brano in più.');
+  });
+});
+
+describe('a template that renames a field', () => {
+  // A copy of avventura whose mustHave field reads «Imperdibile», and Sabaoth
+  // written with that label: the list goes where «Da non perdere qui» goes,
+  // the scene's side column, and nowhere else.
+  const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+  definition.sceneFields.find((f) => f.role === 'mustHave')!.label = 'Imperdibile';
+  const renamed = defineTemplate(definition);
+  const text = sabaoth();
+  const original = layout(text);
+  const written = text.replaceAll('**Da non perdere qui**', '**Imperdibile**');
+  const input = toLayoutInput(parseAdventure(written, { template: renamed }).model, defaultLayoutOptions, project, renamed);
+
+  it('places the renamed field as the mustHave of every scene', () => {
+    expect(written).not.toBe(text);
+    expect(input.scenes).toHaveLength(original.scenes.length);
+    input.scenes.forEach((scene, i) => {
+      const before = original.scenes[i]!;
+      expect(before.mustHave).not.toBeNull();
+      expect(scene.mustHave?.label).toBe('Imperdibile');
+      expect(markdown(scene.mustHave?.blocks)).toBe(markdown(before.mustHave?.blocks));
+      expect(scene.others.map((f) => f.label)).toEqual(before.others.map((f) => f.label));
+    });
+  });
+
+  it('finds the renamed sections by role too', () => {
+    const sections = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+    sections.sections.find((s) => s.role === 'clock')!.name = 'Conto alla rovescia';
+    const clock = defineTemplate(sections);
+    const moved = text.replace('## Orologio', '## Conto alla rovescia');
+    const result = toLayoutInput(parseAdventure(moved, { template: clock }).model, defaultLayoutOptions, project, clock);
+    expect(markdown(result.night.clock?.blocks)).toBe(markdown(original.night.clock?.blocks));
+    expect(original.night.clock).not.toBeNull();
   });
 });

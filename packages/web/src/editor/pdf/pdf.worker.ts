@@ -36,7 +36,7 @@ let tools: Promise<Tools> | null = null;
 const post = (answer: PdfAnswer, transfer: Transferable[] = []) => self.postMessage(answer, { transfer });
 
 const inputOf = ({ text, options, project }: PdfRequest) =>
-  toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project);
+  toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, options, project, templates.avventura);
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const failedBuild = (diagnostics: PdfBuild['diagnostics']): PdfBuild => ({

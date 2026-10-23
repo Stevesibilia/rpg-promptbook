@@ -38,9 +38,9 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 3. Layout by role
 
-- [ ] 3.1 `input.ts`: the template as a parameter; `FIELD` and the four section lookups by role (D1, D6)
-- [ ] 3.2 Tests: a copy of `avventura` with `mustHave` renamed puts that field in the side column; Sabaoth's hash matches 0.1
-- [ ] 3.3 Commit `refactor(layout): find sections and fields by role`
+- [x] 3.1 `input.ts`: the template as a parameter; `FIELD` and the four section lookups by role (D1, D6)
+- [x] 3.2 Tests: a copy of `avventura` with `mustHave` renamed puts that field in the side column; Sabaoth's hash matches 0.1
+- [x] 3.3 Commit `refactor(layout): find sections and fields by role`
 
 ## 4. Web
 
