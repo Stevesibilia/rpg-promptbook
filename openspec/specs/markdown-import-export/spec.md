@@ -89,8 +89,10 @@ newest first, with their ideas, decisions, rejected ideas and why, and open
 questions), `board.md` (the image prompts of the scenes, the PCs, the NPCs
 and the handouts, each scene's music prompt, and the chosen files), the
 images and tracks under `files/`, and `project.json` (id, title, category,
-status, campaign title, system, dates and schema version). Snapshots SHALL
-NOT be exported. Export SHALL lose no text the user wrote.
+status, campaign title, system, the project's own gdrarchive link when it has
+one, dates and schema version). Snapshots SHALL NOT be exported. Export
+SHALL lose no text the user wrote. Import SHALL NOT read the gdrarchive link
+back.
 
 #### Scenario: Round trip of the document
 
@@ -104,6 +106,13 @@ NOT be exported. Export SHALL lose no text the user wrote.
 - **WHEN** a project with the note «Colapesce» and two sources is exported
 - **THEN** its folder's `research.md` holds the note's summary, facts and
   both sources' titles and URLs
+
+#### Scenario: gdrarchive link in the export
+
+- **WHEN** the campaign «Kulthos», linked to gdrarchive, and its adventure
+  with no link of its own are exported
+- **THEN** Kulthos's `project.json` holds the link's address and label, and
+  the adventure's has no `gdrarchive` key
 
 ### Requirement: Board and files in the export
 

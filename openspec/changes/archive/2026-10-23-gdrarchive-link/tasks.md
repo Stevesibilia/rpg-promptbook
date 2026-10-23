@@ -48,4 +48,4 @@ architect.
 
 - [x] 5.1 Review against the design and the mockup; failures reported to the implementer, not worked around
 - [x] 5.2 Owner go on the screenshots before the merge
-- [ ] 5.3 Archive the change (`chore(openspec): archive gdrarchive-link`), merge, release `v0.10.0` (O1)
+- [x] 5.3 Archive the change (`chore(openspec): archive gdrarchive-link`), merge, release `v0.10.0` (O1)
