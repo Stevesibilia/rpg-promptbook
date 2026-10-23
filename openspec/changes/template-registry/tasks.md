@@ -57,6 +57,7 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 6. Proof and hand-back
 
-- [ ] 6.1 `npm run typecheck`, `npm test`, `npm run e2e`: literal results in the hand-back
-- [ ] 6.2 Sabaoth PDF SHA-256 on the branch equals 0.1
-- [ ] 6.3 Hand back: results, the hash pair, any label found outside the list, departures from the design
+- [x] 6.1 `npm run typecheck`, `npm test`, `npm run e2e`: literal results in the hand-back
+- [x] 6.2 Sabaoth PDF SHA-256 on the branch equals 0.1
+  - all four option sets give the hashes of 0.1, byte for byte
+- [x] 6.3 Hand back: results, the hash pair, any label found outside the list, departures from the design
