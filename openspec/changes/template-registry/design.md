@@ -210,3 +210,53 @@ None: a missing `meta.template` reads as the category's built-in (D5).
 ## Open Questions
 
 None.
+
+## Departures accepted at review
+
+The implementer's hand-back listed eight; all accepted.
+
+1. **Callers moved with their callee.** `targetsOf`, `findTarget` and
+   `appendixEdit` take the template, so their server and web callers changed
+   in group 2 (task 5.1's `edits.ts` part landed there) to keep each commit
+   green.
+2. **Template, not category.** `targetsOf(text, template)`,
+   `findTarget(text, template, name)` and `edits.ts` `check()` use
+   `template.kind` where they used the category.
+3. **Optional template in the skeleton.** `skeletonDocument(category, input,
+template?)` and `ProjectInput.template` default to the category's
+   built-in, so the three create paths (desktop, server, web) are unchanged.
+4. **Snapshots record the template.** `NewSnapshot.category` became
+   `template`; `documentWords` takes a template on server and desktop.
+5. **Consumers the plan did not list:** `web/src/board/useBoard.ts`,
+   `BoardView.tsx`, `ResearchView.tsx`, and the connector's `get_outline`,
+   `read_document` and undo.
+6. **Web plumbing.** The template sits in the analysis field's state;
+   `StatusBar` and `ThisScene` read it from there. `Editor`, `SyntaxSheet`,
+   `PdfReview` and `usePdf` take it as a prop from `EditorPage`, memoised on
+   category, id and version. `READ_ALOUD_AFTER` became
+   `readAloudAfter(template)`.
+7. **One test expectation.** `parse.test` "matches headings by name" now
+   expects the roles `clock`, `truths`, `before` (D1).
+8. **Layout signature.** `toLayoutInput` takes the template as its fourth
+   parameter.
+
+Proof: Sabaoth's PDF hashes (default, ink saver, no pregenerated, US
+letter) are identical on `main` and after the layout moved to roles; the
+three skeletons are byte-identical before and after.
+
+## Carried to change 2 (template-editor)
+
+From the implementer's reviewer, none live with the built-ins:
+
+- This scene and `readAloudOf` assume the template has a read-aloud, a
+  handout and a box callout (`find(...)!`). Require them in the schema or
+  degrade.
+- `templateOf` silently falls back to the built-in for an unknown or
+  wrong-kind ref. Decide whether the UI shows it.
+- `resolveTemplate` lets `extra` shadow a built-in with the same id and
+  version. Refuse user templates that reuse a built-in id.
+- `Editor` recreates the CodeMirror view when the template changes, which
+  drops undo. Reconfigure instead when "Update to latest" lands.
+- `skeletonDocument` does not check the template's kind against the
+  category, and `setTemplate` accepts any well-formed ref.
+- Front matter keys read by name (D10).
