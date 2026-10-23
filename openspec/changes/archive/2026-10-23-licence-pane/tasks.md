@@ -48,6 +48,6 @@ is committed by the architect.
 
 ## 5. Review and release (architect)
 
-- [ ] 5.1 Review against the design and the mockup; failures reported to the implementer, not worked around
-- [ ] 5.2 Owner go on the preview before the merge
-- [ ] 5.3 Archive the change (`chore(openspec): archive licence-pane`), merge, release `v0.11.0`
+- [x] 5.1 Review against the design and the mockup; failures reported to the implementer, not worked around
+- [x] 5.2 Owner go on the preview before the merge
+- [x] 5.3 Archive the change (`chore(openspec): archive licence-pane`), merge, release `v0.11.0`
