@@ -1,0 +1,234 @@
+/* The licence pane, as the mockup's (docs/mockups/licence.html): the body
+   scrolls under a sticky header, the footer stays. */
+.modal.lic {
+  width: min(820px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal.lic .mh,
+.modal.lic .mf {
+  flex: none;
+}
+.modal.lic .mb {
+  padding: 12px 18px 14px;
+  overflow: auto;
+  min-height: 0;
+}
+.modal.lic .mf {
+  flex-wrap: wrap;
+}
+
+.cur-note {
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--border));
+  font-size: 13px;
+  color: var(--muted);
+}
+.cur-note b {
+  color: var(--text);
+  font: 500 13px var(--mono);
+}
+
+.lic-head,
+.lic-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) repeat(5, 54px);
+  column-gap: 8px;
+  align-items: start;
+}
+.lic-head {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  padding: 4px 10px 6px;
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.lic-head span {
+  text-align: center;
+  line-height: 1.2;
+}
+.lic-head .lic-head-name {
+  text-align: left;
+}
+.lic-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  outline: none;
+}
+.lic-row {
+  scroll-margin-top: 44px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.lic-row:last-child {
+  border-bottom: 0;
+}
+.lic-row:hover {
+  background: var(--hover);
+}
+.lic-row[aria-selected='true'] {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.lic-list:focus-visible .lic-row[aria-selected='true'] {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.lic-row .radio {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--faint);
+  display: grid;
+  place-items: center;
+}
+.lic-row[aria-selected='true'] .radio {
+  border-color: var(--primary);
+}
+.lic-row[aria-selected='true'] .radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.lic-main {
+  min-width: 0;
+}
+.lic-t {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.lic-t b {
+  font: 600 15px var(--font);
+}
+.lic-t .pw {
+  color: var(--muted);
+  font-size: 13px;
+}
+.lic-t .curchip {
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.lic-d {
+  margin: 2px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.lic-w {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  font-size: 12px;
+  color: var(--faint);
+}
+.lic-w code {
+  font: 12px var(--mono);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+  overflow-wrap: anywhere;
+}
+.lic-w a {
+  color: var(--primary);
+  text-decoration: none;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.lic-w a:hover {
+  text-decoration: underline;
+}
+.lic-w a .ic {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+.lic-row .mark {
+  text-align: center;
+  font: 600 14px/22px var(--font);
+}
+.lic-row .mark.y {
+  color: var(--primary);
+}
+.lic-row .mark.n {
+  color: var(--danger);
+}
+.lic-row .mark.na {
+  color: var(--faint);
+  font-weight: 400;
+}
+.lic-row .mark .ml {
+  display: none;
+}
+
+@media (min-width: 761px) {
+  .lic-row .marks {
+    display: contents;
+  }
+}
+@media (max-width: 760px) {
+  .scrim:has(> .modal.lic) {
+    padding-top: 2vh;
+  }
+  .modal.lic {
+    max-height: 94vh;
+  }
+  .modal.lic .mh,
+  .modal.lic .mb,
+  .modal.lic .mf {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .lic-head {
+    display: none;
+  }
+  .lic-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+    padding: 9px 4px;
+  }
+  .lic-row .marks {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 4px;
+  }
+  .lic-row .mark {
+    font-size: 12px;
+    line-height: 18px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0 7px;
+    text-align: left;
+  }
+  .lic-row .mark .ml {
+    display: inline;
+    color: var(--muted);
+    font-weight: 500;
+    margin-left: 3px;
+  }
+}

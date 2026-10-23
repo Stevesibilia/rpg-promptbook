@@ -14,11 +14,11 @@ is committed by the architect.
 
 ## 1. The list and the pane
 
-- [ ] 1.1 `packages/web/src/licence/licences.ts` (D1, D2, D3): `Mark`, `LicenceMarks`, `LicenceEntry`, `LICENCES` and `LICENCE_MARKS`, with the copy, urls and marks of "The eight entries" word for word
-- [ ] 1.2 `packages/web/src/licence/LicencePane.tsx` (D4, D14): on `Modal` with `className="lic"`; the listbox with `aria-activedescendant`, focused on mount; the «Current» chip and the free-text note; click, double-click, Enter, ↑ ↓ wrapping, Home, End; «Full text» never selects or picks; «Use licence» disabled with no selection or the current one («Already the licence»); the «Writes» line and footer note by `context`; marks with `title` and `aria-label`
-- [ ] 1.3 `packages/web/src/licence/licence.css`: the mockup's `.modal.lic`, `.cur-note`, `.lic-*`, `.radio` and `.mark` rules and its 760 px query, on the app's tokens, light and dark
-- [ ] 1.4 `packages/web/test/licences.test.ts` (D11)
-- [ ] 1.5 Commit `feat(web): licence list and pane`
+- [x] 1.1 `packages/web/src/licence/licences.ts` (D1, D2, D3): `Mark`, `LicenceMarks`, `LicenceEntry`, `LICENCES` and `LICENCE_MARKS`, with the copy, urls and marks of "The eight entries" word for word
+- [x] 1.2 `packages/web/src/licence/LicencePane.tsx` (D4, D14): on `Modal` with `className="lic"`; the listbox with `aria-activedescendant`, focused on mount; the «Current» chip and the free-text note; click, double-click, Enter, ↑ ↓ wrapping, Home, End; «Full text» never selects or picks; «Use licence» disabled with no selection or the current one («Already the licence»); the «Writes» line and footer note by `context`; marks with `title` and `aria-label`
+- [x] 1.3 `packages/web/src/licence/licence.css`: the mockup's `.modal.lic`, `.cur-note`, `.lic-*`, `.radio` and `.mark` rules and its 760 px query, on the app's tokens, light and dark
+- [x] 1.4 `packages/web/test/licences.test.ts` (D11)
+- [x] 1.5 Commit `feat(web): licence list and pane`
 
 ## 2. Settings
 
