@@ -549,3 +549,32 @@ Rolling back removes the pane; values it wrote stay valid `licenza` text.
 ## Open Questions
 
 None.
+
+## Departures accepted at review
+
+1. `ui/Modal.tsx`: the scrim's `mousedown` calls `preventDefault()` before
+   `onClose()`, for every dialog. Without it the browser moved the focus to
+   the body after the caller had put it back, so D14 failed on an outside
+   click (in the editor the front matter refolded and typing went dead). An
+   e2e step for the outside click in both contexts fails without it. No
+   other dialog has its own scrim handler or a blur-saving input, so their
+   behaviour is unchanged; SyntaxSheet now also keeps the editor focused.
+2. The reviewer's fixes of task 4.3 went in their own commit,
+   `fix(web): licence pane review fixes`, not into a planned group.
+3. Options are named with `aria-labelledby` (short name, plain name,
+   «Current») and described with `aria-describedby` (summary and marks);
+   marks carry `role="img"` so their `aria-label` is exposed.
+4. `currentLicence` drops a ` # comment` after an unquoted value and reads
+   every block indicator (`>2-`, `|+`…); blank lines between indented
+   continuation lines belong to the value, a trailing one does not. The
+   same rule places a line inserted after `copyright:`.
+5. The widget opens the pane on the main button only.
+6. The `licence` preview item keeps D8's `at`; one assertion in
+   `test/preview.test.ts` was retyped for the new union member.
+7. Kept as designed, after the reviewer raised them: Enter or a
+   double-click on the «Current» row closes without writing (D4), even if
+   another device changed the value meanwhile; «Full text» stays inside the
+   option (the mockup); «Use licence» stays `disabled` when the current row
+   is selected; a failed settings save while the pane is open remounts the
+   card and closes the pane (Risks); a `---` first line with no closing
+   fence gets a new front matter before it (D6).
