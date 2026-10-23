@@ -7,7 +7,9 @@ import { frontMatterOf, KEY, type FrontMatter } from './cm/preview.js';
 // browser.
 
 const INDENTED = /^[ \t]/;
-const BLOCK = /^[|>][+-]?\d*$/;
+const BLOCK = /^[|>](\d?[+-]?|[+-]?\d?)$/;
+// A comment after an unquoted value.
+const COMMENT = /\s+#.*$/;
 
 interface Entry {
   // The key's line number, and the last line of its value.
@@ -66,7 +68,8 @@ export function currentLicence(doc: Text): string {
   const entry = fm && entryOf(doc, fm, 'licenza');
   if (!entry) return '';
   const line = doc.line(entry.line);
-  const first = line.text.slice(KEY.exec(line.text)![0].length).trim();
+  let first = line.text.slice(KEY.exec(line.text)![0].length).trim();
+  if (!/^["']/.test(first)) first = first.replace(COMMENT, '');
   const parts = BLOCK.test(first) ? [] : [first];
   for (let n = entry.line + 1; n <= entry.last; n++) parts.push(doc.line(n).text.trim());
   const text = parts.filter(Boolean).join(' ');

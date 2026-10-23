@@ -354,13 +354,20 @@ test('choose the default licence in Settings', async ({ page }) => {
   await expect(field).toHaveValue('CC-BY-4.0');
   await expect(page.locator('.status')).toContainText('Saved');
 
+  // A click outside closes it, back on «Choose…».
+  await choose.click();
+  await expect(pane).toBeVisible();
+  await page.mouse.click(8, 450);
+  await expect(pane).toHaveCount(0);
+  await expect(choose).toBeFocused();
+
   await page.reload();
   await expect(page.getByLabel('Licence', { exact: true })).toHaveValue('CC-BY-4.0');
 
   // Other tests make projects from the default: it is put back.
   await page.getByLabel('Licence', { exact: true }).fill(previous);
   await page.getByLabel('Licence', { exact: true }).press('Enter');
-  await expect(page.locator('.status')).toContainText('Saved');
+  if (previous !== 'CC-BY-4.0') await expect(page.locator('.status')).toContainText('Saved');
   await page.reload();
   await expect(page.getByLabel('Licence', { exact: true })).toHaveValue(previous);
 });

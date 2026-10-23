@@ -332,6 +332,7 @@ class LicenceChoose extends WidgetType {
     // The cursor and the fold stay as they are.
     button.addEventListener('mousedown', (event) => {
       event.preventDefault();
+      if (event.button !== 0) return;
       view.state.facet(licenceHandler).forEach((open) => open());
     });
     return button;

@@ -487,6 +487,14 @@ test('choose the licence from the palette and the front matter', async ({ page }
   await expect(pane).toHaveCount(0);
   await expect(cursorLine(page)).toHaveText(/^titolo: Licenza/);
   await expect(choose).toBeVisible();
+
+  // A click outside closes it back to the editor too.
+  await choose.click();
+  await expect(pane).toBeVisible();
+  await page.mouse.click(8, 450);
+  await expect(pane).toHaveCount(0);
+  await expect(page.locator('.cm-content')).toBeFocused();
+  await expect(choose).toBeVisible();
 });
 
 test('a licence line is added after copyright', async ({ page }) => {

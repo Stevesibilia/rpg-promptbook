@@ -80,6 +80,8 @@ describe('currentLicence', () => {
     expect(currentLicence(doc(fm('licenza:   CC-BY-4.0  ')))).toBe('CC-BY-4.0');
     expect(currentLicence(doc(fm('licenza: "CC-BY-4.0"')))).toBe('CC-BY-4.0');
     expect(currentLicence(doc(fm("licenza: 'Uso personale'")))).toBe('Uso personale');
+    expect(currentLicence(doc(fm('licenza: CC-BY-4.0 # mine')))).toBe('CC-BY-4.0');
+    expect(currentLicence(doc(fm('licenza: "Uso # personale"')))).toBe('Uso # personale');
   });
 
   it('answers empty for an empty or missing line, or no front matter', () => {
@@ -91,5 +93,7 @@ describe('currentLicence', () => {
   it('joins a value on several lines, without its block indicator', () => {
     expect(currentLicence(doc(fm('licenza: Uso', '  personale', 'autore: Stefano')))).toBe('Uso personale');
     expect(currentLicence(doc(fm('licenza: >-', '  Tutti i diritti', '  riservati')))).toBe('Tutti i diritti riservati');
+    expect(currentLicence(doc(fm('licenza: >2-', '  Uso personale')))).toBe('Uso personale');
+    expect(currentLicence(doc(fm('licenza: |+', '  Uso personale')))).toBe('Uso personale');
   });
 });

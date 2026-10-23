@@ -128,17 +128,21 @@ export function LicencePane({
             className="lic-row"
             role="option"
             aria-selected={i === selected}
+            aria-labelledby={`${rowId(i)}-t`}
+            aria-describedby={`${rowId(i)}-d ${rowId(i)}-m`}
             onClick={(event) => !onLink(event) && select(i)}
             onDoubleClick={(event) => !onLink(event) && pick(i)}
           >
             <span className="radio" aria-hidden="true" />
             <div className="lic-main">
-              <div className="lic-t">
+              <div className="lic-t" id={`${rowId(i)}-t`}>
                 <b>{licence.short}</b>
                 <span className="pw">{licence.name}</span>
                 {i === currentIndex && <span className="curchip">Current</span>}
               </div>
-              <p className="lic-d">{licence.summary}</p>
+              <p className="lic-d" id={`${rowId(i)}-d`}>
+                {licence.summary}
+              </p>
               <div className="lic-w">
                 <span>
                   Writes <code>{writes(licence.value)}</code>
@@ -156,7 +160,7 @@ export function LicencePane({
                 )}
               </div>
             </div>
-            <span className="marks">
+            <span className="marks" id={`${rowId(i)}-m`}>
               {LICENCE_MARKS.map((mark) => {
                 const m = licence.marks[mark.key];
                 return (
