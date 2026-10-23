@@ -14,6 +14,7 @@ export const sectionRoleSchema = z.enum([
   'reminders',
   'strongStart',
   'sceneMap',
+  'rules',
   'scenes',
   'clues',
   'npcs',

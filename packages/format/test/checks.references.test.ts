@@ -130,8 +130,10 @@ describe('callout and reference checks', () => {
   it('names the places a callout belongs in, and accepts it where the template allows it', () => {
     const doc = change('## Verità del mondo', '> [!riquadro|laterale] Nota\n> A lato.\n\n## Verità del mondo');
     expect(parse(doc).problems.find((p) => p.code === 'callout.place')!.message).toBe(
-      'A "Riquadro laterale" box [!riquadro|laterale] is not expected here; it belongs in scenes, "A colpo d\'occhio".',
+      'A "Riquadro laterale" box [!riquadro|laterale] is not expected here; it belongs in scenes, "A colpo d\'occhio", "Regole della notte".',
     );
+    const rules = change('\n## Scene\n', '\n## Regole della notte\n\n> [!riquadro|laterale] Nota\n> A lato.\n\n## Scene\n');
+    expect(codes(parse(rules).problems)).not.toContain('callout.place');
     expect(codes(parse(base).problems)).not.toContain('callout.place');
     const box = change('## Verità del mondo', '> [!riquadro] Nota\n> Ovunque.\n\n## Verità del mondo');
     expect(codes(parse(box).problems)).not.toContain('callout.place');

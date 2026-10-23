@@ -12,8 +12,8 @@ Assisted-by: claude-code/claude-opus-5-5
 - [x] 1.2 `packages/layout/src/input.ts`: `rules.sideBoxes` holds the section's side boxes, `rules.blocks` the rest
 - [x] 1.3 `packages/layout/typst/avventura.typ`: full width without side boxes, `columns-part` with them; the two-column flow removed
 - [x] 1.4 Tests: `callout.place` accepts the side box in the rules (format), the split (layout), the syntax sheet's places (web)
-- [ ] 1.5 Owner checks the rendered rules page, with and without a side box
-- [ ] 1.6 Commit `feat(layout): rules page with a side column`
+- [x] 1.5 Owner checks the rendered rules page, with and without a side box
+- [x] 1.6 Commit `feat(layout): rules page with a side column`
 
 ## 2. Close
 

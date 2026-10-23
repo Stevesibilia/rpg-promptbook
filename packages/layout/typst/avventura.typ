@@ -385,13 +385,17 @@
     }
   }
 
-  // ---- Regole della notte, in two columns --------------------------------
+  // ---- Regole della notte, with its side boxes in the side column --------
 
   if input.rules != none {
     pagebreak(weak: true)
     pos("part", input.rules.from, id: "rules", label: "Regole")
     section-heading("Regole della notte", from: input.rules.from)
-    columns(2, gutter: 7mm, any-blocks(input.rules.blocks))
+    if input.rules.sideBoxes.len() == 0 {
+      any-blocks(input.rules.blocks)
+    } else {
+      columns-part(any-blocks(input.rules.blocks), { for b in input.rules.sideBoxes { callout(b) } })
+    }
   }
 
   // ---- One part per scene ------------------------------------------------
