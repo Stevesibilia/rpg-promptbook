@@ -7,6 +7,7 @@ import { blockAt, pageOf } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
+import { LicencePane } from '../licence/LicencePane.js';
 import { useWindowTitle } from '../desktop/title.js';
 import { platform } from '../platform/index.js';
 import { HistoryButton, ProjectCrumbs, ProjectMetaControls, useCampaignRow } from '../project/top.js';
@@ -15,11 +16,13 @@ import { useDocValue } from '../sync/hooks.js';
 import { useToast, type ToastAction } from '../ui/Toast.js';
 import type { Hiding } from './Checks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
+import { licenceHandler } from './cm/preview.js';
 import { hideHandler } from './cm/problems.js';
 import { CommandPalette } from './CommandPalette.js';
 import { hidingActions } from './hiding.js';
 import { Editor } from './Editor.js';
 import { Inspector, useSections } from './Inspector.js';
+import { currentLicence, licenceEdits } from './licence.js';
 import { outlineOf } from './outline.js';
 import { OutlinePanel } from './OutlinePanel.js';
 import { resolveItem, type PaletteAction } from './palette.js';
@@ -33,7 +36,7 @@ import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
 import { analysisField } from './analysis/field.js';
-import { jumpTo } from './writes.js';
+import { jumpTo, write } from './writes.js';
 import './editor.css';
 import './pdf/pdf.css';
 
@@ -60,7 +63,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const [sections, setSection] = useSections();
   const [focus, setFocus] = useState(false);
   const [view, setView] = useState<EditorView | null>(null);
-  const [dialog, setDialog] = useState<'palette' | 'syntax' | null>(null);
+  const [dialog, setDialog] = useState<'palette' | 'syntax' | 'licence' | null>(null);
+  // The project's licence when the licence pane opened.
+  const [licence, setLicence] = useState('');
   const navigate = useNavigate();
   const [pdfOpen, setPdfOpen] = usePanel(PDF_KEY, false);
   // The page the review opened on, while it is open.
@@ -178,6 +183,24 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     view?.focus();
   };
 
+  // The licence pane, from the palette or the front matter's «Choose…». A
+  // pick is written on the text as it is then, in one undo step; the cursor
+  // stays where it was.
+  const openLicence = () => {
+    if (!view) return;
+    setLicence(currentLicence(view.state.doc));
+    setDialog('licence');
+  };
+  const latestOpenLicence = useRef(openLicence);
+  latestOpenLicence.current = openLicence;
+  const pickLicence = (value: string) => {
+    if (view) {
+      const edits = licenceEdits(view.state.doc, value);
+      if (edits.length) write(view, edits, { userEvent: 'input.licence' });
+    }
+    closeDialog();
+  };
+
   // What a palette row does, once the palette is closed. An outline item is
   // found again in the outline as it is now.
   const runPalette = (action: PaletteAction) => {
@@ -196,6 +219,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         return;
       case 'pdf':
         setPdfOpen((open) => !open);
+        return;
+      case 'licence':
+        openLicence();
         return;
       case 'projects':
         navigate('/');
@@ -272,6 +298,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       Prec.high(keymap.of(editorKeymap(() => latest.current))),
       EditorView.updateListener.of((update) => listeners.current.forEach((listener) => listener(update))),
       hideHandler.of((problem, text, as) => latestHiding.current.hide(problem, text, as)),
+      licenceHandler.of(() => latestOpenLicence.current()),
     ],
     [],
   );
@@ -394,6 +421,9 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       )}
       {toast}
       {dialog === 'syntax' && <SyntaxSheet checked={checked} onClose={closeDialog} />}
+      {dialog === 'licence' && (
+        <LicencePane current={licence} context="editor" onPick={pickLicence} onClose={closeDialog} />
+      )}
       {dialog === 'palette' && (
         <CommandPalette view={view} updates={updates} checked={checked} onRun={runPalette} onClose={closeDialog} />
       )}

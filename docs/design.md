@@ -483,6 +483,9 @@ WeasyPrint 13 pages (today), Chromium + Paged.js 14, Chromium + Vivliostyle
   repeats them in full, with the licence's link for an SPDX id.
 - Validation: an unknown SPDX id is a warning, not an error; free text is
   printed as written.
+- A licence pane (#33) helps choose: CC0, the six CC 4.0 licences and All
+  rights reserved, each with a plain summary and marks, opened from Settings
+  and from the editor's palette and `licenza:` line; free text still works.
 
 Target: the same
 structure as today (one page per scene, same tabs, footers and references),

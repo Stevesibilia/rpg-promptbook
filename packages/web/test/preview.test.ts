@@ -89,7 +89,7 @@ describe('the live preview', () => {
     expect(gone).not.toContain('**');
     expect(gone).not.toContain('*');
     const label = items.find((i) => i.kind === 'mark' && i.className === 'cm-fl');
-    expect(label && state.sliceDoc(label.from, 'to' in label ? label.to : label.from)).toBe('**Luogo e momento:**');
+    expect(label?.kind === 'mark' && state.sliceDoc(label.from, label.to)).toBe('**Luogo e momento:**');
   });
 
   it('draws a known callout as a box with its label and title', () => {
@@ -125,6 +125,29 @@ describe('the live preview', () => {
     const short = EditorState.create({ doc: '---\na: 1\nb: 2\n---\n\ntext' });
     expect(frontMatterItems(short).some((i) => i.kind === 'fold')).toBe(false);
     expect(frontMatterOf(EditorState.create({ doc: '---\na: 1\n\n## Scene' }).doc)).toBeNull();
+  });
+
+  it('ends the licenza line with «Choose…» while that line shows', () => {
+    const licence = (state: EditorState) => frontMatterItems(state).filter((i) => i.kind === 'licence');
+    const end = at('licenza: CC-BY-4.0', 'licenza: CC-BY-4.0'.length);
+    expect(licence(stateAt(at('durata'), true))).toEqual([{ kind: 'licence', at: end }]);
+    // Folded with the rest past the fourth key.
+    expect(licence(stateAt(at('### S1'), true))).toEqual([]);
+    expect(licence(stateAt(0, false))).toEqual([]);
+    // Among the first four keys it never folds.
+    const early = EditorState.create({ doc: '---\nlicenza: CC0-1.0\na: 1\nb: 2\nc: 3\nd: 4\n---\n\ntext' });
+    expect(frontMatterItems(early).filter((i) => i.kind === 'licence')).toEqual([{ kind: 'licence', at: 20 }]);
+    // Not in the body, nor without a front matter.
+    const body = EditorState.create({ doc: '---\na: 1\n---\n\nlicenza: CC0-1.0' });
+    expect(frontMatterItems(body).some((i) => i.kind === 'licence')).toBe(false);
+    expect(frontMatterItems(EditorState.create({ doc: 'licenza: CC0-1.0\n' }))).toEqual([]);
+  });
+
+  it('hides nothing more for «Choose…»', () => {
+    const state = stateAt(at('durata'), true);
+    const items = frontMatterItems(state);
+    expect(hiddenRanges(items)).toEqual(hiddenRanges(items.filter((i) => i.kind !== 'licence')));
+    expect(items.some((i) => i.kind === 'licence')).toBe(true);
   });
 
   it('never changes the text', () => {

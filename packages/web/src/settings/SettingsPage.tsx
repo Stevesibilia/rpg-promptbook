@@ -9,6 +9,7 @@ import { NeedsServer, NeedsServerGroup } from '../desktop/NeedsServer.js';
 import { ThisDevice } from '../desktop/ThisDevice.js';
 import { useOffline } from '../desktop/useDevice.js';
 import { platform } from '../platform/index.js';
+import { LicencePane } from '../licence/LicencePane.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
@@ -234,24 +235,61 @@ function DocumentTemplates() {
 }
 
 function AuthorDefaults({ settings, onSave }: { settings: Settings; onSave(next: Settings): void }) {
+  const licenceInput = useRef<HTMLInputElement>(null);
+  const choose = useRef<HTMLButtonElement>(null);
+  // The input's value when «Choose…» was pressed, while the pane is open.
+  const [choosing, setChoosing] = useState<string | null>(null);
+  const closePane = () => {
+    setChoosing(null);
+    choose.current?.focus();
+  };
+  // A pick is saved as leaving the field saves a typed value.
+  const pickLicence = (value: string) => {
+    if (licenceInput.current) licenceInput.current.value = value;
+    if (value !== settings.licence) onSave({ ...settings, licence: value });
+    closePane();
+  };
+
   const field = (
     key: 'author' | 'copyright' | 'licence' | 'system',
     label: string,
     hint?: React.ReactNode,
     placeholder?: string,
-  ) => (
-    <div className="field">
-      <label htmlFor={`set-${key}`}>{label}</label>
+  ) => {
+    const input = (
       <input
         id={`set-${key}`}
+        ref={key === 'licence' ? licenceInput : undefined}
         defaultValue={settings[key]}
         placeholder={placeholder}
+        spellCheck={key === 'licence' ? false : undefined}
         onBlur={(e) => e.target.value.trim() !== settings[key] && onSave({ ...settings, [key]: e.target.value.trim() })}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       />
-      {hint && <span className="hint">{hint}</span>}
-    </div>
-  );
+    );
+    return (
+      <div className="field">
+        <label htmlFor={`set-${key}`}>{label}</label>
+        {key === 'licence' ? (
+          <div className="with-btn">
+            {input}
+            <button
+              ref={choose}
+              type="button"
+              className="tb line"
+              aria-haspopup="dialog"
+              onClick={() => setChoosing(licenceInput.current?.value.trim() ?? settings.licence)}
+            >
+              Choose…
+            </button>
+          </div>
+        ) : (
+          input
+        )}
+        {hint && <span className="hint">{hint}</span>}
+      </div>
+    );
+  };
   return (
     <section>
       <h2>Author and licence</h2>
@@ -274,6 +312,9 @@ function AuthorDefaults({ settings, onSave }: { settings: Settings; onSave(next:
           )}
         </div>
       </NeedsServerGroup>
+      {choosing !== null && (
+        <LicencePane current={choosing} context="settings" onPick={pickLicence} onClose={closePane} />
+      )}
     </section>
   );
 }

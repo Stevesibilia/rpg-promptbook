@@ -27,7 +27,10 @@ export function Modal({
     <div
       className="scrim"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target !== event.currentTarget) return;
+        // The focus the caller gives back is not taken away by the click.
+        event.preventDefault();
+        onClose();
       }}
     >
       <div className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title}>

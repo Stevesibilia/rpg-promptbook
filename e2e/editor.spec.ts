@@ -429,3 +429,90 @@ test('a hide seen in another browser', async ({ page, browser }) => {
   await expect(hiddenCount(other)).toHaveText('1 hidden');
   await context.close();
 });
+
+// A one-shot whose front matter holds `keys`, past the fourth folded.
+const withFrontMatter = (...keys: string[]) =>
+  ['---', 'titolo: Licenza', 'sistema: Kulthos', 'formato: one-shot', 'durata: 4 ore', ...keys, '---', '']
+    .concat(['## Scene', '', '### S1. Uno', '', 'Testo.', ''])
+    .join('\n');
+const fmLine = (page: Page, key: string) => page.locator('.cm-line', { hasText: new RegExp(`^${key}:`) });
+
+test('choose the licence from the palette and the front matter', async ({ page }) => {
+  await projectWith(page, withFrontMatter('autore: Stefano', 'licenza: Uso personale'), 'Licenza', 'S1');
+  const choose = page.locator('.cm-fm-licence');
+
+  // The cursor in the body: the front matter is folded, «Choose…» with it.
+  await page.locator('.cm-line', { hasText: /^Testo\.$/ }).click();
+  await expect(cursorLine(page)).toHaveText('Testo.');
+  await expect(choose).toHaveCount(0);
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('licence');
+  await page.keyboard.press('Enter');
+  const pane = page.getByRole('dialog', { name: 'Choose a licence' });
+  await expect(pane).toBeVisible();
+  await expect(pane.locator('.cur-note')).toHaveText('Current: Uso personale, not one of these; picking one replaces it.');
+  await expect(pane.locator('.curchip')).toHaveCount(0);
+  await expect(pane.getByRole('option', { selected: true })).toHaveCount(0);
+  await expect(pane).toContainText('Writes licenza: CC-BY-SA-4.0');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(pane.getByRole('option', { selected: true })).toContainText('CC BY-SA 4.0');
+  await page.keyboard.press('Enter');
+  await expect(pane).toHaveCount(0);
+  // The cursor did not move, and the front matter stays folded.
+  await expect(cursorLine(page)).toHaveText('Testo.');
+  await expect(choose).toHaveCount(0);
+
+  // The cursor in the front matter opens it, with «Choose…» on the line.
+  await fmLine(page, 'titolo').click();
+  await expect(fmLine(page, 'licenza')).toHaveText('licenza: CC-BY-SA-4.0Choose…');
+  await expect(choose).toBeVisible();
+
+  // One undo step brings the old line back; Yjs puts the cursor back where
+  // it was at the pick.
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(cursorLine(page)).toHaveText('Testo.');
+  await fmLine(page, 'titolo').click();
+  await expect(fmLine(page, 'licenza')).toHaveText('licenza: Uso personaleChoose…');
+  await expect(fmLine(page, 'autore')).toHaveText('autore: Stefano');
+
+  // «Choose…» opens the pane without moving the cursor.
+  await expect(cursorLine(page)).toHaveText(/^titolo: Licenza/);
+  await choose.click();
+  await expect(pane).toBeVisible();
+  await expect(pane.getByRole('listbox', { name: 'Licences' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(pane).toHaveCount(0);
+  await expect(cursorLine(page)).toHaveText(/^titolo: Licenza/);
+  await expect(choose).toBeVisible();
+
+  // A click outside closes it back to the editor too.
+  await choose.click();
+  await expect(pane).toBeVisible();
+  await page.mouse.click(8, 450);
+  await expect(pane).toHaveCount(0);
+  await expect(page.locator('.cm-content')).toBeFocused();
+  await expect(choose).toBeVisible();
+});
+
+test('a licence line is added after copyright', async ({ page }) => {
+  await projectWith(page, withFrontMatter('copyright: © 2026 Stefano', 'autore: Stefano'), 'Licenza nuova', 'S1');
+  await page.locator('.cm-line', { hasText: /^Testo\.$/ }).click();
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('licence');
+  await page.keyboard.press('Enter');
+  const pane = page.getByRole('dialog', { name: 'Choose a licence' });
+  await expect(pane.locator('.cur-note')).toHaveCount(0);
+  await page.keyboard.press('End');
+  await expect(pane.getByRole('option', { selected: true })).toContainText('All rights reserved');
+  await page.keyboard.press('Enter');
+  await expect(pane).toHaveCount(0);
+
+  await fmLine(page, 'titolo').click();
+  const lines = await page.locator('.cm-line.cm-fm').allInnerTexts();
+  const at = lines.findIndex((line) => line.startsWith('copyright:'));
+  expect(lines[at + 1]).toMatch(/^licenza: Tutti i diritti riservati/);
+  expect(lines[at + 2]).toBe('autore: Stefano');
+});

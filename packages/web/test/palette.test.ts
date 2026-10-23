@@ -23,7 +23,7 @@ describe('the palette filter', () => {
 
   it('lists the commands first, each with its shortcut, then every outline item', () => {
     const entries = paletteEntries(outlineOf(analysed(sabaoth).state), { checked: true });
-    expect(entries.slice(0, 13).map((e) => `${e.label}${e.keys ? ` [${e.keys}]` : ''}`)).toEqual([
+    expect(entries.slice(0, 14).map((e) => `${e.label}${e.keys ? ` [${e.keys}]` : ''}`)).toEqual([
       'Toggle outline [Mod-1]',
       'Toggle inspector [Mod-2]',
       'Focus mode [Mod-.]',
@@ -35,6 +35,7 @@ describe('the palette filter', () => {
       'Previous problem [Shift-F8]',
       'PDF preview',
       'Review PDF [Mod-Shift-p]',
+      'Choose licence…',
       'Back to projects',
       'Go to Front matter',
     ]);
@@ -47,6 +48,15 @@ describe('the palette filter', () => {
     expect(entries.map((e) => e.label)).not.toContain('PDF preview');
     expect(entries.map((e) => e.label)).not.toContain('Review PDF');
     expect(entries.slice(-2).map((e) => e.label)).toEqual(['Go to Uno', 'Go to Due']);
+  });
+
+  it('offers Choose licence… just before Back to projects, with no keys, in every project', () => {
+    for (const checked of [true, false]) {
+      const entries = paletteEntries(outlineOf(campaign('## Uno\n')), { checked });
+      const at = entries.findIndex((e) => e.label === 'Choose licence…');
+      expect(entries[at]).toEqual({ key: 'licence', label: 'Choose licence…', keys: null, action: { kind: 'licence' } });
+      expect(entries[at + 1]!.label).toBe('Back to projects');
+    }
   });
 
   it('finds an item again by its key and name, or by its name alone', () => {

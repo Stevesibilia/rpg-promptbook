@@ -197,6 +197,19 @@ browser in the desktop app). Promptbook never calls gdrarchive. The
 connector's `get_project` returns the link, marked `inherited` when it comes
 from the campaign, and an export's `project.json` holds the project's own.
 
+## Choosing a licence
+
+The front matter's `licenza` takes an SPDX id or free text. To pick one with
+a short explanation, run **Choose licence…** from the palette, or press
+**Choose…** at the end of the `licenza:` line while the front matter is open.
+The pane lists CC0, the six Creative Commons 4.0 licences and All rights
+reserved (written `Tutti i diritti riservati`), each with what it lets others
+do and a link to its full text. A pick rewrites the `licenza:` line, or adds
+one after `copyright:`, in one undo step. In **Settings → Author and
+licence**, **Choose…** beside the Licence field sets the default copied into
+new projects. Free text still works: type anything in the field or the front
+matter. The pane is a help, not legal advice.
+
 ## Claude connector
 
 Promptbook is its own connector for Claude on the web and Claude Desktop. In
