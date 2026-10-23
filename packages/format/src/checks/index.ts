@@ -1,5 +1,6 @@
 import type { Model, Problem } from '../model.js';
-import type { Template } from '../template/schema.js';
+import type { SystemDefinition } from '../systems.js';
+import type { AdventureTemplate } from '../template/schema.js';
 import type { Source } from '../parse/source.js';
 import { checkAppendix } from './appendix.js';
 import { checkCallouts } from './callouts.js';
@@ -13,7 +14,8 @@ import { checkStyle } from './style.js';
 
 export interface CheckInput {
   model: Model;
-  template: Template;
+  template: AdventureTemplate;
+  systems: readonly SystemDefinition[];
   source: Source;
 }
 

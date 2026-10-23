@@ -185,6 +185,10 @@ its SHA-256 in the task notes; the same build on the branch must match. The
 existing format, layout, project, web and server suites stay green
 unchanged except for imports and call signatures.
 
+### D10. Front matter keys stay keys (architect, at build)
+
+Product code outside `packages/format` reads front matter keys by name: `layout/src/input.ts` (OVER, UNDER, `autore`, `copyright`), `project/src/skeleton.ts` and `import.ts`, `web/src/editor/licence.ts` and `cm/preview.ts`. They stay as they are here; `input.ts` reads the title and subtitle by their existing meta roles. Change 2 decides between locking those keys in the editor and giving them roles. Reason: D1 is about what the editor can rename first, sections and fields; keys can wait without changing any output.
+
 ## Risks / Trade-offs
 
 - **A label that is not in the list.** If the implementer finds another

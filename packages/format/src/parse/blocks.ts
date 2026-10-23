@@ -8,14 +8,16 @@ import type {
   Problem,
   TableBlock,
 } from '../model.js';
-import type { Template } from '../template/schema.js';
+import type { SystemDefinition } from '../systems.js';
+import type { AdventureTemplate } from '../template/schema.js';
 import { plainText, type Source } from './source.js';
 
 // What every part of the parser shares: the text, the template, and the list
 // the parser's own problems go to.
 export interface ParseContext {
   source: Source;
-  template: Template;
+  template: AdventureTemplate;
+  systems: readonly SystemDefinition[];
   problems: Problem[];
 }
 

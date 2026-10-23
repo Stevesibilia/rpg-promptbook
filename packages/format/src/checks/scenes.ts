@@ -1,7 +1,7 @@
 import type { Problem, Scene, SceneField } from '../model.js';
 import type { Source } from '../parse/source.js';
 import { escapeRegExp } from '../parse/source.js';
-import type { Template } from '../template/schema.js';
+import type { AdventureTemplate } from '../template/schema.js';
 import type { Check } from './index.js';
 import { missingSeverity, problem } from './util.js';
 
@@ -104,7 +104,7 @@ function runTogether(source: Source, field: SceneField, run: RegExp, sceneId: st
 
 // Turns the field's paragraph, with the list or table that goes with it, into
 // a "[!riquadro] Label" callout holding its text.
-function unknownFieldFixes(template: Template, source: Source, field: SceneField) {
+function unknownFieldFixes(template: AdventureTemplate, source: Source, field: SceneField) {
   const box = template.callouts.find((c) => c.role === 'box' && !c.meta);
   if (!box) return undefined;
   const bodyFrom = field.labelRange.end.offset + /^[:,]?[ \t]*/.exec(source.text.slice(field.labelRange.end.offset))![0].length;

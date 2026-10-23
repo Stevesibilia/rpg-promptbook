@@ -13,16 +13,20 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 0. Baseline
 
-- [ ] 0.1 On `main`, build Sabaoth's PDF with the layout test helpers and record its SHA-256 here (D9)
+- [x] 0.1 On `main`, build Sabaoth's PDF with the layout test helpers and record its SHA-256 here (D9)
+  - `defaultLayoutOptions`: `22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef` (302099 bytes)
+  - `inkSaver`: `4ea88fe77ee700cfd0a6ab326345699086897ce76acd373fc8ab9b3296636f4a`
+  - `pregenerated: false`: `a776c76020a9ca07763122e0bb0dfbd4bc8cfb63e65928672b043e87743eb5df`
+  - `paper: 'us-letter'`: `7b5faae7226a54b04528ffc8a65a67b17dc126d67cfafed2a6f091f3c4aa62c3`
 
 ## 1. Format: roles, systems, kinds, registry
 
-- [ ] 1.1 `template/schema.ts`: new section roles and field roles (D1); `kind` and the campaign shape as a discriminated union, `AdventureTemplate`, `CampaignTemplate`, `Template` (D3); `systems` removed (D2)
-- [ ] 1.2 `systems.ts`: `systemSchema`, `defineSystems`, `builtinSystems` (D2); `parse/sheets.ts`, `checks/sheets.ts`, `convert/index.ts` and `parseAdventure`'s options use them
-- [ ] 1.3 `template/avventura.ts`: `kind: 'adventure'`, the new roles, no `systems`; `template/campagna.ts` (D3)
-- [ ] 1.4 `template/registry.ts`: `TemplateRef`, `builtinTemplates`, `resolveTemplate`, `defaultTemplateRef` (D4); exports in `index.ts`
-- [ ] 1.5 Tests: the registry, the campaign template, roles unique, the renamed-`mustHave` scenario at the format level (the layout half is in 3.2)
-- [ ] 1.6 Commit `feat(format): template kinds, roles and a registry`
+- [x] 1.1 `template/schema.ts`: new section roles and field roles (D1); `kind` and the campaign shape as a discriminated union, `AdventureTemplate`, `CampaignTemplate`, `Template` (D3); `systems` removed (D2)
+- [x] 1.2 `systems.ts`: `systemSchema`, `defineSystems`, `builtinSystems` (D2); `parse/sheets.ts`, `checks/sheets.ts`, `convert/index.ts` and `parseAdventure`'s options use them
+- [x] 1.3 `template/avventura.ts`: `kind: 'adventure'`, the new roles, no `systems`; `template/campagna.ts` (D3)
+- [x] 1.4 `template/registry.ts`: `TemplateRef`, `builtinTemplates`, `resolveTemplate`, `defaultTemplateRef` (D4); exports in `index.ts`
+- [x] 1.5 Tests: the registry, the campaign template, roles unique, the renamed-`mustHave` scenario at the format level (the layout half is in 3.2)
+- [x] 1.6 Commit `feat(format): template kinds, roles and a registry`
 
 ## 2. Project: the pinned template
 

@@ -5,7 +5,8 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { runChecks } from '../checks/index.js';
 import type { Model, ParseResult, Problem, Unplaced } from '../model.js';
-import { templateName, type Template } from '../template/schema.js';
+import { builtinSystems, type SystemDefinition } from '../systems.js';
+import { templateName, type AdventureTemplate } from '../template/schema.js';
 import type { ParseContext } from './blocks.js';
 import { readFrontMatter } from './frontmatter.js';
 import { resolveReferences } from './references.js';
@@ -15,15 +16,18 @@ import { createSource } from './source.js';
 const processor = unified().use(remarkParse).use(remarkFrontmatter, ['yaml']).use(remarkGfm);
 
 export interface ParseOptions {
-  template: Template;
+  template: AdventureTemplate;
+  // The game systems whose grade tables the sheets use; the built-ins when
+  // not given.
+  systems?: readonly SystemDefinition[];
 }
 
 // Reads an adventure into its model and lists every problem. Pure and
 // synchronous; errors never stop the parse, the model is always returned.
-export function parseAdventure(text: string, { template }: ParseOptions): ParseResult {
+export function parseAdventure(text: string, { template, systems = builtinSystems }: ParseOptions): ParseResult {
   const source = createSource(text);
   const problems: Problem[] = [];
-  const ctx: ParseContext = { source, template, problems };
+  const ctx: ParseContext = { source, template, systems, problems };
   const tree = processor.parse(text);
   const children = tree.children;
 
@@ -66,7 +70,7 @@ export function parseAdventure(text: string, { template }: ParseOptions): ParseR
 
   model.unplaced.sort((a, b) => a.range.start.offset - b.range.start.offset);
   for (const item of model.unplaced) problems.push(unplacedProblem(item));
-  problems.push(...runChecks({ model, template, source }));
+  problems.push(...runChecks({ model, template, systems, source }));
   problems.sort((a, b) => a.range.start.offset - b.range.start.offset);
   return { model, problems };
 }
