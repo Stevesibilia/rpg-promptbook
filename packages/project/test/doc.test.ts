@@ -11,6 +11,7 @@ import {
   removeTodo,
   seedVersions,
   setCampaign,
+  setGdrarchive,
   setStatus,
   setTitle,
   updateTodo,
@@ -33,6 +34,7 @@ describe('project document', () => {
       campaignId: null,
       system: 'Kulthos',
       createdAt: '2026-10-19T08:00:00.000Z',
+      gdrarchive: null,
     });
     expect(texts(doc)).toEqual(['Scrivere le scene', 'Prompt Suno', 'Rilettura']);
     expect(readTodo(doc).every((t) => !t.done && t.note === '' && t.due === null)).toBe(true);
@@ -57,6 +59,22 @@ describe('project document', () => {
     expect(readMeta(doc).title).toBe('');
   });
 
+  it('reads a missing or invalid gdrarchive link as none', () => {
+    const doc = project();
+    expect(readMeta(doc).gdrarchive).toBeNull();
+    const url = 'https://gdrarchive.siberio.eu/campaigns/12';
+    for (const value of [
+      url,
+      { url: 'https://gdrarchive.example.eu/campaigns/12', label: 'Kulthos' },
+      { url, label: 'x'.repeat(41) },
+      { url, label: 40 },
+      { url },
+    ]) {
+      doc.getMap('meta').set('gdrarchive', value);
+      expect(readMeta(doc).gdrarchive, JSON.stringify(value)).toBeNull();
+    }
+  });
+
   it('changes title, status and campaign', () => {
     const doc = project({ category: 'adventure' });
     setTitle(doc, 'Il ballo dei Lorenzetti');
@@ -68,10 +86,40 @@ describe('project document', () => {
     expect(() => setStatus(doc, 'done' as never)).toThrow();
   });
 
+  it('sets, changes and clears the gdrarchive link', () => {
+    const doc = project({ category: 'adventure' });
+    setGdrarchive(doc, { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' });
+    expect(readMeta(doc).gdrarchive).toEqual({ url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' });
+    setGdrarchive(doc, { url: 'https://gdrarchive.siberio.eu/campaigns/31', label: '' });
+    expect(readMeta(doc).gdrarchive).toEqual({ url: 'https://gdrarchive.siberio.eu/campaigns/31', label: '' });
+    expect(replica(doc).getMap('meta').get('gdrarchive')).toEqual(readMeta(doc).gdrarchive);
+    setGdrarchive(doc, null);
+    expect(readMeta(doc).gdrarchive).toBeNull();
+  });
+
+  it('refuses an unnormalised gdrarchive address or a long label', () => {
+    const doc = project();
+    const url = 'https://gdrarchive.siberio.eu/campaigns/12';
+    expect(() => setGdrarchive(doc, { url: `${url}/`, label: '' })).toThrow();
+    expect(() => setGdrarchive(doc, { url: ` ${url}`, label: '' })).toThrow();
+    expect(() => setGdrarchive(doc, { url: 'https://gdrarchive.siberio.eu/sessions/48', label: '' })).toThrow();
+    expect(() => setGdrarchive(doc, { url, label: 'x'.repeat(41) })).toThrow();
+    expect(() => setGdrarchive(doc, { url, label: ' Kulthos ' })).toThrow();
+    expect(readMeta(doc).gdrarchive).toBeNull();
+    setGdrarchive(doc, { url, label: 'x'.repeat(40) });
+    expect(readMeta(doc).gdrarchive?.label).toHaveLength(40);
+  });
+
   it('never puts a campaign in a campaign', () => {
     const doc = project({ category: 'campaign', campaignId: 'c1' });
     expect(readMeta(doc).campaignId).toBeNull();
     expect(() => setCampaign(doc, 'c1')).toThrow();
+  });
+
+  it('lets a campaign hold a gdrarchive link', () => {
+    const doc = project({ category: 'campaign' });
+    setGdrarchive(doc, { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' });
+    expect(readMeta(doc).gdrarchive?.label).toBe('Kulthos');
   });
 
   it('leaves the status alone when every item is ticked', () => {

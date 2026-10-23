@@ -26,9 +26,11 @@ import {
   type TodoItem,
   type TopicState,
 } from './model.js';
+import { isGdrarchiveLabel, parseGdrarchiveUrl, readGdrarchive, type GdrarchiveLink } from './gdrarchive.js';
 
 // The shape of a project's Y.Doc, schema 1 (design decision 2):
-//   meta      Y.Map    schema, id, title, category, status, campaignId, system, createdAt
+//   meta      Y.Map    schema, id, title, category, status, campaignId, system, createdAt,
+//                      gdrarchive
 //   document  Y.Text   the prep document, Markdown
 //   todo      Y.Array  of Y.Map: id, text, done, note, due, pos
 //   seed      Y.Array  of Y.Map: text, at; append-only, the last one is current
@@ -79,6 +81,10 @@ import {
 //            { code, sceneId, how: dismissed|snoozed, until, at }
 //          One key per hidden problem: hides of different problems merge;
 //          two writes of one key keep the last. Restoring deletes the key.
+//
+// and, from the gdrarchive-link change (its design decision 1), in meta:
+//   gdrarchive  { url, label } | null, a plain JSON value set whole
+//          (gdrarchive.ts). url and label change together.
 //
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
@@ -181,6 +187,7 @@ export function readMeta(doc: Y.Doc): ProjectMeta {
     campaignId: typeof campaignId === 'string' && campaignId ? campaignId : null,
     system: str(meta.get('system')),
     createdAt: str(meta.get('createdAt')),
+    gdrarchive: readGdrarchive(meta.get('gdrarchive')),
   };
 }
 
@@ -232,6 +239,18 @@ export function setCampaign(doc: Y.Doc, campaignId: string | null): void {
     throw new Error('A campaign cannot belong to a campaign');
   }
   doc.transact(() => metaOf(doc).set('campaignId', campaignId));
+}
+
+// Null removes the project's own link. Callers pass the address as
+// parseGdrarchiveUrl answers it and the label trimmed; any project may hold a
+// link, campaigns included.
+export function setGdrarchive(doc: Y.Doc, link: GdrarchiveLink | null): void {
+  if (link !== null) {
+    if (parseGdrarchiveUrl(link.url) !== link.url) throw new Error(`Not a gdrarchive campaign address "${link.url}"`);
+    if (!isGdrarchiveLabel(link.label)) throw new Error('A gdrarchive label is trimmed and at most 40 characters');
+  }
+  const value = link === null ? null : { url: link.url, label: link.label };
+  doc.transact(() => metaOf(doc).set('gdrarchive', value));
 }
 
 function newItem(todo: TodoItem): Item {

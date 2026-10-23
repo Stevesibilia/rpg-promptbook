@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectRow, summarize } from '../src/index.js';
+import { projectRow, setGdrarchive, summarize } from '../src/index.js';
 import { project } from './helpers.js';
 
 const campaign = { id: '00000000-0000-4000-8000-0000000000c1', title: 'Cronaca del Gabbiano' };
@@ -18,5 +18,16 @@ describe('project row', () => {
     // The campaign in the bin or gone: not among the live campaigns.
     expect(projectRow(summary, dates, []).campaignId).toBeNull();
     expect(projectRow(summary, dates, [{ id: '00000000-0000-4000-8000-0000000000c2' }]).campaignId).toBeNull();
+  });
+
+  it('carries the own gdrarchive link of a campaign and of an adventure', () => {
+    const link = { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' };
+    const kulthos = project({ id: campaign.id, category: 'campaign' });
+    setGdrarchive(kulthos, link);
+    expect(projectRow(summarize(kulthos, { campaigns: [campaign] }), dates, []).gdrarchive).toEqual(link);
+    const adventure = project({ category: 'adventure', campaignId: campaign.id });
+    setGdrarchive(adventure, { ...link, label: '' });
+    const row = projectRow(summarize(adventure, { campaigns: [campaign] }), dates, [campaign]);
+    expect(row.gdrarchive).toEqual({ ...link, label: '' });
   });
 });

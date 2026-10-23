@@ -546,6 +546,9 @@ source is [Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard)
 Later, optional and one-way: a button on an item (NPC, place, session) pushes
 it through gdrarchive's API. Nothing flows back.
 
+Since #32 a project can carry a link to its gdrarchive campaign, shown in the
+project panel and the top bar; sending items is still later.
+
 ## Midjourney and Suno
 
 Checked 2026-10-17:

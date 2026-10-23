@@ -6,6 +6,7 @@ import {
   addTodo,
   addTopic,
   categories,
+  gdrarchiveOf,
   inspirationKinds,
   isWebUrl,
   LIMITS,
@@ -237,14 +238,16 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'get_project',
-    `One project: its details, current seed, to-do list and counts. ${READ_LOG_FIRST}`,
+    `One project: its details, current seed, to-do list and counts. gdrarchive is the gdrarchive campaign the project links to, its own or inherited from its campaign. ${READ_LOG_FIRST}`,
     { title: 'Get a project', readOnly: true, idempotent: true },
     { projectId },
     async (args) => {
       const project = await projectOf(args.projectId);
       const doc = await docOf(project);
       const meta = readMeta(doc);
-      const campaign = project.campaignId ? await getProject(db, caller.userId, project.campaignId) : null;
+      const row = project.campaignId ? await getProject(db, caller.userId, project.campaignId) : null;
+      const campaign = row && !row.deletedAt && row.category === 'campaign' ? row : null;
+      const gdrarchive = gdrarchiveOf(meta.gdrarchive, meta.category, campaign);
       const log = readLog(doc);
       return {
         id: project.id,
@@ -252,7 +255,8 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
         category: meta.category,
         status: meta.status,
         system: meta.system,
-        campaign: campaign && !campaign.deletedAt ? { id: campaign.id, title: campaign.title } : null,
+        campaign: campaign ? { id: campaign.id, title: campaign.title } : null,
+        gdrarchive: gdrarchive && { url: gdrarchive.url, label: gdrarchive.label, inherited: gdrarchive.from !== null },
         createdAt: meta.createdAt,
         editedAt: project.editedAt,
         seed: currentSeed(doc),

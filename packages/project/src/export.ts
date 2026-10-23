@@ -259,6 +259,9 @@ export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOpt
     status: meta.status,
     campaign: meta.category === 'campaign' ? null : campaignTitle,
     system: meta.system,
+    // The project's own link only: an inherited one is in its campaign's
+    // folder (gdrarchive-link design decision 8).
+    ...(meta.gdrarchive ? { gdrarchive: { url: meta.gdrarchive.url, label: meta.gdrarchive.label } } : {}),
     createdAt: meta.createdAt,
     ...(editedAt !== undefined ? { editedAt } : {}),
   };

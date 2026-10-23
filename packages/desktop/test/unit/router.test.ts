@@ -1,5 +1,6 @@
 import type { ServerResponse } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
+import { setGdrarchive } from 'promptbook-project';
 import * as Y from 'yjs';
 import { isRoutablePath } from '../../src/main/router.js';
 import { projectDoc, rowOf, sendJson, until, type Recorded } from './helpers.js';
@@ -281,6 +282,17 @@ describe('projects list', () => {
     w.engine.transact(A, (doc) => doc.getMap('meta').set('title', 'Ancora di Sabaoth'));
     w.list.refreshRow(A, true);
     expect(w.list.rows()[0]!.title).toBe('Ancora di Sabaoth');
+  });
+
+  it('rebuilds a row carrying the gdrarchive link after a local edit', async () => {
+    await start({ online: false });
+    seed(A, 'Ancora');
+    expect(w.list.rows()[0]!.gdrarchive).toBeNull();
+    const link = { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' };
+    w.engine.transact(A, (doc) => setGdrarchive(doc, link));
+    w.list.refreshRow(A, true);
+    expect(w.list.rows()[0]!.gdrarchive).toEqual(link);
+    expect(w.store.getProject(A)!.row.gdrarchive).toEqual(link);
   });
 
   it('purges projects out of the list for more than 30 days', async () => {

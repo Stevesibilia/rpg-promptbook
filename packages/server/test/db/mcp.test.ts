@@ -9,6 +9,7 @@ import {
   readNotes,
   readTodo,
   readTopics,
+  setGdrarchive,
   SNOOZE_MS,
 } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
@@ -327,6 +328,39 @@ describe('projects', () => {
     const project = (await s.call('get_project', { projectId: s.id })).value;
     expect(project).toMatchObject({ id: s.id, category: 'adventure', seed: '', counts: { scenes: 2, logEntries: 0 }, lastLogEntryAt: null });
     expect(project.todo.total).toBe(project.todo.items.length);
+  });
+
+  it('gets the gdrarchive link, its own or inherited from its campaign, or null', async () => {
+    const s = await setup({ category: 'campaign' });
+    const created = await s.app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { ...cookie(s.session), origin: ORIGIN },
+      payload: { category: 'adventure', title: "L'Ancora di Sabaoth", campaignId: s.id },
+    });
+    const adventure = created.json().project.id as string;
+    const gdrarchive = async (projectId: string) => (await s.call('get_project', { projectId })).value.gdrarchive;
+    expect(await gdrarchive(s.id)).toBeNull();
+    expect(await gdrarchive(adventure)).toBeNull();
+
+    const kulthos = { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' };
+    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => setGdrarchive(doc, kulthos));
+    expect(await gdrarchive(s.id)).toEqual({ ...kulthos, inherited: false });
+    expect(await gdrarchive(adventure)).toEqual({ ...kulthos, inherited: true });
+
+    const own = { url: 'https://gdrarchive.siberio.eu/campaigns/31', label: '' };
+    await withLiveDocument(s.app.sync, adventure, s.user.id, (doc) => setGdrarchive(doc, own));
+    expect(await gdrarchive(adventure)).toEqual({ ...own, inherited: false });
+
+    // The campaign in the bin: nothing to inherit.
+    await withLiveDocument(s.app.sync, adventure, s.user.id, (doc) => setGdrarchive(doc, null));
+    const binned = await s.app.inject({
+      method: 'DELETE',
+      url: `/api/projects/${s.id}`,
+      headers: { ...cookie(s.session), origin: ORIGIN },
+    });
+    expect(binned.statusCode).toBeLessThan(300);
+    expect(await gdrarchive(adventure)).toBeNull();
   });
 
   it('creates «La fiera di Randazzo», a draft one-shot from the templates, with no seed', async () => {

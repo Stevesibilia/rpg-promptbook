@@ -6,6 +6,7 @@ import {
   hideProblem,
   problemKey,
   readTodo,
+  setGdrarchive,
   SNOOZE_MS,
   summarize,
   updateTodo,
@@ -40,6 +41,7 @@ describe('summary', () => {
       words: 4505,
       errors: problems.filter((p) => p.severity === 'error').length,
       warnings: problems.filter((p) => p.severity === 'warning').length,
+      gdrarchive: null,
     });
   });
 
@@ -67,6 +69,20 @@ describe('summary', () => {
     const later = summarize(doc, { campaigns: [], now: new Date(Date.parse(until) + 1) });
     expect(later.warnings).toBe(all.warnings);
     expect(later.errors).toBe(hidden.errors);
+  });
+
+  it('carries the own gdrarchive link, for a campaign and an adventure', () => {
+    const link = { url: 'https://gdrarchive.siberio.eu/campaigns/12', label: 'Kulthos' };
+    const kulthos = project({ id: campaign.id, category: 'campaign', title: 'Kulthos' });
+    setGdrarchive(kulthos, link);
+    expect(summarize(kulthos, { campaigns: [campaign] }).gdrarchive).toEqual(link);
+    const adventure = project({ category: 'adventure', campaignId: campaign.id });
+    expect(summarize(adventure, { campaigns: [campaign] }).gdrarchive).toBeNull();
+    setGdrarchive(adventure, { url: 'https://gdrarchive.siberio.eu/campaigns/31', label: '' });
+    expect(summarize(adventure, { campaigns: [campaign] }).gdrarchive).toEqual({
+      url: 'https://gdrarchive.siberio.eu/campaigns/31',
+      label: '',
+    });
   });
 
   it('counts words after the front matter, tokens with a letter only', () => {
