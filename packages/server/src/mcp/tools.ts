@@ -1,10 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { templates } from 'promptbook-format';
+import { defaultTemplateRef } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
   addTodo,
   addTopic,
+  adventureTemplateOf,
   categories,
   gdrarchiveOf,
   inspirationKinds,
@@ -81,7 +82,9 @@ export const INSTRUCTIONS = [
 
 // What a scene needs so that adding it adds no error, read from the
 // template: a scene missing any of it is written, with the problems reported.
-const template = templates.avventura;
+// Tool lists are per connection, not per project: the built-in avventura@1
+// (template-registry design decision 8).
+const template = adventureTemplateOf({ category: 'adventure', template: defaultTemplateRef('adventure') });
 const fieldText = (f: (typeof template.sceneFields)[number]) =>
   f.form === 'inline' ? `**${f.label}:** …` : `**${f.label}** followed by a list`;
 const SCENE_REQUIRED = [

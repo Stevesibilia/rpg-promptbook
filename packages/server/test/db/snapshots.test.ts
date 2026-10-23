@@ -82,7 +82,7 @@ async function claudeEdit(s: Setup, target: string, replacement: string, tool = 
     kind: 'claude',
     label: `${target} · ${found.target.title}`,
     text: before,
-    category: 'adventure',
+    template: templates.avventura,
     tool,
     target,
     beforeSection: before.slice(found.target.from, found.target.to),
@@ -169,7 +169,7 @@ describe('snapshotThenWrite', () => {
       await expect(
         snapshotThenWrite(db, throwing, {
           snapshot: (text) =>
-            insertSnapshot(db, { projectId: s.id, kind: 'restore', label: 'x', text, category: 'adventure' }),
+            insertSnapshot(db, { projectId: s.id, kind: 'restore', label: 'x', text, template: templates.avventura }),
           next: () => 'nuovo',
         }),
       ).rejects.toThrow('scrittura fallita');
@@ -191,7 +191,7 @@ describe('snapshotThenWrite', () => {
             kind: 'restore',
             label: 'x',
             text,
-            category: 'adventure',
+            template: templates.avventura,
           });
           await live.close();
           return row;
@@ -215,7 +215,7 @@ describe('snapshotThenWrite', () => {
             kind: 'restore',
             label: 'x',
             text,
-            category: 'adventure',
+            template: templates.avventura,
           });
           // A client types during the first insert.
           if (attempt++ === 0) live.doc.getText('document').insert(0, 'Battuta. ');
@@ -246,7 +246,7 @@ describe('snapshotThenWrite', () => {
               kind: 'restore',
               label: 'x',
               text,
-              category: 'adventure',
+              template: templates.avventura,
             });
             live.doc.getText('document').insert(0, '.');
             return row;
@@ -268,7 +268,7 @@ describe('snapshotThenWrite', () => {
       await expect(
         snapshotThenWrite(db, live, {
           snapshot: (text) =>
-            insertSnapshot(db, { projectId: s.id, kind: 'restore', label: 'x', text, category: 'adventure' }),
+            insertSnapshot(db, { projectId: s.id, kind: 'restore', label: 'x', text, template: templates.avventura }),
           next: () => {
             throw new Error('refused');
           },
@@ -334,7 +334,7 @@ describe('snapshots API', () => {
       kind: 'user',
       label: `${'a'.repeat(199)}😀 e oltre`,
       text: ADVENTURE,
-      category: 'adventure',
+      template: templates.avventura,
     });
     expect(long.label).toBe('a'.repeat(199));
     let id = long.id;
@@ -502,7 +502,7 @@ describe('undo of a Claude edit', () => {
       kind: 'claude',
       label: 'S2 · Il cordone di Donato',
       text: before,
-      category: 'adventure',
+      template: templates.avventura,
       tool: 'add_scene',
       target: 'S2',
       beforeSection: '',
@@ -528,7 +528,7 @@ describe('purge', () => {
   it('removes expired Claude and restore snapshots and keeps the user’s', async () => {
     const s = await setup();
     const insert = (kind: 'claude' | 'user' | 'restore', label: string) =>
-      insertSnapshot(db, { projectId: s.id, kind, label, text: 'x', category: 'adventure' });
+      insertSnapshot(db, { projectId: s.id, kind, label, text: 'x', template: templates.avventura });
     const age = (id: string, days: number) =>
       db.query('update snapshots set created_at = now() - make_interval(days => $2) where id = $1', [id, days]);
     await age((await insert('claude', 'old claude')).id, 31);

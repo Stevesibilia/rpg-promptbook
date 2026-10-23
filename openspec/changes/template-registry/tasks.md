@@ -50,10 +50,10 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 5. Server and desktop
 
-- [ ] 5.1 `server/src/snapshots.ts`, `mcp/edits.ts`: the project's template; `mcp/tools.ts` descriptions from the built-in (D8)
-- [ ] 5.2 `desktop/src/main/snapshots.ts`: the project's template (see Risks)
-- [ ] 5.3 `grep -rn "templates.avventura" packages/*/src` finds nothing outside `packages/format` (D4)
-- [ ] 5.4 Commit `refactor: server and desktop use the project's template`
+- [x] 5.1 `server/src/snapshots.ts`, `mcp/edits.ts`: the project's template; `mcp/tools.ts` descriptions from the built-in (D8)
+- [x] 5.2 `desktop/src/main/snapshots.ts`: the project's template (see Risks)
+- [x] 5.3 `grep -rn "templates.avventura" packages/*/src` finds nothing outside `packages/format` (D4)
+- [x] 5.4 Commit `refactor: server and desktop use the project's template`
 
 ## 6. Proof and hand-back
 

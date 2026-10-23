@@ -240,13 +240,15 @@ async function apply(
   const live = await openLiveDocument(sync, project.id, userId);
   try {
     let planned!: Planned;
+    let template!: Template;
     const stored = await snapshotThenWrite(db, live, {
       attempts: 1,
       moved: CHANGED_SINCE_READ,
       next: (text) => {
         // The hides as the open clients have them, and one clock for the
         // whole plan.
-        planned = plan(text, readHidden(live.doc), new Date(), templateOf(readMeta(live.doc)));
+        template = templateOf(readMeta(live.doc));
+        planned = plan(text, readHidden(live.doc), new Date(), template);
         return planned.text;
       },
       snapshot: (text) =>
@@ -255,7 +257,7 @@ async function apply(
           kind: 'claude',
           label: planned.label,
           text,
-          category: project.category,
+          template,
           tool,
           target: planned.target,
           beforeSection: planned.beforeSection,
