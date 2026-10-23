@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { templates } from 'promptbook-format';
 import { addTodo, findTarget, readDocument, readTodo } from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -73,7 +74,7 @@ const messagesOf = (client: Client) =>
 // before, then the text with the target replaced.
 async function claudeEdit(s: Setup, target: string, replacement: string, tool = 'replace_section') {
   const before = await storedText(s.id);
-  const found = findTarget(before, 'adventure', target);
+  const found = findTarget(before, templates.avventura, target);
   if (!found.ok) throw new Error(found.error);
   const after = before.slice(0, found.target.from) + replacement + before.slice(found.target.to);
   const snapshot = await insertSnapshot(db, {

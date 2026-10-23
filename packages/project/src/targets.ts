@@ -1,6 +1,5 @@
-import { parseAdventure, templates } from 'promptbook-format';
+import { parseAdventure, type AdventureTemplate, type Template } from 'promptbook-format';
 import { sameName } from './doc.js';
-import type { Category } from './model.js';
 
 // The parts of a prep document Claude reads and replaces one at a time
 // (connector design decision 3).
@@ -25,6 +24,8 @@ export type FoundTarget =
   | { ok: false; error: 'unknown_target'; targets: Target[] }
   | { ok: false; error: 'ambiguous_target'; targets: Target[] };
 
+const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const lineStart = (text: string, offset: number) => text.lastIndexOf('\n', offset - 1) + 1;
 
 const isBlank = (char: string | undefined) => char === ' ' || char === '\t';
@@ -44,19 +45,17 @@ function trimEnd(text: string, from: number, to: number): number {
   }
 }
 
-const SCENE_ID = new RegExp(`^${templates.avventura.ids.scene}\\d+$`);
-
 const levelAt = (text: string, offset: number) => /^ {0,3}(#+)/.exec(text.slice(offset, offset + 12))?.[1]?.length ?? 0;
 
 // Every target of the document, in text order. An adventure or a one-shot is
-// read with the template: its sections, scenes and sheets. A campaign is not
+// read with its template: its sections, scenes and sheets. A campaign is not
 // parsed: its ## and ### headings.
-export function targetsOf(text: string, category: Category): Target[] {
-  return category === 'campaign' ? headingTargets(text) : adventureTargets(text);
+export function targetsOf(text: string, template: Template): Target[] {
+  return template.kind === 'campaign' ? headingTargets(text) : adventureTargets(text, template);
 }
 
-function adventureTargets(text: string): Target[] {
-  const { model } = parseAdventure(text, { template: templates.avventura });
+function adventureTargets(text: string, template: AdventureTemplate): Target[] {
+  const { model } = parseAdventure(text, { template });
   const targets: Target[] = [];
   const span = (headingStart: number, end: number) => {
     const from = lineStart(text, headingStart);
@@ -173,11 +172,12 @@ function headingTargets(text: string): Target[] {
 // The one target a caller names. A scene id matches exactly, case
 // insensitive; any other name matches as sameName compares. No match answers
 // every target; two answer both.
-export function findTarget(text: string, category: Category, name: string): FoundTarget {
-  const targets = targetsOf(text, category);
+export function findTarget(text: string, template: Template, name: string): FoundTarget {
+  const targets = targetsOf(text, template);
+  const sceneId = template.kind === 'adventure' ? new RegExp(`^${escape(template.ids.scene)}\\d+$`) : null;
   const wanted = name.trim();
   const matches = targets.filter((t) =>
-    t.kind === 'scene' && SCENE_ID.test(t.target)
+    t.kind === 'scene' && sceneId?.test(t.target)
       ? t.target.toLowerCase() === wanted.toLowerCase()
       : sameName(t.target, wanted),
   );

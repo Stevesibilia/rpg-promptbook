@@ -30,11 +30,11 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 2. Project: the pinned template
 
-- [ ] 2.1 `model.ts`, `doc.ts`: `ProjectMeta.template`, read with the default, written at creation, `setTemplate` (D5); the doc header comment
-- [ ] 2.2 `template.ts`: `templateOf`, `adventureTemplateOf` (D6)
-- [ ] 2.3 `skeleton.ts` from the project's template, campaign included, same output (D3); `summary.ts`, `targets.ts`, `appendix.ts`, `board.ts` through `templateOf`
-- [ ] 2.4 Tests: old project with no `template` reads the default; new project records it; skeletons unchanged for all three categories
-- [ ] 2.5 Commit `feat(project): projects record their document template`
+- [x] 2.1 `model.ts`, `doc.ts`: `ProjectMeta.template`, read with the default, written at creation, `setTemplate` (D5); the doc header comment
+- [x] 2.2 `template.ts`: `templateOf`, `adventureTemplateOf` (D6)
+- [x] 2.3 `skeleton.ts` from the project's template, campaign included, same output (D3); `summary.ts`, `targets.ts`, `appendix.ts`, `board.ts` through `templateOf`
+- [x] 2.4 Tests: old project with no `template` reads the default; new project records it; skeletons unchanged for all three categories
+- [x] 2.5 Commit `feat(project): projects record their document template`
 
 ## 3. Layout by role
 

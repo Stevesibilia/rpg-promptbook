@@ -1,7 +1,7 @@
 import { parseAdventure, templates } from 'promptbook-format';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { defaultSettings, readTodo, skeletonDocument } from '../src/index.js';
+import { defaultSettings, readTodo, skeletonDocument, templateOf } from '../src/index.js';
 import { project } from './helpers.js';
 
 const frontMatter = (text: string) => parse(/^---\n([\s\S]*?)---\n/.exec(text)![1]!) as Record<string, unknown>;
@@ -90,6 +90,28 @@ describe('skeleton documents', () => {
       '## Fili aperti',
       '## Sessioni',
     ]);
+  });
+
+  // The text each category's skeleton was before templates were data; the
+  // built-ins must still write it byte for byte.
+  it('writes the same skeletons from the built-in templates', () => {
+    const input = { title: 'Il ballo', system: 'Kulthos', campaignTitle: 'Blacksad', author: 'A', copyright: '© C', licence: 'CC-BY-4.0' };
+    const oneShot = { ...input, campaignTitle: null, system: '' };
+    const before = {
+      campaign:
+        '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: campagna\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## Premessa\n\n## Fronti\n\n## PNG ricorrenti\n\n## Fili aperti\n\n## Sessioni\n',
+      adventure:
+        '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: avventura\ncampagna: Blacksad\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## La vicenda in breve\n\n## Antefatto\n\n## A colpo d\'occhio\n\n## Da non perdere stasera\n\n## Orologio\n\n## Verità del mondo\n\n## Inizio forte\n\n## Mappa delle scene\n\n## Regole della notte\n\n## Scene\n\n### S1. Prima scena\n\n## Indizi\n\n## PNG\n\n## Schede\n\n## Prima della sessione\n\n## Appendice: immagini e musica\n',
+      oneShot:
+        '---\ntitolo: Il ballo\nsistema:\nformato: one-shot\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## La vicenda in breve\n\n## Antefatto\n\n## A colpo d\'occhio\n\n## Da non perdere stasera\n\n## Orologio\n\n## Verità del mondo\n\n## Inizio forte\n\n## Mappa delle scene\n\n## Regole della notte\n\n## Scene\n\n### S1. Prima scena\n\n## Indizi\n\n## PNG\n\n## Schede\n\n## Prima della sessione\n\n## Appendice: immagini e musica\n',
+    };
+    expect(skeletonDocument('campaign', input)).toBe(before.campaign);
+    expect(skeletonDocument('adventure', input)).toBe(before.adventure);
+    expect(skeletonDocument('one-shot', oneShot)).toBe(before.oneShot);
+    const campagna = templateOf({ category: 'campaign', template: { id: 'campagna', version: 1 } });
+    const avventura = templateOf({ category: 'adventure', template: { id: 'avventura', version: 1 } });
+    expect(skeletonDocument('campaign', input, campagna)).toBe(before.campaign);
+    expect(skeletonDocument('adventure', input, avventura)).toBe(before.adventure);
   });
 
   it('quotes a title YAML would misread', () => {

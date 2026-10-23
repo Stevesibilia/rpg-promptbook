@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { parseAdventure, templates } from 'promptbook-format';
-import { countWords, findTarget, readDocument, type Category } from 'promptbook-project';
+import { parseAdventure, templates, type Template } from 'promptbook-format';
+import { countWords, findTarget, readDocument, readMeta, templateOf, type Category } from 'promptbook-project';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
 import { broadcastToProject, openLiveDocument, setDocumentText, snapshotMessage, type LiveDocument } from './live.js';
@@ -297,8 +297,8 @@ const SECTION_CHANGED = () =>
 // in place of the target, or, for an added scene, the scene and the blank
 // lines before it removed. Refuses when the target no longer reads as
 // Claude left it.
-function undoneText(text: string, category: Category, edit: ClaudeEdit): string {
-  const found = findTarget(text, category, edit.target!);
+function undoneText(text: string, template: Template, edit: ClaudeEdit): string {
+  const found = findTarget(text, template, edit.target!);
   if (!found.ok) throw SECTION_CHANGED();
   const { from, to } = found.target;
   if (textHash(text.slice(from, to)) !== edit.after_hash) throw SECTION_CHANGED();
@@ -336,7 +336,7 @@ export async function undoClaudeEdit(
           text,
           category: project.category,
         }),
-      next: (text) => undoneText(text, project.category, edit),
+      next: (text) => undoneText(text, templateOf(readMeta(live.doc)), edit),
     });
     return strip(stored);
   } finally {

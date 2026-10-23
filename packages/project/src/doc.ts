@@ -26,11 +26,13 @@ import {
   type TodoItem,
   type TopicState,
 } from './model.js';
+import { defaultTemplateRef, type TemplateRef } from 'promptbook-format';
 import { isGdrarchiveLabel, parseGdrarchiveUrl, readGdrarchive, type GdrarchiveLink } from './gdrarchive.js';
+import { readTemplateRef, templateKindOf } from './template.js';
 
 // The shape of a project's Y.Doc, schema 1 (design decision 2):
 //   meta      Y.Map    schema, id, title, category, status, campaignId, system, createdAt,
-//                      gdrarchive
+//                      gdrarchive, template
 //   document  Y.Text   the prep document, Markdown
 //   todo      Y.Array  of Y.Map: id, text, done, note, due, pos
 //   seed      Y.Array  of Y.Map: text, at; append-only, the last one is current
@@ -86,6 +88,11 @@ import { isGdrarchiveLabel, parseGdrarchiveUrl, readGdrarchive, type GdrarchiveL
 //   gdrarchive  { url, label } | null, a plain JSON value set whole
 //          (gdrarchive.ts). url and label change together.
 //
+// and, from the template-registry change (its design decision 5), in meta:
+//   template  { id, version }, a plain JSON value set whole (template.ts): the
+//          document template the project was made with. Missing or malformed
+//          reads as its category's built-in, avventura@1 or campagna@1.
+//
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
 // moved item. Changing one key merges like any other field.
@@ -135,6 +142,8 @@ export interface ProjectInput {
   document: string;
   // ISO date-time; now when not given.
   createdAt?: string;
+  // The category's built-in when not given.
+  template?: TemplateRef;
 }
 
 export function createProjectDoc(input: ProjectInput): Y.Doc {
@@ -152,6 +161,8 @@ export function createProjectDoc(input: ProjectInput): Y.Doc {
     meta.set('campaignId', input.category === 'campaign' ? null : input.campaignId);
     meta.set('system', input.system);
     meta.set('createdAt', createdAt);
+    const template = input.template ?? defaultTemplateRef(templateKindOf(input.category));
+    meta.set('template', { id: template.id, version: template.version });
     documentOf(doc).insert(0, input.document);
     let pos: string | null = null;
     const items = input.todo.map((text) => {
@@ -176,18 +187,20 @@ export function readMeta(doc: Y.Doc): ProjectMeta {
   const status = meta.get('status');
   const campaignId = meta.get('campaignId');
   const schema = meta.get('schema');
+  // The UI never changes a category; a value from elsewhere reads as an
+  // adventure rather than breaking every reader.
+  const known = isCategory(category) ? category : 'adventure';
   return {
     schema: typeof schema === 'number' ? schema : SCHEMA,
     id: str(meta.get('id')),
     title: str(meta.get('title')),
-    // The UI never changes a category; a value from elsewhere reads as an
-    // adventure rather than breaking every reader.
-    category: isCategory(category) ? category : 'adventure',
+    category: known,
     status: isStatus(status) ? status : 'draft',
     campaignId: typeof campaignId === 'string' && campaignId ? campaignId : null,
     system: str(meta.get('system')),
     createdAt: str(meta.get('createdAt')),
     gdrarchive: readGdrarchive(meta.get('gdrarchive')),
+    template: readTemplateRef(meta.get('template'), known),
   };
 }
 
@@ -251,6 +264,16 @@ export function setGdrarchive(doc: Y.Doc, link: GdrarchiveLink | null): void {
   }
   const value = link === null ? null : { url: link.url, label: link.label };
   doc.transact(() => metaOf(doc).set('gdrarchive', value));
+}
+
+// The template the project uses from now on (template-registry design
+// decision 5). Nothing checks that the device holds it: a reader that does not
+// answers the category's built-in.
+export function setTemplate(doc: Y.Doc, ref: TemplateRef): void {
+  if (!ref.id || !Number.isInteger(ref.version) || ref.version < 1) {
+    throw new Error(`Not a template reference "${ref.id}@${String(ref.version)}"`);
+  }
+  doc.transact(() => metaOf(doc).set('template', { id: ref.id, version: ref.version }));
 }
 
 function newItem(todo: TodoItem): Item {

@@ -1,8 +1,9 @@
-import { parseAdventure, templates, type AppendixRow } from 'promptbook-format';
+import { parseAdventure, type AppendixRow } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, readDocument, readMeta, record, str } from './doc.js';
 import { matchKey } from './match.js';
 import { authors, CAPS, isIsoDateTime, LIMITS, type Author } from './model.js';
+import { adventureTemplateOf } from './template.js';
 
 // The images and music board (asset-board design decisions 1 and 2): the
 // music prompts and choices per scene in the `board` map, the image prompts
@@ -804,10 +805,11 @@ export interface DocumentBoard {
 export function readDocumentBoard(doc: Y.Doc): DocumentBoard {
   const files = readFiles(doc);
   const prompts = readImagePrompts(doc);
+  const meta = readMeta(doc);
   const appendix =
-    readMeta(doc).category === 'campaign'
+    meta.category === 'campaign'
       ? []
-      : parseAdventure(readDocument(doc), { template: templates.avventura }).model.appendix;
+      : parseAdventure(readDocument(doc), { template: adventureTemplateOf(meta) }).model.appendix;
   const rows = boardRows(appendix, readBoard(doc), prompts, files);
   const shown = new Set(rows.map((r) => r.sceneId));
   const hidden = [...new Set(prompts.flatMap((p) => (p.sceneId !== null && !shown.has(p.sceneId) ? [p.sceneId] : [])))];

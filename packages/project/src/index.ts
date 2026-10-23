@@ -89,6 +89,7 @@ export {
   setCampaign,
   setGdrarchive,
   setStatus,
+  setTemplate,
   setTitle,
   setTopicState,
   updateLogEntry,
@@ -186,3 +187,4 @@ export { formatOf, skeletonDocument, type SkeletonInput } from './skeleton.js';
 export { FILE_LIMITS, MAX_FILE_BYTES, sniff, SNIFF_BYTES, type Sniffed } from './sniff.js';
 export { countWords, summarize, type SummarizeOptions, type Summary } from './summary.js';
 export { findTarget, targetsOf, type FoundTarget, type Target } from './targets.js';
+export { adventureTemplateOf, readTemplateRef, templateKindOf, templateOf } from './template.js';
