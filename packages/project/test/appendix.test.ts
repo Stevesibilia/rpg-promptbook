@@ -37,7 +37,7 @@ mood:
 
 describe('appendixEdit', () => {
   it('adds the heading and one row per scene at the end of a document with no appendix', () => {
-    const edit = appendixEdit(SCENES, parse(SCENES))!;
+    const edit = appendixEdit(SCENES, parse(SCENES), templates.avventura)!;
     expect(edit).toMatchObject({ from: SCENES.length, to: SCENES.length });
     const text = apply(SCENES, edit);
     expect(text).toBe(`${SCENES}\n## Appendice: immagini e musica\n\n${ROWS}`);
@@ -48,29 +48,29 @@ describe('appendixEdit', () => {
   });
 
   it('starts on a line of its own when the document has no final line break', () => {
-    const text = apply(SCENES.trimEnd(), appendixEdit(SCENES.trimEnd(), parse(SCENES.trimEnd()))!);
+    const text = apply(SCENES.trimEnd(), appendixEdit(SCENES.trimEnd(), parse(SCENES.trimEnd()), templates.avventura)!);
     expect(text).toBe(`${SCENES}\n## Appendice: immagini e musica\n\n${ROWS}`);
   });
 
   it('adds the rows to an empty appendix, before the next section', () => {
     const before = `${SCENES}\n## Appendice: immagini e musica\n\n## Dopo\n\nFine.\n`;
-    const text = apply(before, appendixEdit(before, parse(before))!);
+    const text = apply(before, appendixEdit(before, parse(before), templates.avventura)!);
     expect(text).toBe(`${SCENES}\n## Appendice: immagini e musica\n\n${ROWS}\n## Dopo\n\nFine.\n`);
     expect(parse(text).appendix.map((r) => r.sceneId)).toEqual(['S1', 'S2']);
   });
 
   it('adds the rows to an empty appendix at the end', () => {
     const before = `${SCENES}\n## Appendice: immagini e musica\n`;
-    expect(apply(before, appendixEdit(before, parse(before))!)).toBe(`${before}\n${ROWS}`);
+    expect(apply(before, appendixEdit(before, parse(before), templates.avventura)!)).toBe(`${before}\n${ROWS}`);
   });
 
   it('writes the heading alone in a document with no scenes', () => {
     const text = '# Vuoto\n';
-    expect(apply(text, appendixEdit(text, parse(text))!)).toBe('# Vuoto\n\n## Appendice: immagini e musica\n');
+    expect(apply(text, appendixEdit(text, parse(text), templates.avventura)!)).toBe('# Vuoto\n\n## Appendice: immagini e musica\n');
   });
 
   it('adds nothing to an appendix that has rows', () => {
     const text = `${SCENES}\n## Appendice: immagini e musica\n\n${ROWS}`;
-    expect(appendixEdit(text, parse(text))).toBeNull();
+    expect(appendixEdit(text, parse(text), templates.avventura)).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import type { TemplateRef } from 'promptbook-format';
 import type { GdrarchiveLink } from './gdrarchive.js';
 
 // The values a project's metadata can take, and the plain shapes the readers
@@ -31,6 +32,9 @@ export interface ProjectMeta {
   // The project's own link to its gdrarchive campaign (gdrarchive-link design
   // decision 1).
   gdrarchive: GdrarchiveLink | null;
+  // The document template the project was made with (template-registry design
+  // decision 5); its category's built-in when it records none.
+  template: TemplateRef;
 }
 
 export interface TodoItem {

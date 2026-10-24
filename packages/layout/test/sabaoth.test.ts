@@ -12,7 +12,7 @@ import { nodeAssets, sabaoth } from './helpers.js';
 
 const { model } = parseAdventure(sabaoth(), { template: templates.avventura });
 const input = (options: Partial<LayoutOptions> = {}) =>
-  toLayoutInput(model, { ...defaultLayoutOptions, ...options }, { title: 'Sabaoth' });
+  toLayoutInput(model, { ...defaultLayoutOptions, ...options }, { title: 'Sabaoth' }, templates.avventura);
 const same = (a: Uint8Array, b: Uint8Array) => Buffer.from(a).equals(Buffer.from(b));
 
 let engine: Engine;
@@ -101,7 +101,7 @@ describe('the saved PDF', () => {
 describe('a document with almost nothing in it', () => {
   it('builds, with the cover and the references only', async () => {
     const { model: empty } = parseAdventure('---\ntitolo: Vuota\n---\n\nSolo testo.\n', { template: templates.avventura });
-    const result = await engine.build(toLayoutInput(empty, defaultLayoutOptions, { title: 'Vuota' }));
+    const result = await engine.build(toLayoutInput(empty, defaultLayoutOptions, { title: 'Vuota' }, templates.avventura));
     expect(result.diagnostics).toEqual([]);
     expect(result.positions.filter((p) => p.kind === 'part').map((p) => p.id)).toEqual(['cover', 'night', 'references']);
   });
@@ -114,9 +114,12 @@ describe('several read-alouds', () => {
       const at = text.indexOf('> [!leggi]', text.indexOf(after));
       text = `${text.slice(0, at)}> [!leggi]\n> Un brano in più.\n\n${text.slice(at)}`;
     }
-    const two = toLayoutInput(parseAdventure(text, { template: templates.avventura }).model, defaultLayoutOptions, {
-      title: 'Sabaoth',
-    });
+    const two = toLayoutInput(
+      parseAdventure(text, { template: templates.avventura }).model,
+      defaultLayoutOptions,
+      { title: 'Sabaoth' },
+      templates.avventura,
+    );
     const result = await engine.build(two);
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const boxes = two.scenes[0]!.readAlouds.map((b) => b.from);

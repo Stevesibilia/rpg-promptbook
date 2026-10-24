@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { parseAdventure, templates } from 'promptbook-format';
-import { countWords, findTarget, readDocument, type Category } from 'promptbook-project';
+import { parseAdventure, type Template } from 'promptbook-format';
+import { countWords, findTarget, readDocument, readMeta, templateOf } from 'promptbook-project';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
 import { broadcastToProject, openLiveDocument, setDocumentText, snapshotMessage, type LiveDocument } from './live.js';
@@ -67,10 +67,11 @@ function toRow(r: DbRow): SnapshotRow {
 export const textHash = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
 
 // Words as the project summary counts them: after the front matter for an
-// adventure or a one-shot, the whole text for a campaign.
-export function documentWords(text: string, category: Category): number {
-  if (category === 'campaign') return countWords(text);
-  const { model } = parseAdventure(text, { template: templates.avventura });
+// adventure or a one-shot, read with the project's template, the whole text
+// for a campaign.
+export function documentWords(text: string, template: Template): number {
+  if (template.kind === 'campaign') return countWords(text);
+  const { model } = parseAdventure(text, { template });
   return countWords(model.meta.range ? text.slice(model.meta.range.end.offset) : text);
 }
 
@@ -103,7 +104,8 @@ export interface NewSnapshot {
   kind: SnapshotKind;
   label: string;
   text: string;
-  category: Category;
+  // The project's template, for the word count.
+  template: Template;
   // A Claude snapshot's edit, for its undo.
   tool?: string;
   target?: string;
@@ -132,7 +134,7 @@ export async function insertSnapshot(db: Queryable, s: NewSnapshot): Promise<Sna
       s.kind,
       cutLabel(s.label),
       s.text,
-      documentWords(s.text, s.category),
+      documentWords(s.text, s.template),
       s.tool ?? null,
       s.target ?? null,
       s.beforeSection ?? null,
@@ -181,7 +183,7 @@ export async function createUserSnapshot(db: Db, sync: Sync, project: ProjectRow
     kind: 'user',
     label,
     text: readDocument(doc),
-    category: project.category,
+    template: templateOf(readMeta(doc)),
   });
   broadcastToProject(sync, project.id, snapshotMessage(snapshot));
   return strip(snapshot);
@@ -268,7 +270,7 @@ export async function restoreSnapshot(
           kind: 'restore',
           label: `${source.label} · ${source.createdAt}`,
           text,
-          category: project.category,
+          template: templateOf(readMeta(live.doc)),
         }),
       next: () => source.text,
     });
@@ -297,8 +299,8 @@ const SECTION_CHANGED = () =>
 // in place of the target, or, for an added scene, the scene and the blank
 // lines before it removed. Refuses when the target no longer reads as
 // Claude left it.
-function undoneText(text: string, category: Category, edit: ClaudeEdit): string {
-  const found = findTarget(text, category, edit.target!);
+function undoneText(text: string, template: Template, edit: ClaudeEdit): string {
+  const found = findTarget(text, template, edit.target!);
   if (!found.ok) throw SECTION_CHANGED();
   const { from, to } = found.target;
   if (textHash(text.slice(from, to)) !== edit.after_hash) throw SECTION_CHANGED();
@@ -334,9 +336,9 @@ export async function undoClaudeEdit(
           kind: 'restore',
           label: `Before undoing Claude's edit of ${edit.label}`,
           text,
-          category: project.category,
+          template: templateOf(readMeta(live.doc)),
         }),
-      next: (text) => undoneText(text, project.category, edit),
+      next: (text) => undoneText(text, templateOf(readMeta(live.doc)), edit),
     });
     return strip(stored);
   } finally {

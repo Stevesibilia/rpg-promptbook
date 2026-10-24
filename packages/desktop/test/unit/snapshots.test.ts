@@ -1,3 +1,4 @@
+import { templates } from 'promptbook-format';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { documentWords, expiresAt, LocalSnapshots, MODES } from '../../src/main/snapshots.js';
@@ -120,7 +121,7 @@ describe('local snapshots', () => {
   });
 
   it('counts words as the server does, after the front matter', () => {
-    expect(documentWords('---\ntitolo: Ancora\n---\nUna due tre.', 'one-shot')).toBe(3);
-    expect(documentWords('Uno due', 'campaign')).toBe(2);
+    expect(documentWords('---\ntitolo: Ancora\n---\nUna due tre.', templates.avventura)).toBe(3);
+    expect(documentWords('Uno due', templates.campagna)).toBe(2);
   });
 });

@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { appendixEdit, namedCategories, type BoardRow, type ProjectMeta } from 'promptbook-project';
+import { adventureTemplateOf, appendixEdit, namedCategories, readMeta, type BoardRow, type ProjectMeta } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import { ProjectShell } from '../project/ProjectShell.js';
@@ -397,7 +397,7 @@ function NoAppendix({
       for (let attempt = 0; attempt < 5; attempt++) {
         const parsed = await board.parseNow();
         if (parsed.text !== text.toString()) continue;
-        const edit = appendixEdit(parsed.text, parsed.model);
+        const edit = appendixEdit(parsed.text, parsed.model, adventureTemplateOf(readMeta(doc)));
         if (edit) {
           doc.transact(() => {
             if (edit.to > edit.from) text.delete(edit.from, edit.to - edit.from);

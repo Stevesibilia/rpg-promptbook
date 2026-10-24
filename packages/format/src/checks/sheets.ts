@@ -1,19 +1,19 @@
 import type { Problem, Sheet } from '../model.js';
 import { escapeRegExp } from '../parse/source.js';
-import type { Template } from '../template/schema.js';
+import type { AdventureTemplate } from '../template/schema.js';
 import type { Check } from './index.js';
 import { plural, problem } from './util.js';
 
-const keyOf = (template: Template, role: Template['sheets']['keys'][number]['role']) =>
+const keyOf = (template: AdventureTemplate, role: AdventureTemplate['sheets']['keys'][number]['role']) =>
   template.sheets.keys.find((k) => k.role === role)?.key;
 
 // A grade against the counts written for it, threats written inside another
 // sheet, and two sheets with one name.
-export const checkSheets: Check = ({ model, template }) => {
+export const checkSheets: Check = ({ model, template, systems }) => {
   const out: Problem[] = [];
   const systemKey = template.meta.find((m) => m.role === 'system')?.key;
   const systemName = systemKey === undefined ? undefined : model.meta.values[systemKey];
-  const system = template.systems.find(
+  const system = systems.find(
     (s) => typeof systemName === 'string' && s.name.toLowerCase() === systemName.trim().toLowerCase(),
   );
   const gradeNames = system?.grades.map((g) => g.name) ?? [];
@@ -63,7 +63,7 @@ function nested(sheet: Sheet, name: string, range: Problem['range']): Problem {
   );
 }
 
-function counts(template: Template, sheet: Sheet): Problem[] {
+function counts(template: AdventureTemplate, sheet: Sheet): Problem[] {
   const expected = sheet.threat?.counts;
   if (!sheet.threat || !expected) return [];
   const out: Problem[] = [];

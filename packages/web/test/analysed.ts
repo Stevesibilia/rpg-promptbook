@@ -17,7 +17,7 @@ export function analysed(doc: string, cursor = 0): { state: EditorState; result:
   let state = EditorState.create({
     doc,
     selection: EditorSelection.cursor(cursor),
-    extensions: analysis({ checked: true, connect: noWorker }),
+    extensions: analysis({ checked: true, template: templates.avventura, connect: noWorker }),
   });
   state = state.update({
     effects: setAnalysis.of({ doc: state.doc, result, changes: ChangeSet.empty(state.doc.length) }),
@@ -30,7 +30,7 @@ export function campaign(doc: string, cursor = 0): EditorState {
   const state = EditorState.create({
     doc,
     selection: EditorSelection.cursor(cursor),
-    extensions: [markdownWithTables(), analysis({ checked: false, connect: noWorker })],
+    extensions: [markdownWithTables(), analysis({ checked: false, template: templates.avventura, connect: noWorker })],
   });
   ensureSyntaxTree(state, state.doc.length, 5000);
   return state;

@@ -1,11 +1,11 @@
 import type { Block, BoxBlock, CalloutBlock, Problem } from '../model.js';
-import type { CalloutDefinition, Place, Template } from '../template/schema.js';
+import type { AdventureTemplate, CalloutDefinition, Place } from '../template/schema.js';
 import type { Check } from './index.js';
 import { problem } from './util.js';
 
 const header = (c: { type: string; meta?: string | null | undefined }) => `[!${c.type}${c.meta ? `|${c.meta}` : ''}]`;
 
-const definitionOf = (template: Template, box: CalloutBlock): CalloutDefinition | undefined =>
+const definitionOf = (template: AdventureTemplate, box: CalloutBlock): CalloutDefinition | undefined =>
   template.callouts.find((c) => c.type === box.type && (c.meta ?? null) === box.meta);
 
 const boxes = (blocks: Block[]): BoxBlock[] =>
@@ -20,7 +20,7 @@ const allowed = (definition: CalloutDefinition, where: Where): boolean =>
     ? definition.allowedIn.includes('anySection') || (where.role !== null && definition.allowedIn.includes(where.role))
     : definition.allowedIn.includes(where.kind);
 
-const placeName = (template: Template, place: Place): string => {
+const placeName = (template: AdventureTemplate, place: Place): string => {
   if (place === 'scene') return 'scenes';
   if (place === 'sheet') return 'sheets';
   if (place === 'anySection') return 'any section';

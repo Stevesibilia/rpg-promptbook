@@ -423,7 +423,7 @@ describe('replace_section', () => {
     const outcome = await s.call('replace_section', { projectId: s.id, target: 'S1', markdown: `${markdown}\n\n\n`, hash });
     expect(outcome.isError).toBe(false);
     expect(outcome.value).toMatchObject({ target: 'S1', title: 'La casa che crolla', hash: textHash(markdown) });
-    expect(outcome.value.errors).toBe(check(ADVENTURE, 'adventure', NONE, NOW)!.errors);
+    expect(outcome.value.errors).toBe(check(ADVENTURE, templates.avventura, NONE, NOW)!.errors);
     // The problems answered are the ones inside the new scene.
     expect(outcome.value.problems.length).toBeGreaterThan(0);
     for (const problem of outcome.value.problems) expect(problem.line).toBeGreaterThanOrEqual(7);
@@ -486,7 +486,7 @@ describe('replace_section', () => {
     const markdown = ['### S2. Il molo', '', '**Luogo e momento:** il porto, alba.'].join('\n');
     const outcome = await s.call('replace_section', { projectId: s.id, target: 'S2', markdown, hash });
     expect(outcome.error).toBeUndefined();
-    const before = check(ADVENTURE, 'adventure', NONE, NOW)!;
+    const before = check(ADVENTURE, templates.avventura, NONE, NOW)!;
     expect(outcome.value).toMatchObject({
       errorsBefore: before.errors,
       warningsBefore: before.warnings,
@@ -610,7 +610,7 @@ describe('add_scene', () => {
     expect(outcome.value).toMatchObject({ target: 'S3', title: 'La fiera', hash: textHash(added) });
     const text = await storedText(s.id);
     expect(text).toBe(ADVENTURE.replace("il porto, alba.\n\n## Indizi", `il porto, alba.\n\n${added}\n\n## Indizi`));
-    const found = findTarget(text, 'adventure', 'S3');
+    const found = findTarget(text, templates.avventura, 'S3');
     expect(found.ok && textHash(text.slice(found.target.from, found.target.to))).toBe(textHash(added));
     expect(await snapshots(s.id)).toEqual([
       expect.objectContaining({ kind: 'claude', tool: 'add_scene', target: 'S3', before_section: '', label: 'S3 · La fiera' }),
@@ -790,7 +790,7 @@ describe('hidden problems', () => {
     const s = await setup();
     const { hash } = (await s.call('read_document', { projectId: s.id, target: 'S2' })).value;
     const markdown = ['### S2. Il molo', '', '**Luogo e momento:** il porto, alba.'].join('\n');
-    const target = findTarget(ADVENTURE, 'adventure', 'S2');
+    const target = findTarget(ADVENTURE, templates.avventura, 'S2');
     if (!target.ok) throw new Error('no S2');
     const next = ADVENTURE.slice(0, target.target.from) + markdown + ADVENTURE.slice(target.target.to);
     const end = target.target.from + markdown.length;

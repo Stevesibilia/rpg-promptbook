@@ -9,7 +9,8 @@ import { parseAdventure } from '../parse/index.js';
 import { matchSection } from '../parse/sections.js';
 import { createSource, escapeRegExp, plainText, type Source } from '../parse/source.js';
 import { avventura } from '../template/avventura.js';
-import type { CalloutDefinition, SheetKeyDefinition, Template } from '../template/schema.js';
+import { builtinSystems } from '../systems.js';
+import type { AdventureTemplate, CalloutDefinition, SheetKeyDefinition } from '../template/schema.js';
 
 // The conventions of today's notes that the template does not hold, since
 // they are not part of the format: the word a threat's Tipo line opens with,
@@ -59,7 +60,7 @@ export interface ConvertOptions {
   // the note has no "# Title" line.
   title?: string;
   // avventura@1 when not given.
-  template?: Template;
+  template?: AdventureTemplate;
 }
 
 const processor = unified().use(remarkParse).use(remarkFrontmatter, ['yaml']).use(remarkGfm);
@@ -68,7 +69,7 @@ const COMMENT = /^(?:\s*<!--[\s\S]*?-->)+\s*$/;
 
 interface Context {
   source: Source;
-  template: Template;
+  template: AdventureTemplate;
   edits: ConvertEdit[];
   notices: ConvertNotice[];
 }
@@ -457,7 +458,7 @@ function splitThreat(ctx: Context, list: List, item: List['children'][number], w
 
   const separator = template.sheets.listSeparator;
   const [head, ...rest] = value.split(separator).map((s) => s.trim());
-  const grades = template.systems.flatMap((s) => s.grades.map((g) => g.name));
+  const grades = builtinSystems.flatMap((s) => s.grades.map((g) => g.name));
   const opening = new RegExp(`^${escapeRegExp(legacy.threat)}[ \\t]+(\\S+?)(?:[ \\t]*,[ \\t]*(.*))?$`, 'u').exec(head ?? '');
   const grade = opening ? grades.find((g) => g.toLowerCase() === opening[1]!.toLowerCase()) : undefined;
   if (!opening || grade === undefined) {

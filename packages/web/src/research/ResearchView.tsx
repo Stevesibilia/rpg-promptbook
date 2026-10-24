@@ -11,6 +11,7 @@ import {
   saveNote,
   setTopicState,
   targetsOf,
+  templateOf,
   updateNote,
   type ProjectMeta,
   type ResearchNote,
@@ -34,9 +35,9 @@ const sourcesCount = (n: number) => `${n} source${n === 1 ? '' : 's'}`;
 
 // The scenes of an adventure or a one-shot with their text, for «mentioned
 // in»; none for a campaign.
-function scenesOf(text: string, category: ProjectMeta['category']): SceneText[] {
-  if (category === 'campaign') return [];
-  return targetsOf(text, category)
+function scenesOf(text: string, meta: Pick<ProjectMeta, 'category' | 'template'>): SceneText[] {
+  if (meta.category === 'campaign') return [];
+  return targetsOf(text, templateOf(meta))
     .filter((t) => t.kind === 'scene')
     .map((t) => ({ id: t.target, text: text.slice(t.from, t.to) }));
 }
@@ -57,7 +58,11 @@ export function ResearchView({ doc, meta }: { doc: Y.Doc; meta: ProjectMeta }) {
   const shownId = draft ? draft.id : (selected?.id ?? null);
 
   const text = useDeferredValue(useDocValue(doc, readDocument));
-  const scenes = useMemo(() => scenesOf(text, meta.category), [text, meta.category]);
+  const { category, template } = meta;
+  const scenes = useMemo(
+    () => scenesOf(text, { category, template: { id: template.id, version: template.version } }),
+    [text, category, template.id, template.version],
+  );
 
   const startNew = () => setDraft(emptyDraft());
 

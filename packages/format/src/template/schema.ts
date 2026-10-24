@@ -20,6 +20,10 @@ export const sectionRoleSchema = z.enum([
   'npcs',
   'sheets',
   'appendix',
+  'backstory',
+  'clock',
+  'truths',
+  'before',
 ]);
 
 export const placeSchema = z.union([
@@ -46,13 +50,26 @@ const sectionSchema = z.object({
   role: sectionRoleSchema.optional(),
 });
 
+export const sceneFieldRoleSchema = z.enum([
+  'place',
+  'inPlay',
+  'mustHave',
+  'happens',
+  'cast',
+  'clues',
+  'tests',
+  'derail',
+  'situation',
+  'decides',
+]);
+
 const sceneFieldSchema = z.object({
   label,
   // inline: **Label:** text. block: **Label** then a list or a table.
   form: z.enum(['inline', 'block']),
   requirement: requirementSchema,
   climax: z.boolean(),
-  role: z.enum(['cast', 'clues']).optional(),
+  role: sceneFieldRoleSchema.optional(),
 });
 
 const calloutSchema = z.object({
@@ -74,28 +91,24 @@ const sheetKeySchema = z.object({
   role: z.enum(['type', 'grade', 'nature', 'wounds', 'afflictions', 'pack', 'talents']),
 });
 
-const gradeSchema = z.object({
-  name: label,
-  wounds: z.int().positive(),
-  afflictions: z.int().nonnegative(),
-});
-
-const systemSchema = z.object({
-  name: label,
-  woundsPerCounter: z.int().positive(),
-  grades: z.array(gradeSchema).min(1, 'expected at least one grade'),
-});
-
 const wordRange = z.object({ min: z.int().nonnegative(), max: z.int().positive() });
 
-export const templateSchema = z
+const head = {
+  id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'expected a lower-case id'),
+  version: z.int().positive(),
+  name: label,
+};
+
+const sections = z.array(sectionSchema).min(1, 'expected at least one section');
+
+// An adventure template holds everything the parser and the checks read.
+const adventureSchema = z
   .object({
-    id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'expected a lower-case id'),
-    version: z.int().positive(),
-    name: label,
+    ...head,
+    kind: z.literal('adventure'),
     ids: z.object({ scene: label, revelation: label, clue: label }),
     meta: z.array(metaKeySchema),
-    sections: z.array(sectionSchema).min(1, 'expected at least one section'),
+    sections,
     sceneFields: z.array(sceneFieldSchema),
     callouts: z.array(calloutSchema),
     references: z.object({ marker: label }),
@@ -118,7 +131,6 @@ export const templateSchema = z
       listSeparator: z.string().min(1),
       pregenerated: label,
     }),
-    systems: z.array(systemSchema),
     appendix: z.object({ visual: label, mood: label }),
     limits: z.object({
       synopsisWords: wordRange,
@@ -133,22 +145,7 @@ export const templateSchema = z
     }),
   })
   .superRefine((template, ctx) => {
-    const unique = <T>(
-      items: T[],
-      key: (item: T) => string | undefined,
-      path: PropertyKey[],
-      what: string,
-    ) => {
-      const seen = new Set<string>();
-      items.forEach((item, index) => {
-        const value = key(item);
-        if (value === undefined) return;
-        if (seen.has(value)) {
-          ctx.addIssue({ code: 'custom', path: [...path, index], message: `duplicate ${what} "${value}"` });
-        }
-        seen.add(value);
-      });
-    };
+    const unique = uniqueIn(ctx);
     unique(template.meta, (k) => k.key, ['meta'], 'key');
     unique(template.meta, (k) => k.role, ['meta'], 'role');
     unique(template.sections, (s) => s.name, ['sections'], 'section');
@@ -158,10 +155,6 @@ export const templateSchema = z
     unique(template.callouts, (c) => (c.meta ? `${c.type}|${c.meta}` : c.type), ['callouts'], 'type');
     unique(template.sheets.keys, (k) => k.key, ['sheets', 'keys'], 'key');
     unique(template.sheets.keys, (k) => k.role, ['sheets', 'keys'], 'role');
-    unique(template.systems, (s) => s.name, ['systems'], 'system');
-    template.systems.forEach((system, index) =>
-      unique(system.grades, (g) => g.name, ['systems', index, 'grades'], 'grade'),
-    );
     template.callouts.forEach((callout, index) => {
       const { min, max } = callout.perPlace;
       if (max !== null && max < min) {
@@ -174,16 +167,34 @@ export const templateSchema = z
     }
   });
 
+// A campaign template holds only what a campaign's skeleton needs: campaigns
+// are never parsed.
+const campaignSchema = z
+  .object({ ...head, kind: z.literal('campaign'), meta: z.array(metaKeySchema), sections })
+  .superRefine((template, ctx) => {
+    const unique = uniqueIn(ctx);
+    unique(template.meta, (k) => k.key, ['meta'], 'key');
+    unique(template.meta, (k) => k.role, ['meta'], 'role');
+    unique(template.sections, (s) => s.name, ['sections'], 'section');
+    unique(template.sections, (s) => s.role, ['sections'], 'role');
+  });
+
+export const templateSchema = z.discriminatedUnion('kind', [adventureSchema, campaignSchema]);
+
+export type AdventureTemplateInput = z.input<typeof adventureSchema>;
+export type CampaignTemplateInput = z.input<typeof campaignSchema>;
 export type TemplateInput = z.input<typeof templateSchema>;
+export type AdventureTemplate = z.output<typeof adventureSchema>;
+export type CampaignTemplate = z.output<typeof campaignSchema>;
 export type Template = z.output<typeof templateSchema>;
 export type Requirement = z.output<typeof requirementSchema>;
 export type SectionRole = z.output<typeof sectionRoleSchema>;
 export type Place = z.output<typeof placeSchema>;
+export type SceneFieldRole = z.output<typeof sceneFieldRoleSchema>;
 export type SectionDefinition = Template['sections'][number];
-export type SceneFieldDefinition = Template['sceneFields'][number];
-export type CalloutDefinition = Template['callouts'][number];
-export type SheetKeyDefinition = Template['sheets']['keys'][number];
-export type SystemDefinition = Template['systems'][number];
+export type SceneFieldDefinition = AdventureTemplate['sceneFields'][number];
+export type CalloutDefinition = AdventureTemplate['callouts'][number];
+export type SheetKeyDefinition = AdventureTemplate['sheets']['keys'][number];
 
 export class TemplateError extends Error {
   readonly issues: string[];
@@ -202,19 +213,43 @@ function formatPath(path: PropertyKey[]): string {
   }, '');
 }
 
-// Validates a definition and returns it typed. Throws a TemplateError whose
-// message names every bad entry by its path, as in "sceneFields[3].label".
+// Each value a key gives is unique in the list; a missing one is not checked.
+export function uniqueIn(ctx: Pick<z.RefinementCtx, 'addIssue'>) {
+  return <T>(items: T[], key: (item: T) => string | undefined, path: PropertyKey[], what: string) => {
+    const seen = new Set<string>();
+    items.forEach((item, index) => {
+      const value = key(item);
+      if (value === undefined) return;
+      if (seen.has(value)) {
+        ctx.addIssue({ code: 'custom', path: [...path, index], message: `duplicate ${what} "${value}"` });
+      }
+      seen.add(value);
+    });
+  };
+}
+
+// The issues of a failed parse, each with the path of the bad entry, as in
+// "sceneFields[3].label: expected a non-empty label".
+export function issuesOf(error: z.ZodError): string[] {
+  return error.issues.map((issue) => {
+    const at = formatPath(issue.path);
+    return at ? `${at}: ${issue.message}` : issue.message;
+  });
+}
+
+// Validates a definition and returns it typed by its kind. Throws a
+// TemplateError whose message names every bad entry by its path, as in
+// "sceneFields[3].label".
+export function defineTemplate(definition: AdventureTemplateInput): AdventureTemplate;
+export function defineTemplate(definition: CampaignTemplateInput): CampaignTemplate;
+export function defineTemplate(definition: TemplateInput): Template;
 export function defineTemplate(definition: TemplateInput): Template {
   const result = templateSchema.safeParse(definition);
   if (result.success) return result.data;
   const raw = definition as { id?: unknown; version?: unknown } | null;
   const name =
     raw && typeof raw.id === 'string' ? `"${raw.id}@${String(raw.version ?? '?')}"` : '(no id)';
-  const issues = result.error.issues.map((issue) => {
-    const at = formatPath(issue.path);
-    return at ? `${at}: ${issue.message}` : issue.message;
-  });
-  throw new TemplateError(name, issues);
+  throw new TemplateError(name, issuesOf(result.error));
 }
 
 // The name a document records for the template it was checked against.

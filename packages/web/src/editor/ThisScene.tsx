@@ -1,20 +1,18 @@
 import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { templates, type CalloutDefinition, type Requirement } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition, Requirement } from 'promptbook-format';
 import { analysisField } from './analysis/field.js';
 import { keyLabel, shortcut } from './cm/keymap.js';
 import { Section, useViewValue } from './InspectorSection.js';
-import { READ_ALOUD_AFTER, readAloudOf, type Insert } from './inserts.js';
+import { readAloudAfter, readAloudOf, type Insert } from './inserts.js';
 import { currentItem } from './outline.js';
 import type { UpdateSource } from './StatusBar.js';
 import { applyInsert } from './writes.js';
 
-const template = templates.avventura;
-const readAloud = readAloudOf(template);
-
 // The scene holding the cursor, from the latest analysis (fresh or stale):
-// what it has of the template.
+// what it has of the project's template.
 interface SceneSnapshot {
+  template: AdventureTemplate;
   id: string | null;
   fields: string[];
   readAloud: boolean;
@@ -22,10 +20,12 @@ interface SceneSnapshot {
 
 function sceneOf(state: EditorState): SceneSnapshot | null {
   const item = currentItem(state);
-  const model = state.field(analysisField, false)?.result?.model;
-  if (item?.kind !== 'scene' || !model) return null;
+  const value = state.field(analysisField, false);
+  const model = value?.result?.model;
+  if (item?.kind !== 'scene' || !model || !value.template) return null;
   const scene = model.scenes[item.index]!;
   return {
+    template: value.template,
     id: scene.id,
     fields: scene.fields.filter((f) => f.known).map((f) => f.label),
     readAloud: scene.readAlouds.length > 0,
@@ -36,6 +36,7 @@ const sameScene = (a: SceneSnapshot | null, b: SceneSnapshot | null) =>
   a === b ||
   (!!a &&
     !!b &&
+    a.template === b.template &&
     a.id === b.id &&
     a.readAloud === b.readAloud &&
     a.fields.length === b.fields.length &&
@@ -53,6 +54,9 @@ interface Row {
 // The template's scene fields in order, with the read-aloud box after the
 // field it follows.
 function rowsOf(scene: SceneSnapshot): Row[] {
+  const { template } = scene;
+  const readAloud = readAloudOf(template);
+  const after = readAloudAfter(template);
   const rows: Row[] = [];
   for (const field of template.sceneFields) {
     rows.push({
@@ -62,13 +66,14 @@ function rowsOf(scene: SceneSnapshot): Row[] {
       present: scene.fields.includes(field.label),
       insert: { kind: 'field', label: field.label },
     });
-    if (field.label === READ_ALOUD_AFTER) rows.push(readAloudRow(scene));
+    if (field.label === after) rows.push(readAloudRow(scene));
   }
   if (!rows.some((r) => r.key === readAloud.type)) rows.push(readAloudRow(scene));
   return rows;
 }
 
 function readAloudRow(scene: SceneSnapshot): Row {
+  const readAloud = readAloudOf(scene.template);
   const { min, max } = readAloud.perPlace;
   return {
     key: readAloud.type,
@@ -80,18 +85,19 @@ function readAloudRow(scene: SceneSnapshot): Row {
   };
 }
 
-const callout = (role: CalloutDefinition['role'], column: CalloutDefinition['column'] = 'main') =>
-  template.callouts.find((c) => c.role === role && c.column === column)!;
-
 // The buttons under the fields, with the mockup's colour marks.
-const snippets: { label: string; mark: string; insert: Insert }[] = [
-  { label: 'Read-aloud', mark: 'l', insert: { kind: 'callout', callout: readAloud } },
-  { label: 'Handout', mark: 'd', insert: { kind: 'callout', callout: callout('handout') } },
-  { label: 'Box', mark: 'b', insert: { kind: 'callout', callout: callout('box') } },
-  { label: 'Side box', mark: 'b', insert: { kind: 'callout', callout: callout('box', 'side') } },
-  { label: '→ Sheet', mark: '', insert: { kind: 'sheetRef' } },
-  { label: 'Reactions table', mark: '', insert: { kind: 'reactions' } },
-];
+function snippetsOf(template: AdventureTemplate): { label: string; mark: string; insert: Insert }[] {
+  const callout = (role: CalloutDefinition['role'], column: CalloutDefinition['column'] = 'main') =>
+    template.callouts.find((c) => c.role === role && c.column === column)!;
+  return [
+    { label: 'Read-aloud', mark: 'l', insert: { kind: 'callout', callout: readAloudOf(template) } },
+    { label: 'Handout', mark: 'd', insert: { kind: 'callout', callout: callout('handout') } },
+    { label: 'Box', mark: 'b', insert: { kind: 'callout', callout: callout('box') } },
+    { label: 'Side box', mark: 'b', insert: { kind: 'callout', callout: callout('box', 'side') } },
+    { label: '→ Sheet', mark: '', insert: { kind: 'sheetRef' } },
+    { label: 'Reactions table', mark: '', insert: { kind: 'reactions' } },
+  ];
+}
 
 const classOf = (row: Row) =>
   [row.requirement === 'required' ? 'req' : row.requirement === 'optional' ? 'opt' : '', row.present ? '' : 'miss']
@@ -112,7 +118,7 @@ export function ThisScene({
   onToggle(open: boolean): void;
 }) {
   const scene = useViewValue(view, updates, sceneOf, sameScene);
-  const run = (insert: Insert) => view && applyInsert(view, insert, template);
+  const run = (insert: Insert) => view && scene && applyInsert(view, insert, scene.template);
 
   return (
     <Section
@@ -144,7 +150,7 @@ export function ThisScene({
             ))}
           </ul>
           <div className="snips">
-            {snippets.map((s) => (
+            {snippetsOf(scene.template).map((s) => (
               <button key={s.label} className={`snip ${s.mark}`} onClick={() => run(s.insert)}>
                 {s.label}
               </button>

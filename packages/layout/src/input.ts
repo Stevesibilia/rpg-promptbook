@@ -3,13 +3,14 @@
 // stays declarative; every decision about what goes where is made here.
 
 import {
-  templates,
+  type AdventureTemplate,
   type Block,
   type JsonValue,
   type Model,
   type Reference,
   type Scene,
   type SceneField,
+  type SceneFieldRole,
   type Section,
   type Sheet,
 } from 'promptbook-format';
@@ -167,24 +168,27 @@ export interface LayoutProject {
   title: string;
 }
 
-const template = templates.avventura;
-
 // The front matter keys printed above the title, and under it. The others are
 // the title, the footer's, or lists that are not printed.
 const OVER = ['sistema', 'formato', 'durata', 'giocatori'];
 const UNDER = ['ambientazione', 'tempi', 'campagna', 'arco'];
 
-const FIELD = {
-  place: 'Luogo e momento',
-  inPlay: 'In gioco',
-  mustHave: 'Da non perdere qui',
-  happens: 'Cosa succede da sé',
-  tests: 'Prove e regole',
-  derail: 'Se deragliano',
-  situation: 'Regole della situazione',
-  decides: 'Cosa decide la notte',
-} as const;
-const roleField = (role: 'cast' | 'clues') => template.sceneFields.find((f) => f.role === role)!.label;
+// The scene fields the PDF places, found by their role in the template; the
+// others print after them, in their order.
+const PLACED: readonly SceneFieldRole[] = [
+  'place',
+  'inPlay',
+  'mustHave',
+  'cast',
+  'happens',
+  'clues',
+  'tests',
+  'derail',
+  'situation',
+  'decides',
+];
+const roleField = (template: AdventureTemplate, role: SceneFieldRole) =>
+  template.sceneFields.find((f) => f.role === role)?.label;
 
 const text = (value: JsonValue | undefined): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -193,7 +197,7 @@ const capitalised = (key: string) => key.charAt(0).toUpperCase() + key.slice(1);
 
 export const sheetLabel = (id: string) => `sheet-${id}`;
 
-function box(block: Block): LayoutBox | null {
+function boxOf(template: AdventureTemplate, block: Block): LayoutBox | null {
   if (block.kind === 'quote') return { role: 'quote', label: null, title: null, side: false };
   if (block.kind !== 'callout') return null;
   const definition =
@@ -208,15 +212,15 @@ function box(block: Block): LayoutBox | null {
   };
 }
 
-function toBlock(block: Block, references: Reference[] = []): LayoutBlock {
+function blockOf(template: AdventureTemplate, block: Block, references: Reference[] = []): LayoutBlock {
   const from = block.range.start.offset;
-  const boxed = box(block);
+  const boxed = boxOf(template, block);
   const markdown = block.kind === 'callout' || block.kind === 'quote' ? block.content : block.text;
   // A box's content does not start where the block does: its references are
   // found again in the content by their text.
   const linked = boxed
-    ? linkByText(markdown, references)
-    : linkReferences(markdown, from, references);
+    ? linkByText(template, markdown, references)
+    : linkReferences(template, markdown, from, references);
   return { from, kind: block.kind, markdown: linked, box: boxed };
 }
 
@@ -227,7 +231,7 @@ function link(reference: Reference): string {
   return `→ [${reference.target}](#${sheetLabel(reference.sheet!)})`;
 }
 
-function linkReferences(markdown: string, from: number, references: Reference[]): string {
+function linkReferences(template: AdventureTemplate, markdown: string, from: number, references: Reference[]): string {
   const inside = references
     .filter((r) => r.sheet && r.range.start.offset >= from && r.range.end.offset <= from + markdown.length)
     .sort((a, b) => b.range.start.offset - a.range.start.offset);
@@ -241,7 +245,7 @@ function linkReferences(markdown: string, from: number, references: Reference[])
   return out;
 }
 
-function linkByText(markdown: string, references: Reference[]): string {
+function linkByText(template: AdventureTemplate, markdown: string, references: Reference[]): string {
   let out = markdown;
   for (const reference of references) {
     if (!reference.sheet) continue;
@@ -253,21 +257,25 @@ function linkByText(markdown: string, references: Reference[]): string {
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function part(section: Section | undefined, blocks: Block[] = section?.blocks ?? []): LayoutPart | null {
+function partOf(
+  template: AdventureTemplate,
+  section: Section | undefined,
+  blocks: Block[] = section?.blocks ?? [],
+): LayoutPart | null {
   if (!section) return null;
-  return { from: section.range.start.offset, blocks: blocks.map((b) => toBlock(b)) };
+  return { from: section.range.start.offset, blocks: blocks.map((b) => blockOf(template, b)) };
 }
 
-function field(scene: Scene, found: SceneField | undefined): LayoutField | null {
+function field(template: AdventureTemplate, scene: Scene, found: SceneField | undefined): LayoutField | null {
   if (!found) return null;
   const from = found.range.start.offset;
   if (found.form === 'inline') {
     // The text after the label ends where the field does.
     const textFrom = found.range.end.offset - found.text.length;
-    const markdown = linkReferences(found.text, textFrom, scene.references);
+    const markdown = linkReferences(template, found.text, textFrom, scene.references);
     return { label: found.label, from, blocks: [{ from, kind: 'paragraph', markdown, box: null }] };
   }
-  return { label: found.label, from, blocks: found.blocks.map((b) => toBlock(b, scene.references)) };
+  return { label: found.label, from, blocks: found.blocks.map((b) => blockOf(template, b, scene.references)) };
 }
 
 // "La Maestà («Fermi»: chi non…)" gives the name and what is in brackets.
@@ -301,59 +309,62 @@ function threat(sheet: Sheet): LayoutThreat | null {
   };
 }
 
-function scene(model: Model, found: Scene): LayoutScene {
-  const byLabel = (label: string) => found.fields.find((f) => f.label === label);
-  const get = (label: string) => field(found, byLabel(label));
-  const cast = roleField('cast');
-  const placed = new Set<string>([...Object.values(FIELD), cast, roleField('clues')]);
+function scene(template: AdventureTemplate, model: Model, found: Scene): LayoutScene {
+  const byRole = (role: SceneFieldRole) => {
+    const label = roleField(template, role);
+    return label === undefined ? undefined : found.fields.find((f) => f.label === label);
+  };
+  const get = (role: SceneFieldRole) => field(template, found, byRole(role));
+  const cast = roleField(template, 'cast');
+  const placed = new Set(PLACED.map((role) => roleField(template, role)).filter((l) => l !== undefined));
 
   // A threat box for each sheet the cast cites, once.
   const threats: LayoutThreat[] = [];
   const seen = new Set<string>();
   for (const reference of found.references) {
-    if (reference.field !== cast || !reference.sheet || seen.has(reference.sheet)) continue;
+    if (cast === undefined || reference.field !== cast || !reference.sheet || seen.has(reference.sheet)) continue;
     seen.add(reference.sheet);
     const sheet = model.sheets.find((s) => s.id === reference.sheet);
     const box = sheet ? threat(sheet) : null;
     if (box) threats.push(box);
   }
 
-  const boxes = found.boxes.map((b) => toBlock(b, found.references));
+  const boxes = found.boxes.map((b) => blockOf(template, b, found.references));
   const isReadAloud = (i: number) => found.readAlouds.includes(found.boxes[i]!.id);
   return {
     id: found.id ?? '',
     title: found.title,
     from: found.range.start.offset,
     to: found.range.end.offset,
-    place: get(FIELD.place),
-    inPlay: get(FIELD.inPlay),
-    mustHave: get(FIELD.mustHave),
-    cast: get(cast),
+    place: get('place'),
+    inPlay: get('inPlay'),
+    mustHave: get('mustHave'),
+    cast: get('cast'),
     threats,
     sideBoxes: boxes.filter((b) => b.box?.side),
     readAlouds: boxes.filter((_, i) => isReadAloud(i)),
-    happens: get(FIELD.happens),
-    clues: get(roleField('clues')),
+    happens: get('happens'),
+    clues: get('clues'),
     handouts: boxes.filter((b) => b.box?.role === 'handout'),
     boxes: boxes.filter((b, i) => !isReadAloud(i) && !b.box?.side && b.box?.role !== 'handout'),
-    tests: get(FIELD.tests),
-    reactions: found.reactions ? toBlock(found.reactions, found.references) : null,
-    tables: found.tables.map((t) => toBlock(t, found.references)),
-    derail: get(FIELD.derail),
-    situation: get(FIELD.situation),
-    decides: get(FIELD.decides),
-    others: found.fields.filter((f) => !placed.has(f.label)).map((f) => field(found, f)!),
+    tests: get('tests'),
+    reactions: found.reactions ? blockOf(template, found.reactions, found.references) : null,
+    tables: found.tables.map((t) => blockOf(template, t, found.references)),
+    derail: get('derail'),
+    situation: get('situation'),
+    decides: get('decides'),
+    others: found.fields.filter((f) => !placed.has(f.label)).map((f) => field(template, found, f)!),
   };
 }
 
 // A sheet's list items are its fields; they print again as a list, in their
 // place among the sheet's other blocks.
-function sheetBlocks(sheet: Sheet): LayoutBlock[] {
+function sheetBlocks(template: AdventureTemplate, sheet: Sheet): LayoutBlock[] {
   const items = sheet.fields.map((f) => ({
     from: f.range.start.offset,
     line: f.key === null ? `- ${f.value}` : `- **${f.key}:** ${f.value}`,
   }));
-  const blocks = sheet.blocks.map((b) => toBlock(b));
+  const blocks = sheet.blocks.map((b) => blockOf(template, b));
   const out: LayoutBlock[] = [];
   let list: LayoutBlock | null = null;
   const all = [...items.map((i) => ({ from: i.from, item: i.line })), ...blocks.map((b) => ({ from: b.from, block: b }))];
@@ -369,10 +380,23 @@ function sheetBlocks(sheet: Sheet): LayoutBlock[] {
   return out;
 }
 
-export function toLayoutInput(model: Model, options: LayoutOptions, project: LayoutProject): LayoutInput {
+// The template is the one the model was parsed with: sections and fields are
+// found by their role, never by their label.
+export function toLayoutInput(
+  model: Model,
+  options: LayoutOptions,
+  project: LayoutProject,
+  template: AdventureTemplate,
+): LayoutInput {
   const values = model.meta.values;
-  const section = (name: string) => model.sections.find((s) => s.name === name);
+  const metaValue = (name: 'title' | 'subtitle') => {
+    const key = template.meta.find((m) => m.role === name)?.key;
+    return key === undefined ? undefined : values[key];
+  };
   const role = (name: Section['role']) => model.sections.find((s) => s.role === name);
+  const box = (block: Block) => boxOf(template, block);
+  const toBlock = (block: Block) => blockOf(template, block);
+  const part = (section: Section | undefined, blocks?: Block[]) => partOf(template, section, blocks);
   const metaBlocks = (keys: string[]) =>
     model.meta.entries
       .filter((e) => keys.includes(e.key) && text(e.value))
@@ -403,19 +427,19 @@ export function toLayoutInput(model: Model, options: LayoutOptions, project: Lay
   const rulesSide = rules?.blocks.filter((b) => box(b)?.side) ?? [];
 
   const synopsis = role('synopsis');
-  const backstory = section('Antefatto');
+  const backstory = role('backstory');
   const strongStart = role('strongStart');
   const sceneMap = role('sceneMap');
   const clues = role('clues');
   const npcs = role('npcs');
   const sheets = role('sheets');
-  const before = section('Prima della sessione');
+  const before = role('before');
   const ids = model.scenes.map((s) => s.id).filter((id): id is string => id !== null);
 
   return {
     options,
-    title: text(values['titolo']) ?? project.title,
-    subtitle: text(values['sottotitolo']),
+    title: text(metaValue('title')) ?? project.title,
+    subtitle: text(metaValue('subtitle')),
     author: authors(values['autore']),
     copyright: text(values['copyright']),
     licence: model.meta.licence
@@ -439,12 +463,12 @@ export function toLayoutInput(model: Model, options: LayoutOptions, project: Lay
       revelations: overview && revelationBlocks.length > 0 ? part(overview, revelationBlocks) : null,
       sideBoxes: overviewSide.map((b) => toBlock(b)),
       reminders: part(role('reminders')),
-      clock: part(section('Orologio')),
-      truths: part(section('Verità del mondo')),
+      clock: part(role('clock')),
+      truths: part(role('truths')),
     },
     start: { from: from(strongStart, sceneMap), strongStart: part(strongStart), sceneMap: part(sceneMap) },
     rules: rules ? { ...part(rules, rules.blocks.filter((b) => !box(b)?.side))!, sideBoxes: rulesSide.map((b) => toBlock(b)) } : null,
-    scenes: model.scenes.map((s) => scene(model, s)),
+    scenes: model.scenes.map((s) => scene(template, model, s)),
     references: {
       from: from(clues, npcs, sheets),
       clues: part(clues),
@@ -453,7 +477,7 @@ export function toLayoutInput(model: Model, options: LayoutOptions, project: Lay
         label: sheetLabel(s.id),
         title: s.title,
         from: s.range.start.offset,
-        blocks: sheetBlocks(s),
+        blocks: sheetBlocks(template, s),
       })),
       pregenerated:
         model.pregenerated && options.pregenerated

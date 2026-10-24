@@ -44,7 +44,7 @@ export function readSheet(
 }
 
 function readThreat(ctx: ParseContext, fields: SheetField[], system: JsonValue | undefined): Threat | null {
-  const { template } = ctx;
+  const { template, systems } = ctx;
   const value = (role: SheetKeyDefinition['role']): string | null => {
     const key = template.sheets.keys.find((k) => k.role === role)?.key;
     return fields.find((f) => key !== undefined && f.key === key)?.value ?? null;
@@ -55,7 +55,7 @@ function readThreat(ctx: ParseContext, fields: SheetField[], system: JsonValue |
   const grade = value('grade');
   const talents = value('talents');
   const systemName = typeof system === 'string' ? system.trim().toLowerCase() : null;
-  const definition = template.systems.find((s) => s.name.toLowerCase() === systemName);
+  const definition = systems.find((s) => s.name.toLowerCase() === systemName);
   const gradeDefinition = definition?.grades.find((g) => g.name.toLowerCase() === grade?.trim().toLowerCase());
   return {
     type: value('type'),

@@ -1,9 +1,10 @@
-import { parseAdventure, templates } from 'promptbook-format';
+import { parseAdventure } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { currentSeed, readDocument, readMeta, readTodo } from './doc.js';
 import { partitionProblems, readHidden } from './hidden.js';
 import type { GdrarchiveLink } from './gdrarchive.js';
 import type { CampaignRef, Category, Status } from './model.js';
+import { adventureTemplateOf } from './template.js';
 
 // The fields of the server's projects row, derived from the document, which
 // stays the source (design decision 6).
@@ -77,7 +78,7 @@ export function summarize(doc: Y.Doc, { campaigns, now = new Date() }: Summarize
   if (meta.category === 'campaign') return summary;
 
   const text = readDocument(doc);
-  const { model, problems } = parseAdventure(text, { template: templates.avventura });
+  const { model, problems } = parseAdventure(text, { template: adventureTemplateOf(meta) });
   const body = model.meta.range ? text.slice(model.meta.range.end.offset) : text;
   summary.scenes = model.scenes.length;
   summary.words = countWords(body);

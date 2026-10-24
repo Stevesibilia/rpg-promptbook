@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { defineTemplate, parseAdventure, templates, type Problem, type TemplateInput } from '../src/index.js';
+import { defineTemplate, parseAdventure, templates, type AdventureTemplateInput, type Problem } from '../src/index.js';
 import { parseOnly as parse, sample, topLevelBlocks, uncoveredBlocks } from './helpers.js';
 
 const sabaoth = readFileSync(new URL('../fixtures/l-ancora-di-sabaoth.md', import.meta.url), 'utf8');
@@ -158,15 +158,15 @@ describe('sections', () => {
       ['La vicenda in breve', 'synopsis'],
       ["A colpo d'occhio", 'overview'],
       ['Da non perdere stasera', 'reminders'],
-      ['Orologio', null],
-      ['Verità del mondo', null],
+      ['Orologio', 'clock'],
+      ['Verità del mondo', 'truths'],
       ['Inizio forte', 'strongStart'],
       ['Mappa delle scene', 'sceneMap'],
       ['Scene', 'scenes'],
       ['Indizi', 'clues'],
       ['PNG', 'npcs'],
       ['Schede', 'sheets'],
-      ['Prima della sessione', null],
+      ['Prima della sessione', 'before'],
       ['Appendice', 'appendix'],
     ]);
     expect(model.sections.at(-1)?.heading).toBe('Appendice: immagini e musica');
@@ -295,7 +295,7 @@ describe('scenes', () => {
   });
 
   it('knows a field once it is added to the template', () => {
-    const definition = JSON.parse(JSON.stringify(templates.avventura)) as TemplateInput;
+    const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
     definition.sceneFields.push({ label: 'Se il tempo stringe', form: 'inline', requirement: 'optional', climax: true });
     const template = defineTemplate(definition);
     const { model } = parseAdventure(withScene('**Se il tempo stringe:** Donato resta sulla strada.'), { template });

@@ -8,7 +8,7 @@ import {
 } from '@codemirror/autocomplete';
 import { EditorSelection, type EditorState, type Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import type { CalloutDefinition, Model, Place, Template } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition, Model, Place } from 'promptbook-format';
 import { analysisField, writableResult } from '../analysis/field.js';
 import { insertText, nextSceneNumber, placeInsert, sceneAt, type Insert } from '../inserts.js';
 import { currentItem } from '../outline.js';
@@ -54,7 +54,7 @@ const calloutSyntax = (c: CalloutDefinition) => `> [!${c.meta ? `${c.type}|${c.m
 // the sheet reference, the reactions table when it has none, and New scene;
 // in a section, the callouts allowed in it, and New scene in the scenes
 // section. A campaign gets the two headings.
-export function slashEntries(state: EditorState, pos: number, template: Template): SlashEntry[] {
+export function slashEntries(state: EditorState, pos: number, template: AdventureTemplate): SlashEntry[] {
   const value = state.field(analysisField, false);
   if (!value?.checked) {
     const fm = frontMatterOf(state.doc);
@@ -131,7 +131,7 @@ export function slashEntries(state: EditorState, pos: number, template: Template
 // Replaces the `/` line with the chosen insert, from a result that is never
 // stale. Nothing happens when the line under the menu is no longer a `/`
 // line (another tab changed it).
-export function applySlash(view: EditorView, insert: SlashInsert, template: Template): void {
+export function applySlash(view: EditorView, insert: SlashInsert, template: AdventureTemplate): void {
   const { state } = view;
   const slash = slashLine(state, state.selection.main.head);
   if (!slash) return;
@@ -179,7 +179,7 @@ function existingField(model: Model, pos: number, label: string): number | null 
   return field ? field.range.start.offset : null;
 }
 
-function slashResult(template: Template, context: CompletionContext): CompletionResult | null {
+function slashResult(template: AdventureTemplate, context: CompletionContext): CompletionResult | null {
   const slash = slashLine(context.state, context.pos);
   if (!slash) return null;
   const entries = slashEntries(context.state, slash.from, template);
@@ -221,7 +221,7 @@ export function sheetNames(state: EditorState): string[] {
   return [...new Set(sheets.map((s) => s.name))];
 }
 
-function sheetResult(template: Template, context: CompletionContext): CompletionResult | null {
+function sheetResult(template: AdventureTemplate, context: CompletionContext): CompletionResult | null {
   const at = sheetQuery(context.state, context.pos, template.references.marker);
   if (!at) return null;
   const names = sheetNames(context.state);
@@ -238,7 +238,7 @@ function sheetResult(template: Template, context: CompletionContext): Completion
 // One source for both: a second source would be asked again at every
 // keystroke, and while it is pending CodeMirror disables the open menu, so
 // Enter typed quickly after a letter would insert a line break.
-function source(template: Template, checked: boolean): CompletionSource {
+function source(template: AdventureTemplate, checked: boolean): CompletionSource {
   return (context) => slashResult(template, context) ?? (checked ? sheetResult(template, context) : null);
 }
 
@@ -246,7 +246,7 @@ function source(template: Template, checked: boolean): CompletionSource {
 // names; a campaign's menu has the headings only. No delays: CodeMirror
 // queries after 100 ms without typing and ignores Enter for 75 ms after the
 // menu opens, so a quick «/new⏎» would type a line break.
-export function slashMenu(template: Template, checked: boolean): Extension {
+export function slashMenu(template: AdventureTemplate, checked: boolean): Extension {
   return autocompletion({
     override: [source(template, checked)],
     icons: false,

@@ -1,7 +1,7 @@
 import { startCompletion } from '@codemirror/autocomplete';
 import { ChangeSet, EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import type { Template, TextEdit } from 'promptbook-format';
+import type { AdventureTemplate, TextEdit } from 'promptbook-format';
 import { analyseNow, writableResult } from './analysis/field.js';
 import { undoBoundary } from './cm/problems.js';
 import { placeInsert, sceneAt, type Insert } from './inserts.js';
@@ -57,7 +57,7 @@ export function jumpTo(view: EditorView, pos: number, y: 'start' | 'center' = 's
 // Runs an insert at the cursor, from a result that is never stale. A field
 // or read-aloud box the scene already has in the current text is not
 // written twice: the cursor goes to it instead. False when nothing happened.
-export function applyInsert(view: EditorView, what: Insert, template: Template): boolean {
+export function applyInsert(view: EditorView, what: Insert, template: AdventureTemplate): boolean {
   const { state } = view;
   const result = writableResult(state);
   if (!result) return false;

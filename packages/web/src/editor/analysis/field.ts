@@ -8,7 +8,7 @@ import {
   type Text,
 } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
-import { parseAdventure, templates, type ParseResult, type Range } from 'promptbook-format';
+import { parseAdventure, type AdventureTemplate, type ParseResult, type Range } from 'promptbook-format';
 import { createAnalysisClient, type AnalysisClient, type Connect } from './client.js';
 
 // A part of the document the panels point at, with its positions in the
@@ -31,6 +31,9 @@ export interface Span {
 export interface Analysis {
   // False for a campaign, which is never parsed (design decision 2).
   checked: boolean;
+  // The project's template, which every parse uses; null only before the
+  // editor set one.
+  template: AdventureTemplate | null;
   // The text the result was computed for.
   doc: Text | null;
   result: ParseResult | null;
@@ -90,16 +93,24 @@ function mapAll(value: Analysis, changes: ChangeDesc): Analysis {
   };
 }
 
-const empty = (checked: boolean): Analysis => ({ checked, doc: null, result: null, places: [], spots: [] });
+const empty = (checked: boolean, template: AdventureTemplate | null): Analysis => ({
+  checked,
+  template,
+  doc: null,
+  result: null,
+  places: [],
+  spots: [],
+});
 
 export const analysisField = StateField.define<Analysis>({
-  create: () => empty(false),
+  create: () => empty(false, null),
   update(value, tr) {
     for (const effect of tr.effects) {
       if (!effect.is(setAnalysis)) continue;
       const { doc, result, changes } = effect.value;
       value = {
         checked: value.checked,
+        template: value.template,
         doc,
         result,
         places: placesOf(result),
@@ -119,16 +130,17 @@ export const isFresh = (state: EditorState): boolean => {
 };
 
 // The result every write starts from: the analysis when it is fresh, a new
-// parse of the text otherwise; null for a campaign. Never stale (decision 3).
+// parse of the text with the project's template otherwise; null for a
+// campaign. Never stale (decision 3).
 export function writableResult(state: EditorState, parse = parseCurrent): ParseResult | null {
   const value = state.field(analysisField, false);
-  if (!value?.checked) return null;
+  if (!value?.checked || !value.template) return null;
   if (value.result && value.doc === state.doc) return value.result;
-  return parse(state.doc.toString());
+  return parse(state.doc.toString(), value.template);
 }
 
-function parseCurrent(text: string): ParseResult {
-  return parseAdventure(text, { template: templates.avventura });
+function parseCurrent(text: string, template: AdventureTemplate): ParseResult {
+  return parseAdventure(text, { template });
 }
 
 // Called with each result the worker sends back, inside the transaction that
@@ -143,7 +155,7 @@ interface Sent {
 
 // Sends the text to the worker and stores its answers in the field, with
 // the changes made since the text was sent so positions can be mapped.
-function driver(connect: Connect, onResult: OnResult) {
+function driver(template: AdventureTemplate, connect: Connect, onResult: OnResult) {
   return ViewPlugin.define((view: EditorView) => {
     let sent: Sent | null = null;
     const client: AnalysisClient = createAnalysisClient<Sent>({
@@ -151,7 +163,7 @@ function driver(connect: Connect, onResult: OnResult) {
       read() {
         const doc = view.state.doc;
         sent = { doc, changes: ChangeSet.empty(doc.length) };
-        return { text: doc.toString(), tag: sent };
+        return { text: doc.toString(), template, tag: sent };
       },
       apply(tag, result) {
         if (tag !== sent) return;
@@ -184,11 +196,12 @@ function driver(connect: Connect, onResult: OnResult) {
 
 export interface AnalysisOptions {
   checked: boolean;
+  template: AdventureTemplate;
   connect: Connect;
   onResult?: OnResult;
 }
 
-export function analysis({ checked, connect, onResult = () => [] }: AnalysisOptions): Extension {
-  const field = analysisField.init(() => empty(checked));
-  return checked ? [field, driver(connect, onResult)] : field;
+export function analysis({ checked, template, connect, onResult = () => [] }: AnalysisOptions): Extension {
+  const field = analysisField.init(() => empty(checked, template));
+  return checked ? [field, driver(template, connect, onResult)] : field;
 }

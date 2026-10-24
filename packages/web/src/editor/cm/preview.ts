@@ -1,7 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import { Facet, StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import type { CalloutDefinition, Template } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition } from 'promptbook-format';
 
 // The live preview (design decision 4): decorations over the source, built
 // from the Markdown syntax tree so they follow every keystroke. Marks show on
@@ -14,7 +14,7 @@ export interface PreviewConfig {
   sceneIdPrefix: string | null;
 }
 
-export const previewConfigOf = (template: Template, checked: boolean): PreviewConfig => ({
+export const previewConfigOf = (template: AdventureTemplate, checked: boolean): PreviewConfig => ({
   callouts: template.callouts,
   sceneIdPrefix: checked ? template.ids.scene : null,
 });

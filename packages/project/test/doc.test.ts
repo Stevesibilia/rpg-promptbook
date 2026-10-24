@@ -13,6 +13,7 @@ import {
   setCampaign,
   setGdrarchive,
   setStatus,
+  setTemplate,
   setTitle,
   updateTodo,
 } from '../src/index.js';
@@ -35,6 +36,7 @@ describe('project document', () => {
       system: 'Kulthos',
       createdAt: '2026-10-19T08:00:00.000Z',
       gdrarchive: null,
+      template: { id: 'avventura', version: 1 },
     });
     expect(texts(doc)).toEqual(['Scrivere le scene', 'Prompt Suno', 'Rilettura']);
     expect(readTodo(doc).every((t) => !t.done && t.note === '' && t.due === null)).toBe(true);
@@ -57,6 +59,42 @@ describe('project document', () => {
     doc.getMap('meta').set('title', 42);
     expect(readMeta(doc).status).toBe('draft');
     expect(readMeta(doc).title).toBe('');
+  });
+
+  it('records the template a new project is made with, its category\'s built-in by default', () => {
+    expect(project().getMap('meta').get('template')).toEqual({ id: 'avventura', version: 1 });
+    expect(readMeta(project({ category: 'adventure' })).template).toEqual({ id: 'avventura', version: 1 });
+    expect(readMeta(project({ category: 'campaign' })).template).toEqual({ id: 'campagna', version: 1 });
+    expect(readMeta(project({ template: { id: 'mia', version: 3 } })).template).toEqual({ id: 'mia', version: 3 });
+  });
+
+  it('reads a project made before templates were recorded as its category\'s built-in', () => {
+    for (const [category, id] of [
+      ['one-shot', 'avventura'],
+      ['adventure', 'avventura'],
+      ['campaign', 'campagna'],
+    ] as const) {
+      const doc = project({ category });
+      doc.getMap('meta').delete('template');
+      expect(readMeta(doc).template).toEqual({ id, version: 1 });
+    }
+  });
+
+  it('reads a malformed template as the built-in', () => {
+    const doc = project();
+    for (const value of [null, 'avventura@1', { id: 'avventura' }, { id: '', version: 1 }, { id: 'a', version: 1.5 }, { id: 'a', version: 0 }]) {
+      doc.getMap('meta').set('template', value);
+      expect(readMeta(doc).template).toEqual({ id: 'avventura', version: 1 });
+    }
+  });
+
+  it('sets the template whole, and refuses a reference that is not one', () => {
+    const doc = project();
+    setTemplate(doc, { id: 'mia', version: 2 });
+    expect(doc.getMap('meta').get('template')).toEqual({ id: 'mia', version: 2 });
+    expect(readMeta(replica(doc)).template).toEqual({ id: 'mia', version: 2 });
+    expect(() => setTemplate(doc, { id: '', version: 1 })).toThrow('Not a template reference');
+    expect(() => setTemplate(doc, { id: 'mia', version: 0 })).toThrow('Not a template reference');
   });
 
   it('reads a missing or invalid gdrarchive link as none', () => {

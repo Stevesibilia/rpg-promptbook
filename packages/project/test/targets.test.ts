@@ -1,3 +1,4 @@
+import { templates } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
 import { findTarget, skeletonDocument, targetsOf, type Target } from '../src/index.js';
 import { fixture } from './helpers.js';
@@ -5,13 +6,13 @@ import { fixture } from './helpers.js';
 const sabaoth = fixture('l-ancora-di-sabaoth.converted.md');
 const textOf = (text: string, t: Target) => text.slice(t.from, t.to);
 const found = (text: string, name: string, category: 'one-shot' | 'campaign' = 'one-shot') => {
-  const result = findTarget(text, category, name);
+  const result = findTarget(text, category === 'campaign' ? templates.campagna : templates.avventura, name);
   if (!result.ok) throw new Error(`${name}: ${result.error}`);
   return result.target;
 };
 
 describe('targetsOf an adventure', () => {
-  const targets = targetsOf(sabaoth, 'one-shot');
+  const targets = targetsOf(sabaoth, templates.avventura);
 
   it('lists every section, scene and sheet in text order, never the front matter', () => {
     expect(targets.map((t) => `${t.kind}:${t.target}:${t.level}`)).toEqual([
@@ -70,7 +71,7 @@ describe('targetsOf an adventure', () => {
 
   it('leaves the blank lines after a section out of its span', () => {
     const text = '## Orologio\n\nPrima scossa.\n\n\n  \n## Verità del mondo\n\nIl Sigillo.\n\n';
-    const [clock, truths] = targetsOf(text, 'adventure');
+    const [clock, truths] = targetsOf(text, templates.avventura);
     expect(textOf(text, clock!)).toBe('## Orologio\n\nPrima scossa.');
     expect(textOf(text, truths!)).toBe('## Verità del mondo\n\nIl Sigillo.');
   });
@@ -86,7 +87,7 @@ describe('targetsOf a campaign', () => {
       copyright: '',
       licence: '',
     });
-    const targets = targetsOf(text, 'campaign');
+    const targets = targetsOf(text, templates.campagna);
     expect(targets.map((t) => t.target)).toEqual(['Premessa', 'Fronti', 'PNG ricorrenti', 'Fili aperti', 'Sessioni']);
     expect(targets.every((t) => t.kind === 'heading' && t.level === 2)).toBe(true);
     expect(textOf(text, targets[0]!)).toBe('## Premessa');
@@ -116,7 +117,7 @@ describe('targetsOf a campaign', () => {
       '# Fine',
       '',
     ].join('\n');
-    const targets = targetsOf(text, 'campaign');
+    const targets = targetsOf(text, templates.campagna);
     expect(targets.map((t) => `${t.target}:${t.level}`)).toEqual([
       'Fronti:2',
       'Il Circolo:3',
@@ -138,8 +139,8 @@ describe('targetsOf, edge cases', () => {
     const campaign = `## Fronti\n${blanks}\nTesto.${blanks}\n## Sessioni\n`;
     const adventure = `## Orologio\n${blanks}\nPrima scossa.${blanks}\n## Scene\n`;
     const started = performance.now();
-    const [fronti] = targetsOf(campaign, 'campaign');
-    const [clock] = targetsOf(adventure, 'adventure');
+    const [fronti] = targetsOf(campaign, templates.campagna);
+    const [clock] = targetsOf(adventure, templates.avventura);
     expect(performance.now() - started).toBeLessThan(3_000);
     expect(textOf(campaign, fronti!)).toBe(`## Fronti\n${blanks}\nTesto.`);
     expect(textOf(adventure, clock!)).toBe(`## Orologio\n${blanks}\nPrima scossa.`);
@@ -147,16 +148,16 @@ describe('targetsOf, edge cases', () => {
 
   it('keeps the spaces at the end of the last line, and a CRLF document', () => {
     const text = '## Fronti\r\n\r\nTesto  \r\n\r\n## Sessioni\r\n';
-    const [fronti, sessioni] = targetsOf(text, 'campaign');
+    const [fronti, sessioni] = targetsOf(text, templates.campagna);
     expect(textOf(text, fronti!)).toBe('## Fronti\r\n\r\nTesto  ');
     expect(textOf(text, sessioni!)).toBe('## Sessioni');
   });
 
   it('reads a first line of --- as front matter only when it is closed', () => {
     const open = '---\n\n## Fronti\n\nTesto.\n';
-    expect(targetsOf(open, 'campaign').map((t) => t.target)).toEqual(['Fronti']);
+    expect(targetsOf(open, templates.campagna).map((t) => t.target)).toEqual(['Fronti']);
     const closed = '---\ntitolo: x\n...\n## Fronti\n';
-    expect(targetsOf(closed, 'campaign').map((t) => t.target)).toEqual(['Fronti']);
+    expect(targetsOf(closed, templates.campagna).map((t) => t.target)).toEqual(['Fronti']);
   });
 
   it('ends a span at a setext heading, which is not a target', () => {
@@ -180,7 +181,7 @@ describe('targetsOf, edge cases', () => {
       '===',
       '',
     ].join('\n');
-    const targets = targetsOf(text, 'campaign');
+    const targets = targetsOf(text, templates.campagna);
     expect(targets.map((t) => t.target)).toEqual(['Fronti', 'Note']);
     expect(textOf(text, targets[0]!)).toBe('## Fronti\n\nIl Circolo.');
     // A line of - under a list item is a break, not a heading; === under text
@@ -202,7 +203,7 @@ describe('findTarget', () => {
   });
 
   it('answers the valid targets when nothing matches', () => {
-    const result = findTarget(sabaoth, 'one-shot', 'Il cordone di Donato');
+    const result = findTarget(sabaoth, templates.avventura, 'Il cordone di Donato');
     expect(result).toMatchObject({ ok: false, error: 'unknown_target' });
     expect(result.ok ? [] : result.targets.map((t) => t.target)).toContain('S3');
   });
@@ -212,7 +213,7 @@ describe('findTarget', () => {
       '### Pregenerati',
       '### Orologio, quello del campanile\n\n- **Tipo:** Oggetto\n\n### Pregenerati',
     );
-    const result = findTarget(text, 'one-shot', 'orologio');
+    const result = findTarget(text, templates.avventura, 'orologio');
     expect(result).toMatchObject({ ok: false, error: 'ambiguous_target' });
     expect(result.ok ? [] : result.targets.map((t) => t.kind)).toEqual(['section', 'sheet']);
   });

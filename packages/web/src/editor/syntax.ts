@@ -1,4 +1,4 @@
-import type { CalloutDefinition, Place, Requirement, Template } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition, Place, Requirement } from 'promptbook-format';
 import { REACTIONS_THEN } from './inserts.js';
 
 // The syntax sheet's data (design decision 10), generated from the template
@@ -28,14 +28,14 @@ const titles: Record<CalloutDefinition['title'], string> = {
   expected: 'title expected',
 };
 
-function placeName(place: Place, template: Template): string {
+function placeName(place: Place, template: AdventureTemplate): string {
   if (place === 'scene') return 'scenes';
   if (place === 'sheet') return 'sheets';
   if (place === 'anySection') return 'any section';
   return template.sections.find((s) => s.role === place)?.name ?? place;
 }
 
-export function syntaxOf(template: Template): SyntaxGroup[] {
+export function syntaxOf(template: AdventureTemplate): SyntaxGroup[] {
   const scenes = template.sections.find((s) => s.role === 'scenes');
   const sheets = template.sections.find((s) => s.role === 'sheets');
   return [

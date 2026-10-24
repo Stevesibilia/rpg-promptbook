@@ -1,14 +1,18 @@
-import type { CalloutDefinition, Model, Scene, Template, TextEdit } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition, Model, Scene, TextEdit } from 'promptbook-format';
 
 // Every insert of design decision 8, shared by This scene, the `/` menu and
 // the palette so each writes the same text. Labels, callout types, the
 // references marker, the reactions table's first header and the scene id
 // prefix come from the template.
 
-// The template has no data for these two yet (design decision 8): where the
-// read-aloud box goes among the scene fields, and the reactions table's
-// second header.
-export const READ_ALOUD_AFTER = 'Da non perdere qui';
+// Where the read-aloud box goes among the scene fields: after the field with
+// the mustHave role, whatever the template calls it (template-registry design
+// decision 1).
+export const readAloudAfter = (template: AdventureTemplate): string | undefined =>
+  template.sceneFields.find((f) => f.role === 'mustHave')?.label;
+
+// The template has no data for the reactions table's second header yet
+// (design decision 8).
 export const REACTIONS_THEN = 'Allora…';
 
 export type Insert =
@@ -29,7 +33,7 @@ export interface InsertContext {
   // The text the model was read from.
   text: string;
   model: Model;
-  template: Template;
+  template: AdventureTemplate;
   // The cursor.
   pos: number;
   // The `/` menu's line: the block replaces this range instead of going where
@@ -51,7 +55,7 @@ export function sceneAt(model: Model, pos: number): number {
 }
 
 // What an insert writes, and where in it the cursor goes.
-export function insertText(what: Insert, template: Template, model?: Model): { text: string; cursor: number } {
+export function insertText(what: Insert, template: AdventureTemplate, model?: Model): { text: string; cursor: number } {
   const end = (text: string) => ({ text, cursor: text.length });
   switch (what.kind) {
     case 'field': {
@@ -77,12 +81,12 @@ export function insertText(what: Insert, template: Template, model?: Model): { t
   }
 }
 
-export function readAloudOf(template: Template): CalloutDefinition {
+export function readAloudOf(template: AdventureTemplate): CalloutDefinition {
   return template.callouts.find((c) => c.role === 'readAloud')!;
 }
 
 // One more than the highest scene number in use.
-export function nextSceneNumber(model: Model, template: Template): number {
+export function nextSceneNumber(model: Model, template: AdventureTemplate): number {
   const prefix = template.ids.scene;
   let highest = 0;
   for (const { id } of model.scenes) {
@@ -140,16 +144,17 @@ export function placeInsert(what: Insert, ctx: InsertContext): Placed | null {
 
 // The template order of a scene, with the read-aloud box as a slot of its
 // own; `null` stands for that slot.
-function slots(template: Template): (string | null)[] {
+function slots(template: AdventureTemplate): (string | null)[] {
   const labels = template.sceneFields.map((f) => f.label);
-  const i = labels.indexOf(READ_ALOUD_AFTER);
+  const after = readAloudAfter(template);
+  const i = after === undefined ? -1 : labels.indexOf(after);
   return i < 0 ? [...labels, null] : [...labels.slice(0, i + 1), null, ...labels.slice(i + 1)];
 }
 
 // Where a missing field (or the read-aloud box, for `null`) goes: the end of
 // the last present one that comes before it in template order, or the end
 // of the heading line.
-function slotAnchor(scene: Scene, template: Template, label: string | null): number {
+function slotAnchor(scene: Scene, template: AdventureTemplate, label: string | null): number {
   const order = slots(template);
   const target = order.indexOf(label);
   const endOf = (slot: string | null): number | null => {

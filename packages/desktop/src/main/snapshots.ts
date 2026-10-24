@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { parseAdventure, templates } from 'promptbook-format';
-import { countWords, readDocument, readMeta, type Category } from 'promptbook-project';
+import { parseAdventure, type Template } from 'promptbook-format';
+import { countWords, readDocument, readMeta, templateOf } from 'promptbook-project';
 import type { LocalSnapshotsMode } from 'promptbook-web/src/platform/bridge.js';
 import type { LocalSnapshotKind, LocalSnapshotRecord, Store } from './store.js';
 import type { SyncEngine } from './sync.js';
@@ -28,10 +28,11 @@ const LABEL_MAX = 200;
 export const isMode = (v: unknown): v is LocalSnapshotsMode => v === 'hourly' || v === 'quarter' || v === 'off';
 
 // Words as the server counts them: after the front matter for an adventure
-// or a one-shot, the whole text for a campaign.
-export function documentWords(text: string, category: Category): number {
-  if (category === 'campaign') return countWords(text);
-  const { model } = parseAdventure(text, { template: templates.avventura });
+// or a one-shot, read with the project's template, the whole text for a
+// campaign.
+export function documentWords(text: string, template: Template): number {
+  if (template.kind === 'campaign') return countWords(text);
+  const { model } = parseAdventure(text, { template });
   return countWords(model.meta.range ? text.slice(model.meta.range.end.offset) : text);
 }
 
@@ -145,7 +146,7 @@ export class LocalSnapshots {
       kind,
       label: cutLabel(label),
       text: body,
-      words: documentWords(body, readMeta(doc).category),
+      words: documentWords(body, templateOf(readMeta(doc))),
     };
     this.options.store.insertSnapshot(record);
     this.last.set(id, body);

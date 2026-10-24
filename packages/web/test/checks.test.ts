@@ -143,7 +143,7 @@ describe('the hidden problems list', () => {
 describe('the status bar', () => {
   it('counts shown problems and the hidden ones apart', () => {
     let { state, doc } = setup();
-    expect(snapshotOf(state)).toMatchObject({ errors: 2, warnings: 3, hidden: 0 });
+    expect(snapshotOf(state)).toMatchObject({ template: 'Avventura v1', errors: 2, warnings: 3, hidden: 0 });
     state = hide(state, doc, UNKNOWN);
     state = hide(state, doc, THREAT, 'snoozed');
     expect(snapshotOf(state)).toMatchObject({ errors: 1, warnings: 2, hidden: 2 });

@@ -3,11 +3,13 @@ import { defineTemplate } from './schema.js';
 // Template "Avventura", version 1, for adventures and one-shots. It follows the
 // model of the enhanced-avventure-rpg skill (references/modello.md in the
 // owner's rpg-prep plugin); section requirements and limits come from that
-// skill's controlla.py, and "Regole della notte" from impagina.py.
+// skill's controlla.py, and "Regole della notte" from impagina.py. Its
+// game system, Kulthos, is in ../systems.ts.
 export const avventura = defineTemplate({
   id: 'avventura',
   version: 1,
   name: 'Avventura',
+  kind: 'adventure',
   ids: { scene: 'S', revelation: 'R', clue: 'I' },
   meta: [
     { key: 'titolo', requirement: 'required', type: 'text', role: 'title' },
@@ -29,11 +31,11 @@ export const avventura = defineTemplate({
   ],
   sections: [
     { name: 'La vicenda in breve', requirement: 'required', role: 'synopsis' },
-    { name: 'Antefatto', requirement: 'optional' },
+    { name: 'Antefatto', requirement: 'optional', role: 'backstory' },
     { name: "A colpo d'occhio", requirement: 'required', role: 'overview' },
     { name: 'Da non perdere stasera', requirement: 'required', role: 'reminders' },
-    { name: 'Orologio', requirement: 'required' },
-    { name: 'Verità del mondo', requirement: 'required' },
+    { name: 'Orologio', requirement: 'required', role: 'clock' },
+    { name: 'Verità del mondo', requirement: 'required', role: 'truths' },
     { name: 'Inizio forte', requirement: 'required', role: 'strongStart' },
     { name: 'Mappa delle scene', requirement: 'required', role: 'sceneMap' },
     { name: 'Regole della notte', requirement: 'optional', role: 'rules' },
@@ -41,7 +43,7 @@ export const avventura = defineTemplate({
     { name: 'Indizi', requirement: 'required', role: 'clues' },
     { name: 'PNG', requirement: 'required', role: 'npcs' },
     { name: 'Schede', requirement: 'optional', role: 'sheets' },
-    { name: 'Prima della sessione', requirement: 'optional' },
+    { name: 'Prima della sessione', requirement: 'optional', role: 'before' },
     {
       name: 'Appendice',
       heading: 'Appendice: immagini e musica',
@@ -50,16 +52,16 @@ export const avventura = defineTemplate({
     },
   ],
   sceneFields: [
-    { label: 'Luogo e momento', form: 'inline', requirement: 'required', climax: false },
-    { label: 'In gioco', form: 'inline', requirement: 'required', climax: false },
-    { label: 'Da non perdere qui', form: 'block', requirement: 'required', climax: false },
-    { label: 'Cosa succede da sé', form: 'block', requirement: 'required', climax: false },
+    { label: 'Luogo e momento', form: 'inline', requirement: 'required', climax: false, role: 'place' },
+    { label: 'In gioco', form: 'inline', requirement: 'required', climax: false, role: 'inPlay' },
+    { label: 'Da non perdere qui', form: 'block', requirement: 'required', climax: false, role: 'mustHave' },
+    { label: 'Cosa succede da sé', form: 'block', requirement: 'required', climax: false, role: 'happens' },
     { label: "Chi c'è", form: 'block', requirement: 'optional', climax: false, role: 'cast' },
     { label: 'Indizi qui', form: 'block', requirement: 'recommended', climax: false, role: 'clues' },
-    { label: 'Prove e regole', form: 'inline', requirement: 'optional', climax: false },
-    { label: 'Se deragliano', form: 'inline', requirement: 'required', climax: false },
-    { label: 'Regole della situazione', form: 'block', requirement: 'optional', climax: true },
-    { label: 'Cosa decide la notte', form: 'inline', requirement: 'optional', climax: true },
+    { label: 'Prove e regole', form: 'inline', requirement: 'optional', climax: false, role: 'tests' },
+    { label: 'Se deragliano', form: 'inline', requirement: 'required', climax: false, role: 'derail' },
+    { label: 'Regole della situazione', form: 'block', requirement: 'optional', climax: true, role: 'situation' },
+    { label: 'Cosa decide la notte', form: 'inline', requirement: 'optional', climax: true, role: 'decides' },
   ],
   callouts: [
     {
@@ -122,17 +124,6 @@ export const avventura = defineTemplate({
     listSeparator: ' · ',
     pregenerated: 'Pregenerati',
   },
-  systems: [
-    {
-      name: 'Kulthos',
-      woundsPerCounter: 3,
-      grades: [
-        { name: 'Ordinaria', wounds: 3, afflictions: 1 },
-        { name: 'Straordinaria', wounds: 6, afflictions: 2 },
-        { name: 'Leggendaria', wounds: 9, afflictions: 3 },
-      ],
-    },
-  ],
   appendix: { visual: 'visual', mood: 'mood' },
   limits: {
     synopsisWords: { min: 300, max: 600 },

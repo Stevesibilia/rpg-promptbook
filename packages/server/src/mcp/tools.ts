@@ -1,10 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { templates } from 'promptbook-format';
+import { defaultTemplateRef } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
   addTodo,
   addTopic,
+  adventureTemplateOf,
   categories,
   gdrarchiveOf,
   inspirationKinds,
@@ -23,6 +24,7 @@ import {
   seedVersions,
   statuses,
   targetsOf,
+  templateOf,
   currentSeed,
   type ResearchTopic,
 } from 'promptbook-project';
@@ -80,7 +82,9 @@ export const INSTRUCTIONS = [
 
 // What a scene needs so that adding it adds no error, read from the
 // template: a scene missing any of it is written, with the problems reported.
-const template = templates.avventura;
+// Tool lists are per connection, not per project: the built-in avventura@1
+// (template-registry design decision 8).
+const template = adventureTemplateOf({ category: 'adventure', template: defaultTemplateRef('adventure') });
 const fieldText = (f: (typeof template.sceneFields)[number]) =>
   f.form === 'inline' ? `**${f.label}:** …` : `**${f.label}** followed by a list`;
 const SCENE_REQUIRED = [
@@ -315,8 +319,9 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       const project = await projectOf(args.projectId);
       const doc = await docOf(project);
       const text = readDocument(doc);
-      const checked = check(text, project.category, readHidden(doc), new Date());
-      const targets = targetsOf(text, project.category).map((t) => {
+      const template = templateOf(readMeta(doc));
+      const checked = check(text, template, readHidden(doc), new Date());
+      const targets = targetsOf(text, template).map((t) => {
         if (!checked) return { kind: t.kind, target: t.target, title: t.title };
         const inside = checked.problems.filter(
           (p) => !checked.hidden.has(p) && p.range.start.offset >= t.from && p.range.start.offset <= t.to,
@@ -345,9 +350,10 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
     },
     async (args) => {
       const project = await projectOf(args.projectId);
-      const text = readDocument(await docOf(project));
+      const doc = await docOf(project);
+      const text = readDocument(doc);
       if (args.target === undefined) return { text, hash: textHash(text) };
-      const target = locate(text, project.category, args.target);
+      const target = locate(text, templateOf(readMeta(doc)), args.target);
       const span = text.slice(target.from, target.to);
       return { target: target.target, kind: target.kind, title: target.title, text: span, hash: textHash(span) };
     },
