@@ -16,6 +16,7 @@ import { oidcRoutes } from './routes/oidc.js';
 import { projectsRoutes } from './routes/projects.js';
 import { settingsRoutes } from './routes/settings.js';
 import { snapshotsRoutes } from './routes/snapshots.js';
+import { templatesRoutes } from './routes/templates.js';
 import { transferRoutes } from './routes/transfer.js';
 import { syncPlugin } from './sync.js';
 import { headersPlugin, webPlugin } from './web.js';
@@ -80,6 +81,7 @@ export async function buildApp({ config, db, logger = false, blobs, oidcDiscover
     await app.register(oidcRoutes, { config, db, oidc: config.oidc, discoveryOptions: oidcDiscoveryOptions });
   }
   await app.register(settingsRoutes, { db });
+  await app.register(templatesRoutes, { db });
   await app.register(projectsRoutes, { db, sync: app.sync });
   const store = blobs ?? (await openBlobStore(config.dataDir));
   await app.register(transferRoutes, { db, sync: app.sync, blobs: store });

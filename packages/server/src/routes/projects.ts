@@ -16,6 +16,7 @@ import {
 } from '../projects.js';
 import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
+import { templateRefSchema } from './templates.js';
 
 export const NOT_FOUND = () => new AppError(404, 'not_found', 'Not found.');
 
@@ -33,6 +34,8 @@ const createBody = z.object({
   system: z.string().trim().max(200).optional(),
   status: z.enum(statuses).default('draft'),
   seed: z.string().max(10_000).default(''),
+  // The settings' default for the category's kind when not given.
+  template: templateRefSchema.optional(),
   // Chosen by the desktop app, which made the project on the device.
   id: chosenId.optional(),
 });

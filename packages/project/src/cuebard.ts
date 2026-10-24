@@ -1,4 +1,5 @@
 import { strToU8 } from 'fflate';
+import type { Template } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { readDocumentBoard, type FileEntry, type ImageCategory, type PromptRow } from './board.js';
 import { migratedView } from './board-migration.js';
@@ -62,6 +63,8 @@ export interface CuebardOptions {
   durations?: ReadonlyMap<string, number>;
   // File ids whose bytes are not available.
   missing?: ReadonlySet<string>;
+  // The account's own templates, among which the project's is resolved.
+  templates?: readonly Template[];
 }
 
 export interface CuebardPack {
@@ -211,10 +214,10 @@ interface Plan {
 // that a length or a missing file only removes items and never renames the
 // others (D4's invariant). A file id met twice, which only a broken client
 // writes, keeps its first place.
-function plan(doc: Y.Doc): Plan {
+function plan(doc: Y.Doc, templates: readonly Template[] = []): Plan {
   const view = migratedView(doc);
   const meta = readMeta(view);
-  const board = readDocumentBoard(view);
+  const board = readDocumentBoard(view, templates);
   const seen = new Set<string>();
   const once = (files: readonly FileEntry[]) =>
     files.filter((f) => {
@@ -284,8 +287,8 @@ function plan(doc: Y.Doc): Plan {
 
 // Every file D1 picks, in project-file order: each scene's tracks, then the
 // images of the scenes, the PCs, the NPCs and the handouts.
-export function cuebardFiles(doc: Y.Doc): FileEntry[] {
-  const { scenes, named } = plan(doc);
+export function cuebardFiles(doc: Y.Doc, templates: readonly Template[] = []): FileEntry[] {
+  const { scenes, named } = plan(doc, templates);
   return [
     ...scenes.flatMap((s) => s.tracks.map((t) => t.file)),
     ...scenes.flatMap((s) => s.visuals.map((v) => v.file)),
@@ -297,11 +300,11 @@ const hasLength = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
 // The tracks D1 picks whose length the board did not record (D10).
-export const needsDuration = (doc: Y.Doc): FileEntry[] =>
-  cuebardFiles(doc).filter((f) => f.kind === 'audio' && !hasLength(f.duration));
+export const needsDuration = (doc: Y.Doc, templates: readonly Template[] = []): FileEntry[] =>
+  cuebardFiles(doc, templates).filter((f) => f.kind === 'audio' && !hasLength(f.duration));
 
 export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
-  const { title, scenes, named } = plan(doc);
+  const { title, scenes, named } = plan(doc, opts.templates);
   const missing = opts.missing ?? new Set<string>();
   const warnings: CuebardWarning[] = [];
   const entries: CuebardEntry[] = [];

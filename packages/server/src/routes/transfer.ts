@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
+import type { Template } from 'promptbook-format';
 import {
   categories,
   createProjectDoc,
@@ -25,6 +26,7 @@ import {
   type ProjectRow,
 } from '../projects.js';
 import type { Sync } from '../sync.js';
+import { accountTemplates } from '../templates.js';
 import { parseBody } from '../validation.js';
 import { NOT_FOUND } from './projects.js';
 import { getSettings } from './settings.js';
@@ -99,6 +101,7 @@ export async function transferRoutes(
     project: ProjectRow,
     titles: Map<string, string>,
     folder: string,
+    templates: Template[],
   ): Promise<{ folder: string; texts: Record<string, string>; files: ExportFile[]; missing: string[] }> {
     const stored = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
     if (!stored) return { folder, texts: {}, files: [], missing: [] };
@@ -108,6 +111,7 @@ export async function transferRoutes(
     const texts = exportProject(doc, {
       campaignTitle: project.campaignId ? (titles.get(project.campaignId) ?? null) : null,
       editedAt: project.editedAt,
+      templates,
     });
     // The document is the user's to write, so a hash it names is read only
     // when this project's links list it: knowing a hash never grants a file.
@@ -116,7 +120,7 @@ export async function transferRoutes(
         (row) => row.sha256,
       ),
     );
-    const listed = exportBoard(doc).files;
+    const listed = exportBoard(doc, templates).files;
     return {
       folder,
       texts,
@@ -135,13 +139,14 @@ export async function transferRoutes(
   async function* zipChunks(
     projects: { project: ProjectRow; folder: string }[],
     titles: Map<string, string>,
+    templates: Template[],
     log: FastifyInstance['log'],
   ): AsyncGenerator<Uint8Array> {
     const zip = zipWriter();
     const { flush, text } = zip;
     try {
       for (const { project, folder } of projects) {
-        const { texts, files, missing } = await plan(project, titles, folder);
+        const { texts, files, missing } = await plan(project, titles, folder, templates);
         for (const [name, content] of Object.entries(texts)) text(`${folder}/${name}`, content);
         yield* flush();
         for (const file of files) {
@@ -189,7 +194,7 @@ export async function transferRoutes(
     if (!project || project.deletedAt) throw NOT_FOUND();
     const folder = exportFolderName(project.title, new Set());
     await checkFits([project.id]);
-    return send(reply, `${folder}.zip`, zipChunks([{ project, folder }], await campaignTitles(user.id), req.log));
+    return send(reply, `${folder}.zip`, zipChunks([{ project, folder }], await campaignTitles(user.id), await accountTemplates(db, user.id), req.log));
   });
 
   // Every project not in the bin, one folder each.
@@ -200,6 +205,6 @@ export async function transferRoutes(
     const named = projects.map((project) => ({ project, folder: exportFolderName(project.title, taken) }));
     const date = new Date().toISOString().slice(0, 10);
     await checkFits(projects.map((p) => p.id));
-    return send(reply, `promptbook-${date}.zip`, zipChunks(named, await campaignTitles(user.id), req.log));
+    return send(reply, `promptbook-${date}.zip`, zipChunks(named, await campaignTitles(user.id), await accountTemplates(db, user.id), req.log));
   });
 }

@@ -200,6 +200,8 @@ cache).
 - Optional `copiedFrom: string` on both kinds.
 - A `limits`/`style` edit is a plain edit of today's fields.
 
+Amended at build: `POST /api/templates` gives a `uid` (`crypto.randomUUID()`) to every section, scene field, callout and meta key of the copy that has none, so an own template's items carry uids from version 1 and a rename of an item with no role, such as Campagna's «Fronti», reads as a rename. Built-ins keep none. Saving a version does not fill missing uids; `templateChanges` pairs by uid only when both items have one, else by role, else by name.
+
 ### D8. Changes between versions (plan)
 
 `format/src/template/changes.ts`: `templateChanges(from: Template, to:

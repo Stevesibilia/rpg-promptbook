@@ -15,6 +15,7 @@ import { openLiveDocument } from '../live.js';
 import type { ProjectRow } from '../projects.js';
 import { insertSnapshot, pruneClaudeSnapshots, snapshotThenWrite, textHash } from '../snapshots.js';
 import type { Sync } from '../sync.js';
+import { accountTemplates } from '../templates.js';
 import { ToolRefusal } from './errors.js';
 
 // Claude's edits of the prep document, one target at a time (connector design
@@ -237,6 +238,9 @@ async function apply(
   tool: 'replace_section' | 'add_scene',
   plan: (text: string, hidden: ReadonlyMap<string, HiddenEntry>, now: Date, template: Template) => Planned,
 ): Promise<EditResult> {
+  // The account's templates, fetched before the write: the plan runs inside
+  // it, on the live text and meta.
+  const extra = await accountTemplates(db, userId);
   const live = await openLiveDocument(sync, project.id, userId);
   try {
     let planned!: Planned;
@@ -247,7 +251,7 @@ async function apply(
       next: (text) => {
         // The hides as the open clients have them, and one clock for the
         // whole plan.
-        template = templateOf(readMeta(live.doc));
+        template = templateOf(readMeta(live.doc), extra);
         planned = plan(text, readHidden(live.doc), new Date(), template);
         return planned.text;
       },

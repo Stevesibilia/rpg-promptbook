@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { cuebardFiles, cuebardLeftOut, cuebardPack, needsDuration, type CuebardPack } from 'promptbook-project';
+import type { Template } from 'promptbook-format';
+import { cuebardFiles, cuebardLeftOut, cuebardPack, needsDuration, readMeta, type CuebardPack } from 'promptbook-project';
 import * as Y from 'yjs';
 import { requireSession } from '../accounts/auth.js';
 import type { Db } from '../db.js';
@@ -8,6 +9,7 @@ import type { BlobStore } from '../files/blobs.js';
 import { trackDuration } from '../files/duration.js';
 import { getProject, loadProjectDoc } from '../projects.js';
 import type { Sync } from '../sync.js';
+import { accountTemplates } from '../templates.js';
 import { NOT_FOUND } from './projects.js';
 import { send, ZIP_BYTES_MAX, ZIP_ENTRIES_MAX, zipWriter } from './zip.js';
 
@@ -38,7 +40,7 @@ export async function cuebardRoutes(app: FastifyInstance, { db, sync, blobs }: {
   // The limits are checked on everything picked before a length is read, so
   // a pack too large is refused before any file is parsed, and each content
   // is parsed once. `gone` says the client has left: no more reading then.
-  async function plan(projectId: string, doc: Y.Doc, gone: () => boolean): Promise<CuebardPack> {
+  async function plan(projectId: string, doc: Y.Doc, templates: Template[], gone: () => boolean): Promise<CuebardPack> {
     const stored = new Map(
       (
         await db.query<{ sha256: string; size: string; mime: string }>(
@@ -48,7 +50,7 @@ export async function cuebardRoutes(app: FastifyInstance, { db, sync, blobs }: {
       ).map((row) => [row.sha256, { size: Number(row.size), mime: row.mime }]),
     );
     const missing = new Set<string>();
-    const picked = cuebardFiles(doc);
+    const picked = cuebardFiles(doc, templates);
     for (const file of picked) {
       if (!stored.has(file.sha256) || !(await blobs.has(file.sha256))) missing.add(file.id);
     }
@@ -59,7 +61,7 @@ export async function cuebardRoutes(app: FastifyInstance, { db, sync, blobs }: {
     );
     const durations = new Map<string, number>();
     const read = new Map<string, number | null>();
-    for (const track of needsDuration(doc)) {
+    for (const track of needsDuration(doc, templates)) {
       if (missing.has(track.id)) continue;
       if (!read.has(track.sha256)) {
         if (gone()) throw new Error('The client left before the pack was planned.');
@@ -70,7 +72,7 @@ export async function cuebardRoutes(app: FastifyInstance, { db, sync, blobs }: {
       const seconds = read.get(track.sha256);
       if (seconds != null) durations.set(track.id, seconds);
     }
-    const pack = cuebardPack(doc, { now: new Date().toISOString(), durations, missing });
+    const pack = cuebardPack(doc, { now: new Date().toISOString(), durations, missing, templates });
     // The project file and left-out.txt count too: their texts come from the
     // document.
     const text = pack.projectFile.json.length + (cuebardLeftOut(pack, 'not on the server')?.length ?? 0);
@@ -126,7 +128,8 @@ export async function cuebardRoutes(app: FastifyInstance, { db, sync, blobs }: {
     const live = sync.liveDocument(project.id);
     const doc = live ? frozen(live) : await loadProjectDoc(db, project.id);
     if (!doc) throw NOT_FOUND();
-    const pack = await plan(project.id, doc, () => req.raw.socket?.destroyed === true);
+    const templates = await accountTemplates(db, user.id, readMeta(doc).template);
+    const pack = await plan(project.id, doc, templates, () => req.raw.socket?.destroyed === true);
     return send(reply, pack.fileName, packChunks(pack, project.id, req.log));
   });
 }

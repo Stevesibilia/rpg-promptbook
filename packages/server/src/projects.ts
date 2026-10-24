@@ -3,6 +3,7 @@ import {
   createProjectDoc,
   isCategory,
   projectRow,
+  readMeta,
   skeletonDocument,
   summarize,
   type CampaignRef,
@@ -11,12 +12,14 @@ import {
   type Status,
   type Summary,
 } from 'promptbook-project';
+import type { TemplateRef } from 'promptbook-format';
 import * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
 import { sweepUnfinishedFirstPartyGrants } from './oauth/grants.js';
 import { sweepExpired, tokenLifetimes } from './oauth/tokens.js';
 import { getSettings } from './routes/settings.js';
+import { accountTemplates, templateForNewProject } from './templates.js';
 
 // The projects table and the stored documents. The document is the source;
 // the row is its summary, written from it on every store (design decision 6).
@@ -138,7 +141,18 @@ const summaryParams = (s: Summary) => [
   s.warnings,
   s.gdrarchive?.url ?? null,
   s.gdrarchive?.label ?? null,
+  s.template.id,
+  s.template.version,
 ];
+
+// The summary of a document, its problems counted against the project's
+// template among the owner's (one row looked up by its key; none for a
+// built-in or a template the account no longer holds, which reads as the
+// built-in).
+async function summaryOf(tx: Queryable, ownerId: string, doc: Y.Doc): Promise<Summary> {
+  const templates = await accountTemplates(tx, ownerId, readMeta(doc).template);
+  return summarize(doc, { campaigns: await campaignsOf(tx, ownerId, { includeBin: true }), templates });
+}
 
 // A new project's row and document. The category column is written here
 // only: the category is fixed at creation, so no summary rewrites it. An
@@ -150,10 +164,9 @@ export async function insertProject(
   doc: Y.Doc,
   { uploaded = false }: { uploaded?: boolean } = {},
 ): Promise<void> {
-  const campaigns = await campaignsOf(tx, ownerId, { includeBin: true });
   let summary: Summary;
   try {
-    summary = summarize(doc, { campaigns });
+    summary = await summaryOf(tx, ownerId, doc);
   } catch (error) {
     if (uploaded) throw invalidState('is not a project document.');
     throw error;
@@ -161,8 +174,8 @@ export async function insertProject(
   await tx.query(
     `insert into projects (id, owner_id, category, title, status, campaign_id, system, seed,
                            todo_done, todo_total, next_due, scenes, words, errors, warnings,
-                           gdrarchive_url, gdrarchive_label)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                           gdrarchive_url, gdrarchive_label, template_id, template_version)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
     [summary.id, ownerId, summary.category, ...summaryParams(summary)],
   );
   await tx.query('insert into project_docs (project_id, state) values ($1, $2)', [
@@ -193,10 +206,13 @@ export interface NewProject {
   system?: string | undefined;
   status?: Status | undefined;
   seed?: string | undefined;
+  // The settings' default for the category's kind when not given.
+  template?: TemplateRef | undefined;
 }
 
 // A new project from the user's templates: the category's to-do list and the
-// skeleton document with the settings' defaults in its front matter. Shared
+// starting document of its document template (design decision 6), with the
+// settings' defaults in its front matter. Shared
 // by the REST route and the connector's create_project. The id is the
 // desktop app's when it chose one (createWithId).
 export async function createProject(
@@ -206,9 +222,13 @@ export async function createProject(
   id: string = randomUUID(),
 ): Promise<ProjectRow> {
   const settings = await getSettings(db, ownerId);
+  const template = await templateForNewProject(db, ownerId, input.category, settings, input.template);
   await db.withTransaction(async (tx) => {
     const campaign = campaignFor(input.category, input.campaignId, await campaignsOf(tx, ownerId));
-    const system = input.system ?? settings.system;
+    // The template's game system when neither the input nor the settings
+    // name one, as the front matter writes it.
+    const system =
+      (input.system ?? settings.system).trim() || (template.kind === 'adventure' ? (template.system ?? '') : '');
     const doc = createProjectDoc({
       id,
       title: input.title,
@@ -218,14 +238,19 @@ export async function createProject(
       system,
       seed: input.seed ?? '',
       todo: settings.todoTemplates[input.category],
-      document: skeletonDocument(input.category, {
-        title: input.title,
-        system,
-        campaignTitle: campaign?.title ?? null,
-        author: settings.author,
-        copyright: settings.copyright,
-        licence: settings.licence,
-      }),
+      template: { id: template.id, version: template.version },
+      document: skeletonDocument(
+        input.category,
+        {
+          title: input.title,
+          system,
+          campaignTitle: campaign?.title ?? null,
+          author: settings.author,
+          copyright: settings.copyright,
+          licence: settings.licence,
+        },
+        template,
+      ),
     });
     await insertProject(tx, ownerId, doc);
   });
@@ -300,7 +325,7 @@ export async function storeProjectDoc(db: Db, projectId: string, doc: Y.Doc): Pr
       projectId,
     ]);
     if (!project) return;
-    const summary = summarize(doc, { campaigns: await campaignsOf(tx, project.owner_id, { includeBin: true }) });
+    const summary = await summaryOf(tx, project.owner_id, doc);
     await tx.query(
       `insert into project_docs (project_id, state) values ($1, $2)
        on conflict (project_id) do update set state = excluded.state, updated_at = now()`,
@@ -309,7 +334,8 @@ export async function storeProjectDoc(db: Db, projectId: string, doc: Y.Doc): Pr
     await tx.query(
       `update projects set title = $2, status = $3, campaign_id = $4, system = $5, seed = $6,
               todo_done = $7, todo_total = $8, next_due = $9, scenes = $10, words = $11,
-              errors = $12, warnings = $13, gdrarchive_url = $14, gdrarchive_label = $15, edited_at = now()
+              errors = $12, warnings = $13, gdrarchive_url = $14, gdrarchive_label = $15,
+              template_id = $16, template_version = $17, edited_at = now()
        where id = $1`,
       [projectId, ...summaryParams(summary)],
     );

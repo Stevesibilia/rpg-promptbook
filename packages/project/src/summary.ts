@@ -1,4 +1,4 @@
-import { parseAdventure } from 'promptbook-format';
+import { parseAdventure, type Template, type TemplateRef } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { currentSeed, readDocument, readMeta, readTodo } from './doc.js';
 import { partitionProblems, readHidden } from './hidden.js';
@@ -28,6 +28,10 @@ export interface Summary {
   // The project's own gdrarchive link, for every category, so the list shows
   // an adventure its campaign's (gdrarchive-link design decision 5).
   gdrarchive: GdrarchiveLink | null;
+  // The template the document records, which the row keeps so the account's
+  // templates can count their projects (template-editor design decision 1).
+  // Not part of the list's row.
+  template: TemplateRef;
 }
 
 const LETTER = /\p{L}/u;
@@ -44,9 +48,11 @@ export interface SummarizeOptions {
   // The clock the hidden problems are judged by; a snooze that has ended
   // counts again. Defaults to the real one.
   now?: Date;
+  // The account's own templates, among which the project's is resolved.
+  templates?: readonly Template[];
 }
 
-export function summarize(doc: Y.Doc, { campaigns, now = new Date() }: SummarizeOptions): Summary {
+export function summarize(doc: Y.Doc, { campaigns, now = new Date(), templates = [] }: SummarizeOptions): Summary {
   const meta = readMeta(doc);
   const todo = readTodo(doc);
   const linked =
@@ -74,11 +80,12 @@ export function summarize(doc: Y.Doc, { campaigns, now = new Date() }: Summarize
     errors: null,
     warnings: null,
     gdrarchive: meta.gdrarchive,
+    template: meta.template,
   };
   if (meta.category === 'campaign') return summary;
 
   const text = readDocument(doc);
-  const { model, problems } = parseAdventure(text, { template: adventureTemplateOf(meta) });
+  const { model, problems } = parseAdventure(text, { template: adventureTemplateOf(meta, templates) });
   const body = model.meta.range ? text.slice(model.meta.range.end.offset) : text;
   summary.scenes = model.scenes.length;
   summary.words = countWords(body);

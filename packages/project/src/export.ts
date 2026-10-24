@@ -1,3 +1,4 @@
+import type { Template } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { migratedView } from './board-migration.js';
 import { readDocumentBoard, type FileEntry, type NamedCategory, type PromptRow } from './board.js';
@@ -17,6 +18,8 @@ export interface ExportOptions {
   campaignTitle: string | null;
   // ISO date-time of the last stored edit, when the caller knows it.
   editedAt?: string;
+  // The account's own templates, among which the project's is resolved.
+  templates?: readonly Template[];
 }
 
 // A GFM task list. A due date follows the text; a note is a continuation
@@ -168,9 +171,9 @@ const PARTS: [NamedCategory, string, string][] = [
 // scene's, the ones in the Unmatched tray in files/unmatched. A board from
 // before image categories is read migrated, the document left as it is.
 // Thumbnails are not listed. A campaign's board.md is empty.
-export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[] } {
+export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { markdown: string; files: ExportFile[] } {
   const view = migratedView(doc);
-  const { rows, named, unmatched } = readDocumentBoard(view);
+  const { rows, named, unmatched } = readDocumentBoard(view, templates);
   const taken = new Map<string, Set<string>>();
   const names = new Map<string, string>();
   const files: ExportFile[] = [];
@@ -245,7 +248,7 @@ export function exportBoard(doc: Y.Doc): { markdown: string; files: ExportFile[]
 // every seed version newest first, the sources of inspiration, the research,
 // the brainstorm log, the board and the metadata. Snapshots stay on the
 // server; the board's files come from exportBoard.
-export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOptions): Record<string, string> {
+export function exportProject(doc: Y.Doc, { campaignTitle, editedAt, templates = [] }: ExportOptions): Record<string, string> {
   const meta = readMeta(doc);
   const seeds = seedVersions(doc)
     .reverse()
@@ -272,7 +275,7 @@ export function exportProject(doc: Y.Doc, { campaignTitle, editedAt }: ExportOpt
     'inspiration.md': inspirationMarkdown(readInspiration(doc)),
     'research.md': researchMarkdown(readTopics(doc), readNotes(doc)),
     'brainstorm-log.md': logMarkdown(readLog(doc)),
-    'board.md': exportBoard(doc).markdown,
+    'board.md': exportBoard(doc, templates).markdown,
     'project.json': `${JSON.stringify(project, null, 2)}\n`,
   };
 }

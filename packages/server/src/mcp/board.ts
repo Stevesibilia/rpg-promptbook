@@ -145,7 +145,7 @@ const IMAGE_RULES =
   'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
   'Start each image prompt with words no other prompt starts with: the downloads find their prompt by their first words.';
 
-export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: ToolKit): void {
+export function registerBoardTools({ tool, projectOf, docOf, write, templates, schemas }: ToolKit): void {
   const { projectId, requiredText, text } = schemas;
   const promptId = requiredText(64).describe('The image prompt’s id as get_board gives it.');
   const sceneId = requiredText(64).describe('The scene’s id as get_board gives it, such as S3.');
@@ -174,7 +174,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
     { projectId },
     async (args) => {
       const project = boardable(await projectOf(args.projectId));
-      return boardOut(readDocumentBoard(migratedView(await docOf(project))));
+      const extra = await templates();
+      return boardOut(readDocumentBoard(migratedView(await docOf(project)), extra));
     },
   );
 
@@ -199,12 +200,13 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
     async (args) => {
       if (args.image === undefined && args.music === undefined) throw invalid('Send image, music or both.');
       const project = boardable(await projectOf(args.projectId));
+      const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
-        const before = readDocumentBoard(doc);
+        const before = readDocumentBoard(doc, extra);
         if (!before.rows.some((r) => r.sceneId === args.sceneId)) throw unknownScene(before, args.sceneId);
         const image = args.image ? setFirstScenePrompt(doc, args.sceneId, args.image.prompt, 'claude') : null;
         if (args.music) setMusicPrompt(doc, args.sceneId, args.music, 'claude');
-        const board = readDocumentBoard(doc);
+        const board = readDocumentBoard(doc, extra);
         const written = board.rows.find((r) => r.sceneId === args.sceneId)!;
         const warnings = image ? sharedWords(board, image.id) : [];
         if (args.music && written.duplicateTitle) {
@@ -242,9 +244,10 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
         if (args.sceneId !== undefined) throw invalid('Only a scene prompt has a sceneId.');
       }
       const project = boardable(await projectOf(args.projectId));
+      const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (args.category === 'scene') {
-          const before = readDocumentBoard(doc);
+          const before = readDocumentBoard(doc, extra);
           if (!before.rows.some((r) => r.sceneId === args.sceneId)) throw unknownScene(before, args.sceneId!);
         }
         const added = addImagePrompt(
@@ -254,7 +257,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
             : { category: args.category, name: args.name!, prompt: args.prompt },
           'claude',
         );
-        const board = readDocumentBoard(doc);
+        const board = readDocumentBoard(doc, extra);
         return {
           prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!),
           warnings: sharedWords(board, added.id),
@@ -271,8 +274,9 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
     async (args) => {
       if (args.prompt === undefined && args.name === undefined) throw invalid('Send prompt, name or both.');
       const project = boardable(await projectOf(args.projectId));
+      const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
-        const found = allPrompts(readDocumentBoard(doc)).find((p) => p.prompt.id === args.id);
+        const found = allPrompts(readDocumentBoard(doc, extra)).find((p) => p.prompt.id === args.id);
         if (!found) throw UNKNOWN_PROMPT();
         if (args.name !== undefined && found.prompt.category === 'scene') throw invalid('A scene prompt has no name.');
         updateImagePrompt(
@@ -281,7 +285,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
           { ...(args.prompt !== undefined ? { prompt: args.prompt } : {}), ...(args.name !== undefined ? { name: args.name } : {}) },
           'claude',
         );
-        const board = readDocumentBoard(doc);
+        const board = readDocumentBoard(doc, extra);
         return {
           prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!),
           warnings: args.prompt !== undefined ? sharedWords(board, args.id) : [],
@@ -297,8 +301,9 @@ export function registerBoardTools({ tool, projectOf, docOf, write, schemas }: T
     { projectId, id: promptId },
     async (args) => {
       const project = boardable(await projectOf(args.projectId));
+      const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
-        if (!allPrompts(readDocumentBoard(doc)).some((p) => p.prompt.id === args.id)) throw UNKNOWN_PROMPT();
+        if (!allPrompts(readDocumentBoard(doc, extra)).some((p) => p.prompt.id === args.id)) throw UNKNOWN_PROMPT();
         const { images } = removeImagePrompt(doc, args.id);
         return { removed: args.id, imagesToUnmatched: images };
       });

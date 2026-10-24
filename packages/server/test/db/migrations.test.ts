@@ -58,6 +58,7 @@ describe('migrations', () => {
       '004_desktop.sql',
       '005_files.sql',
       '006_gdrarchive.sql',
+      '007_document_templates.sql',
     ]);
 
     const user = await findUserByUsername(old, 'steve');
@@ -121,5 +122,26 @@ describe('migrations', () => {
     expect(await insert(url, '')).toEqual([{ gdrarchive_url: url, gdrarchive_label: '' }]);
     await expect(insert(url, null)).rejects.toMatchObject({ code: '23514' });
     await expect(insert(null, 'Kulthos')).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('007 reads existing rows as no template, takes both columns or neither, and keeps versions per account', async () => {
+    const user = await findUserByUsername(old, 'steve');
+    expect(await old.query('select template_id, template_version from projects')).toEqual(
+      (await old.query('select 1 from projects')).map(() => ({ template_id: null, template_version: null })),
+    );
+    const insert = (id: string | null, version: number | null) =>
+      old.query(
+        `insert into projects (id, owner_id, category, title, status, template_id, template_version)
+         values (gen_random_uuid(), $1, 'one-shot', 'Prova', 'draft', $2, $3) returning template_id, template_version`,
+        [user!.id, id, version],
+      );
+    expect(await insert('t-0123456789', 2)).toEqual([{ template_id: 't-0123456789', template_version: 2 }]);
+    await expect(insert('t-0123456789', null)).rejects.toMatchObject({ code: '23514' });
+    await expect(insert(null, 1)).rejects.toMatchObject({ code: '23514' });
+    const version = (v: number) =>
+      old.query("insert into document_templates (user_id, id, version, body) values ($1, 't-0123456789', $2, '{}')", [user!.id, v]);
+    await version(1);
+    await expect(version(1)).rejects.toMatchObject({ code: '23505' });
+    await expect(version(0)).rejects.toMatchObject({ code: '23514' });
   });
 });

@@ -6,9 +6,11 @@ const campaign = { id: '00000000-0000-4000-8000-0000000000c1', title: 'Cronaca d
 const dates = { createdAt: '2026-10-01T10:00:00.000Z', editedAt: '2026-10-20T09:00:00.000Z', deletedAt: null };
 
 describe('project row', () => {
-  it('is the summary with the dates', () => {
+  it('is the summary with the dates, without the template the server keeps apart', () => {
     const summary = summarize(project({ document: 'Testo.' }), { campaigns: [] });
-    expect(projectRow(summary, dates, [])).toEqual({ ...summary, ...dates });
+    const { template, ...fields } = summary;
+    expect(template).toEqual({ id: 'avventura', version: 1 });
+    expect(projectRow(summary, dates, [])).toEqual({ ...fields, ...dates });
   });
 
   it('keeps a link to a live campaign and reads any other as stand-alone', () => {

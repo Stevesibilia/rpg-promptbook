@@ -1,4 +1,4 @@
-import { parseAdventure, type AppendixRow } from 'promptbook-format';
+import { parseAdventure, type AppendixRow, type Template } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, readDocument, readMeta, record, str } from './doc.js';
 import { matchKey } from './match.js';
@@ -801,15 +801,16 @@ export interface DocumentBoard {
 // The board as the stored document gives it: the appendix parsed from the
 // prep document and joined to the prompts and files. A campaign is never
 // parsed and has no rows. Read a document that may predate image categories
-// through migratedView (board-migration.ts).
-export function readDocumentBoard(doc: Y.Doc): DocumentBoard {
+// through migratedView (board-migration.ts). `templates` are the account's
+// own, among which the project's template is resolved.
+export function readDocumentBoard(doc: Y.Doc, templates: readonly Template[] = []): DocumentBoard {
   const files = readFiles(doc);
   const prompts = readImagePrompts(doc);
   const meta = readMeta(doc);
   const appendix =
     meta.category === 'campaign'
       ? []
-      : parseAdventure(readDocument(doc), { template: adventureTemplateOf(meta) }).model.appendix;
+      : parseAdventure(readDocument(doc), { template: adventureTemplateOf(meta, templates) }).model.appendix;
   const rows = boardRows(appendix, readBoard(doc), prompts, files);
   const shown = new Set(rows.map((r) => r.sceneId));
   const hidden = [...new Set(prompts.flatMap((p) => (p.sceneId !== null && !shown.has(p.sceneId) ? [p.sceneId] : [])))];

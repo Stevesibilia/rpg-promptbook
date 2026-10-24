@@ -23,13 +23,13 @@ TypeScript.
 
 ## 3. Server: storage, API, creation (brief A)
 
-- [ ] 3.1 `migrations/007_document_templates.sql` (D1)
-- [ ] 3.2 `templates.ts`: `listTemplates`, `accountTemplates`, id generation (D2, D4); `routes/templates.ts` with the four routes (D3); registered in `app.ts`
-- [ ] 3.3 `projects.ts`: `template_id`/`template_version` from the summary like gdrarchive (D1); `createProject` with the optional `template` and the default rule (D6); `routes/projects.ts` `createBody`; `seed.ts`
-- [ ] 3.4 `routes/settings.ts`: `defaultTemplates` optional (D6)
-- [ ] 3.5 Every server reader passes `accountTemplates` as `extra` (D4): `snapshots.ts`, `mcp/edits.ts`, `mcp/tools.ts`
-- [ ] 3.6 DB tests: the four routes (409s, kind check, ids), usage counts, creation with and without `template`, `template_unknown`, a settings PUT without `defaultTemplates`, a project on an own template checked by the connector's `get_outline`
-- [ ] 3.7 Commit `feat(server): account document templates`
+- [x] 3.1 `migrations/007_document_templates.sql` (D1)
+- [x] 3.2 `templates.ts`: `listTemplates`, `accountTemplates`, id generation (D2, D4); `routes/templates.ts` with the four routes (D3); registered in `app.ts`
+- [x] 3.3 `projects.ts`: `template_id`/`template_version` from the summary like gdrarchive (D1); `createProject` with the optional `template` and the default rule (D6); `routes/projects.ts` `createBody`; `seed.ts`
+- [x] 3.4 `routes/settings.ts`: `defaultTemplates` optional (D6)
+- [x] 3.5 Every server reader passes `accountTemplates` as `extra` (D4): `snapshots.ts`, `mcp/edits.ts`, `mcp/tools.ts`
+- [x] 3.6 DB tests: the four routes (409s, kind check, ids), usage counts, creation with and without `template`, `template_unknown`, a settings PUT without `defaultTemplates`, a project on an own template checked by the connector's `get_outline`
+- [x] 3.7 Commit `feat(server): account document templates`
 
 ## 4. Desktop (brief A)
 
