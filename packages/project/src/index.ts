@@ -183,8 +183,9 @@ export {
 export { projectRow, type ProjectRow, type RowDates } from './row.js';
 export { Sha256, sha256Hex } from './sha256.js';
 export { defaultSettings, type Settings } from './settings.js';
-export { formatOf, skeletonDocument, type SkeletonInput } from './skeleton.js';
+export { formatOf, REACTIONS_THEN, skeletonDocument, type SkeletonInput } from './skeleton.js';
 export { FILE_LIMITS, MAX_FILE_BYTES, sniff, SNIFF_BYTES, type Sniffed } from './sniff.js';
 export { countWords, summarize, type SummarizeOptions, type Summary } from './summary.js';
 export { findTarget, targetsOf, type FoundTarget, type Target } from './targets.js';
+export { updateEdits, type UpdateOptions } from './update.js';
 export { adventureTemplateOf, readTemplateRef, templateKindOf, templateOf } from './template.js';

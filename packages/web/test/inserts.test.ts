@@ -108,8 +108,10 @@ describe('placeInsert in template order', () => {
   });
 
   it('fills an empty scene field by field, one blank line between each', () => {
-    const at = skeleton.indexOf('### S1.');
-    let text = skeleton;
+    // The starting document's first scene comes with its fields: empty it.
+    const empty = skeleton.replace(/(### S1\. Prima scena\n)[\s\S]*?(\n## Indizi\n)/, '$1$2');
+    const at = empty.indexOf('### S1.');
+    let text = empty;
     for (const label of ['In gioco', 'Luogo e momento', 'Da non perdere qui']) {
       text = run(text, { kind: 'field', label }, at).replace('‸', '');
     }

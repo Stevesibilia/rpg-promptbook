@@ -12,8 +12,9 @@ export const readAloudAfter = (template: AdventureTemplate): string | undefined 
   template.sceneFields.find((f) => f.role === 'mustHave')?.label;
 
 // The template has no data for the reactions table's second header yet
-// (design decision 8).
-export const REACTIONS_THEN = 'Allora…';
+// (design decision 8); the starting document writes the same one.
+import { REACTIONS_THEN } from 'promptbook-project';
+export { REACTIONS_THEN };
 
 export type Insert =
   // A missing scene field, in template order.

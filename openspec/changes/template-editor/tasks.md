@@ -15,11 +15,11 @@ TypeScript.
 
 ## 2. Project: skeleton, settings, update (brief A)
 
-- [ ] 2.1 `settings.ts`: `defaultTemplates` with built-in ids as default (D6)
-- [ ] 2.2 `skeleton.ts`: the first scene's parts and the strong start's callouts (D9); `system` from the template unless settings set one (D7); kind check (D15)
-- [ ] 2.3 `update.ts`: `updateEdits` (D10)
-- [ ] 2.4 Tests: skeletons for both built-ins (update the pinned strings, D9), `updateEdits` on Sabaoth with a renamed strong start and an added section, the kind check
-- [ ] 2.5 Commit `feat(project): richer starting documents and updates between template versions`
+- [x] 2.1 `settings.ts`: `defaultTemplates` with built-in ids as default (D6)
+- [x] 2.2 `skeleton.ts`: the first scene's parts and the strong start's callouts (D9); `system` from the template unless settings set one (D7); kind check (D15)
+- [x] 2.3 `update.ts`: `updateEdits` (D10)
+- [x] 2.4 Tests: skeletons for both built-ins (update the pinned strings, D9), `updateEdits` on Sabaoth with a renamed strong start and an added section, the kind check
+- [x] 2.5 Commit `feat(project): richer starting documents and updates between template versions`
 
 ## 3. Server: storage, API, creation (brief A)
 

@@ -7,6 +7,7 @@ import { parseBody } from '../validation.js';
 
 const item = z.string().trim().min(1, 'an item needs a text').max(200);
 const text = z.string().trim().max(200);
+const templateId = z.string().trim().min(1).max(64);
 
 export const settingsSchema = z
   .object({
@@ -16,6 +17,12 @@ export const settingsSchema = z
         z.ZodArray<typeof item>
       >)
       .strict(),
+    // Optional, so a desktop app from before templates could be chosen
+    // (v0.12) still saves its settings: the built-ins then.
+    defaultTemplates: z
+      .object({ adventure: templateId, campaign: templateId })
+      .strict()
+      .default(() => defaultSettings().defaultTemplates),
     author: text,
     copyright: text,
     licence: text,
