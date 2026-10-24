@@ -8,10 +8,10 @@ TypeScript.
 
 ## 1. Format: uids, system, changes (brief A)
 
-- [ ] 1.1 `template/schema.ts`: optional `uid` on sections, scene fields, callouts, meta keys; optional `system` (adventure) and `copiedFrom` (both kinds) (D7)
-- [ ] 1.2 `template/changes.ts`: `TemplateChange`, `templateChanges(from, to)` matching by uid, role, then name (D8); exported
-- [ ] 1.3 Tests: renames by role and by uid, added and removed rows, requirement, form, climax, box places and count, limits, name
-- [ ] 1.4 Commit `feat(format): template uids and the changes between two templates`
+- [x] 1.1 `template/schema.ts`: optional `uid` on sections, scene fields, callouts, meta keys; optional `system` (adventure) and `copiedFrom` (both kinds) (D7)
+- [x] 1.2 `template/changes.ts`: `TemplateChange`, `templateChanges(from, to)` matching by uid, role, then name (D8); exported
+- [x] 1.3 Tests: renames by role and by uid, added and removed rows, requirement, form, climax, box places and count, limits, name
+- [x] 1.4 Commit `feat(format): template uids and the changes between two templates`
 
 ## 2. Project: skeleton, settings, update (brief A)
 

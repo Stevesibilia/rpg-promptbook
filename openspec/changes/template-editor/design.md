@@ -213,6 +213,8 @@ and the update dialog all use it; the mockup's sentences ("Section «X»
 renamed «Y»", "Scene field «X» now required") are its rendering in
 `web/src/templates/changes.ts`.
 
+Amended at build: `TemplateChange` also has `after?: string`, the new value for a changed requirement, form, column, places, count, key type or limit. `detail` gains `'moved'`, for sections, fields and keys outside the longest kept order, and `'type'` for a key's type. `what` gains `'system'`. Limits and style give one change per field (`synopsisWords`, `preambleWords`, `reminders`, `revelationClues`, `revelationScenes`, `style`), with `before` and `after` as text. A section's `heading` changing under the same name, and a box's `[!type|meta]` changing under the same uid, count as `renamed`. Ids, tables, sheets, appendix and references are not diffed: the editor doesn't edit them. `updateEdits` doesn't reorder text for `moved`.
+
 ### D9. The starting document (plan)
 
 `skeletonDocument` writes, under the scenes section, `### S1. Prima scena`,
