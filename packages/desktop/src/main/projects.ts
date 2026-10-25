@@ -1,6 +1,7 @@
 import { projectRow, readMeta, summarize, type CampaignRef, type ProjectRow } from 'promptbook-project';
 import type { ServerClient } from './server.js';
 import type { ProjectRecord, Store } from './store.js';
+import { cachedTemplates } from './templates.js';
 import type { SyncEngine } from './sync.js';
 
 // The projects list on this device (desktop-app design decisions 7 and 10).
@@ -68,7 +69,7 @@ export class ProjectList {
     if (!record || !doc || !this.engine.isDownloaded(id) || readMeta(doc).id !== id) return;
     let summary;
     try {
-      summary = summarize(doc, { campaigns: this.campaigns() });
+      summary = summarize(doc, { campaigns: this.campaigns(), templates: cachedTemplates(this.store) });
     } catch {
       return;
     }

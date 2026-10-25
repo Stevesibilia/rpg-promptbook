@@ -12,6 +12,7 @@ import { OfflineError, type ServerClient } from './server.js';
 import { expiresAt, type LocalSnapshots } from './snapshots.js';
 import type { LocalSnapshotRecord, Store } from './store.js';
 import type { SyncEngine } from './sync.js';
+import { noTemplates, TEMPLATES_KEY, TemplateUnknownError } from './templates.js';
 import { setDocumentText } from './text.js';
 
 // The web client's REST calls on the desktop (desktop-app design decision
@@ -116,6 +117,9 @@ export class Router {
       if (route === 'GET /api/projects') return await this.projects(url.searchParams.get('bin') === '1');
       if (route === 'POST /api/projects') return this.createProject(init.body);
       if (route === 'GET /api/settings') return await this.cached('settings', path, () => defaultSettings());
+      // Read offline from the last copy; the writes are forwarded below and
+      // answer 503 offline.
+      if (route === 'GET /api/templates') return await this.cached(TEMPLATES_KEY, path, noTemplates);
       if (route === 'GET /api/auth/me') return await this.cached('me', path, () => ({ user: null }));
       if (route === 'GET /api/auth/config') return await this.cached('auth-config', path, null);
       const snapshots = SNAPSHOTS.exec(url.pathname);
@@ -186,6 +190,7 @@ export class Router {
       return json(201, { project: this.deps.creator.create(input) });
     } catch (error) {
       if (error instanceof InvalidCampaignError) return json(400, { error: 'invalid_campaign', message: error.message });
+      if (error instanceof TemplateUnknownError) return json(400, { error: 'template_unknown', message: error.message });
       throw error;
     }
   }

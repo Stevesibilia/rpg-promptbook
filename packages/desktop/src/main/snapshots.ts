@@ -3,6 +3,7 @@ import { parseAdventure, type Template } from 'promptbook-format';
 import { countWords, readDocument, readMeta, templateOf } from 'promptbook-project';
 import type { LocalSnapshotsMode } from 'promptbook-web/src/platform/bridge.js';
 import type { LocalSnapshotKind, LocalSnapshotRecord, Store } from './store.js';
+import { cachedTemplates } from './templates.js';
 import type { SyncEngine } from './sync.js';
 
 // Snapshots of the prep document taken on this device (desktop-app design
@@ -146,7 +147,7 @@ export class LocalSnapshots {
       kind,
       label: cutLabel(label),
       text: body,
-      words: documentWords(body, templateOf(readMeta(doc))),
+      words: documentWords(body, templateOf(readMeta(doc), cachedTemplates(this.options.store))),
     };
     this.options.store.insertSnapshot(record);
     this.last.set(id, body);

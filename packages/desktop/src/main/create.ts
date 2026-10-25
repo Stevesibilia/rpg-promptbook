@@ -12,14 +12,17 @@ import {
   type Settings,
   type Status,
 } from 'promptbook-project';
+import type { TemplateRef } from 'promptbook-format';
 import * as Y from 'yjs';
 import type { ProjectList } from './projects.js';
 import { HttpError, OfflineError, type ServerClient } from './server.js';
 import type { Store } from './store.js';
 import type { SyncEngine } from './sync.js';
+import { cachedTemplates, templateForNewProject } from './templates.js';
 
 // New projects on the desktop, online or not (desktop-app design decision 9):
-// made on this device from the cached settings with an id chosen here, kept
+// made on this device from the cached settings and templates with an id
+// chosen here, kept
 // in the store, then uploaded with that id and the Yjs state before their
 // provider attaches: at once when online, and on every reconnect for those
 // not uploaded yet. 201 or 200 attach the provider; 409 or 400 leave the
@@ -32,6 +35,8 @@ export interface NewProjectInput {
   system?: string;
   status: Status;
   seed: string;
+  // The settings' default for the category's kind when not given.
+  template?: TemplateRef;
 }
 
 export class ValidationError extends Error {}
@@ -54,6 +59,14 @@ export function readNewProject(body: unknown): NewProjectInput {
   const seed = b.seed ?? '';
   if (typeof seed !== 'string' || seed.length > 10_000) throw new ValidationError('seed: is too long.');
   const input: NewProjectInput = { category: b.category, title, campaignId, status, seed };
+  if (b.template !== undefined) {
+    const t = b.template as { id?: unknown; version?: unknown } | null;
+    const id = typeof t?.id === 'string' ? t.id.trim() : '';
+    if (!id || id.length > 64 || !Number.isInteger(t?.version) || (t!.version as number) < 1) {
+      throw new ValidationError('template: is not a template id and version.');
+    }
+    input.template = { id, version: t!.version as number };
+  }
   if (b.system !== undefined) {
     if (typeof b.system !== 'string' || b.system.trim().length > 200) throw new ValidationError('system: is too long.');
     input.system = b.system.trim();
@@ -86,9 +99,14 @@ export class Creator {
         ? null
         : campaigns.find((c) => c.id === input.campaignId);
     if (campaign === undefined) throw new InvalidCampaignError('campaignId: is not one of your campaigns.');
+    const templates = cachedTemplates(this.store);
+    const template = templateForNewProject(templates, input.category, settings, input.template);
     const id = randomUUID();
     const createdAt = new Date(this.now()).toISOString();
-    const system = input.system ?? settings.system;
+    // The template's game system when neither the input nor the settings
+    // name one, as the front matter writes it.
+    const system =
+      (input.system ?? settings.system).trim() || (template.kind === 'adventure' ? (template.system ?? '') : '');
     const doc = createProjectDoc({
       id,
       title: input.title,
@@ -99,17 +117,22 @@ export class Creator {
       seed: input.seed,
       createdAt,
       todo: settings.todoTemplates[input.category] ?? [],
-      document: skeletonDocument(input.category, {
-        title: input.title,
-        system,
-        campaignTitle: campaign?.title ?? null,
-        author: settings.author,
-        copyright: settings.copyright,
-        licence: settings.licence,
-      }),
+      template: { id: template.id, version: template.version },
+      document: skeletonDocument(
+        input.category,
+        {
+          title: input.title,
+          system,
+          campaignTitle: campaign?.title ?? null,
+          author: settings.author,
+          copyright: settings.copyright,
+          licence: settings.licence,
+        },
+        template,
+      ),
     });
     const row = projectRow(
-      summarize(doc, { campaigns }),
+      summarize(doc, { campaigns, templates }),
       { createdAt, editedAt: createdAt, deletedAt: null },
       campaigns,
     );

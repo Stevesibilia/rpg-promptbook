@@ -33,10 +33,10 @@ TypeScript.
 
 ## 4. Desktop (brief A)
 
-- [ ] 4.1 `router.ts`: `GET /api/templates` cached, writes forwarded, 503 offline (D5)
-- [ ] 4.2 `create.ts`, `snapshots.ts`: the cached templates; creation follows D6
-- [ ] 4.3 Tests: cached templates offline, offline create from an own default
-- [ ] 4.4 Commit `feat(desktop): account templates offline`
+- [x] 4.1 `router.ts`: `GET /api/templates` cached, writes forwarded, 503 offline (D5)
+- [x] 4.2 `create.ts`, `snapshots.ts`: the cached templates; creation follows D6
+- [x] 4.3 Tests: cached templates offline, offline create from an own default
+- [x] 4.4 Commit `feat(desktop): account templates offline`
 
 ## 5. Web data layer (brief A)
 
