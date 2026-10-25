@@ -22,6 +22,7 @@ export function AppRoutes() {
         <Route path="/" element={<ProjectsPage />} />
         <Route path="/bin" element={<BinPage />} />
         <Route path="/settings/:section?" element={<SettingsPage />} />
+        <Route path="/settings/:section/:templateId" element={<SettingsPage />} />
         {platform.kind === 'web' && <Route path={SIGNED_IN_PATH} element={<SignedInPage />} />}
         {platform.kind === 'web' && <Route path="/authorize" element={<AuthorizePage />} />}
         <Route

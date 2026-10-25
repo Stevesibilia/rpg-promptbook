@@ -97,3 +97,417 @@
     flex-wrap: wrap;
   }
 }
+
+/* The editor */
+.pane.wide {
+  max-width: 1480px;
+}
+.pane.wide .set {
+  grid-template-columns: 160px minmax(0, 1fr);
+}
+.te-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.te-head .back {
+  color: var(--muted);
+  text-decoration: none;
+}
+.te .banner {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--info) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border));
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.te .banner b {
+  color: var(--text);
+}
+.te .banner .tb,
+.te .banner .needs {
+  margin-left: auto;
+}
+.te-gen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.te-gen .field {
+  margin: 0;
+}
+.te-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px);
+  gap: 16px;
+  align-items: start;
+}
+.te-main {
+  min-width: 0;
+}
+.te .tabs {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.te .tabs button.on {
+  font-weight: 600;
+}
+.te .tabs .n {
+  font-size: 11px;
+  color: var(--faint);
+  margin-left: 4px;
+}
+.rows {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rh,
+.rr {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+}
+.rh {
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 1px solid var(--border);
+}
+.rr {
+  border-bottom: 1px solid var(--border);
+}
+.rr.changed {
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+.rr.added {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.rr input:not([type='checkbox']),
+.rr select {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 7px;
+  font-size: 13.5px;
+}
+.rr input:disabled:not([type='checkbox']),
+.rr select:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+  opacity: 1;
+  appearance: none;
+}
+.g-sec {
+  grid-template-columns: 44px minmax(0, 1fr) 118px 150px 30px;
+}
+.g-fld {
+  grid-template-columns: 44px minmax(0, 1fr) 82px 112px 118px 64px 30px;
+}
+.g-box {
+  grid-template-columns: minmax(0, 1.2fr) 96px 72px minmax(0, 1.4fr) 92px 30px;
+}
+.g-key {
+  grid-template-columns: 44px minmax(0, 1fr) 90px 112px 128px 30px;
+}
+.mv {
+  display: flex;
+  flex-direction: column;
+}
+.mv button {
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 12px;
+  padding: 0 6px;
+  border-radius: 3px;
+}
+.mv button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--hover);
+}
+.role {
+  font: 500 11.5px var(--font);
+  color: var(--muted);
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.role .ic {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  flex: none;
+}
+.role.custom {
+  color: var(--faint);
+  font-style: italic;
+}
+.rr .del {
+  color: var(--faint);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.rr .del:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--hover);
+}
+.box-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.box-name code {
+  font-size: 12px;
+}
+.places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.tg {
+  font: 500 11.5px var(--font);
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--faint);
+  white-space: nowrap;
+}
+.tg.on {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+}
+.tg:disabled {
+  opacity: 1;
+}
+.rr select.tg.add-place {
+  width: auto;
+  padding: 1px 4px;
+  font-size: 11.5px;
+  border-radius: 999px;
+  background: transparent;
+}
+.rows .add {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px dashed var(--border);
+}
+.rows .add input {
+  flex: 1;
+  min-width: 0;
+}
+.lim {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 14px;
+}
+.lim .field {
+  margin: 0;
+}
+.lim .pair {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.lim .pair input {
+  width: 80px;
+}
+.chk {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+}
+.chk input {
+  margin-top: 3px;
+}
+.field label.chk {
+  font: inherit;
+  color: var(--text);
+  letter-spacing: 0;
+}
+.chk small {
+  display: block;
+  color: var(--faint);
+}
+
+/* The starting document */
+.pv {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pv .ph {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font: 600 12px var(--font);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.pv .ph .chip {
+  margin-left: auto;
+}
+.pv .pb.editor {
+  max-width: none;
+  max-height: calc(100vh - 290px);
+  overflow: auto;
+  margin: 0;
+  padding: 10px 14px 14px;
+}
+.pv .editor .cm-editor {
+  font: 14px/22px var(--prose);
+}
+.pv .editor .cm-scroller {
+  line-height: 22px;
+}
+.pv .editor .cm-line.cm-h2 {
+  font: 700 19px/28px var(--display);
+  padding-top: 10px;
+}
+.pv .editor .cm-line.cm-h3 {
+  font: 600 16px/24px var(--prose);
+  padding-top: 6px;
+}
+.pv .editor .cm-line.cm-fm,
+.pv .editor .cm-fm-more {
+  font: 12px/22px var(--mono);
+}
+.pv .editor .cm-line.pv-blank {
+  line-height: 6px;
+}
+.pv .editor .cm-line.pv-hl {
+  background: color-mix(in srgb, var(--amber) 16%, transparent);
+}
+.pv .editor .cm-line.pv-new {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.pv-out {
+  color: var(--faint);
+  font: italic 12px var(--font);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+/* The save bar */
+.savebar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border));
+  border-radius: 8px;
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+}
+.savebar .msg {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+.savebar .msg b {
+  color: var(--amber);
+}
+.savebar .issues {
+  display: block;
+  color: var(--danger);
+}
+.savebar .issues span {
+  display: block;
+}
+
+/* The dialogs */
+.modal.sm {
+  width: min(560px, calc(100vw - 32px));
+}
+.chg {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.chg li {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.chg li:last-child {
+  border-bottom: 0;
+}
+.chg .k {
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  width: 62px;
+  flex: none;
+}
+.chg .k.added {
+  color: var(--primary);
+}
+.chg .k.changed {
+  color: var(--amber);
+}
+.chg .k.removed {
+  color: var(--danger);
+}
+.modal.sm .mb p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+.modal.sm .mb .field input,
+.modal.sm .mb .field select {
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .te-body {
+    grid-template-columns: 1fr;
+  }
+  .pv {
+    position: static;
+  }
+  .pv .pb.editor {
+    max-height: 360px;
+  }
+}
+@media (max-width: 760px) {
+  .te-gen {
+    grid-template-columns: 1fr;
+  }
+  .rows {
+    overflow-x: auto;
+  }
+  .rh,
+  .rr {
+    min-width: 620px;
+  }
+}

@@ -55,8 +55,8 @@ TypeScript.
 
 ## 7. The template editor (brief B)
 
-- [ ] 7.1 `templates/TemplateEditor.tsx` (route `/settings/documents/:id`), its tabs and rows, locks (D11), uids for added items (D7), the preview from `skeletonDocument` (D9), the save bar and save dialog with `templateChanges` (D8), the conflict message, discard on leave (D16)
-- [ ] 7.2 Commit `feat(web): template editor`
+- [x] 7.1 `templates/TemplateEditor.tsx` (route `/settings/documents/:id`), its tabs and rows, locks (D11), uids for added items (D7), the preview from `skeletonDocument` (D9), the save bar and save dialog with `templateChanges` (D8), the conflict message, discard on leave (D16)
+- [x] 7.2 Commit `feat(web): template editor`
 
 ## 8. Projects (brief B)
 
