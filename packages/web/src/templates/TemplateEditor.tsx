@@ -63,6 +63,7 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
   const [tab, setTab] = useState<Tab>('sections');
   const [dialog, setDialog] = useState<'save' | 'leave' | null>(null);
   const [duplicateError, setDuplicateError] = useState('');
+  const [duplicating, setDuplicating] = useState(false);
   const readOnly = builtin || offline;
   const campaign = draft.kind === 'campaign';
 
@@ -73,7 +74,9 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
   if (check.ok) lastValid.current = check.template;
   const valid = lastValid.current;
   const changes = useMemo(() => templateChanges(base, valid), [base, valid]);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(base), [draft, base]);
+  // Unsaved: what the save would change, or a draft that cannot be saved.
+  // Every control edits something templateChanges compares.
+  const dirty = !check.ok || changes.length > 0;
 
   const text = useMemo(
     () =>
@@ -97,12 +100,23 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
   );
 
   // Leaving with unsaved changes asks first (design decision 16): the tab's
-  // close and reload, and the page's own ways out (the rail, the logo, the
-  // Settings menu), caught before they navigate.
-  const leaving = useRef<HTMLElement | null>(null);
+  // close and reload, the page's own ways out (the rail, the logo, the
+  // Settings menu), caught before they navigate, and the browser's Back,
+  // caught by an extra history entry for the same address.
+  const leaving = useRef<HTMLElement | 'history' | null>(null);
   const allowLeave = useRef(false);
   useEffect(() => {
     if (!dirty) return;
+    const draftEntry = () => (history.state as { templateDraft?: boolean } | null)?.templateDraft === true;
+    if (!draftEntry()) history.pushState({ ...(history.state as object), templateDraft: true }, '');
+    const popState = () => {
+      if (allowLeave.current || draftEntry()) return;
+      // Back from the extra entry: the address is still the editor's. Stay,
+      // and ask.
+      history.pushState({ ...(history.state as object), templateDraft: true }, '');
+      leaving.current = 'history';
+      setDialog('leave');
+    };
     const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     const click = (event: MouseEvent) => {
       if (allowLeave.current || event.defaultPrevented || event.button !== 0) return;
@@ -114,9 +128,11 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
       setDialog('leave');
     };
     window.addEventListener('beforeunload', beforeUnload);
+    window.addEventListener('popstate', popState);
     document.addEventListener('click', click, true);
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('popstate', popState);
       document.removeEventListener('click', click, true);
     };
   }, [dirty]);
@@ -129,7 +145,9 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
   const leave = () => {
     allowLeave.current = true;
     const target = leaving.current;
-    if (target?.isConnected) target.click();
+    // Past the extra entry and the editor's own, to where Back was going.
+    if (target === 'history') history.go(-2);
+    else if (target?.isConnected) target.click();
     else navigate(LIST_PATH);
   };
 
@@ -188,13 +206,17 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
           <NeedsServer>
             <button
               className="tb primary"
-              disabled={offline}
+              disabled={offline || duplicating}
               onClick={() => {
+                if (duplicating) return;
+                setDuplicating(true);
                 setDuplicateError('');
-                duplicate(base).catch((e) => setDuplicateError(e instanceof ApiError ? e.message : 'Duplicating failed.'));
+                duplicate(base)
+                  .catch((e) => setDuplicateError(e instanceof ApiError ? e.message : 'Duplicating failed.'))
+                  .finally(() => setDuplicating(false));
               }}
             >
-              Duplicate
+              {duplicating ? 'Duplicating…' : 'Duplicate'}
             </button>
           </NeedsServer>
           {duplicateError && <span className="err-inline">{duplicateError}</span>}
@@ -315,8 +337,13 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
           title="Discard unsaved changes?"
           action="Discard"
           danger
+          focusCancel
           onConfirm={leave}
-          onClose={() => setDialog(null)}
+          onClose={() => {
+            setDialog(null);
+            const target = leaving.current;
+            if (target instanceof HTMLElement && target.isConnected) target.focus();
+          }}
         >
           Your changes to «{draft.name || base.name}» are not saved.
         </Confirm>

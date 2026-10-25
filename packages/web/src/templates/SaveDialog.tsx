@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { Template, TemplateChange } from 'promptbook-format';
 import { ApiError } from '../api.js';
+import { useOffline } from '../desktop/useDevice.js';
 import { Modal } from '../ui/Modal.js';
-import { ChangeList, useReturnFocus } from './ChangeList.js';
+import { useReturnFocus } from '../ui/focus.js';
+import { ChangeList } from './ChangeList.js';
 
 const projects = (n: number) => `${n} project${n === 1 ? '' : 's'}`;
 
@@ -37,9 +39,16 @@ export function SaveDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState(false);
+  const offline = useOffline();
+  // While a request runs the dialog stays: closing it would let the draft
+  // change under a save that then resets it, or send a second save on the
+  // same version.
+  const close = () => {
+    if (!busy) onClose();
+  };
 
   const save = async () => {
-    if (busy) return;
+    if (busy || offline) return;
     setBusy(true);
     setError('');
     try {
@@ -66,13 +75,13 @@ export function SaveDialog({
       <Modal
         title={`${name} changed`}
         className="sm"
-        onClose={onClose}
+        onClose={close}
         footer={
           <>
-            <button className="tb line" onClick={onClose}>
+            <button className="tb line" disabled={busy} onClick={close}>
               Cancel
             </button>
-            <button className="tb primary" autoFocus disabled={busy} onClick={() => void reload()}>
+            <button className="tb primary" autoFocus disabled={busy || offline} onClick={() => void reload()}>
               Reload
             </button>
           </>
@@ -91,13 +100,13 @@ export function SaveDialog({
     <Modal
       title={`Save ${name} v${next}`}
       className="sm"
-      onClose={onClose}
+      onClose={close}
       footer={
         <>
-          <button className="tb line" onClick={onClose}>
+          <button className="tb line" disabled={busy} onClick={close}>
             Cancel
           </button>
-          <button className="tb primary" disabled={busy} onClick={() => void save()}>
+          <button className="tb primary" disabled={busy || offline} onClick={() => void save()}>
             Save v{next}
           </button>
         </>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Settings } from 'promptbook-project';
 import { api, ApiError } from '../api.js';
@@ -16,11 +16,19 @@ export const editorPath = (id: string) => `/settings/documents/${encodeURICompon
 export function useDuplicate() {
   const { stored, reload } = useTemplates();
   const navigate = useNavigate();
+  // Left meanwhile: the copy is made, but the page the user went to stays.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   return async (source: { id: string; version: number; name: string }) => {
     const taken = [...new Set(stored.map((t) => t.body.name))];
     const copy = await api.duplicateTemplate({ id: source.id, version: source.version }, copyName(source.name, taken));
     await reload();
-    navigate(editorPath(copy.id));
+    if (alive.current) navigate(editorPath(copy.id));
   };
 }
 
@@ -36,6 +44,7 @@ export function TemplateList({ settings, onSave }: { settings: Settings | null; 
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<TemplateEntry | null>(null);
   const entries = templateEntries(stored, usage, settings);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   const run = async (id: string, action: () => Promise<void>) => {
     if (busy) return;
@@ -105,7 +114,9 @@ export function TemplateList({ settings, onSave }: { settings: Settings | null; 
 
   return (
     <section>
-      <h2>Document templates</h2>
+      <h2 ref={heading} tabIndex={-1}>
+        Document templates
+      </h2>
       <p className="lead">
         A template sets a prep document's sections, scene fields and boxes, the checks, and the PDF. A new project
         starts from its category's default. To make your own, duplicate one.
@@ -131,6 +142,7 @@ export function TemplateList({ settings, onSave }: { settings: Settings | null; 
           title={`Delete ${deleting.name}?`}
           action="Delete"
           danger
+          focusCancel
           note="No project uses it. Its versions are deleted too."
           onConfirm={async () => {
             try {
@@ -139,7 +151,12 @@ export function TemplateList({ settings, onSave }: { settings: Settings | null; 
               await reload();
             }
           }}
-          onClose={() => setDeleting(null)}
+          onClose={() => {
+            setDeleting(null);
+            // The row's Delete may be gone with it.
+            const button = document.querySelector<HTMLElement>(`[data-testid="template-${deleting.id}"] .del`);
+            (button ?? heading.current)?.focus();
+          }}
         >
           «{deleting.name}» goes from the list for good.
         </Confirm>

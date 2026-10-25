@@ -6,7 +6,9 @@ import * as Y from 'yjs';
 // tracks the document's text, as before, and the project's meta map only for
 // the transaction that updates the project to another template version: one
 // undo then restores both the text and the version. Every other meta write
-// (title, status, campaign) stays out of the history, as it always was.
+// (title, status, campaign) stays out of the history, as it always was. If
+// another device set the version again after this tab's update, Yjs keeps
+// that newer write: an undo here puts the text back and leaves the version.
 
 // The origin of the update's transaction.
 export const templateUpdateOrigin = Symbol('template update');

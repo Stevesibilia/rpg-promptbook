@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import type { Template, TemplateChange } from 'promptbook-format';
 import { changeText, kindLabel } from './changes.js';
 
@@ -15,16 +14,4 @@ export function ChangeList({ changes, to }: { changes: readonly TemplateChange[]
       ))}
     </ul>
   );
-}
-
-// Gives the focus back to what had it when a dialog opened, once it closes.
-export function useReturnFocus() {
-  const opener = useRef<Element | null>(null);
-  useEffect(() => {
-    opener.current = document.activeElement;
-    return () => {
-      const element = opener.current;
-      if (element instanceof HTMLElement && element.isConnected) element.focus();
-    };
-  }, []);
 }

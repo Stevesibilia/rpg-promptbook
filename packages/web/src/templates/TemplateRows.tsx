@@ -79,6 +79,16 @@ function Role({ name, title }: { name: string | null; title: string }) {
   );
 }
 
+// After a move or a remove draws the rows again, the focus goes where a
+// keyboard user expects it, found once the new rows are in.
+const refocus = (find: () => Element | null | undefined) =>
+  requestAnimationFrame(() => {
+    const element = find();
+    if (element instanceof HTMLElement) element.focus();
+  });
+const usable = (element: Element | null | undefined) =>
+  element instanceof HTMLButtonElement && element.disabled ? null : element;
+
 const markClass = (mark: Mark | null | undefined) => (mark === 'added' ? ' added' : mark === 'changed' ? ' changed' : '');
 
 function Move({ list, index, count, dispatch, readOnly, label }: {
@@ -90,19 +100,27 @@ function Move({ list, index, count, dispatch, readOnly, label }: {
   label: string;
 }) {
   if (readOnly) return <span />;
+  // The same arrow of the moved row keeps the focus, or the other one when
+  // the row reached the end.
+  const move = (button: HTMLElement, by: -1 | 1) => {
+    const rows = button.closest('.rows');
+    dispatch({ type: 'move', list, index, by });
+    const arrow = (dir: string) => rows?.querySelector(`[aria-label="${CSS.escape(`Move ${label} ${dir}`)}"]`);
+    refocus(() => usable(arrow(by < 0 ? 'up' : 'down')) ?? arrow(by < 0 ? 'down' : 'up'));
+  };
   return (
     <span className="mv">
       <button
         aria-label={`Move ${label} up`}
         disabled={index === 0}
-        onClick={() => dispatch({ type: 'move', list, index, by: -1 })}
+        onClick={(e) => move(e.currentTarget, -1)}
       >
         ▲
       </button>
       <button
         aria-label={`Move ${label} down`}
         disabled={index === count - 1}
-        onClick={() => dispatch({ type: 'move', list, index, by: 1 })}
+        onClick={(e) => move(e.currentTarget, 1)}
       >
         ▼
       </button>
@@ -126,7 +144,14 @@ function Remove({ list, index, locked, lockedTip, label, dispatch, readOnly }: {
       aria-label={`Remove ${label}`}
       title={locked ? lockedTip : `Remove ${label}`}
       disabled={locked}
-      onClick={() => dispatch({ type: 'remove', list, index })}
+      onClick={(e) => {
+        // The next row's ✕ (or the one before), else the Add field.
+        const row = e.currentTarget.closest('.rr');
+        const rows = row?.closest('.rows');
+        const near = row?.nextElementSibling?.matches('.rr') ? row.nextElementSibling : row?.previousElementSibling;
+        dispatch({ type: 'remove', list, index });
+        refocus(() => (near?.matches('.rr') ? usable(near.querySelector('.del')) : null) ?? rows?.querySelector('.add input'));
+      }}
     >
       ✕
     </button>
@@ -218,7 +243,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
             <div className={`rr g-sec${markClass(marks[i])}`} key={s.uid ?? s.role ?? `${i}`} data-testid="section-row">
               <Move list="sections" index={i} count={draft.sections.length} dispatch={dispatch} readOnly={readOnly} label={s.name} />
               <input
-                aria-label="Heading"
+                aria-label={`Heading, row ${i + 1}`}
                 value={s.heading ?? s.name}
                 disabled={readOnly}
                 onChange={(e) => {
@@ -295,7 +320,7 @@ export function FieldsTab({ draft, saved, dispatch, readOnly, newUid }: TabProps
           return (
             <div className={`rr g-fld${markClass(marks[i])}`} key={f.uid ?? f.role ?? `${i}`} data-testid="field-row">
               <Move list="sceneFields" index={i} count={draft.sceneFields.length} dispatch={dispatch} readOnly={readOnly} label={f.label} />
-              <input aria-label="Label" value={f.label} disabled={readOnly} onChange={(e) => set({ label: e.target.value })} />
+              <input aria-label={`Label, row ${i + 1}`} value={f.label} disabled={readOnly} onChange={(e) => set({ label: e.target.value })} />
               <select aria-label={`Form: ${f.label}`} value={f.form} disabled={readOnly} onChange={(e) => set({ form: e.target.value as never })}>
                 <option value="inline">inline</option>
                 <option value="block">block</option>
@@ -381,7 +406,12 @@ export function BoxesTab({ draft, saved, dispatch, readOnly, newUid }: TabProps 
                 <code>[!{type}]</code>
                 <input aria-label={`Label of [!${type}]`} value={c.label} disabled={readOnly} onChange={(e) => set({ label: e.target.value })} />
               </span>
-              <select aria-label={`Look: ${c.label}`} value={c.role} disabled={readOnly} onChange={(e) => set({ role: e.target.value as never })}>
+              <select
+                aria-label={`Look: ${c.label}`}
+                value={c.role}
+                // A box's look is chosen when it is added; the app's boxes keep theirs.
+                disabled={readOnly || marks[i] !== 'added'}
+                onChange={(e) => set({ role: e.target.value as never })}>
                 {Object.entries(lookNames).map(([value, name]) => (
                   <option key={value} value={value}>
                     {name}
@@ -400,7 +430,11 @@ export function BoxesTab({ draft, saved, dispatch, readOnly, newUid }: TabProps 
                     disabled={readOnly || c.allowedIn.length === 1}
                     title={readOnly ? undefined : c.allowedIn.length === 1 ? 'A box needs at least one place' : 'Remove this place'}
                     aria-label={`${placeName(p, draft)}: remove from ${c.label}`}
-                    onClick={() => set({ allowedIn: c.allowedIn.filter((x) => x !== p) })}
+                    onClick={(e) => {
+                      const places = e.currentTarget.closest('.places');
+                      set({ allowedIn: c.allowedIn.filter((x) => x !== p) });
+                      refocus(() => places?.querySelector('select, button:not(:disabled)'));
+                    }}
                   >
                     {placeName(p, draft)}
                     {!readOnly && c.allowedIn.length > 1 && <span aria-hidden="true"> ✕</span>}
@@ -486,7 +520,7 @@ export function KeysTab({ draft, saved, dispatch, readOnly, newUid }: TabProps) 
             <div className={`rr g-key${markClass(marks[i])}`} key={k.uid ?? k.key} data-testid="key-row">
               <Move list="meta" index={i} count={draft.meta.length} dispatch={dispatch} readOnly={readOnly} label={k.key} />
               <input
-                aria-label="Key"
+                aria-label={`Key, row ${i + 1}`}
                 value={k.key}
                 disabled={readOnly || !keyRenamable(k)}
                 title={!readOnly && !keyRenamable(k) ? 'The app reads this key by its name' : undefined}
