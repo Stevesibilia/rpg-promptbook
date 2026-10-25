@@ -45,10 +45,11 @@ TypeScript.
 - [x] 5.3 Every web reader passes `extra` (D4); `Editor.tsx` compartments (D14); `ThisScene` and `readAloudOf` degrade (D12); status bar names the template and the not-found case (D13)
 - [x] 5.4 Tests: the provider's reload, a reader resolving an own template, the editor keeping undo across a template change
 - [x] 5.5 Commit `feat(web): the account's templates reach every reader`
-- [ ] 5.6 Hand back to the architect (brief A ends)
+- [x] 5.6 Hand back to the architect (brief A ends)
 
 ## 6. The template list (brief B)
 
+- [ ] 6.0 Server: `templateUsage` and the delete check count projects in the bin (D17), with a test
 - [ ] 6.1 `templates/TemplateList.tsx` replaces `DocumentTemplates` in `SettingsPage.tsx`, as "The mockup in words" says; «Make default» saves settings
 - [ ] 6.2 Commit `feat(web): document template list`
 
@@ -60,7 +61,7 @@ TypeScript.
 ## 8. Projects (brief B)
 
 - [ ] 8.1 `NewProjectDialog.tsx`: the Template select (state 9), its preview from the chosen template
-- [ ] 8.2 Editor top bar «vN available» and the update dialog (state 8), `updateEdits` and `setTemplate` in one transaction (D10)
+- [ ] 8.2 Editor top bar «vN available» and the update dialog (state 8), `updateEdits` and `setTemplate` in one transaction, undone in one step (D10, D18)
 - [ ] 8.3 Commit `feat(web): choose a template and update projects to its latest version`
 
 ## 9. Proof and hand-back (brief B)

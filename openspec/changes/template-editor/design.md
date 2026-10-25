@@ -300,3 +300,66 @@ is stored.
 ## Open Questions
 
 None.
+
+## Brief A: departures accepted at review
+
+The hand-back listed twelve; all accepted. 1 and 2 are the amendments to D8
+and D7 above.
+
+3. **Every reader takes the account's templates**, beyond the plan's list:
+   `summarize` (`SummarizeOptions.templates`), `readDocumentBoard`,
+   `exportBoard`, `exportProject`, `cuebardFiles`, `needsDuration`,
+   `cuebardPack`, and their callers on server (connector board tools,
+   CueBard and transfer routes, the summary on every store, snapshots),
+   desktop and web. Server readers for one project look up its one template
+   row by key; readers across projects take all. A ref not found falls back
+   to the built-in, never throws on the sync path.
+4. The summary gains `template`; `ProjectRow` omits it, so `GET
+/api/projects` is unchanged for old clients.
+5. Task 3.4 landed in the group 2 commit to keep the typecheck green.
+6. `REACTIONS_THEN` moved to `promptbook-project`; the skeleton writes
+   `| Se i PG… | Allora… |`, as the inserts do.
+7. A new project's `meta.system` and list row take `template.system` when
+   neither the input nor the settings name one.
+8. `TemplatesProvider` is mounted in `AppRoutes`, once per signed-in
+   session; readers use `useProjectTemplate(meta)`.
+9. D13's status bar reads «Template: Avventura (template not found)», only
+   once the list has loaded.
+10. Error codes: unknown or foreign `from` → 400 `template_unknown`; an
+    invalid body or a change of kind → 400 `invalid_template` naming the
+    paths; save or delete of another account's, a built-in's or an unknown
+    id → 404.
+11. Added rows in `templateChanges` carry `after` = their requirement.
+12. D14's parts are in `web/src/editor/template-parts.ts`; a
+    `changeTemplate` effect resets the analysis field's template and result.
+
+Review fixes (73c24d9), from the implementer's reviewer: an advisory lock
+per (user, template) taken by save, delete and project creation, so a save
+or a creation racing a delete never leaves a deleted template behind;
+`readTemplateRef` and `setTemplate` accept only ids `/^[a-z][a-z0-9-]{0,63}$/`
+and versions 1 to 2^31−1, so a malformed ref can't break every store; a web
+tab re-reads the list once per missing ref; a settings PUT without
+`defaultTemplates` keeps the stored defaults.
+
+## Decisions for brief B, from brief A's review
+
+### D17. A project in the bin keeps its template (architect)
+
+`templateUsage` and the delete check count projects in the bin too, so
+restoring a project never meets «template not found». The list's «N
+projects» counts them as well. A desktop project made offline and not yet
+uploaded can still meet the fallback (D13): accepted.
+
+### D18. One undo for an update (plan)
+
+The editor's `Y.UndoManager` tracks only the document's `Y.Text`, so D10's
+single undo needs it to track the meta map too, with the update's transact
+origin among its `trackedOrigins`. If that would make ordinary meta writes
+(status, title) undoable from the editor, scope it to the update's origin
+only.
+
+### D19. Brief A's open ends (plan)
+
+`NewProjectDialog`'s preview builds from the chosen template (task 8.1).
+`updateEdits` renames sections and field labels only, not front matter keys
+or box types: the dialog lists those changes without an edit.
