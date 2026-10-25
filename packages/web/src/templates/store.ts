@@ -11,7 +11,7 @@ export interface TemplatesState {
   stored: readonly StoredTemplate[];
   // Their bodies, for the readers.
   templates: readonly Template[];
-  // The projects not in the bin per "<id>@<version>".
+  // The projects per "<id>@<version>", those in the bin included.
   usage: Readonly<Record<string, number>>;
   // False until the first answer: a reader should not call a pinned
   // template missing before then.

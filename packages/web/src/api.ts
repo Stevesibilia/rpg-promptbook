@@ -45,8 +45,8 @@ export interface StoredTemplate {
   createdAt: string;
 }
 
-// Every version of every template of the account, and the projects not in
-// the bin per "<id>@<version>", built-ins included.
+// Every version of every template of the account, and its projects per
+// "<id>@<version>", built-ins and those in the bin included.
 export interface TemplateList {
   templates: StoredTemplate[];
   usage: Record<string, number>;

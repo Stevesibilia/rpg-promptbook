@@ -125,8 +125,10 @@ export async function templateForNewProject(
   return latest?.kind === kind ? latest : builtin;
 }
 
-// The account's projects not in the bin per "<id>@<version>", built-ins
-// included; a row that records no template counts as its kind's built-in.
+// The account's projects per "<id>@<version>", built-ins included; a row
+// that records no template counts as its kind's built-in. Projects in the bin
+// count too, so restoring one never meets a deleted template
+// (template-editor design decision 17).
 export async function templateUsage(db: Queryable, userId: string): Promise<Record<string, number>> {
   const adventure = defaultTemplateRef('adventure');
   const campaign = defaultTemplateRef('campaign');
@@ -134,7 +136,7 @@ export async function templateUsage(db: Queryable, userId: string): Promise<Reco
     `select coalesce(template_id, case when category = 'campaign' then $2::text else $3::text end) || '@' ||
             coalesce(template_version, case when category = 'campaign' then $4::int else $5::int end) as ref,
             count(*)::int as count
-     from projects where owner_id = $1 and deleted_at is null
+     from projects where owner_id = $1
      group by ref order by ref`,
     [userId, campaign.id, adventure.id, campaign.version, adventure.version],
   );
@@ -270,7 +272,7 @@ export async function saveTemplateVersion(
 }
 
 // Deletes every version of one of the account's templates, refused while any
-// of its projects not in the bin uses one.
+// of its projects uses one, in the bin included (design decision 17).
 export async function deleteTemplate(db: Db, userId: string, id: string): Promise<void> {
   if (!TEMPLATE_ID.test(id)) throw NOT_FOUND();
   await db.withTransaction(async (tx) => {
@@ -283,7 +285,7 @@ export async function deleteTemplate(db: Db, userId: string, id: string): Promis
     ]);
     if (rows.length === 0) throw NOT_FOUND();
     const used = await tx.queryOne<{ count: number }>(
-      'select count(*)::int as count from projects where owner_id = $1 and template_id = $2 and deleted_at is null',
+      'select count(*)::int as count from projects where owner_id = $1 and template_id = $2',
       [userId, id],
     );
     if (used && used.count > 0) {

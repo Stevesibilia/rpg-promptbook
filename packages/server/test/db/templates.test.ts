@@ -187,8 +187,11 @@ describe('deleting a template', () => {
     const refused = await steve.call('DELETE', `/api/templates/${used.id}`);
     expect(refused.statusCode).toBe(409);
     expect(refused.json()).toMatchObject({ error: 'template_in_use', message: 'The template is used by 1 project.' });
-    // In the bin, the project no longer counts.
+    // In the bin, the project still counts: it can be restored.
     expect((await steve.call('DELETE', `/api/projects/${project.id}`)).statusCode).toBe(204);
+    expect((await steve.call('DELETE', `/api/templates/${used.id}`)).statusCode).toBe(409);
+    // Gone for good, it no longer does.
+    await db.query('delete from projects where id = $1', [project.id]);
     expect((await steve.call('DELETE', `/api/templates/${used.id}`)).statusCode).toBe(204);
   });
 });
@@ -225,7 +228,7 @@ describe('races', () => {
 });
 
 describe('usage', () => {
-  it('counts the projects not in the bin per version, built-ins and rows that record none included', async () => {
+  it('counts the projects per version, in the bin, built-ins and rows that record none included', async () => {
     const { steve, anna } = await twoAccounts();
     const own = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
     await steve.save(own.id, 1, own.body);
@@ -243,7 +246,7 @@ describe('usage', () => {
       'avventura@1': 2,
       'campagna@1': 1,
       [`${own.id}@1`]: 1,
-      [`${own.id}@2`]: 1,
+      [`${own.id}@2`]: 2,
     });
     expect((await anna.list()).usage).toEqual({ 'avventura@1': 1 });
   });

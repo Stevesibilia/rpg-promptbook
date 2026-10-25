@@ -49,9 +49,9 @@ TypeScript.
 
 ## 6. The template list (brief B)
 
-- [ ] 6.0 Server: `templateUsage` and the delete check count projects in the bin (D17), with a test
-- [ ] 6.1 `templates/TemplateList.tsx` replaces `DocumentTemplates` in `SettingsPage.tsx`, as "The mockup in words" says; «Make default» saves settings
-- [ ] 6.2 Commit `feat(web): document template list`
+- [x] 6.0 Server: `templateUsage` and the delete check count projects in the bin (D17), with a test
+- [x] 6.1 `templates/TemplateList.tsx` replaces `DocumentTemplates` in `SettingsPage.tsx`, as "The mockup in words" says; «Make default» saves settings
+- [x] 6.2 Commit `feat(web): document template list`
 
 ## 7. The template editor (brief B)
 

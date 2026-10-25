@@ -12,6 +12,7 @@ import { platform } from '../platform/index.js';
 import { LicencePane } from '../licence/LicencePane.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
+import { TemplateList } from '../templates/TemplateList.js';
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
 import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
@@ -90,7 +91,7 @@ export function SettingsPage() {
               // Its inputs are keyed by their text, so a restored list redraws.
               <TodoTemplates settings={settings} onSave={save} />
             )}
-            {section === 'documents' && <DocumentTemplates />}
+            {section === 'documents' && <TemplateList settings={settings} onSave={save} />}
             {section === 'author' && settings && (
               // Keyed, so the fields show the restored values after a failure.
               <AuthorDefaults key={state?.revision} settings={settings} onSave={save} />
@@ -207,29 +208,6 @@ function TodoTemplates({ settings, onSave }: { settings: Settings; onSave(next: 
           </form>
         </div>
       </NeedsServerGroup>
-    </section>
-  );
-}
-
-function DocumentTemplates() {
-  return (
-    <section>
-      <h2>Document templates</h2>
-      <p className="lead">The skeleton a new project's prep document starts from.</p>
-      <div className="card">
-        <b>Adventure and one-shot</b> ·{' '}
-        <span className="muted">
-          avventura@1, checked by the format package: front matter, the fixed sections, one empty scene{' '}
-          <code>### S1.</code>, the appendix.
-        </span>
-      </div>
-      <div className="card">
-        <b>Campaign</b> ·{' '}
-        <span className="muted">
-          no checked template yet. Plain Markdown with headings: Premessa, Fronti, PNG ricorrenti, Fili aperti,
-          Sessioni. Not validated.
-        </span>
-      </div>
     </section>
   );
 }
