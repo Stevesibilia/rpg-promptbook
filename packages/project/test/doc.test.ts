@@ -82,7 +82,9 @@ describe('project document', () => {
 
   it('reads a malformed template as the built-in', () => {
     const doc = project();
-    for (const value of [null, 'avventura@1', { id: 'avventura' }, { id: '', version: 1 }, { id: 'a', version: 1.5 }, { id: 'a', version: 0 }]) {
+    for (const value of [null, 'avventura@1', { id: 'avventura' }, { id: '', version: 1 }, { id: 'a', version: 1.5 }, { id: 'a', version: 0 },
+      // Beyond what the server's columns hold.
+      { id: 't-0123456789', version: 2 ** 31 }, { id: 'a\u0000b', version: 1 }, { id: 'x'.repeat(65), version: 1 }, { id: 'T-X', version: 1 }]) {
       doc.getMap('meta').set('template', value);
       expect(readMeta(doc).template).toEqual({ id: 'avventura', version: 1 });
     }

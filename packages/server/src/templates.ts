@@ -173,6 +173,28 @@ function withUids(template: Template): TemplateInput {
 
 const UNIQUE_VIOLATION = '23505';
 
+// One writer at a time per template, until the transaction ends: a save, a
+// delete, and a project created from it (whose insert the delete's count
+// must see) wait for each other.
+export async function lockTemplate(tx: Queryable, userId: string, id: string): Promise<void> {
+  await tx.query("select pg_advisory_xact_lock(hashtextextended('promptbook-template:' || $1 || ':' || $2, 0))", [
+    userId,
+    id,
+  ]);
+}
+
+// Inside the transaction that inserts a project: the account's template it
+// starts from is locked and still there. A built-in needs no check.
+export async function holdTemplate(tx: Queryable, userId: string, template: Template): Promise<void> {
+  if (!TEMPLATE_ID.test(template.id)) return;
+  await lockTemplate(tx, userId, template.id);
+  const row = await tx.queryOne(
+    'select 1 from document_templates where user_id = $1 and id = $2 and version = $3',
+    [userId, template.id, template.version],
+  );
+  if (!row) throw new AppError(400, 'template_unknown', 'template: is not one of your templates any more.');
+}
+
 // A copy of a built-in or of one of the account's templates, as version 1 of
 // a new template with its own id and name.
 export async function duplicateTemplate(db: Db, userId: string, from: TemplateRef, name: string): Promise<StoredTemplate> {
@@ -215,35 +237,36 @@ export async function saveTemplateVersion(
   { baseVersion, body, note }: { baseVersion: number; body: Record<string, unknown>; note: string },
 ): Promise<StoredTemplate> {
   if (!TEMPLATE_ID.test(id)) throw NOT_FOUND();
-  const head = await db.queryOne<{ latest: number | null; kind: string | null }>(
-    `select max(version) as latest,
-            (select body->>'kind' from document_templates where user_id = $1 and id = $2 and version = 1) as kind
-     from document_templates where user_id = $1 and id = $2`,
-    [userId, id],
-  );
-  if (!head || head.latest === null) throw NOT_FOUND();
-  if (baseVersion !== head.latest) throw CONFLICT();
-  let template: Template;
-  try {
-    template = defineTemplate({ ...body, id, version: head.latest + 1 } as TemplateInput);
-  } catch (error) {
-    throw invalidTemplate(error);
-  }
-  if (template.kind !== head.kind) {
-    throw new AppError(400, 'invalid_template', `body: kind must stay ${head.kind ?? 'as version 1 has it'}.`);
-  }
-  try {
-    const row = await db.queryOne<Row>(
+  // Locked, so a delete cannot run between reading the latest version and
+  // inserting the next: the save then finds the template gone.
+  return db.withTransaction(async (tx) => {
+    await lockTemplate(tx, userId, id);
+    const head = await tx.queryOne<{ latest: number | null; kind: string | null }>(
+      `select max(version) as latest,
+              (select body->>'kind' from document_templates where user_id = $1 and id = $2 and version = 1) as kind
+       from document_templates where user_id = $1 and id = $2`,
+      [userId, id],
+    );
+    if (!head || head.latest === null) throw NOT_FOUND();
+    // Two saves from the same version: the second, waiting on the lock, finds
+    // the first's.
+    if (baseVersion !== head.latest) throw CONFLICT();
+    let template: Template;
+    try {
+      template = defineTemplate({ ...body, id, version: head.latest + 1 } as TemplateInput);
+    } catch (error) {
+      throw invalidTemplate(error);
+    }
+    if (template.kind !== head.kind) {
+      throw new AppError(400, 'invalid_template', `body: kind must stay ${head.kind ?? 'as version 1 has it'}.`);
+    }
+    const row = await tx.queryOne<Row>(
       `insert into document_templates (user_id, id, version, body, note) values ($1, $2, $3, $4, $5)
        returning id, version, body, note, created_at`,
       [userId, id, template.version, JSON.stringify(template), note],
     );
     return toStored(row!, template);
-  } catch (error) {
-    // Two saves from the same version at once: the second finds the first's.
-    if ((error as { code?: unknown }).code === UNIQUE_VIOLATION) throw CONFLICT();
-    throw error;
-  }
+  });
 }
 
 // Deletes every version of one of the account's templates, refused while any
@@ -251,9 +274,10 @@ export async function saveTemplateVersion(
 export async function deleteTemplate(db: Db, userId: string, id: string): Promise<void> {
   if (!TEMPLATE_ID.test(id)) throw NOT_FOUND();
   await db.withTransaction(async (tx) => {
-    // Locks the template's rows, so a save cannot slip in between the check
-    // and the delete.
-    const rows = await tx.query('select version from document_templates where user_id = $1 and id = $2 for update', [
+    // A save, or a project being created from it, waits; one that came first
+    // has committed, so the count below sees its project.
+    await lockTemplate(tx, userId, id);
+    const rows = await tx.query('select version from document_templates where user_id = $1 and id = $2', [
       userId,
       id,
     ]);

@@ -193,6 +193,37 @@ describe('deleting a template', () => {
   });
 });
 
+describe('races', () => {
+  it('never brings back a template deleted while a save ran', async () => {
+    const { steve } = await twoAccounts();
+    for (let i = 0; i < 5; i++) {
+      const v1 = await steve.duplicate(AVVENTURA, `Prova ${i}`);
+      const [saved, deleted] = await Promise.all([steve.save(v1.id, 1, v1.body), steve.call('DELETE', `/api/templates/${v1.id}`)]);
+      expect(deleted.statusCode).toBe(204);
+      expect([201, 404]).toContain(saved.statusCode);
+      expect((await steve.list()).templates.filter((t) => t.id === v1.id)).toEqual([]);
+    }
+  });
+
+  it('never leaves a new project on a template deleted while it was created', async () => {
+    const { steve } = await twoAccounts();
+    for (let i = 0; i < 5; i++) {
+      const v1 = await steve.duplicate(AVVENTURA, `Prova ${i}`);
+      const [created, deleted] = await Promise.all([
+        steve.call('POST', '/api/projects', { category: 'one-shot', title: `P${i}`, template: { id: v1.id, version: 1 } }),
+        steve.call('DELETE', `/api/templates/${v1.id}`),
+      ]);
+      const outcome = `${created.statusCode}/${deleted.statusCode}`;
+      expect(['201/409', '400/204']).toContain(outcome);
+      if (created.statusCode === 400) expect(created.json().error).toBe('template_unknown');
+      const pinned = await db.query('select id from projects where template_id = $1', [v1.id]);
+      const kept = (await steve.list()).templates.some((t) => t.id === v1.id);
+      // A project on it means the template is still there.
+      expect(pinned.length === 0 || kept).toBe(true);
+    }
+  });
+});
+
 describe('usage', () => {
   it('counts the projects not in the bin per version, built-ins and rows that record none included', async () => {
     const { steve, anna } = await twoAccounts();
@@ -342,6 +373,16 @@ describe('settings', () => {
       author: 'Stefano Sibilia',
       defaultTemplates: { adventure: 'avventura', campaign: 'campagna' },
     });
+  });
+
+  it('keeps the stored defaults when a v0.12 desktop app saves without them', async () => {
+    const { steve } = await twoAccounts();
+    const chosen = { adventure: 't-0123456789', campaign: 'campagna' };
+    await steve.call('PUT', '/api/settings', { ...defaultSettings(), defaultTemplates: chosen });
+    const { defaultTemplates: _defaults, ...old } = { ...defaultSettings(), author: 'Dal desktop' };
+    const put = await steve.call('PUT', '/api/settings', old);
+    expect(put.json()).toMatchObject({ author: 'Dal desktop', defaultTemplates: chosen });
+    expect((await steve.call('GET', '/api/settings')).json().defaultTemplates).toEqual(chosen);
   });
 
   it('keeps the defaults it was given, and refuses a malformed one', async () => {

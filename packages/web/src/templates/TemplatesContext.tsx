@@ -6,6 +6,7 @@ import { createTemplatesStore, emptyTemplates, type TemplatesState } from './sto
 
 export interface TemplatesValue extends TemplatesState {
   reload(): Promise<void>;
+  missing(ref: string): void;
 }
 
 const TemplatesContext = createContext<TemplatesValue | null>(null);
@@ -18,11 +19,11 @@ export function TemplatesProvider({ children }: { children: ReactNode }) {
     void store.reload();
   }, [store]);
   const state = useSyncExternalStore(store.subscribe, store.state);
-  const value = useMemo(() => ({ ...state, reload: store.reload }), [state, store]);
+  const value = useMemo(() => ({ ...state, reload: store.reload, missing: store.missing }), [state, store]);
   return <TemplatesContext.Provider value={value}>{children}</TemplatesContext.Provider>;
 }
 
-const outside: TemplatesValue = { ...emptyTemplates, reload: async () => {} };
+const outside: TemplatesValue = { ...emptyTemplates, reload: async () => {}, missing: () => {} };
 
 // Outside the provider (a page rendered on its own), no own templates: the
 // readers fall back to the built-ins.
@@ -39,7 +40,7 @@ export function useProjectTemplate(meta: Pick<ProjectMeta, 'category' | 'templat
   template: AdventureTemplate;
   missing: boolean;
 } {
-  const { templates, loaded } = useTemplates();
+  const { templates, loaded, missing: ask } = useTemplates();
   const { category } = meta;
   const { id, version } = meta.template;
   const resolved = adventureTemplateOf({ category, template: { id, version } }, templates);
@@ -47,5 +48,9 @@ export function useProjectTemplate(meta: Pick<ProjectMeta, 'category' | 'templat
   // Kept by its key alone: the key says when it changes.
   const template = useMemo(() => resolved, [key]);
   const missing = loaded && category !== 'campaign' && (template.id !== id || template.version !== version);
+  // Saved elsewhere since the list was read: read it again, once.
+  useEffect(() => {
+    if (missing) ask(`${id}@${version}`);
+  }, [missing, ask, id, version]);
   return { template, missing };
 }

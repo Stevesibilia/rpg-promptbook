@@ -19,7 +19,7 @@ import { AppError } from './errors.js';
 import { sweepUnfinishedFirstPartyGrants } from './oauth/grants.js';
 import { sweepExpired, tokenLifetimes } from './oauth/tokens.js';
 import { getSettings } from './routes/settings.js';
-import { accountTemplates, templateForNewProject } from './templates.js';
+import { accountTemplates, holdTemplate, templateForNewProject } from './templates.js';
 
 // The projects table and the stored documents. The document is the source;
 // the row is its summary, written from it on every store (design decision 6).
@@ -224,6 +224,8 @@ export async function createProject(
   const settings = await getSettings(db, ownerId);
   const template = await templateForNewProject(db, ownerId, input.category, settings, input.template);
   await db.withTransaction(async (tx) => {
+    // Not deleted meanwhile, and not until this project is in.
+    await holdTemplate(tx, ownerId, template);
     const campaign = campaignFor(input.category, input.campaignId, await campaignsOf(tx, ownerId));
     // The template's game system when neither the input nor the settings
     // name one, as the front matter writes it.

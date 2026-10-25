@@ -47,6 +47,11 @@ export async function settingsRoutes(app: FastifyInstance, { db }: { db: Db }) {
   app.put('/api/settings', async (req) => {
     const { user } = requireSession(req);
     const settings = parseBody(settingsSchema, req.body);
+    // A client from before templates could be chosen sends no defaults: the
+    // stored ones stay rather than going back to the built-ins.
+    if ((req.body as { defaultTemplates?: unknown } | null)?.defaultTemplates === undefined) {
+      settings.defaultTemplates = (await getSettings(db, user.id)).defaultTemplates;
+    }
     await db.query(
       `insert into user_settings (user_id, settings) values ($1, $2)
        on conflict (user_id) do update set settings = excluded.settings, updated_at = now()`,

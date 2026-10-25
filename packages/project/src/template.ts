@@ -20,15 +20,29 @@ function builtinOf<K extends Template['kind']>(kind: K): Extract<Template, { kin
   return template as Extract<Template, { kind: K }>;
 }
 
-// The meta value as another client wrote it: an id and a positive whole
-// version, else the category's built-in.
+// What an id may be: the built-ins' and the server's ids, lower case.
+const TEMPLATE_ID = /^[a-z][a-z0-9-]{0,63}$/;
+// The largest version a database int column holds.
+const MAX_VERSION = 2 ** 31 - 1;
+
+// An id as templates have them and a positive whole version a database can
+// store.
+export function isTemplateRef(value: unknown): value is TemplateRef {
+  if (typeof value !== 'object' || value === null) return false;
+  const { id, version } = value as { id?: unknown; version?: unknown };
+  return (
+    typeof id === 'string' &&
+    TEMPLATE_ID.test(id) &&
+    typeof version === 'number' &&
+    Number.isInteger(version) &&
+    version > 0 &&
+    version <= MAX_VERSION
+  );
+}
+
+// The meta value as another client wrote it, else the category's built-in.
 export function readTemplateRef(value: unknown, category: Category): TemplateRef {
-  if (typeof value === 'object' && value !== null) {
-    const { id, version } = value as { id?: unknown; version?: unknown };
-    if (typeof id === 'string' && id && typeof version === 'number' && Number.isInteger(version) && version > 0) {
-      return { id, version };
-    }
-  }
+  if (isTemplateRef(value)) return { id: value.id, version: value.version };
   return defaultTemplateRef(templateKindOf(category));
 }
 

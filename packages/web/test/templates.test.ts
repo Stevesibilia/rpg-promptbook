@@ -69,6 +69,23 @@ describe('the templates store', () => {
     expect(store.state().templates).toHaveLength(1);
   });
 
+  it('reads the list again once for a template it lacks', async () => {
+    const server = fakeServer();
+    const store = createTemplatesStore(server.fetch);
+    const first = store.reload();
+    server.calls[0]!.resolve({ templates: [own(1)], usage: {} });
+    await first;
+    store.missing('t-kulthos0001@2');
+    store.missing('t-kulthos0001@2');
+    expect(server.calls).toHaveLength(2);
+    server.calls[1]!.resolve({ templates: [own(1), own(2)], usage: {} });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.state().templates.map((t) => t.version)).toEqual([1, 2]);
+    store.missing('t-kulthos0001@3');
+    expect(server.calls).toHaveLength(3);
+  });
+
   it("gives the readers a project's own template", async () => {
     const server = fakeServer();
     const store = createTemplatesStore(server.fetch);

@@ -24,6 +24,9 @@ export interface TemplatesStore {
   subscribe(listener: () => void): () => void;
   // Fetches the list again; resolves once it is in.
   reload(): Promise<void>;
+  // A project names "<id>@<version>" and the list lacks it: saved in another
+  // tab or on another device since. Fetches the list again, once per ref.
+  missing(ref: string): void;
 }
 
 export const emptyTemplates: TemplatesState = { stored: [], templates: [], usage: {}, loaded: false, error: '' };
@@ -41,7 +44,8 @@ export function createTemplatesStore(
   // Only the newest request's answer is kept: a reload started after a save
   // must not be overwritten by an older one that answers later.
   let latest = 0;
-  return {
+  const asked = new Set<string>();
+  const store: TemplatesStore = {
     state: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -60,5 +64,11 @@ export function createTemplatesStore(
         set({ ...state, loaded: true, error: describe(error) });
       }
     },
+    missing(ref) {
+      if (asked.has(ref)) return;
+      asked.add(ref);
+      void store.reload();
+    },
   };
+  return store;
 }
