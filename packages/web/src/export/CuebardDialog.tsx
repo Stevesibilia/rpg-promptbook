@@ -1,10 +1,12 @@
-import { useContext } from 'react';
+import { useCallback, useContext } from 'react';
+import type { Template } from 'promptbook-format';
 import { cuebardPack, readMeta, type CuebardSummary, type CuebardWarning } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { DesktopContext } from '../desktop/context.js';
 import type { CuebardSaved } from '../platform/bridge.js';
 import { platform } from '../platform/index.js';
 import { useDocValue } from '../sync/hooks.js';
+import { useTemplates } from '../templates/TemplatesContext.js';
 import { DropIcon, LaptopIcon, WarningIcon } from '../ui/icons.js';
 import { Modal } from '../ui/Modal.js';
 import './cuebard.css';
@@ -160,8 +162,8 @@ export function CuebardSummaryView({
 
 // The planner over the document, with no lengths read and nothing missing:
 // the board the user sees, offline too.
-const plan = (doc: Y.Doc) => {
-  const pack = cuebardPack(doc, { now: '' });
+const plan = (doc: Y.Doc, templates: readonly Template[]) => {
+  const pack = cuebardPack(doc, { now: '', templates });
   return { title: readMeta(doc).title, fileName: pack.fileName, summary: pack.summary, entries: pack.entries.length };
 };
 
@@ -181,7 +183,9 @@ export function CuebardDialog({
   onToast(message: string): void;
 }) {
   // Follows the document while open: a file added elsewhere counts at once.
-  const { title, fileName, summary, entries } = useDocValue(doc, plan);
+  const { templates } = useTemplates();
+  const read = useCallback((d: Y.Doc) => plan(d, templates), [templates]);
+  const { title, fileName, summary, entries } = useDocValue(doc, read);
   const state = cuebardState(summary, entries);
   const kind = platform.kind;
   // The desktop's answer comes after its save dialog and the build, maybe

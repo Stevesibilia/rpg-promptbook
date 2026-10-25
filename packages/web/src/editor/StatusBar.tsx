@@ -14,8 +14,9 @@ interface Snapshot {
   line: number;
   column: number;
   checked: boolean;
-  // The project's template, as «Avventura v1».
+  // The project's template, as «Avventura v1», and its name alone.
   template: string;
+  templateName: string;
   errors: number;
   warnings: number;
   hidden: number;
@@ -35,6 +36,7 @@ export function snapshotOf(state: EditorState): Snapshot {
     column: head - line.from + 1,
     checked: !!value?.checked,
     template: value?.template ? `${value.template.name} v${value.template.version}` : '',
+    templateName: value?.template?.name ?? '',
     errors: shown.filter((s) => s.problem.severity === 'error').length,
     warnings: shown.filter((s) => s.problem.severity === 'warning').length,
     hidden: parts?.hidden.length ?? 0,
@@ -58,11 +60,15 @@ const plural = (n: number, word: string) => `${n.toLocaleString('en')} ${word}${
 export function StatusBar({
   view,
   updates,
+  templateMissing = false,
   onProblems,
   onHidden,
 }: {
   view: EditorView | null;
   updates: UpdateSource;
+  // The project records a template this device does not hold: the checks
+  // use the kind's built-in (template-editor design decision 13).
+  templateMissing?: boolean;
   onProblems(): void;
   onHidden(): void;
 }) {
@@ -119,7 +125,11 @@ export function StatusBar({
       )}
       {words !== null && <span>{plural(words, 'word')}</span>}
       <span className="r">
-        {snapshot.checked ? `Template: ${snapshot.template}` : 'Campaign · not checked'}
+        {!snapshot.checked
+          ? 'Campaign · not checked'
+          : templateMissing
+            ? `Template: ${snapshot.templateName} (template not found)`
+            : `Template: ${snapshot.template}`}
       </span>
     </>
   );

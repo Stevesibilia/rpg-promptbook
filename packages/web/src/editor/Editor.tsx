@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { indentWithTab } from '@codemirror/commands';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirror/view';
@@ -6,16 +6,17 @@ import type { AdventureTemplate } from 'promptbook-format';
 import { nextExpiry, readHidden } from 'promptbook-project';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
 import * as Y from 'yjs';
-import { analysis } from './analysis/field.js';
+import { analysisField } from './analysis/field.js';
 import { connectWorker } from './analysis/client.js';
 import { baseKeymap } from './cm/keymap.js';
 import { markdownWithTables } from './cm/language.js';
-import { preview, previewConfigOf } from './cm/preview.js';
 import { hiddenField, hiddenOf, type HiddenState } from './cm/hidden.js';
 import { hiddenEffects, problems, pushDiagnostics, undoBoundary } from './cm/problems.js';
-import { slashMenu } from './cm/slash.js';
 import { tables } from './cm/tables.js';
 import { editorHighlight } from './cm/theme.js';
+import { templateChange, templateCompartment, templateExtension, type TemplateParts } from './template-parts.js';
+
+const partsOf = (checked: boolean): TemplateParts => ({ checked, connect: connectWorker, onResult: pushDiagnostics });
 
 // The longest the snooze timer waits before looking again: a day, well under
 // setTimeout's limit of 2^31-1 ms.
@@ -24,7 +25,8 @@ const MAX_WAIT = 86_400_000;
 // The prep document's editor: CodeMirror 6 bound to the document's Y.Text,
 // with the live preview, and for adventures and one-shots the problems found
 // by the parse worker, less those the owner hid. Undo covers this tab's own
-// edits only.
+// edits only. A new template reconfigures the view, keeping its undo history
+// (template-editor design decision 14).
 export function Editor({
   doc,
   template,
@@ -43,8 +45,10 @@ export function Editor({
   onView?(view: EditorView | null): void;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const latest = useRef({ extensions, onView });
-  latest.current = { extensions, onView };
+  const latest = useRef({ extensions, onView, template });
+  latest.current = { extensions, onView, template };
+  const compartment = useMemo(templateCompartment, []);
+  const viewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
     const text = doc.getText('document');
@@ -58,12 +62,10 @@ export function Editor({
           keymap.of([...yUndoManagerKeymap, ...baseKeymap, indentWithTab]),
           markdownWithTables(),
           editorHighlight,
-          preview(previewConfigOf(template, checked)),
+          templateExtension(compartment, latest.current.template, partsOf(checked)),
           tables,
           hiddenField.init(() => ({ entries: readHidden(doc), now: new Date() })),
-          analysis({ checked, template, connect: connectWorker, onResult: pushDiagnostics }),
           checked ? problems : [],
-          slashMenu(template, checked),
           undoBoundary.of(() => undoManager.stopCapturing()),
           highlightActiveLine(),
           EditorView.lineWrapping,
@@ -73,6 +75,7 @@ export function Editor({
         ],
       }),
     });
+    viewRef.current = view;
     latest.current.onView?.(view);
 
     // The hidden problems follow the project's map, and come back when a
@@ -105,10 +108,18 @@ export function Editor({
       hidden.unobserve(refresh);
       if (timer !== null) clearTimeout(timer);
       latest.current.onView?.(null);
+      viewRef.current = null;
       view.destroy();
       undoManager.destroy();
     };
-  }, [doc, template, checked]);
+  }, [doc, checked, compartment]);
+
+  // Another template for the same document: the view stays.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || view.state.field(analysisField, false)?.template === template) return;
+    view.dispatch(templateChange(compartment, template, partsOf(checked)));
+  }, [template, checked, compartment]);
 
   return <div className="editor" ref={host} />;
 }

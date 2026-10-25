@@ -40,11 +40,11 @@ TypeScript.
 
 ## 5. Web data layer (brief A)
 
-- [ ] 5.1 `api.ts`: `templates()`, `duplicateTemplate()`, `saveTemplateVersion()`, `deleteTemplate()`; `NewProject.template`
-- [ ] 5.2 `templates/TemplatesContext.tsx`: `TemplatesProvider`, `useTemplates()` (D4), mounted in the shell
-- [ ] 5.3 Every web reader passes `extra` (D4); `Editor.tsx` compartments (D14); `ThisScene` and `readAloudOf` degrade (D12); status bar names the template and the not-found case (D13)
-- [ ] 5.4 Tests: the provider's reload, a reader resolving an own template, the editor keeping undo across a template change
-- [ ] 5.5 Commit `feat(web): the account's templates reach every reader`
+- [x] 5.1 `api.ts`: `templates()`, `duplicateTemplate()`, `saveTemplateVersion()`, `deleteTemplate()`; `NewProject.template`
+- [x] 5.2 `templates/TemplatesContext.tsx`: `TemplatesProvider`, `useTemplates()` (D4), mounted in the shell
+- [x] 5.3 Every web reader passes `extra` (D4); `Editor.tsx` compartments (D14); `ThisScene` and `readAloudOf` degrade (D12); status bar names the template and the not-found case (D13)
+- [x] 5.4 Tests: the provider's reload, a reader resolving an own template, the editor keeping undo across a template change
+- [x] 5.5 Commit `feat(web): the account's templates reach every reader`
 - [ ] 5.6 Hand back to the architect (brief A ends)
 
 ## 6. The template list (brief B)

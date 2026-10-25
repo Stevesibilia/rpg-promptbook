@@ -1,5 +1,5 @@
 import { exportFolderName, type Category, type ProjectRow, type Settings, type Status } from 'promptbook-project';
-import type { ConvertReport } from 'promptbook-format';
+import type { ConvertReport, Template, TemplateRef } from 'promptbook-format';
 import { platform } from './platform/index.js';
 
 // A small fetch wrapper for the server's REST API (design decision 7). Every
@@ -31,6 +31,25 @@ export interface NewProject {
   system: string;
   status: Status;
   seed: string;
+  // The settings' default for the category's kind when not given.
+  template?: TemplateRef;
+}
+
+// One version of one of the account's document templates, as GET
+// /api/templates lists it; a version never changes once saved.
+export interface StoredTemplate {
+  id: string;
+  version: number;
+  body: Template;
+  note: string;
+  createdAt: string;
+}
+
+// Every version of every template of the account, and the projects not in
+// the bin per "<id>@<version>", built-ins included.
+export interface TemplateList {
+  templates: StoredTemplate[];
+  usage: Record<string, number>;
 }
 
 export interface ImportNote {
@@ -154,6 +173,17 @@ export const api = {
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),
+
+  templates: () => request<TemplateList>('GET', '/api/templates'),
+  // Version 1 of a new template, a copy of `from` named `name`.
+  duplicateTemplate: (from: TemplateRef, name: string) =>
+    request<StoredTemplate>('POST', '/api/templates', { from, name }),
+  // The next version; 409 template_version_conflict when `baseVersion` is no
+  // longer the latest.
+  saveTemplateVersion: (id: string, baseVersion: number, body: Template, note: string) =>
+    request<StoredTemplate>('POST', `/api/templates/${encodeURIComponent(id)}/versions`, { baseVersion, body, note }),
+  // 409 template_in_use while a project uses any version.
+  deleteTemplate: (id: string) => request<void>('DELETE', `/api/templates/${encodeURIComponent(id)}`),
 
   projects: (bin = false) => request<{ projects: ProjectRow[] }>('GET', bin ? '/api/projects?bin=1' : '/api/projects'),
   createProject: (project: NewProject) => request<{ project: ProjectRow }>('POST', '/api/projects', project),

@@ -55,6 +55,7 @@ interface Row {
 // field it follows.
 function rowsOf(scene: SceneSnapshot): Row[] {
   const { template } = scene;
+  // A template without a read-aloud box has no row for it.
   const readAloud = readAloudOf(template);
   const after = readAloudAfter(template);
   const rows: Row[] = [];
@@ -66,14 +67,13 @@ function rowsOf(scene: SceneSnapshot): Row[] {
       present: scene.fields.includes(field.label),
       insert: { kind: 'field', label: field.label },
     });
-    if (field.label === after) rows.push(readAloudRow(scene));
+    if (readAloud && field.label === after) rows.push(readAloudRow(scene, readAloud));
   }
-  if (!rows.some((r) => r.key === readAloud.type)) rows.push(readAloudRow(scene));
+  if (readAloud && !rows.some((r) => r.key === readAloud.type)) rows.push(readAloudRow(scene, readAloud));
   return rows;
 }
 
-function readAloudRow(scene: SceneSnapshot): Row {
-  const readAloud = readAloudOf(scene.template);
+function readAloudRow(scene: SceneSnapshot, readAloud: CalloutDefinition): Row {
   const { min, max } = readAloud.perPlace;
   return {
     key: readAloud.type,
@@ -85,15 +85,21 @@ function readAloudRow(scene: SceneSnapshot): Row {
   };
 }
 
-// The buttons under the fields, with the mockup's colour marks.
+// The buttons under the fields, with the mockup's colour marks; a box the
+// template does not have has no button (template-editor design decision 12).
 function snippetsOf(template: AdventureTemplate): { label: string; mark: string; insert: Insert }[] {
   const callout = (role: CalloutDefinition['role'], column: CalloutDefinition['column'] = 'main') =>
-    template.callouts.find((c) => c.role === role && c.column === column)!;
+    template.callouts.find((c) => c.role === role && c.column === column);
+  const boxes: [string, string, CalloutDefinition | undefined][] = [
+    ['Read-aloud', 'l', readAloudOf(template)],
+    ['Handout', 'd', callout('handout')],
+    ['Box', 'b', callout('box')],
+    ['Side box', 'b', callout('box', 'side')],
+  ];
   return [
-    { label: 'Read-aloud', mark: 'l', insert: { kind: 'callout', callout: readAloudOf(template) } },
-    { label: 'Handout', mark: 'd', insert: { kind: 'callout', callout: callout('handout') } },
-    { label: 'Box', mark: 'b', insert: { kind: 'callout', callout: callout('box') } },
-    { label: 'Side box', mark: 'b', insert: { kind: 'callout', callout: callout('box', 'side') } },
+    ...boxes.flatMap(([label, mark, found]) =>
+      found ? [{ label, mark, insert: { kind: 'callout' as const, callout: found } }] : [],
+    ),
     { label: '→ Sheet', mark: '', insert: { kind: 'sheetRef' } },
     { label: 'Reactions table', mark: '', insert: { kind: 'reactions' } },
   ];

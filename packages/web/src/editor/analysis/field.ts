@@ -45,6 +45,10 @@ export interface Analysis {
 
 export const setAnalysis = StateEffect.define<{ doc: Text; result: ParseResult; changes: ChangeDesc }>();
 
+// The project moved to another template (template-editor design decision
+// 14): the result is dropped, and the next parse uses the new one.
+export const changeTemplate = StateEffect.define<AdventureTemplate>();
+
 // Added to a write (a move, an insert) to have its text parsed now rather
 // than after the typing delay, so the panels catch up at once.
 export const analyseNow = StateEffect.define<null>();
@@ -106,6 +110,10 @@ export const analysisField = StateField.define<Analysis>({
   create: () => empty(false, null),
   update(value, tr) {
     for (const effect of tr.effects) {
+      if (effect.is(changeTemplate)) {
+        value = empty(value.checked, effect.value);
+        continue;
+      }
       if (!effect.is(setAnalysis)) continue;
       const { doc, result, changes } = effect.value;
       value = {

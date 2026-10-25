@@ -11,15 +11,16 @@ import {
   saveNote,
   setTopicState,
   targetsOf,
-  templateOf,
   updateNote,
   type ProjectMeta,
   type ResearchNote,
 } from 'promptbook-project';
+import type { AdventureTemplate } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { longDate, longDay } from '../dates.js';
 import { hostOf } from '../inspiration/links.js';
 import { useDocValue } from '../sync/hooks.js';
+import { useProjectTemplate } from '../templates/TemplatesContext.js';
 import { Confirm } from '../ui/Confirm.js';
 import { PlusIcon } from '../ui/icons.js';
 import { checkDraft, draftOf, emptyDraft, type NoteDraft } from './draft.js';
@@ -35,9 +36,9 @@ const sourcesCount = (n: number) => `${n} source${n === 1 ? '' : 's'}`;
 
 // The scenes of an adventure or a one-shot with their text, for «mentioned
 // in»; none for a campaign.
-function scenesOf(text: string, meta: Pick<ProjectMeta, 'category' | 'template'>): SceneText[] {
-  if (meta.category === 'campaign') return [];
-  return targetsOf(text, templateOf(meta))
+function scenesOf(text: string, category: ProjectMeta['category'], template: AdventureTemplate): SceneText[] {
+  if (category === 'campaign') return [];
+  return targetsOf(text, template)
     .filter((t) => t.kind === 'scene')
     .map((t) => ({ id: t.target, text: text.slice(t.from, t.to) }));
 }
@@ -58,11 +59,9 @@ export function ResearchView({ doc, meta }: { doc: Y.Doc; meta: ProjectMeta }) {
   const shownId = draft ? draft.id : (selected?.id ?? null);
 
   const text = useDeferredValue(useDocValue(doc, readDocument));
-  const { category, template } = meta;
-  const scenes = useMemo(
-    () => scenesOf(text, { category, template: { id: template.id, version: template.version } }),
-    [text, category, template.id, template.version],
-  );
+  const { category } = meta;
+  const { template } = useProjectTemplate(meta);
+  const scenes = useMemo(() => scenesOf(text, category, template), [text, category, template]);
 
   const startNew = () => setDraft(emptyDraft());
 
