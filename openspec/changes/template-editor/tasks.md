@@ -67,7 +67,7 @@ TypeScript.
 
 ## 9. Proof and hand-back (brief B)
 
-- [ ] 9.1 `e2e/templates.spec.ts`: duplicate, edit (rename a role section, add a section, require a field), save v2 with a note, a new adventure from it, its PDF prints the renamed strong start, a v3, update the project with both boxes ticked, undo
-- [ ] 9.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
+- [x] 9.1 `e2e/templates.spec.ts`: duplicate, edit (rename a role section, add a section, require a field), save v2 with a note, a new adventure from it, its PDF prints the renamed strong start, a v3, update the project with both boxes ticked, undo
+- [x] 9.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
 - [ ] 9.3 Local stack with seeded data and the LAN preview for the owner; wait for the owner's go
 - [ ] 9.4 Hand back
