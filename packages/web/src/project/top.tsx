@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { gdrarchiveOf, type ProjectMeta } from 'promptbook-project';
 import type * as Y from 'yjs';
@@ -41,10 +42,13 @@ export function ProjectMetaControls({
   doc,
   meta,
   campaign,
+  children,
 }: {
   doc: Y.Doc;
   meta: ProjectMeta;
   campaign: ProjectRow | undefined;
+  // A page's own controls after these (the editor's template update).
+  children?: ReactNode;
 }) {
   const link = gdrarchiveOf(meta.gdrarchive, meta.category, campaign ?? null);
   return (
@@ -52,6 +56,7 @@ export function ProjectMetaControls({
       <span className="cat">{categoryLabels[meta.category]}</span>
       <StatusSelect doc={doc} status={meta.status} />
       {link && <GdrarchiveLink link={link} inBar />}
+      {children}
     </div>
   );
 }

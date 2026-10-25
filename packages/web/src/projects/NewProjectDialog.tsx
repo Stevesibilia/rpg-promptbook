@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { categories, skeletonDocument, type Category, type Settings, type Status } from 'promptbook-project';
+import { categories, skeletonDocument, templateKindOf, type Category, type Settings, type Status } from 'promptbook-project';
 import { api, ApiError, type ProjectRow } from '../api.js';
+import { templateEntries } from '../templates/list.js';
+import { useTemplates } from '../templates/TemplatesContext.js';
 import { Modal } from '../ui/Modal.js';
 import { categoryLabels, plural } from './list.js';
 
@@ -68,6 +70,10 @@ export function NewProjectDialog({
   const [seed, setSeed] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // The template chosen in the select; null for the kind's default.
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  // Until the list is in, an own default would read as the built-in.
+  const { stored, usage, loaded: templatesLoaded } = useTemplates();
 
   useEffect(() => {
     api
@@ -83,6 +89,11 @@ export function NewProjectDialog({
   const systems = [...new Set(projects.map((p) => p.system).filter(Boolean))].sort();
   const campaign = category === 'campaign' ? null : (campaigns.find((c) => c.id === campaignId) ?? null);
   const todo = settings?.todoTemplates[category] ?? [];
+  // The kind's templates at their latest version, the default preselected
+  // (mockup state 9).
+  const kind = templateKindOf(category);
+  const choices = templateEntries(stored, usage, settings).filter((t) => t.kind === kind);
+  const chosen = choices.find((t) => t.id === templateId) ?? choices.find((t) => t.isDefault) ?? choices[0]!;
 
   const skeleton = useMemo(
     () =>
@@ -94,13 +105,13 @@ export function NewProjectDialog({
             author: settings.author,
             copyright: settings.copyright,
             licence: settings.licence,
-          })
+          }, chosen.latest)
         : '',
-    [settings, category, title, system, campaign],
+    [settings, category, title, system, campaign, chosen.latest],
   );
 
   async function create() {
-    if (creating.current || busy || !settings) return;
+    if (creating.current || busy || !settings || !templatesLoaded) return;
     if (!title.trim()) return setError('Give the project a title.');
     creating.current = true;
     setBusy(true);
@@ -113,6 +124,7 @@ export function NewProjectDialog({
         system: system.trim(),
         status,
         seed,
+        template: { id: chosen.id, version: chosen.version },
       });
       onCreated(project);
     } catch (e) {
@@ -136,7 +148,7 @@ export function NewProjectDialog({
           <button className="tb line" onClick={onClose}>
             Cancel
           </button>
-          <button className="tb primary" onClick={() => void create()} disabled={busy || !settings}>
+          <button className="tb primary" onClick={() => void create()} disabled={busy || !settings || !templatesLoaded}>
             Create and open
           </button>
         </>
@@ -149,7 +161,11 @@ export function NewProjectDialog({
             role="radio"
             aria-checked={category === c}
             className={`catc${category === c ? ' on' : ''}`}
-            onClick={() => setCategory(c)}
+            onClick={() => {
+              // Adventures and one-shots share their templates; a campaign has its own.
+              if (templateKindOf(c) !== kind) setTemplateId(null);
+              setCategory(c);
+            }}
           >
             <b>{categoryLabels[c]}</b>
             <span>{blurbs[c]}</span>
@@ -170,6 +186,18 @@ export function NewProjectDialog({
             <span className="hint">
               Becomes <code>titolo</code> in the front matter.
             </span>
+          </div>
+          <div className="field">
+            <label htmlFor="np-template">Template</label>
+            <select id="np-template" value={chosen.id} onChange={(e) => setTemplateId(e.target.value)}>
+              {choices.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · v{t.version}
+                  {t.isDefault ? ' (default)' : ''}
+                </option>
+              ))}
+            </select>
+            <span className="hint">The project keeps this version until you update it.</span>
           </div>
           {category !== 'campaign' && (
             <div className="field">

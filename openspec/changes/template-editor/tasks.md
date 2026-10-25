@@ -60,9 +60,9 @@ TypeScript.
 
 ## 8. Projects (brief B)
 
-- [ ] 8.1 `NewProjectDialog.tsx`: the Template select (state 9), its preview from the chosen template
-- [ ] 8.2 Editor top bar «vN available» and the update dialog (state 8), `updateEdits` and `setTemplate` in one transaction, undone in one step (D10, D18)
-- [ ] 8.3 Commit `feat(web): choose a template and update projects to its latest version`
+- [x] 8.1 `NewProjectDialog.tsx`: the Template select (state 9), its preview from the chosen template
+- [x] 8.2 Editor top bar «vN available» and the update dialog (state 8), `updateEdits` and `setTemplate` in one transaction, undone in one step (D10, D18)
+- [x] 8.3 Commit `feat(web): choose a template and update projects to its latest version`
 
 ## 9. Proof and hand-back (brief B)
 

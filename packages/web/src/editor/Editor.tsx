@@ -5,7 +5,7 @@ import { EditorView, highlightActiveLine, keymap, placeholder } from '@codemirro
 import type { AdventureTemplate } from 'promptbook-format';
 import { nextExpiry, readHidden } from 'promptbook-project';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
-import * as Y from 'yjs';
+import type * as Y from 'yjs';
 import { analysisField } from './analysis/field.js';
 import { connectWorker } from './analysis/client.js';
 import { baseKeymap } from './cm/keymap.js';
@@ -15,6 +15,7 @@ import { hiddenEffects, problems, pushDiagnostics, undoBoundary } from './cm/pro
 import { tables } from './cm/tables.js';
 import { editorHighlight } from './cm/theme.js';
 import { templateChange, templateCompartment, templateExtension, type TemplateParts } from './template-parts.js';
+import { destroyEditorUndoManager, editorUndoManager } from './undo.js';
 
 const partsOf = (checked: boolean): TemplateParts => ({ checked, connect: connectWorker, onResult: pushDiagnostics });
 
@@ -25,8 +26,9 @@ const MAX_WAIT = 86_400_000;
 // The prep document's editor: CodeMirror 6 bound to the document's Y.Text,
 // with the live preview, and for adventures and one-shots the problems found
 // by the parse worker, less those the owner hid. Undo covers this tab's own
-// edits only. A new template reconfigures the view, keeping its undo history
-// (template-editor design decision 14).
+// edits only, and an update to another template version as one step
+// (template-editor design decision 18). A new template reconfigures the
+// view, keeping its undo history (design decision 14).
 export function Editor({
   doc,
   template,
@@ -52,7 +54,7 @@ export function Editor({
 
   useEffect(() => {
     const text = doc.getText('document');
-    const undoManager = new Y.UndoManager(text);
+    const undoManager = editorUndoManager(doc);
     const view = new EditorView({
       parent: host.current!,
       state: EditorState.create({
@@ -110,7 +112,7 @@ export function Editor({
       latest.current.onView?.(null);
       viewRef.current = null;
       view.destroy();
-      undoManager.destroy();
+      destroyEditorUndoManager(doc, undoManager);
     };
   }, [doc, checked, compartment]);
 

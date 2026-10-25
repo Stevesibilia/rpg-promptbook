@@ -442,6 +442,22 @@
   display: block;
 }
 
+/* The project's top bar: a newer template version */
+.tpl-chip {
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--amber) 50%, var(--border));
+  color: var(--amber);
+  white-space: nowrap;
+}
+.tpl-chip:hover {
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+}
+.modal.sm .mb b.worse {
+  color: var(--amber);
+}
+
 /* The dialogs */
 .modal.sm {
   width: min(560px, calc(100vw - 32px));

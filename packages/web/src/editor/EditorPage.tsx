@@ -35,6 +35,7 @@ import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
 import { useProjectTemplate } from '../templates/TemplatesContext.js';
+import { TemplateUpdate } from '../templates/TemplateUpdate.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
 import { analysisField } from './analysis/field.js';
 import { jumpTo, write } from './writes.js';
@@ -317,7 +318,11 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       focus={focus}
       wideRight={pane}
       crumbs={<ProjectCrumbs meta={meta} campaign={campaign} />}
-      topExtra={<ProjectMetaControls doc={doc} meta={meta} campaign={campaign} />}
+      topExtra={
+        <ProjectMetaControls doc={doc} meta={meta} campaign={campaign}>
+          <TemplateUpdate doc={doc} meta={meta} view={view} />
+        </ProjectMetaControls>
+      }
       banner={<ClaudeBanner projectId={meta.id} />}
       topEnd={
         <div className="top-tools">
