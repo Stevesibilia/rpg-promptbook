@@ -215,3 +215,63 @@ describe('a template that renames a field', () => {
     expect(original.night.clock).not.toBeNull();
   });
 });
+
+describe('the headings the PDF prints', () => {
+  // Template-editor design decision 20: each heading is the template's.
+  it('are the built-in\'s names for Avventura', () => {
+    const input = layout(sabaoth());
+    // Sabaoth has no synopsis.
+    expect(input.cover.synopsis).toBeNull();
+    expect([
+      input.night.overviewTitle,
+      input.night.overview?.title,
+      input.night.revelations?.title,
+      input.night.reminders?.title,
+      input.night.clock?.title,
+      input.night.truths?.title,
+      input.start.strongStart?.title,
+      input.start.sceneMap?.title,
+      input.references.clues?.title,
+      input.references.npcs?.title,
+      input.references.sheetsTitle,
+      input.references.pregenerated?.title,
+    ]).toEqual([
+      "A colpo d'occhio",
+      "A colpo d'occhio",
+      'Rivelazioni',
+      'Da non perdere stasera',
+      'Orologio',
+      'Verità del mondo',
+      'Inizio forte',
+      'Mappa delle scene',
+      'Indizi',
+      'PNG',
+      'Schede',
+      'Pregenerati',
+    ]);
+  });
+
+  it('follow a template that renames them', () => {
+    const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+    const rename = (role: string, name: string) => (definition.sections.find((s) => s.role === role)!.name = name);
+    rename('strongStart', 'Apertura');
+    rename('overview', 'Panoramica');
+    rename('sheets', 'Personaggi');
+    definition.overview.revelations = 'Segreti';
+    definition.sheets.pregenerated = 'Già pronti';
+    const renamed = defineTemplate(definition);
+    const written = sabaoth()
+      .replace('## Inizio forte', '## Apertura')
+      .replace("## A colpo d'occhio", '## Panoramica')
+      .replace('## Schede', '## Personaggi')
+      .replace('Rivelazioni', 'Segreti')
+      .replace('### Pregenerati', '### Già pronti');
+    const input = toLayoutInput(parseAdventure(written, { template: renamed }).model, defaultLayoutOptions, project, renamed);
+    expect(input.start.strongStart?.title).toBe('Apertura');
+    expect(input.night.overviewTitle).toBe('Panoramica');
+    expect(input.night.overview?.title).toBe('Panoramica');
+    expect(input.references.sheetsTitle).toBe('Personaggi');
+    expect(input.night.revelations?.title).toBe('Segreti');
+    expect(input.references.pregenerated?.title).toBe('Già pronti');
+  });
+});

@@ -363,3 +363,7 @@ only.
 `NewProjectDialog`'s preview builds from the chosen template (task 8.1).
 `updateEdits` renames sections and field labels only, not front matter keys
 or box types: the dialog lists those changes without an edit.
+
+### D20. PDF headings follow the template (architect, at build)
+
+The Typst template printed 15 section and side-box headings as literals, so a renamed section kept its old name in the PDF. Each `LayoutPart` that prints a heading now carries `title`, the template section's `heading ?? name` found by role. «Rivelazioni» comes from `overview.revelations`, «Pregenerati» from `sheets.pregenerated`, and «Schede» from the sheets section. The built-in's PDF bytes are unchanged.

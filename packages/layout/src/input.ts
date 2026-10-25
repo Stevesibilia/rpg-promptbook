@@ -49,6 +49,9 @@ export interface LayoutBlock {
 }
 
 export interface LayoutPart {
+  // The heading the PDF prints: the template section's (template-editor
+  // design decision 20).
+  title: string;
   from: number;
   blocks: LayoutBlock[];
 }
@@ -113,6 +116,7 @@ export interface LayoutSheet {
 }
 
 export interface LayoutPregenerated {
+  title: string;
   from: number;
   blocks: LayoutBlock[];
   characters: { name: string; from: number; blocks: LayoutBlock[] }[];
@@ -137,6 +141,8 @@ export interface LayoutInput {
   };
   night: {
     from: number;
+    // «A colpo d'occhio» prints even when the document lacks it.
+    overviewTitle: string;
     overview: LayoutPart | null;
     revelations: LayoutPart | null;
     sideBoxes: LayoutBlock[];
@@ -157,6 +163,7 @@ export interface LayoutInput {
     from: number;
     clues: LayoutPart | null;
     npcs: LayoutPart | null;
+    sheetsTitle: string;
     sheets: LayoutSheet[];
     pregenerated: LayoutPregenerated | null;
     before: LayoutPart | null;
@@ -257,13 +264,21 @@ function linkByText(template: AdventureTemplate, markdown: string, references: R
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// The heading of the template's section with this role, as the document
+// writes it.
+function headingOf(template: AdventureTemplate, role: Section['role'] | undefined, fallback: string): string {
+  const section = role ? template.sections.find((s) => s.role === role) : undefined;
+  return section ? (section.heading ?? section.name) : fallback;
+}
+
 function partOf(
   template: AdventureTemplate,
   section: Section | undefined,
   blocks: Block[] = section?.blocks ?? [],
+  title: string = headingOf(template, section?.role, section?.heading ?? ''),
 ): LayoutPart | null {
   if (!section) return null;
-  return { from: section.range.start.offset, blocks: blocks.map((b) => blockOf(template, b)) };
+  return { title, from: section.range.start.offset, blocks: blocks.map((b) => blockOf(template, b)) };
 }
 
 function field(template: AdventureTemplate, scene: Scene, found: SceneField | undefined): LayoutField | null {
@@ -459,8 +474,12 @@ export function toLayoutInput(
     },
     night: {
       from: from(overview, role('reminders')),
+      overviewTitle: headingOf(template, 'overview', "A colpo d'occhio"),
       overview: overview ? part(overview, overviewBlocks.filter((b) => !box(b)?.side)) : null,
-      revelations: overview && revelationBlocks.length > 0 ? part(overview, revelationBlocks) : null,
+      revelations:
+        overview && revelationBlocks.length > 0
+          ? partOf(template, overview, revelationBlocks, template.overview.revelations)
+          : null,
       sideBoxes: overviewSide.map((b) => toBlock(b)),
       reminders: part(role('reminders')),
       clock: part(role('clock')),
@@ -473,6 +492,7 @@ export function toLayoutInput(
       from: from(clues, npcs, sheets),
       clues: part(clues),
       npcs: part(npcs),
+      sheetsTitle: headingOf(template, 'sheets', 'Schede'),
       sheets: model.sheets.map((s) => ({
         label: sheetLabel(s.id),
         title: s.title,
@@ -482,6 +502,7 @@ export function toLayoutInput(
       pregenerated:
         model.pregenerated && options.pregenerated
           ? {
+              title: template.sheets.pregenerated,
               from: model.pregenerated.range.start.offset,
               blocks: model.pregenerated.blocks.map((b) => toBlock(b)),
               characters: model.pregenerated.characters.map((c) => ({
