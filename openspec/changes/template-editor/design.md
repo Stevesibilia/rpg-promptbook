@@ -367,3 +367,45 @@ or box types: the dialog lists those changes without an edit.
 ### D20. PDF headings follow the template (architect, at build)
 
 The Typst template printed 15 section and side-box headings as literals, so a renamed section kept its old name in the PDF. Each `LayoutPart` that prints a heading now carries `title`, the template section's `heading ?? name` found by role. «Rivelazioni» comes from `overview.revelations`, «Pregenerati» from `sheets.pregenerated`, and «Schede» from the sheets section. The built-in's PDF bytes are unchanged.
+
+## Brief B: departures accepted at review
+
+The owner gave the go on the preview screenshots (states 1 to 9, 3 and 8
+also dark). All departures accepted:
+
+- A sixth commit (d690ce2) for the reviewer's findings: the save dialog
+  can't close mid-save; focus returns to the opener of the save and update
+  dialogs (`ui/focus.ts`); `Confirm` gains an opt-in `focusCancel`; focus
+  follows a moved or removed row, and inputs are labelled «Heading, row N»;
+  the leave guard catches the browser's Back through an extra history entry
+  while the draft is dirty; dirty means `templateChanges` is not empty or
+  the draft is invalid; Duplicate in the banner has a busy guard; the save
+  dialog's Save respects offline.
+- Delete asks first, in a `Confirm`.
+- A duplicate is named «Copia di X», numbered «(2)» when taken, and opens.
+- No Game system for campaigns: the campaign schema has none.
+- Scene fields and Front matter show «Used for» with the lock; keys the app
+  reads without a role show «Read by the app».
+- Boxes: a Look column, editable only on boxes added in the draft, «+ place»
+  as a select, chips that remove a place, «Per place» any or at least 1 (a
+  max shows read-only).
+- New project: the Template select sits under Title, and Create waits for
+  the list, so an own default is never read as the built-in.
+- The update dialog compares problems by severity, code and scene, not by
+  message, since messages quote labels the update renames.
+- The preview compresses blank lines and folds the front matter past four
+  keys, as the editor does.
+- The leave guard catches the rail, logo and Settings menu in the capture
+  phase (the app uses `BrowserRouter`, so no `useBlocker`).
+- D20 added `night.overviewTitle` and `references.sheetsTitle`.
+
+D18 proof: `web/test/editor-undo.test.ts`. The undo manager's scope is the
+text and the meta map; `captureTransaction` takes a meta change only from
+`templateUpdateOrigin` or from the manager itself (else redo loses the
+update). An undo after another device set a newer version restores the
+text only (Yjs keeps the newer version): accepted.
+
+Not verified: the desktop app offline with the new UI (read by code only),
+widths below 1440 px, screen readers. Open: light-theme `--amber` and
+`--primary` as small text are below 4.5:1 contrast, an app-wide token
+question left for a follow-up.
