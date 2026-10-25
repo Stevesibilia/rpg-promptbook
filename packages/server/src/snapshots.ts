@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { parseAdventure, type Template } from 'promptbook-format';
-import { countWords, findTarget, readDocument, readMeta, templateOf } from 'promptbook-project';
+import { countWords, findTarget, readDocument } from 'promptbook-project';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
 import { broadcastToProject, openLiveDocument, setDocumentText, snapshotMessage, type LiveDocument } from './live.js';
 import { isUuid, loadProjectDoc, SNAPSHOT_DAYS, type ProjectRow } from './projects.js';
 import type { Sync } from './sync.js';
+import { templateOfDoc } from './templates.js';
 
 // Server snapshots of a project's prep document (connector design decisions
 // 6 and 13). Callers check first that the project is the user's and not in
@@ -175,7 +176,13 @@ export async function deleteSnapshot(db: Queryable, projectId: string, id: strin
 
 // A user snapshot of the text as the open clients have it, or as stored. A
 // project with no stored document has no text to keep.
-export async function createUserSnapshot(db: Db, sync: Sync, project: ProjectRow, label: string): Promise<SnapshotRow> {
+export async function createUserSnapshot(
+  db: Db,
+  sync: Sync,
+  project: ProjectRow,
+  userId: string,
+  label: string,
+): Promise<SnapshotRow> {
   const doc = sync.liveDocument(project.id) ?? (await loadProjectDoc(db, project.id));
   if (!doc) throw new AppError(409, 'no_document', 'This project has no stored text to snapshot.');
   const snapshot = await insertSnapshot(db, {
@@ -183,7 +190,7 @@ export async function createUserSnapshot(db: Db, sync: Sync, project: ProjectRow
     kind: 'user',
     label,
     text: readDocument(doc),
-    template: templateOf(readMeta(doc)),
+    template: await templateOfDoc(db, userId, doc),
   });
   broadcastToProject(sync, project.id, snapshotMessage(snapshot));
   return strip(snapshot);
@@ -263,6 +270,7 @@ export async function restoreSnapshot(
   if (!source) throw new AppError(404, 'not_found', 'Not found.');
   const live = await openLiveDocument(sync, project.id, userId);
   try {
+    const template = await templateOfDoc(db, userId, live.doc);
     const stored = await snapshotThenWrite(db, live, {
       snapshot: (text) =>
         insertSnapshot(db, {
@@ -270,7 +278,7 @@ export async function restoreSnapshot(
           kind: 'restore',
           label: `${source.label} · ${source.createdAt}`,
           text,
-          template: templateOf(readMeta(live.doc)),
+          template,
         }),
       next: () => source.text,
     });
@@ -329,6 +337,7 @@ export async function undoClaudeEdit(
   }
   const live = await openLiveDocument(sync, project.id, userId);
   try {
+    const template = await templateOfDoc(db, userId, live.doc);
     const stored = await snapshotThenWrite(db, live, {
       snapshot: (text) =>
         insertSnapshot(db, {
@@ -336,9 +345,9 @@ export async function undoClaudeEdit(
           kind: 'restore',
           label: `Before undoing Claude's edit of ${edit.label}`,
           text,
-          template: templateOf(readMeta(live.doc)),
+          template,
         }),
-      next: (text) => undoneText(text, templateOf(readMeta(live.doc)), edit),
+      next: (text) => undoneText(text, template, edit),
     });
     return strip(stored);
   } finally {

@@ -11,6 +11,7 @@ export function Confirm({
   note,
   action,
   danger = false,
+  focusCancel = false,
   onConfirm,
   onClose,
 }: {
@@ -19,6 +20,8 @@ export function Confirm({
   note?: ReactNode;
   action: string;
   danger?: boolean;
+  // Cancel takes the focus when the dialog opens.
+  focusCancel?: boolean;
   onConfirm(): void | Promise<void>;
   onClose(): void;
 }) {
@@ -53,7 +56,7 @@ export function Confirm({
       className="confirm"
       footer={
         <>
-          <button className="tb line" onClick={onClose}>
+          <button className="tb line" autoFocus={focusCancel} onClick={onClose}>
             Cancel
           </button>
           <button className={`tb ${danger ? 'danger-fill' : 'primary'}`} disabled={busy} onClick={() => void run()}>

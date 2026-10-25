@@ -1,9 +1,13 @@
+import { defaultTemplateRef } from 'promptbook-format';
 import type { Category } from './model.js';
 
 // A user's settings: the to-do list each new project of a category starts
-// from, and the defaults written into a new document's front matter.
+// from, the document template each kind starts from (a template id, used at
+// its latest version), and the defaults written into a new document's front
+// matter.
 export interface Settings {
   todoTemplates: Record<Category, string[]>;
+  defaultTemplates: { adventure: string; campaign: string };
   author: string;
   copyright: string;
   licence: string;
@@ -38,6 +42,10 @@ export function defaultSettings(): Settings {
       campaign: [...campaignTodo],
       adventure: [...adventureTodo],
       'one-shot': [...adventureTodo],
+    },
+    defaultTemplates: {
+      adventure: defaultTemplateRef('adventure').id,
+      campaign: defaultTemplateRef('campaign').id,
     },
     author: '',
     copyright: '',

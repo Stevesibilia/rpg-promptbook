@@ -25,6 +25,7 @@ describe('command line', () => {
       '004_desktop.sql',
       '005_files.sql',
       '006_gdrarchive.sql',
+      '007_document_templates.sql',
     ]);
     expect(await runMigrations(db)).toEqual([]);
   });

@@ -15,6 +15,7 @@ import { AppError } from './errors.js';
 import { fixture, type FixtureName } from './fixtures.js';
 import { insertProject } from './projects.js';
 import { getSettings } from './routes/settings.js';
+import { templateForNewProject } from './templates.js';
 
 // The sample projects of the agreed mockup (design decision 10), for trying
 // the app locally.
@@ -190,6 +191,9 @@ export async function seedProjects(db: Db, username: string): Promise<number> {
       ids.set(sample.key, id);
       titles.set(sample.key, sample.title);
       const campaignTitle = sample.campaign ? titles.get(sample.campaign)! : null;
+      // A fixture document was written for the built-in; a skeleton starts
+      // from the kind's default, as a new project does.
+      const template = sample.document ? undefined : await templateForNewProject(tx, user.id, sample.category, settings);
       const doc = createProjectDoc({
         id,
         title: sample.title,
@@ -199,16 +203,21 @@ export async function seedProjects(db: Db, username: string): Promise<number> {
         system: sample.system,
         seed: sample.seed ?? '',
         todo: sample.todo.map(([text]) => text),
+        ...(template ? { template: { id: template.id, version: template.version } } : {}),
         document: sample.document
           ? fixture(sample.document)
-          : skeletonDocument(sample.category, {
-            title: sample.title,
-            system: sample.system,
-            campaignTitle,
-            author: settings.author,
-            copyright: settings.copyright,
-            licence: settings.licence,
-          }),
+          : skeletonDocument(
+            sample.category,
+            {
+              title: sample.title,
+              system: sample.system,
+              campaignTitle,
+              author: settings.author,
+              copyright: settings.copyright,
+              licence: settings.licence,
+            },
+            template,
+          ),
       });
       readTodo(doc).forEach((item, index) => {
         const [, done, due] = sample.todo[index]!;

@@ -20,6 +20,7 @@ export {
   resolveTemplate,
   type TemplateRef,
 } from './template/registry.js';
+export { templateChanges, type TemplateChange } from './template/changes.js';
 export { builtinSystems, defineSystems, type SystemDefinition, type SystemInput } from './systems.js';
 export type {
   AdventureTemplate,
@@ -27,6 +28,7 @@ export type {
   CalloutDefinition,
   CampaignTemplate,
   CampaignTemplateInput,
+  MetaKeyDefinition,
   Place,
   Requirement,
   SceneFieldDefinition,

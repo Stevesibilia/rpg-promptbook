@@ -12,8 +12,9 @@ export const readAloudAfter = (template: AdventureTemplate): string | undefined 
   template.sceneFields.find((f) => f.role === 'mustHave')?.label;
 
 // The template has no data for the reactions table's second header yet
-// (design decision 8).
-export const REACTIONS_THEN = 'Allora…';
+// (design decision 8); the starting document writes the same one.
+import { REACTIONS_THEN } from 'promptbook-project';
+export { REACTIONS_THEN };
 
 export type Insert =
   // A missing scene field, in template order.
@@ -62,8 +63,10 @@ export function insertText(what: Insert, template: AdventureTemplate, model?: Mo
       const field = template.sceneFields.find((f) => f.label === what.label);
       return end(field?.form === 'block' ? `**${what.label}**\n\n- ` : `**${what.label}:** `);
     }
-    case 'readAloud':
-      return insertText({ kind: 'callout', callout: readAloudOf(template) }, template);
+    case 'readAloud': {
+      const callout = readAloudOf(template);
+      return callout ? insertText({ kind: 'callout', callout }, template) : end('');
+    }
     case 'callout': {
       const { type, meta, title } = what.callout;
       const header = `> [!${meta ? `${type}|${meta}` : type}]`;
@@ -81,8 +84,10 @@ export function insertText(what: Insert, template: AdventureTemplate, model?: Mo
   }
 }
 
-export function readAloudOf(template: AdventureTemplate): CalloutDefinition {
-  return template.callouts.find((c) => c.role === 'readAloud')!;
+// The template's read-aloud box; a template may have none (template-editor
+// design decision 12).
+export function readAloudOf(template: AdventureTemplate): CalloutDefinition | undefined {
+  return template.callouts.find((c) => c.role === 'readAloud');
 }
 
 // One more than the highest scene number in use.
@@ -101,6 +106,8 @@ export function nextSceneNumber(model: Model, template: AdventureTemplate): numb
 // the cursor is in none.
 export function placeInsert(what: Insert, ctx: InsertContext): Placed | null {
   const { text, model, template, pos, at } = ctx;
+  // Nothing to write for a box the template does not have.
+  if (what.kind === 'readAloud' && !readAloudOf(template)) return null;
   const { text: block, cursor } = insertText(what, template, model);
   const lines = linesOf(text);
 

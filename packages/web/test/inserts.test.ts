@@ -60,7 +60,15 @@ describe('insertText', () => {
 
   it('places the read-aloud after the field with the mustHave role', () => {
     expect(readAloudAfter(template)).toBe('Da non perdere qui');
-    expect(readAloudOf(template).type).toBe('leggi');
+    expect(readAloudOf(template)?.type).toBe('leggi');
+  });
+
+  it('offers no read-aloud insert for a template without one', () => {
+    const without = { ...template, callouts: template.callouts.filter((c) => c.role !== 'readAloud') };
+    expect(readAloudOf(without)).toBeUndefined();
+    expect(insertText({ kind: 'readAloud' }, without).text).toBe('');
+    const at = skeleton.indexOf('### S1.');
+    expect(placeInsert({ kind: 'readAloud' }, { text: skeleton, model: parse(skeleton).model, template: without, pos: at })).toBeNull();
   });
 
   it('numbers a new scene after the highest one', () => {
@@ -108,8 +116,10 @@ describe('placeInsert in template order', () => {
   });
 
   it('fills an empty scene field by field, one blank line between each', () => {
-    const at = skeleton.indexOf('### S1.');
-    let text = skeleton;
+    // The starting document's first scene comes with its fields: empty it.
+    const empty = skeleton.replace(/(### S1\. Prima scena\n)[\s\S]*?(\n## Indizi\n)/, '$1$2');
+    const at = empty.indexOf('### S1.');
+    let text = empty;
     for (const label of ['In gioco', 'Luogo e momento', 'Da non perdere qui']) {
       text = run(text, { kind: 'field', label }, at).replace('‸', '');
     }

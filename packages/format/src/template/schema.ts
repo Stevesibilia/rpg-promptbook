@@ -6,6 +6,10 @@ import { z } from 'zod';
 
 const label = z.string().trim().min(1, 'expected a non-empty label');
 
+// Sections, scene fields, callouts and meta keys may carry a `uid`: a stable
+// id the template editor gives every item it adds, so that the changes between
+// two versions tell a rename from a removal. The built-ins have none.
+
 export const requirementSchema = z.enum(['required', 'recommended', 'optional']);
 
 export const sectionRoleSchema = z.enum([
@@ -38,6 +42,7 @@ const metaKeySchema = z.object({
   // What the code reads the key for: the title, the subtitle, or the game
   // system whose grade table the sheets use.
   role: z.enum(['title', 'subtitle', 'system']).optional(),
+  uid: z.string().min(1).optional(),
 });
 
 const sectionSchema = z.object({
@@ -48,6 +53,7 @@ const sectionSchema = z.object({
   heading: label.optional(),
   requirement: requirementSchema,
   role: sectionRoleSchema.optional(),
+  uid: z.string().min(1).optional(),
 });
 
 export const sceneFieldRoleSchema = z.enum([
@@ -70,6 +76,7 @@ const sceneFieldSchema = z.object({
   requirement: requirementSchema,
   climax: z.boolean(),
   role: sceneFieldRoleSchema.optional(),
+  uid: z.string().min(1).optional(),
 });
 
 const calloutSchema = z.object({
@@ -84,6 +91,7 @@ const calloutSchema = z.object({
     min: z.int().nonnegative(),
     max: z.int().positive().nullable(),
   }),
+  uid: z.string().min(1).optional(),
 });
 
 const sheetKeySchema = z.object({
@@ -97,6 +105,8 @@ const head = {
   id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'expected a lower-case id'),
   version: z.int().positive(),
   name: label,
+  // The name of the template this one was duplicated from.
+  copiedFrom: label.optional(),
 };
 
 const sections = z.array(sectionSchema).min(1, 'expected at least one section');
@@ -106,6 +116,9 @@ const adventureSchema = z
   .object({
     ...head,
     kind: z.literal('adventure'),
+    // The game system a new project's front matter names, unless the user's
+    // settings name one.
+    system: label.optional(),
     ids: z.object({ scene: label, revelation: label, clue: label }),
     meta: z.array(metaKeySchema),
     sections,
@@ -150,11 +163,14 @@ const adventureSchema = z
     unique(template.meta, (k) => k.role, ['meta'], 'role');
     unique(template.sections, (s) => s.name, ['sections'], 'section');
     unique(template.sections, (s) => s.role, ['sections'], 'role');
+    uniqueUids(unique, template);
     unique(template.sceneFields, (f) => f.label, ['sceneFields'], 'label');
     unique(template.sceneFields, (f) => f.role, ['sceneFields'], 'role');
     unique(template.callouts, (c) => (c.meta ? `${c.type}|${c.meta}` : c.type), ['callouts'], 'type');
     unique(template.sheets.keys, (k) => k.key, ['sheets', 'keys'], 'key');
     unique(template.sheets.keys, (k) => k.role, ['sheets', 'keys'], 'role');
+    unique(template.sceneFields, (f) => f.uid, ['sceneFields'], 'uid');
+    unique(template.callouts, (c) => c.uid, ['callouts'], 'uid');
     template.callouts.forEach((callout, index) => {
       const { min, max } = callout.perPlace;
       if (max !== null && max < min) {
@@ -177,6 +193,7 @@ const campaignSchema = z
     unique(template.meta, (k) => k.role, ['meta'], 'role');
     unique(template.sections, (s) => s.name, ['sections'], 'section');
     unique(template.sections, (s) => s.role, ['sections'], 'role');
+    uniqueUids(unique, template);
   });
 
 export const templateSchema = z.discriminatedUnion('kind', [adventureSchema, campaignSchema]);
@@ -195,6 +212,7 @@ export type SectionDefinition = Template['sections'][number];
 export type SceneFieldDefinition = AdventureTemplate['sceneFields'][number];
 export type CalloutDefinition = AdventureTemplate['callouts'][number];
 export type SheetKeyDefinition = AdventureTemplate['sheets']['keys'][number];
+export type MetaKeyDefinition = Template['meta'][number];
 
 export class TemplateError extends Error {
   readonly issues: string[];
@@ -226,6 +244,14 @@ export function uniqueIn(ctx: Pick<z.RefinementCtx, 'addIssue'>) {
       seen.add(value);
     });
   };
+}
+
+function uniqueUids(
+  unique: ReturnType<typeof uniqueIn>,
+  template: { meta: { uid?: string | undefined }[]; sections: { uid?: string | undefined }[] },
+) {
+  unique(template.meta, (k) => k.uid, ['meta'], 'uid');
+  unique(template.sections, (s) => s.uid, ['sections'], 'uid');
 }
 
 // The issues of a failed parse, each with the path of the bad entry, as in

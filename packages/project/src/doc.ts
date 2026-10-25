@@ -28,7 +28,7 @@ import {
 } from './model.js';
 import { defaultTemplateRef, type TemplateRef } from 'promptbook-format';
 import { isGdrarchiveLabel, parseGdrarchiveUrl, readGdrarchive, type GdrarchiveLink } from './gdrarchive.js';
-import { readTemplateRef, templateKindOf } from './template.js';
+import { isTemplateRef, readTemplateRef, templateKindOf } from './template.js';
 
 // The shape of a project's Y.Doc, schema 1 (design decision 2):
 //   meta      Y.Map    schema, id, title, category, status, campaignId, system, createdAt,
@@ -270,7 +270,7 @@ export function setGdrarchive(doc: Y.Doc, link: GdrarchiveLink | null): void {
 // decision 5). Nothing checks that the device holds it: a reader that does not
 // answers the category's built-in.
 export function setTemplate(doc: Y.Doc, ref: TemplateRef): void {
-  if (!ref.id || !Number.isInteger(ref.version) || ref.version < 1) {
+  if (!isTemplateRef(ref as unknown)) {
     throw new Error(`Not a template reference "${ref.id}@${String(ref.version)}"`);
   }
   doc.transact(() => metaOf(doc).set('template', { id: ref.id, version: ref.version }));

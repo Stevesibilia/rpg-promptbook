@@ -46,7 +46,7 @@ export async function snapshotsRoutes(app: FastifyInstance, { db, sync }: { db: 
     const { id } = req.params as { id: string };
     const project = await projectOf(user.id, id);
     const { label } = parseBody(createBody, req.body);
-    return reply.code(201).send({ snapshot: await createUserSnapshot(db, sync, project, label) });
+    return reply.code(201).send({ snapshot: await createUserSnapshot(db, sync, project, user.id, label) });
   });
 
   app.get('/api/projects/:id/snapshots/:sid', async (req) => {

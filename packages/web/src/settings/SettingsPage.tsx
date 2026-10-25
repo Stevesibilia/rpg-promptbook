@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { categories, type Category, type Settings } from 'promptbook-project';
 import { api, ApiError, exportAllName, exportAllUrl } from '../api.js';
@@ -12,6 +12,12 @@ import { platform } from '../platform/index.js';
 import { LicencePane } from '../licence/LicencePane.js';
 import { categoryLabels } from '../projects/list.js';
 import { Shell } from '../shell/Shell.js';
+import { TemplateList } from '../templates/TemplateList.js';
+
+// CodeMirror, for the starting document's preview, loads with the editor.
+const TemplateEditor = lazy(() =>
+  import('../templates/TemplateEditor.js').then((m) => ({ default: m.TemplateEditor })),
+);
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
 import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
@@ -39,6 +45,8 @@ export function SettingsPage() {
   const params = useParams();
   const navigate = useNavigate();
   const section: Section = sections.some((s) => s.key === params.section) ? (params.section as Section) : 'todo';
+  // A document template open in its editor.
+  const editing = section === 'documents' ? (params.templateId ?? null) : null;
   const [state, setState] = useState<SaverState | null>(null);
   const [loadError, setLoadError] = useState('');
   const saver = useRef<SettingsSaver | null>(null);
@@ -68,7 +76,7 @@ export function SettingsPage() {
 
   return (
     <Shell crumbs={<b>Settings</b>} rail="settings" status={saveNote}>
-      <div className="pane">
+      <div className={`pane${editing ? ' wide' : ''}`}>
         <div className="head">
           <h1>Settings</h1>
         </div>
@@ -90,7 +98,12 @@ export function SettingsPage() {
               // Its inputs are keyed by their text, so a restored list redraws.
               <TodoTemplates settings={settings} onSave={save} />
             )}
-            {section === 'documents' && <DocumentTemplates />}
+            {section === 'documents' && !editing && <TemplateList settings={settings} onSave={save} />}
+            {editing && (
+              <Suspense fallback={<p className="loading">Loading…</p>}>
+                <TemplateEditor id={editing} settings={settings} />
+              </Suspense>
+            )}
             {section === 'author' && settings && (
               // Keyed, so the fields show the restored values after a failure.
               <AuthorDefaults key={state?.revision} settings={settings} onSave={save} />
@@ -207,29 +220,6 @@ function TodoTemplates({ settings, onSave }: { settings: Settings; onSave(next: 
           </form>
         </div>
       </NeedsServerGroup>
-    </section>
-  );
-}
-
-function DocumentTemplates() {
-  return (
-    <section>
-      <h2>Document templates</h2>
-      <p className="lead">The skeleton a new project's prep document starts from.</p>
-      <div className="card">
-        <b>Adventure and one-shot</b> ·{' '}
-        <span className="muted">
-          avventura@1, checked by the format package: front matter, the fixed sections, one empty scene{' '}
-          <code>### S1.</code>, the appendix.
-        </span>
-      </div>
-      <div className="card">
-        <b>Campaign</b> ·{' '}
-        <span className="muted">
-          no checked template yet. Plain Markdown with headings: Premessa, Fronti, PNG ricorrenti, Fili aperti,
-          Sessioni. Not validated.
-        </span>
-      </div>
     </section>
   );
 }

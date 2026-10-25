@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { defaultTemplateRef } from 'promptbook-format';
+import { defaultTemplateRef, type Template } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
@@ -24,7 +24,6 @@ import {
   seedVersions,
   statuses,
   targetsOf,
-  templateOf,
   currentSeed,
   type ResearchTopic,
 } from 'promptbook-project';
@@ -34,6 +33,7 @@ import { AppError } from '../errors.js';
 import { withLiveDocument } from '../live.js';
 import { createProject, getProject, listProjects, loadProjectDoc, type ProjectRow } from '../projects.js';
 import { textHash } from '../snapshots.js';
+import { accountTemplates, templateOfDoc } from '../templates.js';
 import { INSUFFICIENT_SCOPE, RateLimited, toToolError } from './errors.js';
 import { registerBoardTools } from './board.js';
 import { addScene, check, locate, MARKDOWN_MAX, replaceSection } from './edits.js';
@@ -133,6 +133,8 @@ export interface ToolKit {
   projectOf(id: string): Promise<ProjectRow>;
   docOf(project: ProjectRow): Promise<Y.Doc>;
   write<T>(project: ProjectRow, fn: (doc: Y.Doc) => T): Promise<T>;
+  // The caller's own document templates, the `extra` of every reader.
+  templates(): Promise<Template[]>;
   schemas: { projectId: typeof projectId; requiredText: typeof requiredText; text: typeof text };
 }
 
@@ -319,7 +321,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       const project = await projectOf(args.projectId);
       const doc = await docOf(project);
       const text = readDocument(doc);
-      const template = templateOf(readMeta(doc));
+      const template = await templateOfDoc(db, caller.userId, doc);
       const checked = check(text, template, readHidden(doc), new Date());
       const targets = targetsOf(text, template).map((t) => {
         if (!checked) return { kind: t.kind, target: t.target, title: t.title };
@@ -353,7 +355,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       const doc = await docOf(project);
       const text = readDocument(doc);
       if (args.target === undefined) return { text, hash: textHash(text) };
-      const target = locate(text, templateOf(readMeta(doc)), args.target);
+      const target = locate(text, await templateOfDoc(db, caller.userId, doc), args.target);
       const span = text.slice(target.from, target.to);
       return { target: target.target, kind: target.kind, title: target.title, text: span, hash: textHash(span) };
     },
@@ -591,5 +593,6 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
     },
   );
 
-  registerBoardTools({ tool, projectOf, docOf, write, schemas: { projectId, requiredText, text } });
+  const templates = () => accountTemplates(db, caller.userId);
+  registerBoardTools({ tool, projectOf, docOf, write, templates, schemas: { projectId, requiredText, text } });
 }

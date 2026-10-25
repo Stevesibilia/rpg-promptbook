@@ -20,6 +20,7 @@ import {
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { connectWorker, createAnalysisClient, type Connect } from '../editor/analysis/client.js';
+import { useTemplates } from '../templates/TemplatesContext.js';
 import { shownPrompts, type Named, type ShownPrompt } from './summary.js';
 
 // The board's data (asset-board design decision 2, image-categories design
@@ -128,6 +129,13 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   // Callers of parseNow waiting for the text they asked for.
   const waiting = useRef<{ resolve(p: Parsed): void }[]>([]);
   const client = useRef<ReturnType<typeof createAnalysisClient<string>> | null>(null);
+  // The account's templates, read at each parse; a new list parses again.
+  const { templates } = useTemplates();
+  const extra = useRef(templates);
+  extra.current = templates;
+  useEffect(() => {
+    client.current?.changed();
+  }, [templates]);
 
   useEffect(() => {
     const text = textOf(doc);
@@ -135,7 +143,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
       connect,
       read: () => {
         const current = text.toString();
-        return { text: current, template: adventureTemplateOf(readMeta(doc)), tag: current };
+        return { text: current, template: adventureTemplateOf(readMeta(doc), extra.current), tag: current };
       },
       apply: (tag, result) => {
         const next = { text: tag, model: result.model };

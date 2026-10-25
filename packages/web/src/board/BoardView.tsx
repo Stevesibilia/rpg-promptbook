@@ -9,6 +9,7 @@ import { CuebardDialog } from '../export/CuebardDialog.js';
 import { BoardIcon, CheckIcon, ExportIcon, HelpIcon, ImportIcon, LaptopIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
 import { useToast } from '../ui/Toast.js';
 import { useOffline } from '../desktop/useDevice.js';
+import { useTemplates } from '../templates/TemplatesContext.js';
 import { ClaudeCard } from './ClaudeCard.js';
 import { localLine, useLocalFiles } from './device.js';
 import { CategoryTabs } from './CategoryTabs.js';
@@ -385,6 +386,7 @@ function NoAppendix({
   onToast(message: string): void;
 }) {
   const [busy, setBusy] = useState(false);
+  const { templates } = useTemplates();
   const ids = [...new Set(board.parsed!.model.scenes.flatMap((s) => (s.id ? [s.id] : [])))];
 
   // The edit is computed against the text as parsed: when the text moved on
@@ -397,7 +399,7 @@ function NoAppendix({
       for (let attempt = 0; attempt < 5; attempt++) {
         const parsed = await board.parseNow();
         if (parsed.text !== text.toString()) continue;
-        const edit = appendixEdit(parsed.text, parsed.model, adventureTemplateOf(readMeta(doc)));
+        const edit = appendixEdit(parsed.text, parsed.model, adventureTemplateOf(readMeta(doc), templates));
         if (edit) {
           doc.transact(() => {
             if (edit.to > edit.from) text.delete(edit.from, edit.to - edit.from);

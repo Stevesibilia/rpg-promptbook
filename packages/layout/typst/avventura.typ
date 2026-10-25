@@ -328,11 +328,11 @@
   {
     set par(justify: true)
     if cover.synopsis != none {
-      section-heading("La vicenda in breve", from: cover.synopsis.from)
+      section-heading(cover.synopsis.title, from: cover.synopsis.from)
       any-blocks(cover.synopsis.blocks)
     }
     if cover.backstory != none {
-      section-heading("Antefatto", from: cover.backstory.from)
+      section-heading(cover.backstory.title, from: cover.backstory.from)
       any-blocks(cover.backstory.blocks)
     }
   }
@@ -343,27 +343,27 @@
   let follows = cover.synopsis == none and cover.backstory == none
   if not follows { pagebreak(weak: true) }
   pos("part", night.from, id: "night", label: "Notte")
-  section-heading("A colpo d'occhio", from: if night.overview != none { night.overview.from })
+  section-heading(night.overviewTitle, from: if night.overview != none { night.overview.from })
   if night.overview != none { any-blocks(night.overview.blocks) }
   columns-part(
     {
       if night.clock != none {
-        section-heading("Orologio", from: night.clock.from)
+        section-heading(night.clock.title, from: night.clock.from)
         show list.item: set block(below: 2mm)
         any-blocks(night.clock.blocks)
       }
       if night.truths != none {
-        section-heading("Verità del mondo", from: night.truths.from)
+        section-heading(night.truths.title, from: night.truths.from)
         any-blocks(night.truths.blocks)
       }
     },
     {
       v(5mm)
       if night.reminders != none {
-        side-box("Da non perdere stasera", { pos("block", night.reminders.from); any-blocks(night.reminders.blocks) })
+        side-box(night.reminders.title, { pos("block", night.reminders.from); any-blocks(night.reminders.blocks) })
       }
       if night.revelations != none {
-        side-box("Rivelazioni", any-blocks(night.revelations.blocks))
+        side-box(night.revelations.title, any-blocks(night.revelations.blocks))
       }
       for b in night.sideBoxes { callout(b) }
     },
@@ -376,11 +376,11 @@
     pagebreak(weak: true)
     pos("part", start.from, id: "start", label: "Inizio")
     if start.strongStart != none {
-      section-heading("Inizio forte", from: start.strongStart.from)
+      section-heading(start.strongStart.title, from: start.strongStart.from)
       any-blocks(start.strongStart.blocks)
     }
     if start.sceneMap != none {
-      section-heading("Mappa delle scene", from: start.sceneMap.from)
+      section-heading(start.sceneMap.title, from: start.sceneMap.from)
       any-blocks(start.sceneMap.blocks)
     }
   }
@@ -390,7 +390,7 @@
   if input.rules != none {
     pagebreak(weak: true)
     pos("part", input.rules.from, id: "rules", label: "Regole")
-    section-heading("Regole della notte", from: input.rules.from)
+    section-heading(input.rules.title, from: input.rules.from)
     if input.rules.sideBoxes.len() == 0 {
       any-blocks(input.rules.blocks)
     } else {
@@ -536,15 +536,15 @@
   pos("part", refs.from, id: "references", label: "Schede")
   part-mark("Schede", "Schede e riferimenti")
   if refs.clues != none {
-    section-heading("Indizi", from: refs.clues.from)
+    section-heading(refs.clues.title, from: refs.clues.from)
     any-blocks(refs.clues.blocks, table: "small")
   }
   if refs.npcs != none {
-    section-heading("PNG", from: refs.npcs.from)
+    section-heading(refs.npcs.title, from: refs.npcs.from)
     any-blocks(refs.npcs.blocks, table: "small")
   }
   if refs.sheets.len() > 0 {
-    section-heading("Schede")
+    section-heading(refs.sheetsTitle)
     for sheet in refs.sheets {
       [#block(width: 100%, stroke: 0.3mm + rule, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
         pos("block", sheet.from)
@@ -558,7 +558,7 @@
     let pregenerated = refs.pregenerated
     pagebreak(weak: true)
     pos("part", pregenerated.from, id: "pregenerated", label: "Pregenerati")
-    section-heading("Pregenerati", from: pregenerated.from)
+    section-heading(pregenerated.title, from: pregenerated.from)
     any-blocks(pregenerated.blocks)
     for character in pregenerated.characters {
       block(width: 100%, stroke: 0.45mm + ink, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
@@ -572,7 +572,7 @@
   if refs.before != none {
     pagebreak(weak: true)
     pos("part", refs.before.from, id: "before", label: "Prima della sessione")
-    section-heading("Prima della sessione", from: refs.before.from)
+    section-heading(refs.before.title, from: refs.before.from)
     any-blocks(refs.before.blocks)
   }
 }

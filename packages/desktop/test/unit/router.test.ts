@@ -1,6 +1,7 @@
 import type { ServerResponse } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
-import { setGdrarchive } from 'promptbook-project';
+import { defineTemplate, parseAdventure, templates, type AdventureTemplateInput } from 'promptbook-format';
+import { readDocument, readMeta, setGdrarchive, setTemplate } from 'promptbook-project';
 import * as Y from 'yjs';
 import { isRoutablePath } from '../../src/main/router.js';
 import { projectDoc, rowOf, sendJson, until, type Recorded } from './helpers.js';
@@ -236,6 +237,103 @@ describe('router', () => {
     expect(
       (await w.request('POST', '/api/projects', { ...NEW, campaignId: '0b9d2c3e-1f4a-4b5c-8d6e-7f8a9b0c1d2e' })).json.error,
     ).toBe('invalid_campaign');
+  });
+});
+
+// An own template as the server stores it: Avventura with a renamed strong
+// start, at a version.
+function own(version: number, change: (t: AdventureTemplateInput) => void = () => {}) {
+  const body = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+  body.id = 't-kulthos0001';
+  body.version = version;
+  body.name = 'Avventura Kulthos';
+  body.sections.find((s) => s.role === 'strongStart')!.name = 'Apertura';
+  change(body);
+  return { id: body.id, version, body: defineTemplate(body), note: '', createdAt: '2026-10-24T09:00:00.000Z' };
+}
+
+describe('templates', () => {
+  it('keeps the account’s templates for offline, and needs the server to change them', async () => {
+    await start({ online: false });
+    expect((await w.request('GET', '/api/templates')).json).toEqual({ templates: [], usage: {} });
+    await w.close();
+
+    await start();
+    const listed = { templates: [own(1)], usage: { 't-kulthos0001@1': 2 } };
+    rest = (req, res) => (req.path === '/api/templates' ? sendJson(res, 200, listed) : sendJson(res, 404, {}));
+    expect((await w.request('GET', '/api/templates')).json).toEqual(listed);
+    await w.hocus.stop();
+    await until(() => !w.engine.isOnline);
+    expect((await w.request('GET', '/api/templates')).json).toEqual(listed);
+    const writes: [string, string, unknown?][] = [
+      ['POST', '/api/templates', { from: { id: 'avventura', version: 1 }, name: 'Copia' }],
+      ['POST', '/api/templates/t-kulthos0001/versions', { baseVersion: 1, body: {}, note: '' }],
+      ['DELETE', '/api/templates/t-kulthos0001'],
+    ];
+    for (const [method, path, body] of writes) {
+      expect((await w.request(method, path, body)).json.error).toBe('offline');
+    }
+    expect(w.api.requests).toHaveLength(1);
+  });
+
+  it('creates a project offline from an own default at its latest cached version, or the one asked for', async () => {
+    await start({ online: false });
+    const v2 = own(2, (t) => {
+      t.system = 'Kulthos';
+      t.sections.splice(5, 0, { name: 'Atmosfera', requirement: 'optional', uid: 'u1' });
+    });
+    w.store.setCache('templates', { templates: [own(1), v2], usage: {} });
+    w.store.setCache('settings', {
+      todoTemplates: { campaign: [], adventure: [], 'one-shot': [] },
+      defaultTemplates: { adventure: 't-kulthos0001', campaign: 'campagna' },
+      author: '',
+      copyright: '',
+      licence: '',
+      system: '',
+    });
+    const made = async (body: Record<string, unknown>) => {
+      const created = await w.request('POST', '/api/projects', body);
+      expect(created.status).toBe(201);
+      return w.engine.doc(created.json.project.id as string)!;
+    };
+    const doc = await made(NEW);
+    expect(readMeta(doc).template).toEqual({ id: 't-kulthos0001', version: 2 });
+    expect(readMeta(doc).system).toBe('Kulthos');
+    const text = readDocument(doc);
+    expect(text).toContain('\n## Atmosfera\n');
+    expect(text).toContain('\n## Apertura\n');
+    expect(text).toContain('\nsistema: Kulthos\n');
+
+    expect(readMeta(await made({ ...NEW, template: { id: 't-kulthos0001', version: 1 } })).template).toEqual({
+      id: 't-kulthos0001',
+      version: 1,
+    });
+    expect(readMeta(await made({ ...NEW, category: 'campaign' })).template).toEqual({ id: 'campagna', version: 1 });
+    for (const template of [{ id: 't-kulthos0001', version: 3 }, { id: 'campagna', version: 1 }]) {
+      expect((await w.request('POST', '/api/projects', { ...NEW, template })).json.error).toBe('template_unknown');
+    }
+    expect((await w.request('POST', '/api/projects', { ...NEW, template: { id: 'x', version: 0 } })).json.error).toBe(
+      'validation_error',
+    );
+  });
+
+  it('counts a project’s problems against its cached own template', async () => {
+    await start({ online: false });
+    const v1 = own(1);
+    seed(A, 'Ancora', '## Apertura\n\nTesto.\n');
+    w.engine.transact(A, (doc) => setTemplate(doc, { id: v1.id, version: 1 }));
+    const counts = (template: typeof templates.avventura) => {
+      const { problems } = parseAdventure('## Apertura\n\nTesto.\n', { template });
+      return [problems.filter((p) => p.severity === 'error').length, problems.filter((p) => p.severity === 'warning').length];
+    };
+    w.list.refreshRow(A, true);
+    const row = () => w.list.rows()[0]!;
+    // Not cached yet: the built-in.
+    expect([row().errors, row().warnings]).toEqual(counts(templates.avventura));
+    w.store.setCache('templates', { templates: [v1], usage: {} });
+    w.list.refreshRow(A, true);
+    expect([row().errors, row().warnings]).toEqual(counts(v1.body));
+    expect(counts(v1.body)).not.toEqual(counts(templates.avventura));
   });
 });
 

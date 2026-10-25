@@ -1,0 +1,118 @@
+## ADDED Requirements
+
+### Requirement: The account's templates
+
+Each account SHALL hold its own document templates, each with an id made
+by the server, a kind (adventure or campaign) and numbered versions that
+never change once saved. Duplicating a built-in or an own template SHALL
+make a new template at version 1. The built-in templates SHALL be
+read-only. Every reader of a project's document SHALL resolve the
+project's template among the account's templates and the built-ins.
+
+#### Scenario: Duplicate a built-in
+
+- **WHEN** the user duplicates «Avventura»
+- **THEN** the list shows «Copia di Avventura», v1, «Copied from
+  Avventura», no projects, with «Edit» and «Delete»
+
+### Requirement: Templates offline on desktop
+
+The desktop app SHALL read the account's templates offline from its last
+copy. Creating, saving and deleting templates SHALL need the server.
+
+#### Scenario: Offline on desktop
+
+- **WHEN** the desktop app is offline and the user opens a project made
+  from an own template
+- **THEN** the project is checked against that template, and the template
+  list shows it with its editing controls disabled
+
+### Requirement: Template list
+
+Settings → Document templates SHALL list the templates in two groups,
+«Adventures and one-shots» and «Campaigns», as
+[docs/mockups/templates.html](../../../docs/mockups/templates.html) state 1
+shows them: name, latest version, «Built-in» and «Default» marks, origin,
+game system and the number of projects using any version. Each group SHALL
+have one default, which new projects of that kind preselect. «Delete» SHALL
+be offered only for an own template no project uses.
+
+#### Scenario: Make default
+
+- **WHEN** the user presses «Make default» on «Avventura Kulthos»
+- **THEN** it is marked «Default», «Avventura» is not, and the next new
+  adventure preselects «Avventura Kulthos»
+
+#### Scenario: Template in use
+
+- **WHEN** a project uses version 1 of «Avventura Kulthos»
+- **THEN** its row shows no «Delete», and the server refuses a delete with
+  `template_in_use`
+
+### Requirement: Template editor
+
+Opening a template SHALL show the editor of states 2 to 6 of the mockup: a
+name, the kind, a game system, tabs for sections, scene fields, boxes,
+front matter and limits (sections and front matter only for a campaign),
+and a live preview of the starting document a new project would get. A
+built-in SHALL open read-only with a «Duplicate» banner. Unsaved changes
+SHALL be counted in a save bar; leaving with unsaved changes SHALL ask
+before discarding them.
+
+#### Scenario: Rename a section with a role
+
+- **WHEN** the user renames «Inizio forte» to «Apertura» in an own template
+- **THEN** the preview's heading reads «## Apertura» with an amber mark, the
+  save bar counts 1 change, and after saving, a project on the new version
+  prints its read-aloud on the start page as before
+
+### Requirement: Locked rows
+
+Rows with a role, the front matter keys the app reads by name, and boxes
+needed at least once per place SHALL show a lock and SHALL NOT be
+removable. Sections and fields with a role MAY be renamed; locked keys
+SHALL NOT.
+
+#### Scenario: Locked row
+
+- **WHEN** the user looks at the «Scene» section's row
+- **THEN** its remove button is disabled with the tooltip saying it is
+  needed by the checks and the PDF
+
+### Requirement: Template versions
+
+Saving SHALL create the next version, after a dialog listing the changes
+since the saved version and an optional note. Projects SHALL keep the
+version they use. A save based on a version that is no longer the latest
+SHALL be refused with `template_version_conflict`, and the editor SHALL say
+so and offer to reload.
+
+#### Scenario: Save a version
+
+- **WHEN** the user adds the section «Atmosfera» to «Avventura Kulthos» v2
+  and saves with the note «Atmosfera»
+- **THEN** the list shows v3, and projects on v2 still use v2
+
+#### Scenario: Two tabs save
+
+- **WHEN** two tabs edit v2 and both save
+- **THEN** the first makes v3 and the second is refused with a message
+  offering to reload
+
+### Requirement: Update a project to the latest version
+
+A project whose template has a newer version SHALL show «<name> vK · vN
+available» in the editor's top bar. Its dialog SHALL list the changes, offer
+to add the new sections' headings and to rename the headings and labels
+that changed, and say how the checks' errors and warnings change. Updating
+SHALL record the new version and apply the chosen text edits as one undo
+step. A project whose template cannot be found SHALL use its kind's
+built-in and say so in the status bar.
+
+#### Scenario: Update with renames
+
+- **WHEN** a project on v2 is updated to v3, which renamed «Inizio forte» to
+  «Apertura» and added «Atmosfera», with both boxes ticked
+- **THEN** the document's heading reads «## Apertura», an empty «##
+  Atmosfera» follows «Verità del mondo», the top bar no longer shows
+  «available», and one undo restores the text and v2

@@ -7,6 +7,7 @@ import { parseBody } from '../validation.js';
 
 const item = z.string().trim().min(1, 'an item needs a text').max(200);
 const text = z.string().trim().max(200);
+const templateId = z.string().trim().min(1).max(64);
 
 export const settingsSchema = z
   .object({
@@ -16,6 +17,12 @@ export const settingsSchema = z
         z.ZodArray<typeof item>
       >)
       .strict(),
+    // Optional, so a desktop app from before templates could be chosen
+    // (v0.12) still saves its settings: the built-ins then.
+    defaultTemplates: z
+      .object({ adventure: templateId, campaign: templateId })
+      .strict()
+      .default(() => defaultSettings().defaultTemplates),
     author: text,
     copyright: text,
     licence: text,
@@ -40,6 +47,11 @@ export async function settingsRoutes(app: FastifyInstance, { db }: { db: Db }) {
   app.put('/api/settings', async (req) => {
     const { user } = requireSession(req);
     const settings = parseBody(settingsSchema, req.body);
+    // A client from before templates could be chosen sends no defaults: the
+    // stored ones stay rather than going back to the built-ins.
+    if ((req.body as { defaultTemplates?: unknown } | null)?.defaultTemplates === undefined) {
+      settings.defaultTemplates = (await getSettings(db, user.id)).defaultTemplates;
+    }
     await db.query(
       `insert into user_settings (user_id, settings) values ($1, $2)
        on conflict (user_id) do update set settings = excluded.settings, updated_at = now()`,

@@ -1,4 +1,4 @@
-import { parseAdventure, templates } from 'promptbook-format';
+import { defineTemplate, parseAdventure, templates, type AdventureTemplate, type AdventureTemplateInput } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
 import {
   addSeedVersion,
@@ -7,6 +7,7 @@ import {
   problemKey,
   readTodo,
   setGdrarchive,
+  setTemplate,
   SNOOZE_MS,
   summarize,
   updateTodo,
@@ -42,7 +43,29 @@ describe('summary', () => {
       errors: problems.filter((p) => p.severity === 'error').length,
       warnings: problems.filter((p) => p.severity === 'warning').length,
       gdrarchive: null,
+      template: { id: 'avventura', version: 1 },
     });
+  });
+
+  it("counts the problems against the project's own template", () => {
+    const text = fixture('l-ancora-di-sabaoth.converted.md');
+    const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+    definition.id = 't-0123456789';
+    definition.sections.find((s) => s.role === 'strongStart')!.name = 'Apertura';
+    const own = defineTemplate(definition);
+    const doc = project({ document: text });
+    setTemplate(doc, { id: own.id, version: own.version });
+    const counts = (template: AdventureTemplate) => {
+      const { problems } = parseAdventure(text, { template });
+      return [problems.filter((p) => p.severity === 'error').length, problems.filter((p) => p.severity === 'warning').length];
+    };
+    const summary = summarize(doc, { campaigns: [], templates: [own] });
+    expect(summary.template).toEqual({ id: own.id, version: 1 });
+    expect([summary.errors, summary.warnings]).toEqual(counts(own));
+    expect(counts(own)).not.toEqual(counts(templates.avventura));
+    // Without the account's templates, the built-in.
+    const fallback = summarize(doc, { campaigns: [] });
+    expect([fallback.errors, fallback.warnings]).toEqual(counts(templates.avventura));
   });
 
   it('leaves hidden problems out of the counts, and counts a snooze again once it ends', () => {

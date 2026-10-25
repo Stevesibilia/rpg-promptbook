@@ -17,7 +17,9 @@ import {
 import type { CuebardSaved } from 'promptbook-web/src/platform/bridge.js';
 import * as Y from 'yjs';
 import { FileError, type Files } from './files.js';
+import type { Store } from './store.js';
 import type { SyncEngine } from './sync.js';
+import { cachedTemplates } from './templates.js';
 
 // The CueBard pack built on this computer (cuebard-export design decision
 // 15): the project's own copy and the files on disk, online or offline, with
@@ -43,6 +45,8 @@ const NOT_WRITTEN = 'The CueBard pack could not be written. Check the folder and
 export interface CuebardDeps {
   engine: Pick<SyncEngine, 'isDownloaded' | 'doc'>;
   files: Pick<Files, 'localPath' | 'reading'>;
+  // Where the account's cached templates are; the built-ins without it.
+  store?: Pick<Store, 'getCache'>;
 }
 
 interface OnDisk {
@@ -102,7 +106,8 @@ async function plan(
 ): Promise<{ pack: CuebardPack; disk: Map<string, OnDisk> }> {
   const disk = new Map<string, OnDisk>();
   const missing = new Set<string>();
-  const picked = cuebardFiles(doc);
+  const templates = deps.store ? cachedTemplates(deps.store) : [];
+  const picked = cuebardFiles(doc, templates);
   // What the document says first: a pack far too large is refused before a
   // file not here yet is fetched. The sizes on disk decide below.
   checkFits(
@@ -128,7 +133,7 @@ async function plan(
   );
   const durations = new Map<string, number>();
   const read = new Map<string, number | null>();
-  for (const track of needsDuration(doc)) {
+  for (const track of needsDuration(doc, templates)) {
     if (missing.has(track.id)) continue;
     if (!read.has(track.sha256)) {
       signal.throwIfAborted();
@@ -138,7 +143,7 @@ async function plan(
     const seconds = read.get(track.sha256);
     if (seconds != null) durations.set(track.id, seconds);
   }
-  const pack = cuebardPack(doc, { now, durations, missing });
+  const pack = cuebardPack(doc, { now, durations, missing, templates });
   const text = pack.projectFile.json.length + (cuebardLeftOut(pack, 'not on this computer')?.length ?? 0);
   checkFits(
     pack.entries.reduce((sum, e) => sum + disk.get(e.sha256)!.size, 0) + 3 * text,

@@ -4,7 +4,7 @@ import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { blockAt, pageOf } from 'promptbook-layout';
-import { adventureTemplateOf, readMeta, setStatus } from 'promptbook-project';
+import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
 import { LicencePane } from '../licence/LicencePane.js';
@@ -34,6 +34,8 @@ import { PdfReview } from './pdf/PdfReview.js';
 import { PdfSource } from './pdf/PdfSheet.js';
 import { usePdf } from './pdf/usePdf.js';
 import { StatusBar, type UpdateSource } from './StatusBar.js';
+import { useProjectTemplate } from '../templates/TemplatesContext.js';
+import { TemplateUpdate } from '../templates/TemplateUpdate.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
 import { analysisField } from './analysis/field.js';
 import { jumpTo, write } from './writes.js';
@@ -57,13 +59,10 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const campaign = useCampaignRow(meta);
   useWindowTitle(meta.title);
   const checked = meta.category !== 'campaign';
-  // The project's template (template-registry design decision 6); a campaign
-  // is never parsed, and its preview and syntax use the built-in adventure's.
-  const { category, template: ref } = meta;
-  const template = useMemo(
-    () => adventureTemplateOf({ category, template: { id: ref.id, version: ref.version } }),
-    [category, ref.id, ref.version],
-  );
+  // The project's template among the account's (template-editor design
+  // decision 4); a campaign is never parsed, and its preview and syntax use
+  // the built-in adventure's.
+  const { template, missing: templateMissing } = useProjectTemplate(meta);
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
   const [inspector, setInspector] = usePanel(INSPECTOR_KEY);
@@ -319,7 +318,11 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       focus={focus}
       wideRight={pane}
       crumbs={<ProjectCrumbs meta={meta} campaign={campaign} />}
-      topExtra={<ProjectMetaControls doc={doc} meta={meta} campaign={campaign} />}
+      topExtra={
+        <ProjectMetaControls doc={doc} meta={meta} campaign={campaign}>
+          <TemplateUpdate doc={doc} meta={meta} view={view} />
+        </ProjectMetaControls>
+      }
       banner={<ClaudeBanner projectId={meta.id} />}
       topEnd={
         <div className="top-tools">
@@ -411,7 +414,15 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
           />
         ) : undefined
       }
-      status={<StatusBar view={view} updates={updates} onProblems={showChecks} onHidden={showHidden} />}
+      status={
+        <StatusBar
+          view={view}
+          updates={updates}
+          templateMissing={templateMissing}
+          onProblems={showChecks}
+          onHidden={showHidden}
+        />
+      }
     >
       <Editor doc={doc} template={template} checked={checked} extensions={extensions} onView={setView} />
       {pdfSnapshot && <PdfSource svg={pdfSnapshot.good?.svg ?? null} />}
