@@ -272,3 +272,42 @@ layout the tab already has.
   left out, the built-in read-only, a campaign (no column), the preview with
   «not in the PDF», the save dialog listing «PDF options of …», and the PDF
   review on the own section's page with a side column.
+
+## Departures accepted at review
+
+All accepted; the architect compared the screenshots (Sections tab light
+and dark, built-in, campaign, preview, save dialog, PDF review) with the
+mockup.
+
+- `LayoutInput.references.print` is computed in `input.ts`, not in Typst,
+  so every decision stays in one place (D4). `night.overviewTitle` is
+  `string | null`.
+- The «Schede» tab shows only when the references part prints, so a
+  document with nothing in the references has no references page; the
+  Sabaoth test «a document with almost nothing in it» now expects the parts
+  `cover` and `night`.
+- With «Schede» left out a reference prints «→ Tenente Donato»: the arrow
+  stays, «Schede:» goes.
+- An own part's position id is `own-<from offset>`.
+- Own sections in the cover keep the page break before the night.
+- The `pdf` change's before and after read «printed, new page», «left out»
+  and so on.
+- `pdfAction` in `web/src/templates/draft.ts` patches `{ pdf:
+withPdf(...).pdf }`; toggles are named «In the PDF, X», «New page, X»,
+  «Side column, X» with `aria-pressed`.
+- The `.g-sec` grid is `44px 1fr 118px 132px 212px 30px` (the mockup's
+  `112px 150px` did not fit three toggles at 1440 px); the narrow layout's
+  minimum width for that grid is 760 px.
+- The callout check finds a section's definition by the model section's
+  name, for known sections only.
+
+Proofs beyond the plan: the side column in the engine both ways (a box
+written after the second paragraph prints beside the first with «Side
+column», below the text without).
+
+Not verified: the Sections tab below 760 px; a v0.13 desktop reading a body
+with `pdf` (read by code: server and desktop parse bodies through
+`defineTemplate`, which strips it); Node 26 separately.
+
+Seen, not changed: an empty «Regole della notte» from the skeleton still
+prints an empty page, as before this change.
