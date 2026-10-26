@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { baseURL } from './stack.js';
+import { connectClaude } from './claude.js';
 import { signIn } from './helpers.js';
 import { pdfTexts } from './pdf-text.js';
 
 // Document templates (template-editor, mockup states 1 to 9): duplicate a
 // built-in, edit and save versions, start a project from one, update the
-// project to the next version and undo it; two tabs saving the same version.
+// project to the next version and undo it; two tabs saving the same version;
+// Claude changing a template and updating a project through the connector.
 // The first PDF of a page loads the engine, so its steps get a minute.
 
 const ENGINE = { timeout: 60_000 };
@@ -290,4 +292,57 @@ test('an own section prints in the PDF and a section left out does not', async (
   const own = pages.find((text) => text.includes('copre le lanterne'));
   expect(own).toContain('Atmosfera');
   expect(pages.some((text) => text.includes('Prima della sessione'))).toBe(false);
+});
+
+// Claude through the connector (template-connector): a copy of Avventura, a
+// project on its v1 open in the editor, v2 saved by Claude, the «v2
+// available» chip once the window gets the focus back, and the project
+// updated by Claude with a snapshot in History.
+test('Claude saves a version of a template and updates an open project to it', async ({ page }) => {
+  const claude = await connectClaude(page);
+  const name = `Avventura Claude ${Date.now().toString(36)}`;
+  const copy = await claude.tool('duplicate_template', { from: { id: 'avventura' }, name });
+  expect(copy).toMatchObject({ version: 1, name, copiedFrom: 'Avventura' });
+  const created = await claude.tool('create_project', {
+    title: `Il faro spento ${Date.now().toString(36)}`,
+    category: 'one-shot',
+    template: { id: copy.id },
+  });
+  const project = await claude.tool('get_project', { projectId: created.id });
+  expect(project.template).toEqual({ id: copy.id, version: 1, name, builtin: false, latestVersion: 1 });
+
+  await page.goto(`/projects/${created.id}`);
+  await expect(outline(page)).toContainText('Inizio forte');
+  await expect(page.locator('.status')).toContainText(`Template: ${name} v1`);
+  await expect(chip(page)).toHaveCount(0);
+
+  // v2: «Atmosfera» added, «Inizio forte» renamed «Apertura».
+  const read = await claude.tool('get_template', { templateId: copy.id });
+  const body = read.template;
+  body.sections.find((s: { role?: string }) => s.role === 'strongStart').name = 'Apertura';
+  const truths = body.sections.findIndex((s: { role?: string }) => s.role === 'truths');
+  body.sections.splice(truths + 1, 0, { name: 'Atmosfera', requirement: 'optional' });
+  const saved = await claude.tool('save_template_version', { templateId: copy.id, baseVersion: 1, body, note: 'mood section' });
+  expect(saved.version).toBe(2);
+  expect(saved.note).toMatch(/^via Claude .+: mood section$/);
+
+  // Back at the window: the list is read again and the chip offers v2.
+  await expect(async () => {
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(chip(page)).toHaveText(`${name} v1 · v2 available`, { timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+
+  // Claude updates the project; the open editor follows without a reload.
+  const updated = await claude.tool('update_project_template', { projectId: created.id });
+  expect(updated).toMatchObject({ template: { id: copy.id, from: 1, to: 2 }, edits: 2 });
+  // The editor hides the heading marks; the outline lists the headings.
+  await expect(outline(page)).toContainText('Apertura');
+  await expect(outline(page)).toContainText('Atmosfera');
+  await expect(outline(page)).not.toContainText('Inizio forte');
+  await expect(page.locator('.cm-content')).toContainText('Atmosfera');
+  await expect(page.locator('.status')).toContainText(`Template: ${name} v2`);
+  await expect(chip(page)).toHaveCount(0);
+
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'History' }).click();
+  await expect(page.getByRole('row').filter({ hasText: `Template «${name}» v1 → v2` })).toBeVisible();
 });

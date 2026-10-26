@@ -33,6 +33,6 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 5. Proof and hand-back
 
-- [ ] 5.1 `e2e/templates.spec.ts` with `connectClaude`: duplicate «Avventura», create a project from the copy (v1) and open it; Claude saves v2 adding «Atmosfera» and renaming «Inizio forte» to «Apertura»; after the page gets the focus back the top bar shows «v2 available»; Claude calls `update_project_template`; the editor shows «## Apertura» and «## Atmosfera» without a reload; History lists the snapshot
-- [ ] 5.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
-- [ ] 5.3 Hand back: results, departures from the design, anything from «Risks» that happened
+- [x] 5.1 `e2e/templates.spec.ts` with `connectClaude`: duplicate «Avventura», create a project from the copy (v1) and open it; Claude saves v2 adding «Atmosfera» and renaming «Inizio forte» to «Apertura»; after the page gets the focus back the top bar shows «v2 available»; Claude calls `update_project_template`; the editor shows «## Apertura» and «## Atmosfera» without a reload; History lists the snapshot
+- [x] 5.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
+- [x] 5.3 Hand back: results, departures from the design, anything from «Risks» that happened
