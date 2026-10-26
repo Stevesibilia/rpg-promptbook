@@ -128,7 +128,7 @@ export function Outline({ view, updates }: { view: EditorView | null; updates: U
           data-movable={item.movable || undefined}
           title={item.movable ? `${item.place} · drag, or Alt+↑ and Alt+↓, to move` : item.place}
           className={[
-            item.depth ? 'sub' : '',
+            item.depth ? (item.depth === 2 ? 'sub2' : 'sub') : '',
             item.key === snapshot.current ? 'cur' : '',
             dropAt?.key === item.key ? (dropAt.after ? 'drop-after' : 'drop-before') : '',
           ]

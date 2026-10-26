@@ -7,11 +7,11 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 1. Editor: outline rows
 
-- [ ] 1.1 `analysis/field.ts`: the `pregenerated` and `character` place kinds (D2)
-- [ ] 1.2 `outline.ts`: depth `0 | 1 | 2`, the block and characters under the sheets section sorted by `from`, names and places from D3; `OutlinePanel.tsx` class `sub2`; `editor.css` `.ol li.sub2`
-- [ ] 1.3 `Checks.tsx` `whereOf` and `cm/slash.ts` treat both kinds as `sheet` (D4)
-- [ ] 1.4 Tests from design.md «Verification»: `outline.test.ts`, `palette.test.ts`, `slash.test.ts`, `checks.test.ts`
-- [ ] 1.5 Commit `feat(web): pregenerated characters in the outline`
+- [x] 1.1 `analysis/field.ts`: the `pregenerated` and `character` place kinds (D2)
+- [x] 1.2 `outline.ts`: depth `0 | 1 | 2`, the block and characters under the sheets section sorted by `from`, names and places from D3; `OutlinePanel.tsx` class `sub2`; `editor.css` `.ol li.sub2`
+- [x] 1.3 `Checks.tsx` `whereOf` and `cm/slash.ts` treat both kinds as `sheet` (D4)
+- [x] 1.4 Tests from design.md «Verification»: `outline.test.ts`, `palette.test.ts`, `slash.test.ts`, `checks.test.ts`
+- [x] 1.5 Commit `feat(web): pregenerated characters in the outline`
 
 ## 2. Connector: targets
 

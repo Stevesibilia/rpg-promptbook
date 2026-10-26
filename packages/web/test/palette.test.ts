@@ -3,6 +3,7 @@ import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw'
 import { outlineOf } from '../src/editor/outline.js';
 import { filterEntries, fold, matches, paletteEntries, resolveItem } from '../src/editor/palette.js';
 import { analysed, campaign } from './analysed.js';
+import { characters, withBlock } from './pregenerated.js';
 
 const labels = (query: string, checked = true) =>
   filterEntries(paletteEntries(outlineOf(analysed(sabaoth).state), { checked }), query).map((e) => e.label);
@@ -40,6 +41,20 @@ describe('the palette filter', () => {
       'Go to Front matter',
     ]);
     expect(entries.filter((e) => e.action.kind === 'go')).toHaveLength(outlineOf(analysed(sabaoth).state).length);
+  });
+
+  it('lists the Pregenerati block and its characters, and jumps to a character\'s heading', () => {
+    const doc = withBlock(characters);
+    const { state } = analysed(doc);
+    const items = outlineOf(state);
+    const entries = paletteEntries(items, { checked: true });
+    expect(filterEntries(entries, 'go pregenerati').map((e) => e.label)).toEqual(['Go to Pregenerati']);
+    const [ada] = filterEntries(entries, 'ada rossi');
+    expect(ada!.label).toBe('Go to Ada Rossi');
+    expect(ada!.action.kind).toBe('go');
+    const target = resolveItem(items, ada!.action as { kind: 'go'; key: string; name: string })!;
+    expect(target.key).toBe('character:0');
+    expect(state.sliceDoc(target.head, target.head + 14)).toBe('#### Ada Rossi');
   });
 
   it('leaves out the problems and the PDF for a campaign', () => {

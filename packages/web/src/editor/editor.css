@@ -421,6 +421,9 @@
 .ol li.sub {
   padding-left: 22px;
 }
+.ol li.sub2 {
+  padding-left: 44px;
+}
 .ol li .grip {
   opacity: 0;
   color: var(--faint);

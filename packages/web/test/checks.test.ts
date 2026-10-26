@@ -13,6 +13,7 @@ import { hiddenEffects, pushDiagnostics } from '../src/editor/cm/problems.js';
 import { menuHints } from '../src/editor/ProblemMenu.js';
 import { snapshotOf } from '../src/editor/StatusBar.js';
 import { analysed } from './analysed.js';
+import { characters, withBlock } from './pregenerated.js';
 
 // Hidden problems in the editor (hide-problems design decisions 8, 11, 12):
 // Checks' rows, the status bar's counts, the diagnostics, the menu's hints.
@@ -72,6 +73,14 @@ describe('Checks rows', () => {
     const rows = rowsOf(state);
     expect(rows.shown).toHaveLength(5);
     expect(rows.hidden).toEqual([]);
+  });
+
+  it('places a problem in a pregenerated character or in the block in the Schede section', () => {
+    const doc = withBlock(characters);
+    const rows = rowsOf(analysed(doc).state).shown;
+    const lineOf = (needle: string) => doc.slice(0, doc.indexOf(needle)).split('\n').length;
+    const where = rows.filter((r) => r.problem.code === 'callout.type.unknown').map((r) => r.where);
+    expect(where).toEqual([`Schede · line ${lineOf('[!sconosciuto]')}`, `Schede · line ${lineOf('[!inventato]')}`]);
   });
 
   it('splits shown and hidden rows, each in document order, with their status', () => {

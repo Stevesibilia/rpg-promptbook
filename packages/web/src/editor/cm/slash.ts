@@ -119,7 +119,7 @@ export function slashEntries(state: EditorState, pos: number, template: Adventur
       ...(role === 'scenes' ? [newScene()] : []),
     ];
   }
-  if (item.kind === 'sheet') {
+  if (item.kind === 'sheet' || item.kind === 'pregenerated' || item.kind === 'character') {
     return callouts(
       (places) => places.includes('sheet') || places.includes('anySection'),
       () => 0,
