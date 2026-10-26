@@ -21,11 +21,11 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 2. Layout: own sections and sections left out
 
-- [ ] 2.1 `input.ts`: `OwnSlot`, `LayoutOwnSection`, `LayoutInput.own` with the anchors of D2 and the side column split (D3); `role()` skips sections left out (D4); sheets and sheet links when «Schede» is out (Risks)
-- [ ] 2.2 `typst/avventura.typ`: the own-sections function at the eight slots, the shared side-column code with the rules (D3); the night heading and the references part only when they have something (D4)
-- [ ] 2.3 Tests in `input.test.ts`: each row of D2's table, an own section before any role section, an unknown section not printed, the side column split, each role left out, sheet references as text
-- [ ] 2.4 PDF test (one engine): «Atmosfera» after «Inizio forte» on its own page after the start page; with `newPage: false` on the start page; «Schede» left out builds without error; Sabaoth's default hash equals 0.1
-- [ ] 2.5 Commit `feat(layout): print own sections and leave sections out`
+- [x] 2.1 `input.ts`: `OwnSlot`, `LayoutOwnSection`, `LayoutInput.own` with the anchors of D2 and the side column split (D3); `role()` skips sections left out (D4); sheets and sheet links when «Schede» is out (Risks)
+- [x] 2.2 `typst/avventura.typ`: the own-sections function at the eight slots, the shared side-column code with the rules (D3); the night heading and the references part only when they have something (D4)
+- [x] 2.3 Tests in `input.test.ts`: each row of D2's table, an own section before any role section, an unknown section not printed, the side column split, each role left out, sheet references as text
+- [x] 2.4 PDF test (one engine): «Atmosfera» after «Inizio forte» on its own page after the start page; with `newPage: false` on the start page; «Schede» left out builds without error; Sabaoth's default hash equals 0.1
+- [x] 2.5 Commit `feat(layout): print own sections and leave sections out`
 
 ## 3. Web: the «In the PDF» column
 

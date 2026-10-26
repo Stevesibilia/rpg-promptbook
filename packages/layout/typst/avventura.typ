@@ -236,6 +236,25 @@
   // A two-column part: the main column, and the side column 58 mm wide.
   let columns-part(main, side) = grid(columns: (1fr, 58mm), column-gutter: 6mm, main, side)
 
+  // A part's blocks with its side boxes in the side column; without any, the
+  // blocks print full width.
+  let with-side(part) = if part.sideBoxes.len() == 0 {
+    any-blocks(part.blocks)
+  } else {
+    columns-part(any-blocks(part.blocks), { for b in part.sideBoxes { callout(b) } })
+  }
+
+  // The sections without a role that print after a part, in document order.
+  // One on a new page names its page in the review.
+  let own-sections(list) = for s in list {
+    if s.newPage {
+      pagebreak(weak: true)
+      pos("part", s.from, id: "own-" + str(s.from), label: s.title)
+    }
+    section-heading(s.title, from: s.from)
+    with-side(s)
+  }
+
   // ---- Page --------------------------------------------------------------
 
   set document(title: input.title, author: if input.author != none { input.author } else { () }, date: none)
@@ -335,15 +354,18 @@
       section-heading(cover.backstory.title, from: cover.backstory.from)
       any-blocks(cover.backstory.blocks)
     }
+    own-sections(input.own.cover)
   }
 
   // ---- La notte: «A colpo d'occhio», reminders, clock, truths ------------
 
   let night = input.night
-  let follows = cover.synopsis == none and cover.backstory == none
+  let follows = cover.synopsis == none and cover.backstory == none and input.own.cover.len() == 0
   if not follows { pagebreak(weak: true) }
   pos("part", night.from, id: "night", label: "Notte")
-  section-heading(night.overviewTitle, from: if night.overview != none { night.overview.from })
+  if night.overviewTitle != none {
+    section-heading(night.overviewTitle, from: if night.overview != none { night.overview.from })
+  }
   if night.overview != none { any-blocks(night.overview.blocks) }
   columns-part(
     {
@@ -368,6 +390,7 @@
       for b in night.sideBoxes { callout(b) }
     },
   )
+  own-sections(input.own.night)
 
   // ---- Inizio: «Inizio forte», «Mappa delle scene» -----------------------
 
@@ -384,6 +407,7 @@
       any-blocks(start.sceneMap.blocks)
     }
   }
+  own-sections(input.own.start)
 
   // ---- Regole della notte, with its side boxes in the side column --------
 
@@ -391,12 +415,9 @@
     pagebreak(weak: true)
     pos("part", input.rules.from, id: "rules", label: "Regole")
     section-heading(input.rules.title, from: input.rules.from)
-    if input.rules.sideBoxes.len() == 0 {
-      any-blocks(input.rules.blocks)
-    } else {
-      columns-part(any-blocks(input.rules.blocks), { for b in input.rules.sideBoxes { callout(b) } })
-    }
+    with-side(input.rules)
   }
+  own-sections(input.own.rules)
 
   // ---- One part per scene ------------------------------------------------
 
@@ -428,7 +449,9 @@
         par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
       }
     }
-    block(above: 1.5mm, plex-text(size: 8.5pt, fill: grey, [#link(label(t.sheet))[scheda completa], p. #page-of(label(t.sheet))]))
+    if t.sheet != none {
+      block(above: 1.5mm, plex-text(size: 8.5pt, fill: grey, [#link(label(t.sheet))[scheda completa], p. #page-of(label(t.sheet))]))
+    }
   })
 
   for scene in input.scenes {
@@ -528,51 +551,57 @@
     }
     pos("scene-end", scene.to, id: scene.id)
   }
+  own-sections(input.own.scenes)
 
   // ---- Riferimenti: clues, NPCs, sheets, pregenerated, preparation -------
 
   let refs = input.references
-  pagebreak(weak: true)
-  pos("part", refs.from, id: "references", label: "Schede")
-  part-mark("Schede", "Schede e riferimenti")
-  if refs.clues != none {
-    section-heading(refs.clues.title, from: refs.clues.from)
-    any-blocks(refs.clues.blocks, table: "small")
-  }
-  if refs.npcs != none {
-    section-heading(refs.npcs.title, from: refs.npcs.from)
-    any-blocks(refs.npcs.blocks, table: "small")
-  }
-  if refs.sheets.len() > 0 {
-    section-heading(refs.sheetsTitle)
-    for sheet in refs.sheets {
-      [#block(width: 100%, stroke: 0.3mm + rule, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
-        pos("block", sheet.from)
-        set text(size: 9.3pt)
-        block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", sheet.title))
-        any-blocks(sheet.blocks)
-      })#label(sheet.label)]
+  if refs.print {
+    pagebreak(weak: true)
+    pos("part", refs.from, id: "references", label: "Schede")
+    part-mark("Schede", "Schede e riferimenti")
+    if refs.clues != none {
+      section-heading(refs.clues.title, from: refs.clues.from)
+      any-blocks(refs.clues.blocks, table: "small")
+    }
+    if refs.npcs != none {
+      section-heading(refs.npcs.title, from: refs.npcs.from)
+      any-blocks(refs.npcs.blocks, table: "small")
+    }
+    if refs.sheets.len() > 0 {
+      section-heading(refs.sheetsTitle)
+      for sheet in refs.sheets {
+        [#block(width: 100%, stroke: 0.3mm + rule, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
+          pos("block", sheet.from)
+          set text(size: 9.3pt)
+          block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", sheet.title))
+          any-blocks(sheet.blocks)
+        })#label(sheet.label)]
+      }
+    }
+    own-sections(input.own.references)
+    if refs.pregenerated != none {
+      let pregenerated = refs.pregenerated
+      pagebreak(weak: true)
+      pos("part", pregenerated.from, id: "pregenerated", label: "Pregenerati")
+      section-heading(pregenerated.title, from: pregenerated.from)
+      any-blocks(pregenerated.blocks)
+      for character in pregenerated.characters {
+        block(width: 100%, stroke: 0.45mm + ink, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
+          pos("block", character.from)
+          set text(size: 9.3pt)
+          block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", character.name))
+          any-blocks(character.blocks)
+        })
+      }
+    }
+    if refs.before != none {
+      pagebreak(weak: true)
+      pos("part", refs.before.from, id: "before", label: "Prima della sessione")
+      section-heading(refs.before.title, from: refs.before.from)
+      any-blocks(refs.before.blocks)
     }
   }
-  if refs.pregenerated != none {
-    let pregenerated = refs.pregenerated
-    pagebreak(weak: true)
-    pos("part", pregenerated.from, id: "pregenerated", label: "Pregenerati")
-    section-heading(pregenerated.title, from: pregenerated.from)
-    any-blocks(pregenerated.blocks)
-    for character in pregenerated.characters {
-      block(width: 100%, stroke: 0.45mm + ink, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
-        pos("block", character.from)
-        set text(size: 9.3pt)
-        block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", character.name))
-        any-blocks(character.blocks)
-      })
-    }
-  }
-  if refs.before != none {
-    pagebreak(weak: true)
-    pos("part", refs.before.from, id: "before", label: "Prima della sessione")
-    section-heading(refs.before.title, from: refs.before.from)
-    any-blocks(refs.before.blocks)
-  }
+  own-sections(input.own.before)
+  own-sections(input.own.end)
 }
