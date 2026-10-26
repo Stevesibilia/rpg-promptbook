@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { templates } from 'promptbook-format';
-import { addTodo, findTarget, readDocument, readTodo } from 'promptbook-project';
+import { addTodo, findTarget, readDocument, readMeta, readTodo, setTemplate } from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { createUser, type User } from '../../src/accounts/users.js';
@@ -232,6 +232,72 @@ describe('snapshotThenWrite', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.text).toBe(`Battuta. ${ADVENTURE}`);
     expect(await storedText(s.id)).toBe(`Battuta. ${ADVENTURE}`.replace('Prima scossa', 'Seconda scossa'));
+  });
+
+  it('changes the text and what `also` writes in one transaction, which an open client receives as one', async () => {
+    const s = await setup();
+    const url = await listen(s.app);
+    const client = connect(url, s.id, { token: s.token });
+    await synced(client);
+    // Every transaction the client applies, and which of the two it touched.
+    // The root types first, so the transactions name them as they are.
+    const document = client.doc.getText('document');
+    const metaMap = client.doc.getMap('meta');
+    const applied: { text: boolean; meta: boolean }[] = [];
+    client.doc.on('afterTransaction', (tr: Y.Transaction) => {
+      if (tr.local) return;
+      const text = tr.changed.has(document as never);
+      const meta = tr.changed.has(metaMap as never);
+      if (text || meta) applied.push({ text, meta });
+    });
+    const live = await openLiveDocument(s.app.sync, s.id, s.user.id);
+    const server: { text: boolean; meta: boolean }[] = [];
+    const watch = (tr: Y.Transaction) => {
+      const text = tr.changed.has(live.doc.getText('document') as never);
+      const meta = tr.changed.has(live.doc.getMap('meta') as never);
+      if (text || meta) server.push({ text, meta });
+    };
+    live.doc.on('afterTransaction', watch);
+    try {
+      await snapshotThenWrite(db, live, {
+        snapshot: (text) => insertSnapshot(db, { projectId: s.id, kind: 'claude', label: 'x', text, template: templates.avventura }),
+        next: (text) => text.replace('Prima scossa', 'Seconda scossa'),
+        also: (doc) => setTemplate(doc, { id: 't-0123456789', version: 2 }),
+      });
+    } finally {
+      live.doc.off('afterTransaction', watch);
+      await live.close();
+    }
+    expect(server).toEqual([{ text: true, meta: true }]);
+    await waitFor(() => readMeta(client.doc).template?.version === 2, 'the template in the client');
+    expect(applied).toEqual([{ text: true, meta: true }]);
+    expect(readDocument(client.doc)).toContain('Seconda scossa');
+  });
+
+  it('counts an attempt as moved when `still` says what next read changed', async () => {
+    const s = await setup();
+    const live = await openLiveDocument(s.app.sync, s.id, s.user.id);
+    let attempts = 0;
+    try {
+      await expect(
+        snapshotThenWrite(db, live, {
+          snapshot: (text) => insertSnapshot(db, { projectId: s.id, kind: 'claude', label: 'x', text, template: templates.avventura }),
+          next: (text) => {
+            attempts++;
+            return text.replace('Prima scossa', 'Seconda scossa');
+          },
+          still: () => false,
+          also: () => {
+            throw new Error('never reached');
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'document_busy' });
+    } finally {
+      await live.close();
+    }
+    expect(attempts).toBe(3);
+    expect(await snapshotRows(s.id)).toEqual([]);
+    expect(await storedText(s.id)).toBe(ADVENTURE);
   });
 
   it('gives up, leaving no snapshot and the text as typed, when the text keeps moving', async () => {

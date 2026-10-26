@@ -13,10 +13,10 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 2. Server: saving and updating
 
-- [ ] 2.1 `templates.ts`: `saveTemplateVersion` fills uids, checks `lockViolations` against the base version, refuses `no_changes` (D3, D4); `latestTemplate` exported (D7)
-- [ ] 2.2 `snapshots.ts`: `snapshotThenWrite` takes `also?: (doc) => void` in the same transaction (D8)
-- [ ] 2.3 DB tests through the REST route: a lock violation and `no_changes` refused, an editor-shaped save still accepted, new rows get uids
-- [ ] 2.4 Commit `feat(server): template saves keep locked rows`
+- [x] 2.1 `templates.ts`: `saveTemplateVersion` fills uids, checks `lockViolations` against the base version, refuses `no_changes` (D3, D4); `latestTemplate` exported (D7)
+- [x] 2.2 `snapshots.ts`: `snapshotThenWrite` takes `also?: (doc) => void` in the same transaction (D8)
+- [x] 2.3 DB tests through the REST route: a lock violation and `no_changes` refused, an editor-shaped save still accepted, new rows get uids
+- [x] 2.4 Commit `feat(server): template saves keep locked rows`
 
 ## 3. Connector: template tools
 
