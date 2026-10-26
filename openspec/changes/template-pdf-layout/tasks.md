@@ -37,7 +37,7 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 4. Proof and hand-back
 
-- [ ] 4.1 `e2e/templates.spec.ts`: add «Atmosfera», leave out «Prima della sessione», save; a new project from it with text under «Atmosfera»; the saved PDF's text has «Atmosfera» and not «Prima della sessione»
-- [ ] 4.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
-- [ ] 4.3 Screenshots (1440 x 900) of the states listed in design.md «Verification», saved under the scratchpad, paths in the hand-back
-- [ ] 4.4 Hand back: results, the hash pair, departures from the design
+- [x] 4.1 `e2e/templates.spec.ts`: add «Atmosfera», leave out «Prima della sessione», save; a new project from it with text under «Atmosfera»; the saved PDF's text has «Atmosfera» and not «Prima della sessione»
+- [x] 4.2 `npm run typecheck`, `npm test`, `npm run e2e`: literal results
+- [x] 4.3 Screenshots (1440 x 900) of the states listed in design.md «Verification», saved under the scratchpad, paths in the hand-back
+- [x] 4.4 Hand back: results, the hash pair, departures from the design
