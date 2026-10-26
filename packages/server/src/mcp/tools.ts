@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { defaultTemplateRef, type Template } from 'promptbook-format';
+import { defaultTemplateRef, resolveTemplate, type Template } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
@@ -33,23 +33,34 @@ import { AppError } from '../errors.js';
 import { withLiveDocument } from '../live.js';
 import { createProject, getProject, listProjects, loadProjectDoc, type ProjectRow } from '../projects.js';
 import { textHash } from '../snapshots.js';
-import { accountTemplates, templateOfDoc } from '../templates.js';
+import { accountTemplates, latestTemplate, TEMPLATE_ID, templateOfDoc } from '../templates.js';
 import { INSUFFICIENT_SCOPE, RateLimited, toToolError } from './errors.js';
 import { registerBoardTools } from './board.js';
+import { refOf, registerTemplateTools } from './templates.js';
 import { addScene, check, locate, MARKDOWN_MAX, replaceSection } from './edits.js';
+import type { Db } from '../db.js';
+import type { Sync } from '../sync.js';
 import type { McpCaller, McpDeps } from './server.js';
 
 // The project as a set of tools (connector design decision 11). Every tool
 // acts as the grant's user, on that user's projects only and never on one in
 // the bin. Write tools need read_write. No tool writes the seed, ticks or
 // removes a to-do item, or deletes anything: those are the user's, in the
-// app. The one exception is remove_image_prompt (image-categories design
-// decision 5), which removes an image prompt and never a file.
+// app. The exceptions are remove_image_prompt (image-categories design
+// decision 5), which removes an image prompt and never a file, and
+// delete_template (template-connector design decision 1), which deletes a
+// document template no project uses.
 
 export const TOOL_NAMES = [
   'list_projects',
   'get_project',
   'create_project',
+  'list_templates',
+  'get_template',
+  'duplicate_template',
+  'save_template_version',
+  'delete_template',
+  'update_project_template',
   'get_outline',
   'read_document',
   'replace_section',
@@ -77,6 +88,7 @@ export const INSTRUCTIONS = [
   'Promptbook holds the prep of tabletop role-playing games: campaigns, adventures and one-shots.',
   `${READ_LOG_FIRST} At the end of a brainstorm, write one entry with add_brainstorm_entry: the ideas, the decisions, the rejected ideas with why, and the open questions.`,
   'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
+  'Document templates set a project’s sections, scene fields and boxes. To change one, read it with get_template, then send save_template_version the whole template with the version you read; built-ins are read-only, so duplicate_template first. Projects keep their version until update_project_template moves them.',
   'For a board’s prompts, read get_board first. Image prompts come in four categories: Scenes (any number per scene), PCs, NPCs and Handouts (a name and a prompt each); add them with add_image_prompt, change them with update_image_prompt. Music is one Suno prompt per scene, written with set_scene_prompts.',
 ].join('\n');
 
@@ -135,7 +147,10 @@ export interface ToolKit {
   write<T>(project: ProjectRow, fn: (doc: Y.Doc) => T): Promise<T>;
   // The caller's own document templates, the `extra` of every reader.
   templates(): Promise<Template[]>;
-  schemas: { projectId: typeof projectId; requiredText: typeof requiredText; text: typeof text };
+  db: Db;
+  sync: Sync;
+  caller: McpCaller;
+  schemas: { id: typeof id; projectId: typeof projectId; requiredText: typeof requiredText; text: typeof text };
 }
 
 export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log, quota }: McpDeps): void {
@@ -255,12 +270,22 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       const campaign = row && !row.deletedAt && row.category === 'campaign' ? row : null;
       const gdrarchive = gdrarchiveOf(meta.gdrarchive, meta.category, campaign);
       const log = readLog(doc);
+      const own = TEMPLATE_ID.test(meta.template.id);
+      const used = resolveTemplate(meta.template, own ? await accountTemplates(db, caller.userId, meta.template) : []);
+      const latest = own ? await latestTemplate(db, caller.userId, meta.template.id) : null;
       return {
         id: project.id,
         title: meta.title,
         category: meta.category,
         status: meta.status,
         system: meta.system,
+        template: {
+          id: meta.template.id,
+          version: meta.template.version,
+          name: used?.name ?? null,
+          builtin: !own,
+          latestVersion: own ? (latest?.version ?? null) : meta.template.version,
+        },
         campaign: campaign ? { id: campaign.id, title: campaign.title } : null,
         gdrarchive: gdrarchive && { url: gdrarchive.url, label: gdrarchive.label, inherited: gdrarchive.from !== null },
         createdAt: meta.createdAt,
@@ -287,12 +312,19 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'create_project',
-    'Create a project as a draft, with your settings’ skeleton document and to-do list for its category, and no seed. Returns its id.',
+    'Create a project as a draft, with your settings’ skeleton document and to-do list for its category, and no seed. Its document template is the one you name, of the category’s kind (list_templates), or your default for the category when you name none. Returns its id.',
     { title: 'Create a project', readOnly: false, idempotent: false },
     {
       title: requiredText(LIMITS.name),
       category: z.enum(categories),
       campaignId: id.optional().describe('A campaign of yours to put an adventure or a one-shot in.'),
+      template: z
+        .strictObject({
+          id: id.describe('The template’s id, from list_templates.'),
+          version: z.int().positive().optional().describe('The version to use; the latest when omitted.'),
+        })
+        .optional()
+        .describe('The document template; your default for the category when omitted.'),
     },
     async (args) => {
       if (args.campaignId !== undefined) {
@@ -305,6 +337,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
         title: args.title,
         category: args.category,
         campaignId: args.campaignId ?? null,
+        ...(args.template ? { template: await refOf(kit, args.template) } : {}),
       });
       return { id: project.id, project };
     },
@@ -384,6 +417,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
       'Problems never refuse the scene: it is written and the result lists them; fix them in later edits when you can. ' +
       (SCENE_RECOMMENDED.length ? `Recommended (a warning when missing): ${SCENE_RECOMMENDED.join('; ')}. ` : '') +
       'A snapshot is kept first, and the user can undo it. ' +
+      'A project on another template: get_project names it, get_template lists its scene fields. ' +
       'Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Add a scene', readOnly: false, idempotent: false },
     {
@@ -594,5 +628,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
   );
 
   const templates = () => accountTemplates(db, caller.userId);
-  registerBoardTools({ tool, projectOf, docOf, write, templates, schemas: { projectId, requiredText, text } });
+  const kit: ToolKit = { tool, projectOf, docOf, write, templates, db, sync, caller, schemas: { id, projectId, requiredText, text } };
+  registerBoardTools(kit);
+  registerTemplateTools(kit);
 }

@@ -149,7 +149,7 @@ describe('the endpoint', () => {
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 
-  it('lists the 22 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
+  it('lists the 28 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
     const s = await setup();
     for (const era of ['modern', 'legacy'] as const) {
       const tools = await mcpListTools(s.app, s.tokens.access_token, era);
@@ -158,7 +158,7 @@ describe('the endpoint', () => {
         expect(tool.description, tool.name).toBeTruthy();
         expect(tool.inputSchema?.type, tool.name).toBe('object');
         expect(tool.annotations?.openWorldHint, tool.name).toBe(false);
-        expect(tool.annotations?.destructiveHint, tool.name).toBe(['replace_section', 'remove_image_prompt'].includes(tool.name));
+        expect(tool.annotations?.destructiveHint, tool.name).toBe(['replace_section', 'remove_image_prompt', 'delete_template'].includes(tool.name));
       }
     }
     const tools = await mcpListTools(s.app, s.tokens.access_token);
@@ -171,15 +171,21 @@ describe('the endpoint', () => {
         'get_outline',
         'get_project',
         'get_research_note',
+        'get_template',
         'list_projects',
+        'list_templates',
         'list_research',
         'list_todo',
         'read_document',
       ].sort(),
     );
-    expect(TOOL_NAMES).toHaveLength(22);
-    // The one tool that deletes something: an image prompt, never a file.
-    expect(tools.map((t) => t.name).filter((name) => /delete|remove|seed|tick/.test(name))).toEqual(['remove_image_prompt']);
+    expect(TOOL_NAMES).toHaveLength(28);
+    // The two tools that delete something: an image prompt, never a file, and
+    // a template no project uses.
+    expect(tools.map((t) => t.name).filter((name) => /delete|remove|seed|tick/.test(name)).sort()).toEqual([
+      'delete_template',
+      'remove_image_prompt',
+    ]);
     for (const name of ['list_projects', 'get_project', 'get_brainstorm_log']) {
       expect(tools.find((t) => t.name === name)!.description).toContain('read its brainstorm log first');
     }

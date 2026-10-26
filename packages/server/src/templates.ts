@@ -54,6 +54,14 @@ function readBody(row: Pick<Row, 'id' | 'version' | 'body'>): Template | null {
   }
 }
 
+const toStored = (row: Row, body: Template): StoredTemplate => ({
+  id: row.id,
+  version: row.version,
+  body,
+  note: row.note,
+  createdAt: row.created_at.toISOString(),
+});
+
 // Every version of every template of the account, by id then version. A
 // body that does not validate is left out.
 export async function listTemplates(db: Queryable, userId: string): Promise<StoredTemplate[]> {
@@ -64,6 +72,20 @@ export async function listTemplates(db: Queryable, userId: string): Promise<Stor
   return rows.flatMap((row) => {
     const body = readBody(row);
     return body ? [{ id: row.id, version: row.version, body, note: row.note, createdAt: row.created_at.toISOString() }] : [];
+  });
+}
+
+// Every version of one of the account's templates, oldest first; none for a
+// built-in or an id the account does not hold.
+export async function templateVersions(db: Queryable, userId: string, id: string): Promise<StoredTemplate[]> {
+  if (!TEMPLATE_ID.test(id)) return [];
+  const rows = await db.query<Row>(
+    'select id, version, body, note, created_at from document_templates where user_id = $1 and id = $2 order by version',
+    [userId, id],
+  );
+  return rows.flatMap((row) => {
+    const body = readBody(row);
+    return body ? [toStored(row, body)] : [];
   });
 }
 
@@ -144,14 +166,6 @@ export async function templateUsage(db: Queryable, userId: string): Promise<Reco
   );
   return Object.fromEntries(rows.map((r) => [r.ref, r.count]));
 }
-
-const toStored = (row: Row, body: Template): StoredTemplate => ({
-  id: row.id,
-  version: row.version,
-  body,
-  note: row.note,
-  createdAt: row.created_at.toISOString(),
-});
 
 const invalidTemplate = (error: unknown) => {
   if (error instanceof TemplateError) return new AppError(400, 'invalid_template', `body: ${error.issues.join('; ')}`);

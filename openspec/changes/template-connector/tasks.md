@@ -20,10 +20,10 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 3. Connector: template tools
 
-- [ ] 3.1 `mcp/templates.ts` `registerTemplateTools`: the six tools (D1, D2, D3, D5, D6, D8); `ToolKit` extended; `TOOL_NAMES` in D1's order
-- [ ] 3.2 `mcp/tools.ts`: `create_project`'s `template` (D7), `get_project`'s `template` (D9), `INSTRUCTIONS` and descriptions (D9), the header comment (D1)
-- [ ] 3.3 `test/db/mcp-templates.test.ts`: every tool's answer and refusal listed in design.md «Verification»; the tool count in `mcp.test.ts` (28)
-- [ ] 3.4 Commit `feat(server): template tools in the connector`
+- [x] 3.1 `mcp/templates.ts` `registerTemplateTools`: the six tools (D1, D2, D3, D5, D6, D8); `ToolKit` extended; `TOOL_NAMES` in D1's order
+- [x] 3.2 `mcp/tools.ts`: `create_project`'s `template` (D7), `get_project`'s `template` (D9), `INSTRUCTIONS` and descriptions (D9), the header comment (D1)
+- [x] 3.3 `test/db/mcp-templates.test.ts`: every tool's answer and refusal listed in design.md «Verification»; the tool count in `mcp.test.ts` (28)
+- [x] 3.4 Commit `feat(server): template tools in the connector`
 
 ## 4. Web and docs
 
