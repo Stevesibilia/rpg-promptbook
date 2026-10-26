@@ -70,6 +70,8 @@ export function changeText(change: TemplateChange, to: Template): string {
       return `${subject} now ${change.after}`;
     case 'moved':
       return `${subject} moved`;
+    case 'pdf':
+      return `PDF options of «${change.label}»`;
     default:
       return subject;
   }

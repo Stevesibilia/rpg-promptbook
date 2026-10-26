@@ -29,11 +29,11 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 3. Web: the «In the PDF» column
 
-- [ ] 3.1 `TemplateRows.tsx` `SectionsTab`: the column, toggles and footer text (D7); `templates.css` grid and `.tg` styles
-- [ ] 3.2 `marks.ts`, `StartingPreview.tsx`: «not in the PDF» (D7)
-- [ ] 3.3 `templates/changes.ts`: «PDF options of «X»» (D6)
-- [ ] 3.4 Tests: the toggles patch through `withPdf`, toggling back leaves no change, the preview mark, the change text, no column for a campaign
-- [ ] 3.5 Commit `feat(web): PDF options in the template editor`
+- [x] 3.1 `TemplateRows.tsx` `SectionsTab`: the column, toggles and footer text (D7); `templates.css` grid and `.tg` styles
+- [x] 3.2 `marks.ts`, `StartingPreview.tsx`: «not in the PDF» (D7)
+- [x] 3.3 `templates/changes.ts`: «PDF options of «X»» (D6)
+- [x] 3.4 Tests: the toggles patch through `withPdf`, toggling back leaves no change, the preview mark, the change text, no column for a campaign
+- [x] 3.5 Commit `feat(web): PDF options in the template editor`
 
 ## 4. Proof and hand-back
 

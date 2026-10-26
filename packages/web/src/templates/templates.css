@@ -208,7 +208,7 @@
   appearance: none;
 }
 .g-sec {
-  grid-template-columns: 44px minmax(0, 1fr) 118px 150px 30px;
+  grid-template-columns: 44px minmax(0, 1fr) 118px 132px 212px 30px;
 }
 .g-fld {
   grid-template-columns: 44px minmax(0, 1fr) 82px 112px 118px 64px 30px;
@@ -294,6 +294,18 @@
 }
 .tg:disabled {
   opacity: 1;
+}
+.pdf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.tg.fixed {
+  border-style: dashed;
+  cursor: default;
+}
+.pdf button.tg:disabled {
+  opacity: 0.55;
 }
 .rr select.tg.add-place {
   width: auto;
@@ -525,5 +537,9 @@
   .rh,
   .rr {
     min-width: 620px;
+  }
+  .rh.g-sec,
+  .rr.g-sec {
+    min-width: 760px;
   }
 }
