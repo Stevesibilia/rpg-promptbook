@@ -7,16 +7,17 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 0. Baseline
 
-- [ ] 0.1 On `main`, build Sabaoth's PDF with the layout test helpers and default options and record its SHA-256 and size here
+- [x] 0.1 On `main`, build Sabaoth's PDF with the layout test helpers and default options and record its SHA-256 and size here
+      (2026-10-26, `ae39583`: `22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef`, 302099 bytes)
 
 ## 1. Format: section PDF options
 
-- [ ] 1.1 `template/schema.ts`: `pdf` on `sectionSchema`; the refusals in the adventure and campaign `superRefine` (D1)
-- [ ] 1.2 `template/pdf.ts`: `sectionPdf`, `withPdf` (D1); exported from `index.ts`
-- [ ] 1.3 `template/changes.ts`: detail `'pdf'` (D6)
-- [ ] 1.4 `checks/callouts.ts`: a side box in an own section with a side column is allowed (D5)
-- [ ] 1.5 Tests: defaults per role and for own sections, each refusal with its path, `withPdf` dropping defaults, the `pdf` change, the callout check both ways
-- [ ] 1.6 Commit `feat(format): PDF options on template sections`
+- [x] 1.1 `template/schema.ts`: `pdf` on `sectionSchema`; the refusals in the adventure and campaign `superRefine` (D1)
+- [x] 1.2 `template/pdf.ts`: `sectionPdf`, `withPdf` (D1); exported from `index.ts`
+- [x] 1.3 `template/changes.ts`: detail `'pdf'` (D6)
+- [x] 1.4 `checks/callouts.ts`: a side box in an own section with a side column is allowed (D5)
+- [x] 1.5 Tests: defaults per role and for own sections, each refusal with its path, `withPdf` dropping defaults, the `pdf` change, the callout check both ways
+- [x] 1.6 Commit `feat(format): PDF options on template sections`
 
 ## 2. Layout: own sections and sections left out
 

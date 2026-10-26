@@ -54,6 +54,15 @@ const sectionSchema = z.object({
   requirement: requirementSchema,
   role: sectionRoleSchema.optional(),
   uid: z.string().min(1).optional(),
+  // How the section prints. An absent option reads as its default (see
+  // sectionPdf in pdf.ts), and the editor stores only what differs from it.
+  pdf: z
+    .object({
+      print: z.boolean().optional(),
+      newPage: z.boolean().optional(),
+      sideColumn: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const sceneFieldRoleSchema = z.enum([
@@ -181,6 +190,20 @@ const adventureSchema = z
     if (max < min) {
       ctx.addIssue({ code: 'custom', path: ['limits', 'synopsisWords'], message: 'max is below min' });
     }
+    template.sections.forEach((section, index) => {
+      const { pdf } = section;
+      if (!pdf || !section.role) return;
+      const at = ['sections', index, 'pdf'];
+      if (section.role === 'appendix') {
+        ctx.addIssue({ code: 'custom', path: at, message: 'the appendix is never printed' });
+        return;
+      }
+      for (const key of ['newPage', 'sideColumn'] as const) {
+        if (pdf[key] !== undefined) {
+          ctx.addIssue({ code: 'custom', path: [...at, key], message: 'only your own sections take this option' });
+        }
+      }
+    });
   });
 
 // A campaign template holds only what a campaign's skeleton needs: campaigns
@@ -194,6 +217,9 @@ const campaignSchema = z
     unique(template.sections, (s) => s.name, ['sections'], 'section');
     unique(template.sections, (s) => s.role, ['sections'], 'role');
     uniqueUids(unique, template);
+    template.sections.forEach((section, index) => {
+      if (section.pdf) ctx.addIssue({ code: 'custom', path: ['sections', index, 'pdf'], message: 'campaigns have no PDF' });
+    });
   });
 
 export const templateSchema = z.discriminatedUnion('kind', [adventureSchema, campaignSchema]);

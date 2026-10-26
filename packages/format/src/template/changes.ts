@@ -6,6 +6,7 @@ import type {
   SectionDefinition,
   Template,
 } from './schema.js';
+import { sectionPdf } from './pdf.js';
 
 // One difference between two templates, as the editor's save dialog, its save
 // bar and the update dialog list them. `label` names the item as `to` has it
@@ -17,7 +18,7 @@ export interface TemplateChange {
   label: string;
   before?: string;
   after?: string;
-  detail?: 'renamed' | 'requirement' | 'form' | 'climax' | 'column' | 'places' | 'count' | 'moved' | 'type';
+  detail?: 'renamed' | 'requirement' | 'form' | 'climax' | 'column' | 'places' | 'count' | 'moved' | 'type' | 'pdf';
 }
 
 type Key<T> = (item: T) => string | undefined;
@@ -115,6 +116,13 @@ function changed(
 
 const sectionText = (s: SectionDefinition) => s.heading ?? s.name;
 
+// The section's PDF options as text, as in "printed, new page".
+function pdfText(s: SectionDefinition): string {
+  const { print, newPage, sideColumn } = sectionPdf(s);
+  if (!print) return 'left out';
+  return ['printed', ...(newPage ? ['new page'] : []), ...(sideColumn ? ['side column'] : [])].join(', ');
+}
+
 function sections(from: readonly SectionDefinition[], to: readonly SectionDefinition[]): TemplateChange[] {
   return diffList(from, to, {
     what: 'section',
@@ -129,6 +137,7 @@ function sections(from: readonly SectionDefinition[], to: readonly SectionDefini
         out.push({ kind: 'changed', what: 'section', label: sectionText(b), before: sectionText(a), detail: 'renamed' });
       }
       if (a.requirement !== b.requirement) out.push(changed('section', b.name, 'requirement', a.requirement, b.requirement));
+      if (JSON.stringify(sectionPdf(a)) !== JSON.stringify(sectionPdf(b))) out.push(changed('section', b.name, 'pdf', pdfText(a), pdfText(b)));
       return out;
     },
   });

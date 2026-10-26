@@ -1,5 +1,6 @@
 import type { Block, BoxBlock, CalloutBlock, Problem } from '../model.js';
-import type { AdventureTemplate, CalloutDefinition, Place } from '../template/schema.js';
+import { sectionPdf } from '../template/pdf.js';
+import type { AdventureTemplate, CalloutDefinition, Place, SectionDefinition } from '../template/schema.js';
 import type { Check } from './index.js';
 import { problem } from './util.js';
 
@@ -12,12 +13,18 @@ const boxes = (blocks: Block[]): BoxBlock[] =>
   blocks.filter((b): b is BoxBlock => b.kind === 'callout' || b.kind === 'quote');
 
 // Where a box stands: a scene, a sheet, or a section with its role (null for a
-// section the template gives no role).
-type Where = { kind: 'scene' } | { kind: 'sheet' } | { kind: 'section'; role: Place | null };
+// section the template gives no role) and its template definition.
+type Where =
+  | { kind: 'scene' }
+  | { kind: 'sheet' }
+  | { kind: 'section'; role: Place | null; definition: SectionDefinition | undefined };
 
+// A side box is at home in a section that prints with a side column.
 const allowed = (definition: CalloutDefinition, where: Where): boolean =>
   where.kind === 'section'
-    ? definition.allowedIn.includes('anySection') || (where.role !== null && definition.allowedIn.includes(where.role))
+    ? definition.allowedIn.includes('anySection') ||
+      (where.role !== null && definition.allowedIn.includes(where.role)) ||
+      (definition.column === 'side' && where.definition !== undefined && sectionPdf(where.definition).sideColumn)
     : definition.allowedIn.includes(where.kind);
 
 const placeName = (template: AdventureTemplate, place: Place): string => {
@@ -124,7 +131,8 @@ export const checkCallouts: Check = ({ model, template }) => {
 
   for (const section of model.sections) {
     const list = boxes(section.blocks);
-    each(list, { kind: 'section', role: section.role }, undefined);
+    const definition = section.known ? template.sections.find((s) => s.name === section.name) : undefined;
+    each(list, { kind: 'section', role: section.role, definition }, undefined);
     if (section.role) count(list, section.role, `Section "${section.heading}"`, section.headingRange);
   }
   // Pregenerated characters are sheets too.
