@@ -74,10 +74,9 @@ before discarding them.
 
 ### Requirement: Locked rows
 
-Rows with a role, the front matter keys the app reads by name, and boxes
-needed at least once per place SHALL show a lock and SHALL NOT be
-removable. Sections and fields with a role MAY be renamed; locked keys
-SHALL NOT.
+Locked rows SHALL show a lock and SHALL NOT be removable: rows with a role, the front matter keys the app reads by name, and boxes
+needed at least once per place. Sections and fields with a role MAY be
+renamed; locked keys SHALL NOT.
 
 #### Scenario: Locked row
 
@@ -122,3 +121,38 @@ built-in and say so in the status bar.
 - **THEN** the document's heading reads «## Apertura», an empty «##
   Atmosfera» follows «Verità del mondo», the top bar no longer shows
   «available», and one undo restores the text and v2
+
+### Requirement: PDF options per section
+
+The Sections tab of an adventure template SHALL show an «In the PDF» column.
+A section with a role SHALL show its fixed place in the PDF and a «Printed /
+Left out» toggle, except the appendix, which shows «Not printed» only. A
+section without a role SHALL show «Printed / Left out» and, when printed,
+«New page» (on by default) and «Side column» (off by default). Campaign
+templates SHALL show no PDF options. The preview SHALL mark a section that
+will not print «not in the PDF». A change of options SHALL count in the
+save bar and be listed in the save dialog as «PDF options of «X»».
+
+#### Scenario: Leave out a role section
+
+- **WHEN** the user sets «Prima della sessione» to «Left out» in an own
+  template
+- **THEN** the save bar counts 1 change, the preview shows «## Prima della
+  sessione» marked «not in the PDF», and the save dialog lists «PDF options
+  of «Prima della sessione»»
+
+#### Scenario: Options of an own section
+
+- **WHEN** the user adds «Atmosfera»
+- **THEN** its row shows «Printed», «New page» on and «Side column» off;
+  after «Left out», only «Left out» shows
+
+#### Scenario: Toggle back
+
+- **WHEN** the user turns «New page» off and on again
+- **THEN** the save bar counts no change for it
+
+#### Scenario: Built-in
+
+- **WHEN** the user views «Avventura»
+- **THEN** the column shows each section's place and its toggles disabled
