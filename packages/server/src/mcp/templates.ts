@@ -320,7 +320,7 @@ export function registerTemplateTools(kit: ToolKit): void {
 
   tool(
     'delete_template',
-    'Delete one of your templates, every version of it. Refused (template_in_use) while any of your projects uses one of its versions, those in the bin included: move them to another template or delete them in the app first. Built-ins cannot be deleted.',
+    'Delete one of your templates, every version of it. Refused (template_in_use) while any of your projects uses one of its versions, those in the bin included: the user deletes those projects in the app, and empties them from the bin, first. Built-ins cannot be deleted.',
     { title: 'Delete a template', readOnly: false, idempotent: true, destructive: true },
     { templateId },
     async (args) => {

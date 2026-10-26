@@ -148,7 +148,14 @@ inside `saveTemplateVersion` (so the REST route gets them too):
 1. **Uids for new items**: the body goes through `withUids` before
    `defineTemplate`, so sections, meta keys, scene fields and boxes Claude
    adds get a uid, and the next version's changes match them. Existing uids
-   are kept (`??=`).
+   are kept (`??=`). Before that, a row sent back without its uid inherits
+   the uid of the base row it pairs with, by role, else by name (by type for
+   boxes): `inheritUids(base, next)` in `template/locks.ts` (amended at
+   review: without it a body with stripped uids passed the locks, which pair
+   by role, while `templateChanges` read a removal and an addition, and
+   `update_project_template` added a second «## Scene»). A row sent back with
+   a different uid is still a removal and an addition; the tool description
+   says to keep every uid.
 2. **Locks** (D4), against the base version's body: violations → 400
    `invalid_template` with every violation in the message, «; »-joined.
 3. **Nothing changed**: when the new body, with `version` and `note` left
@@ -245,7 +252,13 @@ renameHeadings})`.
 5. `snapshotThenWrite` gains an optional `also?: (doc: Y.Doc) => void`, run
    in the same `live.transact` after the text is set; this tool passes
    `doc => setTemplate(doc, {id: to.id, version: to.version})`, so the text
-   and the version change in one Yjs transaction.
+   and the version change in one Yjs transaction. It also gains `still?:
+(doc) => boolean`, checked inside that transaction before the text is set:
+   false counts as a moved text (amended at build: the «template still equals
+   `from`» check of step 4 must run inside the write, since `next` runs before
+   the snapshot insert's await and `also` after the text, when Yjs can no
+   longer roll back). The update uses the default three attempts and
+   `document_busy`, as it is not based on text Claude read.
 6. No edits (nothing added or renamed): skip the snapshot and set the
    template through `write()`.
 
@@ -285,6 +298,25 @@ version Claude saved then shows in Settings and as «vN available» in an open
 project; an open template editor keeps its draft (a stale save still meets
 the 409 and its reload offer). `update_project_template` needs nothing new:
 the project's meta changes, and `missing(ref)` fetches the unknown version.
+
+## Accepted at review
+
+- Schema refusals (body over 100 000 characters, note over 400) come back
+  from the MCP SDK as `isError` with «Input validation error: …», not as
+  `invalid_input`, as every tool's schema does.
+- A stored base version that no longer validates (a body from a later app
+  version) skips the lock and `no_changes` checks: refusing would lock the
+  template for good.
+- `BODY_MAX` is measured before uids are filled; bounded, left.
+- A Claude edit racing the update can leave one snapshot for a change that
+  became only the version; `pruneClaudeSnapshots` failing after a write
+  reports an error, as `apply()` does.
+- `deleteTemplate` counts `projects.template_id`, written when the document
+  is stored; a project's template id only changes at creation (in the same
+  transaction) or within one id, so the window is theoretical.
+- Deleting a template whose editor is open with unsaved changes drops the
+  draft on the next focus reload, without the leave dialog; its save would
+  fail anyway.
 
 ## Risks
 
