@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defineTemplate,
+  inheritUids,
   lockViolations,
   templates,
   type AdventureTemplate,
@@ -152,5 +153,36 @@ describe('lockViolations', () => {
     expect(lockViolations(templates.campagna, campaign((t) => (t.meta = t.meta.filter((k) => k.key !== 'autore'))))).toEqual([
       'key «autore» is locked: it cannot be removed',
     ]);
+  });
+});
+
+describe('inheritUids', () => {
+  const uidOf = (t: AdventureTemplate, role: string) => t.sections.find((s) => s.role === role)?.uid;
+
+  it('gives a row sent back without its uid the base row’s, by role, then by name', () => {
+    const next = edit((t) => {
+      delete section(t, 'strongStart').uid;
+      section(t, 'strongStart').name = 'Apertura';
+      delete key(t, 'fronti').uid;
+      delete t.callouts.find((c) => c.type === 'documento')!.uid;
+      t.sections.push({ name: 'Atmosfera', requirement: 'optional' });
+    });
+    const filled = inheritUids(base, next);
+    expect(uidOf(filled, 'strongStart')).toBe(uidOf(base, 'strongStart'));
+    expect(filled.meta.find((k) => k.key === 'fronti')!.uid).toBe(base.meta.find((k) => k.key === 'fronti')!.uid);
+    expect(filled.callouts.find((c) => c.type === 'documento')!.uid).toBe(base.callouts.find((c) => c.type === 'documento')!.uid);
+    expect(filled.sections.at(-1)!.uid).toBeUndefined();
+    // `next` is left as it was.
+    expect(next.sections.find((s) => s.role === 'strongStart')!.uid).toBeUndefined();
+  });
+
+  it('never gives a uid twice', () => {
+    const next = edit((t) => {
+      delete section(t, 'strongStart').uid;
+      t.sections.push({ name: 'Atmosfera', requirement: 'optional', uid: uidOf(base, 'strongStart') });
+    });
+    const filled = inheritUids(base, next);
+    expect(uidOf(filled, 'strongStart')).toBeUndefined();
+    expect(filled.sections.at(-1)!.uid).toBe(uidOf(base, 'strongStart'));
   });
 });

@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   defaultTemplateRef,
   defineTemplate,
+  inheritUids,
   lockViolations,
   resolveTemplate,
   TemplateError,
@@ -274,15 +275,6 @@ export async function saveTemplateVersion(
     // Two saves from the same version: the second, waiting on the lock, finds
     // the first's.
     if (baseVersion !== head.latest) throw CONFLICT();
-    let template: Template;
-    try {
-      template = defineTemplate({ ...withUids(body), id, version: head.latest + 1 } as TemplateInput);
-    } catch (error) {
-      throw invalidTemplate(error);
-    }
-    if (template.kind !== head.kind) {
-      throw new AppError(400, 'invalid_template', `body: kind must stay ${head.kind ?? 'as version 1 has it'}.`);
-    }
     // The base version as stored, which the locks and the changes are read
     // against; one that no longer validates has nothing to compare.
     const stored = await tx.queryOne<Pick<Row, 'id' | 'version' | 'body'>>(
@@ -290,6 +282,18 @@ export async function saveTemplateVersion(
       [userId, id, baseVersion],
     );
     const base = stored ? readBody(stored) : null;
+    let template: Template;
+    try {
+      const parsed = defineTemplate({ ...body, id, version: head.latest + 1 } as TemplateInput);
+      // A row sent back without its uid keeps the base row's, as the locks
+      // pair it; the rows still without one are new.
+      template = defineTemplate(withUids(base ? inheritUids(base, parsed) : parsed));
+    } catch (error) {
+      throw invalidTemplate(error);
+    }
+    if (template.kind !== head.kind) {
+      throw new AppError(400, 'invalid_template', `body: kind must stay ${head.kind ?? 'as version 1 has it'}.`);
+    }
     if (base) {
       const violations = lockViolations(base, template);
       if (violations.length > 0) throw new AppError(400, 'invalid_template', `body: ${violations.join('; ')}.`);

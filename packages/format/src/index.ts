@@ -22,6 +22,7 @@ export {
 } from './template/registry.js';
 export { templateChanges, type TemplateChange } from './template/changes.js';
 export {
+  inheritUids,
   isLocked,
   lockViolations,
   READ_KEYS,

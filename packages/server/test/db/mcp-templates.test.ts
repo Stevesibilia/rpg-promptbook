@@ -228,6 +228,33 @@ describe('saving a version', () => {
     expect(readMeta(await storedDoc(project)).template).toEqual({ id, version: 1 });
   });
 
+  it('keeps the uids of rows sent back without them, so a rename stays a rename', async () => {
+    const s = await setup();
+    const { id, v1 } = await kulthos(s);
+    const project = await createProject(s, { category: 'adventure', title: 'Prova', template: { id, version: 1 } });
+    const strip = (body: Body) => {
+      for (const items of [body.sections, body.sceneFields, body.callouts, body.meta] as { uid?: string }[][]) {
+        for (const item of items) delete item.uid;
+      }
+      return body;
+    };
+    expect(await errorOf(s, 'save_template_version', { templateId: id, baseVersion: 1, body: strip(copyOf(v1)) })).toMatchObject({
+      code: 'no_changes',
+    });
+    const saved = await s.value('save_template_version', { templateId: id, baseVersion: 1, body: strip(kulthosV2(v1)) });
+    expect(saved.changes).toEqual([
+      { kind: 'added', what: 'section', label: 'Atmosfera', after: 'optional' },
+      { kind: 'changed', what: 'section', label: 'Apertura', before: 'Inizio forte', detail: 'renamed' },
+    ]);
+    const v2 = (await s.value('get_template', { templateId: id })).template as AdventureTemplate;
+    expect(v2.sections.find((x) => x.role === 'strongStart')!.uid).toBe(v1.sections.find((x) => x.role === 'strongStart')!.uid);
+    const updated = await s.value('update_project_template', { projectId: project });
+    const text = readDocument(await storedDoc(project));
+    expect(updated.edits).toBe(2);
+    expect(text.match(/^## Scene$/gm)).toHaveLength(1);
+    expect(text).toContain('## Apertura');
+  });
+
   it('refuses a built-in, a stale base, an unchanged body and a lock broken, saving nothing', async () => {
     const s = await setup();
     const { id, v1 } = await kulthos(s);

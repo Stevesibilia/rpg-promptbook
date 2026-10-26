@@ -178,3 +178,28 @@ export function lockViolations(base: Template, next: Template): string[] {
     }),
   ];
 }
+
+// `next` with the uid of the `base` row it pairs with, by role, else by name
+// (by type for boxes), on every row that has none: a row sent back without
+// its uid is the same row, as the locks pair it, not a removal and an
+// addition. A uid `next` already uses elsewhere is not given twice.
+export function inheritUids<T extends Template>(base: Template, next: T): T {
+  const copy = JSON.parse(JSON.stringify(next)) as T;
+  const inherit = <R extends Row>(from: readonly R[], to: R[], keys: ((item: R) => string | undefined)[]) => {
+    const used = new Set(to.map((item) => item.uid).filter((uid) => uid !== undefined));
+    const pairs = pairRows(from, to, { what: '', name: () => '', keys, locked: () => false, roles: false, strictUids: true });
+    from.forEach((item, b) => {
+      const match = pairs.get(b);
+      if (!match || match.uid !== undefined || item.uid === undefined || used.has(item.uid)) return;
+      match.uid = item.uid;
+      used.add(item.uid);
+    });
+  };
+  inherit(base.sections, copy.sections, [(s) => s.role, (s) => s.name]);
+  inherit(base.meta, copy.meta, [(k) => k.role, (k) => k.key]);
+  if (base.kind === 'adventure' && copy.kind === 'adventure') {
+    inherit(base.sceneFields, copy.sceneFields, [(f) => f.role, (f) => f.label]);
+    inherit(base.callouts, copy.callouts, [calloutType]);
+  }
+  return copy;
+}
