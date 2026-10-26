@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, ty
 import type { AdventureTemplate } from 'promptbook-format';
 import { adventureTemplateOf, type ProjectMeta } from 'promptbook-project';
 import { api } from '../api.js';
-import { createTemplatesStore, emptyTemplates, type TemplatesState } from './store.js';
+import { createTemplatesStore, emptyTemplates, reloadOnReturn, type TemplatesState } from './store.js';
 
 export interface TemplatesValue extends TemplatesState {
   reload(): Promise<void>;
@@ -13,10 +13,13 @@ const TemplatesContext = createContext<TemplatesValue | null>(null);
 
 // The account's templates for the signed-in pages, fetched on mount: mounted
 // once around the routes, so moving between pages does not read them again.
+// Read again when the user comes back to the window, for versions saved
+// elsewhere.
 export function TemplatesProvider({ children }: { children: ReactNode }) {
   const store = useMemo(() => createTemplatesStore(api.templates), []);
   useEffect(() => {
     void store.reload();
+    return reloadOnReturn(() => void store.reload(), { win: window, doc: document });
   }, [store]);
   const state = useSyncExternalStore(store.subscribe, store.state);
   const value = useMemo(() => ({ ...state, reload: store.reload, missing: store.missing }), [state, store]);

@@ -27,9 +27,9 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 4. Web and docs
 
-- [ ] 4.1 `TemplatesContext.tsx`: reload on focus and visibility, at most every 10 s (D10); a test with fake timers
-- [ ] 4.2 `README.md` «Claude connector»: the template tools in a few lines
-- [ ] 4.3 Commit `feat(web): templates saved elsewhere show on return`
+- [x] 4.1 `TemplatesContext.tsx`: reload on focus and visibility, at most every 10 s (D10); a test with fake timers
+- [x] 4.2 `README.md` «Claude connector»: the template tools in a few lines
+- [x] 4.3 Commit `feat(web): templates saved elsewhere show on return`
 
 ## 5. Proof and hand-back
 

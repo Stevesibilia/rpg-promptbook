@@ -235,9 +235,11 @@ The page asks which access to give:
 - **Read your projects:** Claude reads everything and changes nothing.
 - **Read and edit your projects:** Claude also creates projects, edits the
   prep document and adds to-do items, inspiration items, research notes and
-  log entries, and writes the board's prompts. It never ticks a to-do item,
-  never rewrites the seed, and deletes nothing except an image prompt with
-  `remove_image_prompt`, whose images move to the Unmatched tray.
+  log entries, writes the board's prompts, and changes your document
+  templates. It never ticks a to-do item, never rewrites the seed, and
+  deletes nothing except an image prompt with `remove_image_prompt`, whose
+  images move to the Unmatched tray, and a template no project uses with
+  `delete_template`.
 
 Settings → Connected apps lists every app you allowed, with its access and
 when it was last used. **Revoke** cuts it off at once; to use it again,
@@ -256,6 +258,18 @@ unchanged.
 
 History also keeps the snapshots you save by hand, until you delete them, and
 restores any snapshot. A restore first saves the current text.
+
+Claude reads document templates with `list_templates` and `get_template`,
+copies one with `duplicate_template`, and changes one of yours by sending
+`save_template_version` the whole template with the version it read: a save
+from an older version is refused, as in two tabs, and the rows the app needs
+(sections and fields with a role, the front matter keys it reads) stay, the
+server refuses a version without them. The version's note starts with «via»
+and the app's name. Built-ins stay read-only. `create_project` takes a
+template, and `update_project_template` moves a project to its template's
+latest version as the update dialog does, with a snapshot first. The app
+reads your templates again when you come back to its window, so a version
+Claude saved shows at once.
 
 ## Development
 
