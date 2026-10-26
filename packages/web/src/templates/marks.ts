@@ -1,4 +1,4 @@
-import type { Template } from 'promptbook-format';
+import { sectionPdf, type Template } from 'promptbook-format';
 import type { ListItems, ListName } from './draft.js';
 
 // Which rows of the draft are new or changed since the saved version (the
@@ -59,6 +59,9 @@ export interface LineMark {
   mark: Mark | null;
   // A ## heading of an optional section.
   optional: boolean;
+  // A ## heading of an adventure's section that does not print: the
+  // appendix, or one the template leaves out.
+  out: boolean;
 }
 
 // The marks on the starting document's lines: a heading by its section, a
@@ -72,11 +75,14 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
   };
   const sections = marked('sections', (s) => s.heading ?? s.name);
   const optional = new Set(draft.sections.filter((s) => s.requirement === 'optional').map((s) => s.heading ?? s.name));
+  const out = new Set(
+    draft.kind === 'adventure' ? draft.sections.filter((s) => !sectionPdf(s).print).map((s) => s.heading ?? s.name) : [],
+  );
   const fields = marked('sceneFields', (f) => f.label);
   const boxes = marked('callouts', (c) => (c.meta ? `${c.type}|${c.meta}` : c.type));
   const keys = marked('meta', (k) => k.key);
 
-  const out: LineMark[] = [];
+  const lines: LineMark[] = [];
   let frontMatter = false;
   text.split('\n').forEach((line, index) => {
     if (line === '---') {
@@ -85,6 +91,7 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
     }
     let mark: Mark | null = null;
     let isOptional = false;
+    let isOut = false;
     if (frontMatter) {
       const key = /^([^:\s][^:]*):/.exec(line)?.[1];
       if (key) mark = keys.get(key) ?? null;
@@ -92,6 +99,7 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
       const heading = line.slice(3);
       mark = sections.get(heading) ?? null;
       isOptional = optional.has(heading);
+      isOut = out.has(heading);
     } else if (line.startsWith('**')) {
       const label = /^\*\*(.+?):?\*\*/.exec(line)?.[1];
       if (label) mark = fields.get(label) ?? null;
@@ -99,7 +107,7 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
       const type = /^> \[!([^\]]+)\]/.exec(line)?.[1];
       if (type) mark = boxes.get(type) ?? null;
     }
-    if (mark || isOptional) out.push({ line: index, mark, optional: isOptional });
+    if (mark || isOptional || isOut) lines.push({ line: index, mark, optional: isOptional, out: isOut });
   });
-  return out;
+  return lines;
 }

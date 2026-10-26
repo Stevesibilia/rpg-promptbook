@@ -232,3 +232,62 @@ test('delete an unused template; leaving with unsaved changes asks first', async
   await page.getByRole('dialog', { name: `Delete ${name}?` }).getByRole('button', { name: 'Delete' }).click();
   await expect(row(page, name)).toHaveCount(0);
 });
+
+// PDF options (template-pdf-layout): an own section prints, a role section
+// left out does not.
+test('an own section prints in the PDF and a section left out does not', async ({ page }) => {
+  const name = `Avventura PDF ${Date.now().toString(36)}`;
+  await duplicate(page);
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('New section').fill('Atmosfera');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  const atmosfera = sectionRow(page, 'Atmosfera');
+  await expect(atmosfera.getByRole('button', { name: 'In the PDF, Atmosfera' })).toHaveText('Printed');
+  await expect(atmosfera.getByRole('button', { name: 'New page, Atmosfera' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(atmosfera.getByRole('button', { name: 'Side column, Atmosfera' })).toHaveAttribute('aria-pressed', 'false');
+  // Turned off and on again, «New page» counts no change.
+  await atmosfera.getByRole('button', { name: 'New page, Atmosfera' }).click();
+  await atmosfera.getByRole('button', { name: 'New page, Atmosfera' }).click();
+  await expect(saveBar(page)).toContainText('2 unsaved changes');
+  const before = sectionRow(page, 'Prima della sessione');
+  await expect(before.locator('.tg.fixed')).toHaveText('References');
+  await before.getByRole('button', { name: 'In the PDF, Prima della sessione' }).click();
+  await expect(before.getByRole('button', { name: 'In the PDF, Prima della sessione' })).toHaveText('Left out');
+  await expect(saveBar(page)).toContainText('3 unsaved changes');
+  await expect(page.getByTestId('starting-document').locator('.cm-line', { hasText: 'Prima della sessione' })).toContainText(
+    'not in the PDF',
+  );
+  await save(page, 2, 'Atmosfera', ['Section «Atmosfera», optional', 'PDF options of «Prima della sessione»']);
+
+  await page.getByRole('button', { name: '← Document templates' }).click();
+  await row(page, name).getByRole('button', { name: 'Make default' }).click();
+  await expect(row(page, name).locator('.chip.def')).toHaveText('Default');
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New project' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New project' });
+  await dialog.getByRole('radio', { name: /One-shot/ }).click();
+  await expect(dialog.getByLabel('Template').locator('option:checked')).toHaveText(`${name} · v2 (default)`);
+  await dialog.getByLabel('Title').fill(`Nella nebbia ${Date.now().toString(36)}`);
+  await dialog.getByRole('button', { name: 'Create and open' }).click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
+
+  // Text under «Atmosfera», then the PDF.
+  await outline(page).getByText('Atmosfera', { exact: true }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('La nebbia sale dal porto e copre le lanterne.');
+  await expect(page.locator('.cm-content')).toContainText('copre le lanterne');
+  await page.keyboard.press('ControlOrMeta+Shift+P');
+  const review = page.getByRole('region', { name: 'PDF review' });
+  await expect(review.locator('.thumbs-col .th', { hasText: /· Atmosfera$/ })).toBeVisible(ENGINE);
+  const download = page.waitForEvent('download');
+  await review.getByRole('button', { name: 'Save PDF' }).click();
+  const chunks: Buffer[] = [];
+  for await (const chunk of await (await download).createReadStream()) chunks.push(chunk as Buffer);
+  const pages = pdfTexts(Buffer.concat(chunks));
+  const own = pages.find((text) => text.includes('copre le lanterne'));
+  expect(own).toContain('Atmosfera');
+  expect(pages.some((text) => text.includes('Prima della sessione'))).toBe(false);
+});

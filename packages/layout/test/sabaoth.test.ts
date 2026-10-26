@@ -99,11 +99,13 @@ describe('the saved PDF', () => {
 });
 
 describe('a document with almost nothing in it', () => {
-  it('builds, with the cover and the references only', async () => {
+  // Nothing to print in the references: no page for them (design decision 4
+  // of template-pdf-layout).
+  it('builds, with the cover and the night only', async () => {
     const { model: empty } = parseAdventure('---\ntitolo: Vuota\n---\n\nSolo testo.\n', { template: templates.avventura });
     const result = await engine.build(toLayoutInput(empty, defaultLayoutOptions, { title: 'Vuota' }, templates.avventura));
     expect(result.diagnostics).toEqual([]);
-    expect(result.positions.filter((p) => p.kind === 'part').map((p) => p.id)).toEqual(['cover', 'night', 'references']);
+    expect(result.positions.filter((p) => p.kind === 'part').map((p) => p.id)).toEqual(['cover', 'night']);
   });
 });
 

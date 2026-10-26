@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type ReactNode } from 'react';
-import type { AdventureTemplate, Place, SectionRole, Template } from 'promptbook-format';
-import { isLocked, keyRenamable, warnsOnDashes, type DraftAction, type ListItems, type ListName } from './draft.js';
+import { sectionPdf, type AdventureTemplate, type Place, type SectionDefinition, type SectionRole, type Template } from 'promptbook-format';
+import { isLocked, keyRenamable, pdfAction, warnsOnDashes, type DraftAction, type ListItems, type ListName } from './draft.js';
 import { placeName } from './changes.js';
 import { rowMarks, type Mark } from './marks.js';
 
@@ -36,6 +36,25 @@ const sectionRoles: Record<SectionRole, string> = {
   sheets: 'Sheets',
   before: 'Before the session',
   appendix: 'Appendix',
+};
+
+// Where each role section prints; its place is the layout's.
+const rolePlaces: Record<SectionRole, string> = {
+  synopsis: 'Cover',
+  backstory: 'Cover',
+  overview: 'Night page',
+  reminders: 'Night page, side',
+  clock: 'Night page',
+  truths: 'Night page',
+  strongStart: 'Start page',
+  sceneMap: 'Start page',
+  rules: 'Own page, side boxes',
+  scenes: 'A page per scene',
+  clues: 'References',
+  npcs: 'References',
+  sheets: 'References',
+  before: 'References',
+  appendix: 'Not printed',
 };
 
 const fieldRoles: Record<string, string> = {
@@ -210,6 +229,76 @@ function patch<L extends ListName>(dispatch: Dispatch<DraftAction>, list: L, ind
   return (value: Partial<ListItems[L]>) => dispatch({ type: 'patch', list, index, patch: value as Record<string, unknown> });
 }
 
+function Toggle({
+  on,
+  label,
+  readOnly,
+  onToggle,
+  children,
+}: {
+  on: boolean;
+  label: string;
+  readOnly: boolean;
+  onToggle(): void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className={`tg${on ? ' on' : ''}`} aria-pressed={on} aria-label={label} disabled={readOnly} onClick={onToggle}>
+      {children}
+    </button>
+  );
+}
+
+// The «In the PDF» cell (template-pdf-layout design decision 7): a role
+// section's fixed place and «Printed / Left out», the appendix's place
+// only; an own section's «Printed / Left out», then «New page» and «Side
+// column» while it prints.
+function PdfOptions({
+  section,
+  index,
+  dispatch,
+  readOnly,
+}: {
+  section: SectionDefinition;
+  index: number;
+  dispatch: Dispatch<DraftAction>;
+  readOnly: boolean;
+}) {
+  const pdf = sectionPdf(section);
+  const name = section.heading ?? section.name;
+  const toggle = (change: Parameters<typeof pdfAction>[2]) => () => dispatch(pdfAction(index, section, change));
+  const printed = (
+    <Toggle on={pdf.print} label={`In the PDF, ${name}`} readOnly={readOnly} onToggle={toggle({ print: !pdf.print })}>
+      {pdf.print ? 'Printed' : 'Left out'}
+    </Toggle>
+  );
+  if (section.role) {
+    return (
+      <span className="pdf">
+        <span className="tg fixed" title="This section's place in the PDF is set by the layout">
+          {rolePlaces[section.role]}
+        </span>
+        {section.role === 'appendix' ? null : printed}
+      </span>
+    );
+  }
+  return (
+    <span className="pdf">
+      {printed}
+      {pdf.print ? (
+        <>
+          <Toggle on={pdf.newPage} label={`New page, ${name}`} readOnly={readOnly} onToggle={toggle({ newPage: !pdf.newPage })}>
+            New page
+          </Toggle>
+          <Toggle on={pdf.sideColumn} label={`Side column, ${name}`} readOnly={readOnly} onToggle={toggle({ sideColumn: !pdf.sideColumn })}>
+            Side column
+          </Toggle>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabProps) {
   const marks = rowMarks(saved, draft, 'sections');
   const campaign = draft.kind === 'campaign';
@@ -223,6 +312,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
             <span>Heading</span>
             <span>Needed</span>
             <span>Used for</span>
+            <span>{campaign ? '' : 'In the PDF'}</span>
             <span />
           </>
         }
@@ -265,6 +355,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
                     : 'Your own section: checked for presence only'
                 }
               />
+              {campaign ? <span /> : <PdfOptions section={s} index={i} dispatch={dispatch} readOnly={readOnly} />}
               <Remove
                 list="sections"
                 index={i}
@@ -281,7 +372,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
       <p className="sub">
         {campaign
           ? 'Campaigns have no PDF yet; their sections are checked for presence only.'
-          : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role.'}
+          : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}
       </p>
     </>
   );

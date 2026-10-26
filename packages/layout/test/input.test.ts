@@ -275,3 +275,159 @@ describe('the headings the PDF prints', () => {
     expect(input.references.pregenerated?.title).toBe('Già pronti');
   });
 });
+
+// A copy of avventura changed by `change`, and the layout input of `text` with it.
+function withTemplate(change: (t: AdventureTemplateInput) => void) {
+  const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+  change(definition);
+  const template = defineTemplate(definition);
+  return (text: string) => toLayoutInput(parseAdventure(text, { template }).model, defaultLayoutOptions, project, template);
+}
+
+describe('own sections', () => {
+  // Every role section of avventura, each followed by an own section «Dopo
+  // <role>», and «Prima» before them all.
+  const roles = templates.avventura.sections.map((s) => s.role!);
+  const ownAfter = withTemplate((t) => {
+    t.sections.push({ name: 'Prima', requirement: 'optional' });
+    for (const role of roles) t.sections.push({ name: `Dopo ${role}`, requirement: 'optional' });
+  });
+  const body: Partial<Record<string, string>> = {
+    scenes: '### S1. Il porto\n\nTesto.',
+    sheets: '### Capitano\n\n- **Tipo:** Minaccia',
+  };
+  const all =
+    '---\ntitolo: Tutte\n---\n\n## Prima\n\nTesto.\n\n' +
+    templates.avventura.sections
+      .map((s) => `## ${s.heading ?? s.name}\n\n${body[s.role!] ?? 'Testo.'}\n\n## Dopo ${s.role}\n\nTesto di ${s.role}.\n\n`)
+      .join('');
+  const titles = (input: ReturnType<ReturnType<typeof withTemplate>>) =>
+    Object.fromEntries(Object.entries(input.own).map(([slot, list]) => [slot, list.map((s) => s.title)]));
+
+  it('print after the part of the role section before them, the cover when none', () => {
+    expect(titles(ownAfter(all))).toEqual({
+      cover: ['Prima', 'Dopo synopsis', 'Dopo backstory'],
+      night: ['Dopo overview', 'Dopo reminders', 'Dopo clock', 'Dopo truths'],
+      start: ['Dopo strongStart', 'Dopo sceneMap'],
+      rules: ['Dopo rules'],
+      scenes: ['Dopo scenes'],
+      references: ['Dopo clues', 'Dopo npcs', 'Dopo sheets'],
+      before: ['Dopo before'],
+      end: ['Dopo appendix'],
+    });
+  });
+
+  it('keep their blocks, their offset and a new page by default', () => {
+    const [own] = ownAfter(all).own.rules;
+    expect(own).toMatchObject({ title: 'Dopo rules', newPage: true, sideBoxes: [] });
+    expect(all.slice(own!.from)).toMatch(/^## Dopo rules/);
+    expect(markdown(own!.blocks)).toBe('Testo di rules.');
+  });
+
+  it('do not print when the template leaves them out, nor when the template does not know them', () => {
+    const leftOut = withTemplate((t) => {
+      t.sections.push({ name: 'Atmosfera', requirement: 'optional', pdf: { print: false } });
+    });
+    const doc = sabaoth().replace('## Mappa delle scene', '## Atmosfera\n\nVento.\n\n## Appunti\n\nNote.\n\n## Mappa delle scene');
+    const input = leftOut(doc);
+    expect(Object.values(input.own).flat()).toEqual([]);
+    expect(JSON.stringify(input)).not.toContain('Appunti');
+    expect(JSON.stringify(input)).not.toContain('Vento.');
+  });
+
+  it('print their side boxes in the side column only with «Side column»', () => {
+    const doc = sabaoth().replace(
+      '## Mappa delle scene',
+      '## Atmosfera\n\nVento.\n\n> [!riquadro|laterale] Suoni\n> Campane.\n\n## Mappa delle scene',
+    );
+    const own = (sideColumn: boolean) =>
+      withTemplate((t) => {
+        t.sections.push({ name: 'Atmosfera', requirement: 'optional', ...(sideColumn ? { pdf: { sideColumn, newPage: false } } : {}) });
+      })(doc).own.start[0]!;
+    expect(markdown(own(true).blocks)).toBe('Vento.');
+    expect(markdown(own(true).sideBoxes)).toBe('Campane.');
+    expect(own(true).newPage).toBe(false);
+    expect(markdown(own(false).blocks)).toBe('Vento.\n\nCampane.');
+    expect(own(false).sideBoxes).toEqual([]);
+  });
+});
+
+describe('role sections left out', () => {
+  const leaveOut = (role: string) =>
+    withTemplate((t) => {
+      t.sections.find((s) => s.role === role)!.pdf = { print: false };
+    });
+  const roles = templates.avventura.sections.map((s) => s.role!).filter((r) => r !== 'appendix');
+  const doc =
+    '---\ntitolo: Tutte\n---\n\n' +
+    templates.avventura.sections
+      .map((s) => {
+        const content: Partial<Record<string, string>> = {
+          scenes: '### S1. Il porto\n\nTesto.',
+          sheets: '### Capitano\n\n- **Tipo:** Minaccia',
+        };
+        return `## ${s.heading ?? s.name}\n\n${content[s.role!] ?? 'Testo.'}\n\n`;
+      })
+      .join('');
+  type Input = ReturnType<ReturnType<typeof leaveOut>>;
+  const part: Record<string, (i: Input) => unknown> = {
+    synopsis: (i) => i.cover.synopsis,
+    backstory: (i) => i.cover.backstory,
+    overview: (i) => i.night.overview,
+    reminders: (i) => i.night.reminders,
+    clock: (i) => i.night.clock,
+    truths: (i) => i.night.truths,
+    strongStart: (i) => i.start.strongStart,
+    sceneMap: (i) => i.start.sceneMap,
+    rules: (i) => i.rules,
+    scenes: (i) => i.scenes[0] ?? null,
+    clues: (i) => i.references.clues,
+    npcs: (i) => i.references.npcs,
+    sheets: (i) => i.references.sheets[0] ?? null,
+    before: (i) => i.references.before,
+  };
+  const full = withTemplate(() => {})(doc);
+
+  it.each(roles)('%s drops its part and only its part', (role) => {
+    const input = leaveOut(role)(doc);
+    expect(part[role]!(full)).not.toBeNull();
+    expect(part[role]!(input)).toBeNull();
+    for (const other of roles.filter((r) => r !== role)) expect(part[other]!(input), other).not.toBeNull();
+  });
+
+  it('«A colpo d\'occhio» takes its revelations and side boxes, and the night keeps its heading', () => {
+    const input = leaveOut('overview')(sabaoth());
+    expect(layout(sabaoth()).night.revelations).not.toBeNull();
+    expect([input.night.overview, input.night.revelations, input.night.sideBoxes]).toEqual([null, null, []]);
+    expect(input.night.overviewTitle).toBe("A colpo d'occhio");
+  });
+
+  it('«Scene» drops every scene and its tab', () => {
+    const input = leaveOut('scenes')(sabaoth());
+    expect(input.scenes).toEqual([]);
+    expect(input.tabs).toEqual(['Notte', 'Schede']);
+  });
+
+  it('«Schede» drops the sheets and «Pregenerati», and references print as text', () => {
+    const input = leaveOut('sheets')(sabaoth());
+    expect(input.references.sheets).toEqual([]);
+    expect(input.references.pregenerated).toBeNull();
+    const s3 = input.scenes[2]!;
+    expect(markdown(s3.cast?.blocks)).toContain('→ Tenente Donato');
+    expect(s3.threats.map((t) => t.sheet)).toEqual([null, null]);
+    expect(JSON.stringify(input)).not.toContain('#sheet-');
+    expect(input.tabs.at(-1)).toBe('Schede');
+  });
+
+  it('prints neither the night\'s heading nor the references part when they hold nothing', () => {
+    const empty = layout('---\ntitolo: Vuota\n---\n\nSolo testo.\n');
+    expect(empty.night.overviewTitle).toBeNull();
+    expect(empty.references.print).toBe(false);
+    expect(empty.tabs).toEqual(['Notte']);
+    expect(layout(sabaoth()).references.print).toBe(true);
+  });
+
+  it('never prints the appendix', () => {
+    expect(JSON.stringify(full)).not.toContain('Appendice');
+  });
+});

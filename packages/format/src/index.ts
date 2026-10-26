@@ -21,6 +21,7 @@ export {
   type TemplateRef,
 } from './template/registry.js';
 export { templateChanges, type TemplateChange } from './template/changes.js';
+export { sectionPdf, withPdf, type SectionPdf, type SectionPdfPatch } from './template/pdf.js';
 export { builtinSystems, defineSystems, type SystemDefinition, type SystemInput } from './systems.js';
 export type {
   AdventureTemplate,

@@ -1,6 +1,8 @@
 import {
   defineTemplate,
   TemplateError,
+  withPdf,
+  type SectionPdfPatch,
   type AdventureTemplate,
   type CalloutDefinition,
   type MetaKeyDefinition,
@@ -40,6 +42,13 @@ export const READ_KEYS: ReadonlySet<string> = new Set([
   'copyright',
   'licenza',
 ]);
+
+// A change to a section's PDF options (template-pdf-layout design decision
+// 1): the options that differ from their defaults, no `pdf` when none does,
+// so turning an option back leaves the row as it was saved.
+export function pdfAction(index: number, section: SectionDefinition, change: SectionPdfPatch): DraftAction {
+  return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change).pdf } };
+}
 
 // Locked rows (design decision 11) show a lock and cannot be removed:
 // sections and fields with a role, keys the app reads, and boxes every

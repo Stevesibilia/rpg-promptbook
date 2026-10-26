@@ -3,6 +3,7 @@
 // stays declarative; every decision about what goes where is made here.
 
 import {
+  sectionPdf,
   type AdventureTemplate,
   type Block,
   type JsonValue,
@@ -12,6 +13,7 @@ import {
   type SceneField,
   type SceneFieldRole,
   type Section,
+  type SectionRole,
   type Sheet,
 } from 'promptbook-format';
 import { licenceShort, licenceUrl } from './licence.js';
@@ -72,8 +74,9 @@ export interface LayoutThreat {
   // More than two talents print as their names on one line.
   talentNames: string | null;
   talents: { name: string; text: string }[];
-  // The label of the sheet, for «scheda completa, p. N».
-  sheet: string;
+  // The label of the sheet, for «scheda completa, p. N»; null when the sheets
+  // do not print.
+  sheet: string | null;
 }
 
 export interface LayoutScene {
@@ -122,6 +125,16 @@ export interface LayoutPregenerated {
   characters: { name: string; from: number; blocks: LayoutBlock[] }[];
 }
 
+// Where a section without a role prints: at the end of the part that holds
+// the role section before it in the document.
+export type OwnSlot = 'cover' | 'night' | 'start' | 'rules' | 'scenes' | 'references' | 'before' | 'end';
+
+export interface LayoutOwnSection extends LayoutPart {
+  newPage: boolean;
+  // Empty unless the section prints with a side column.
+  sideBoxes: LayoutBlock[];
+}
+
 export interface LayoutInput {
   options: LayoutOptions;
   title: string;
@@ -131,6 +144,8 @@ export interface LayoutInput {
   licence: { short: string; full: string; url: string | null } | null;
   // The edge tabs: "Notte", "S1"…"Sn", "Schede".
   tabs: string[];
+  // The sections without a role, by the part they print after.
+  own: Record<OwnSlot, LayoutOwnSection[]>;
   cover: {
     from: number;
     // The line above the title, and the lines under it.
@@ -141,8 +156,9 @@ export interface LayoutInput {
   };
   night: {
     from: number;
-    // «A colpo d'occhio» prints even when the document lacks it.
-    overviewTitle: string;
+    // «A colpo d'occhio» prints even when the document lacks it, unless the
+    // night has nothing else to print.
+    overviewTitle: string | null;
     overview: LayoutPart | null;
     revelations: LayoutPart | null;
     sideBoxes: LayoutBlock[];
@@ -160,6 +176,8 @@ export interface LayoutInput {
   rules: (LayoutPart & { sideBoxes: LayoutBlock[] }) | null;
   scenes: LayoutScene[];
   references: {
+    // False when nothing below prints: no page, no tab.
+    print: boolean;
     from: number;
     clues: LayoutPart | null;
     npcs: LayoutPart | null;
@@ -219,26 +237,33 @@ function boxOf(template: AdventureTemplate, block: Block): LayoutBox | null {
   };
 }
 
-function blockOf(template: AdventureTemplate, block: Block, references: Reference[] = []): LayoutBlock {
+// `sheets` says whether the sheets print, for the references' links.
+function blockOf(template: AdventureTemplate, block: Block, references: Reference[] = [], sheets = true): LayoutBlock {
   const from = block.range.start.offset;
   const boxed = boxOf(template, block);
   const markdown = block.kind === 'callout' || block.kind === 'quote' ? block.content : block.text;
   // A box's content does not start where the block does: its references are
   // found again in the content by their text.
   const linked = boxed
-    ? linkByText(template, markdown, references)
-    : linkReferences(template, markdown, from, references);
+    ? linkByText(template, markdown, references, sheets)
+    : linkReferences(template, markdown, from, references, sheets);
   return { from, kind: block.kind, markdown: linked, box: boxed };
 }
 
 // "→ Schede: Tenente Donato" becomes a link to the sheet's label, which the
-// template prints as «→ Tenente Donato, p. 12». Unresolved references stay as
-// written.
-function link(reference: Reference): string {
-  return `→ [${reference.target}](#${sheetLabel(reference.sheet!)})`;
+// template prints as «→ Tenente Donato, p. 12», or plain «→ Tenente Donato»
+// when the sheets do not print. Unresolved references stay as written.
+function link(reference: Reference, sheets: boolean): string {
+  return sheets ? `→ [${reference.target}](#${sheetLabel(reference.sheet!)})` : `→ ${reference.target}`;
 }
 
-function linkReferences(template: AdventureTemplate, markdown: string, from: number, references: Reference[]): string {
+function linkReferences(
+  template: AdventureTemplate,
+  markdown: string,
+  from: number,
+  references: Reference[],
+  sheets: boolean,
+): string {
   const inside = references
     .filter((r) => r.sheet && r.range.start.offset >= from && r.range.end.offset <= from + markdown.length)
     .sort((a, b) => b.range.start.offset - a.range.start.offset);
@@ -247,17 +272,17 @@ function linkReferences(template: AdventureTemplate, markdown: string, from: num
     const start = reference.range.start.offset - from;
     const end = reference.range.end.offset - from;
     if (!out.slice(start).startsWith(template.references.marker)) continue;
-    out = out.slice(0, start) + link(reference) + out.slice(end);
+    out = out.slice(0, start) + link(reference, sheets) + out.slice(end);
   }
   return out;
 }
 
-function linkByText(template: AdventureTemplate, markdown: string, references: Reference[]): string {
+function linkByText(template: AdventureTemplate, markdown: string, references: Reference[], sheets: boolean): string {
   let out = markdown;
   for (const reference of references) {
     if (!reference.sheet) continue;
     const written = new RegExp(`${escape(template.references.marker)}[ \\t]*${escape(reference.target)}`);
-    out = out.replace(written, link(reference));
+    out = out.replace(written, link(reference, sheets));
   }
   return out;
 }
@@ -281,16 +306,16 @@ function partOf(
   return { title, from: section.range.start.offset, blocks: blocks.map((b) => blockOf(template, b)) };
 }
 
-function field(template: AdventureTemplate, scene: Scene, found: SceneField | undefined): LayoutField | null {
+function field(template: AdventureTemplate, scene: Scene, found: SceneField | undefined, sheets: boolean): LayoutField | null {
   if (!found) return null;
   const from = found.range.start.offset;
   if (found.form === 'inline') {
     // The text after the label ends where the field does.
     const textFrom = found.range.end.offset - found.text.length;
-    const markdown = linkReferences(template, found.text, textFrom, scene.references);
+    const markdown = linkReferences(template, found.text, textFrom, scene.references, sheets);
     return { label: found.label, from, blocks: [{ from, kind: 'paragraph', markdown, box: null }] };
   }
-  return { label: found.label, from, blocks: found.blocks.map((b) => blockOf(template, b, scene.references)) };
+  return { label: found.label, from, blocks: found.blocks.map((b) => blockOf(template, b, scene.references, sheets)) };
 }
 
 // "La Maestà («Fermi»: chi non…)" gives the name and what is in brackets.
@@ -306,7 +331,7 @@ function firstSentence(value: string): string {
   return /^(.+?[.!?])(\s|$)/.exec(value)?.[1] ?? value;
 }
 
-function threat(sheet: Sheet): LayoutThreat | null {
+function threat(sheet: Sheet, sheets: boolean): LayoutThreat | null {
   const found = sheet.threat;
   if (!found?.counts || !found.grade) return null;
   const talents = found.talents.map(talent);
@@ -320,16 +345,16 @@ function threat(sheet: Sheet): LayoutThreat | null {
     afflictions: found.counts.afflictions,
     talentNames: many ? talents.map((t) => t.name).join(' · ') : null,
     talents: many ? [] : talents.map((t) => ({ name: t.name, text: firstSentence(t.text) })),
-    sheet: sheetLabel(sheet.id),
+    sheet: sheets ? sheetLabel(sheet.id) : null,
   };
 }
 
-function scene(template: AdventureTemplate, model: Model, found: Scene): LayoutScene {
+function scene(template: AdventureTemplate, model: Model, found: Scene, sheets: boolean): LayoutScene {
   const byRole = (role: SceneFieldRole) => {
     const label = roleField(template, role);
     return label === undefined ? undefined : found.fields.find((f) => f.label === label);
   };
-  const get = (role: SceneFieldRole) => field(template, found, byRole(role));
+  const get = (role: SceneFieldRole) => field(template, found, byRole(role), sheets);
   const cast = roleField(template, 'cast');
   const placed = new Set(PLACED.map((role) => roleField(template, role)).filter((l) => l !== undefined));
 
@@ -340,11 +365,11 @@ function scene(template: AdventureTemplate, model: Model, found: Scene): LayoutS
     if (cast === undefined || reference.field !== cast || !reference.sheet || seen.has(reference.sheet)) continue;
     seen.add(reference.sheet);
     const sheet = model.sheets.find((s) => s.id === reference.sheet);
-    const box = sheet ? threat(sheet) : null;
+    const box = sheet ? threat(sheet, sheets) : null;
     if (box) threats.push(box);
   }
 
-  const boxes = found.boxes.map((b) => blockOf(template, b, found.references));
+  const boxes = found.boxes.map((b) => blockOf(template, b, found.references, sheets));
   const isReadAloud = (i: number) => found.readAlouds.includes(found.boxes[i]!.id);
   return {
     id: found.id ?? '',
@@ -363,12 +388,12 @@ function scene(template: AdventureTemplate, model: Model, found: Scene): LayoutS
     handouts: boxes.filter((b) => b.box?.role === 'handout'),
     boxes: boxes.filter((b, i) => !isReadAloud(i) && !b.box?.side && b.box?.role !== 'handout'),
     tests: get('tests'),
-    reactions: found.reactions ? blockOf(template, found.reactions, found.references) : null,
-    tables: found.tables.map((t) => blockOf(template, t, found.references)),
+    reactions: found.reactions ? blockOf(template, found.reactions, found.references, sheets) : null,
+    tables: found.tables.map((t) => blockOf(template, t, found.references, sheets)),
     derail: get('derail'),
     situation: get('situation'),
     decides: get('decides'),
-    others: found.fields.filter((f) => !placed.has(f.label)).map((f) => field(template, found, f)!),
+    others: found.fields.filter((f) => !placed.has(f.label)).map((f) => field(template, found, f, sheets)!),
   };
 }
 
@@ -395,6 +420,63 @@ function sheetBlocks(template: AdventureTemplate, sheet: Sheet): LayoutBlock[] {
   return out;
 }
 
+// The part an own section prints after, by the role of the section before it.
+const SLOTS: Record<SectionRole, OwnSlot> = {
+  synopsis: 'cover',
+  backstory: 'cover',
+  overview: 'night',
+  reminders: 'night',
+  clock: 'night',
+  truths: 'night',
+  strongStart: 'start',
+  sceneMap: 'start',
+  rules: 'rules',
+  scenes: 'scenes',
+  clues: 'references',
+  npcs: 'references',
+  sheets: 'references',
+  before: 'before',
+  appendix: 'end',
+};
+
+// The sections the template defines without a role, each in the slot of the
+// nearest role section before it (the cover when there is none), in document
+// order. A role section left out still anchors; sections the template does
+// not know never print.
+function ownSections(template: AdventureTemplate, model: Model): Record<OwnSlot, LayoutOwnSection[]> {
+  const own: Record<OwnSlot, LayoutOwnSection[]> = {
+    cover: [],
+    night: [],
+    start: [],
+    rules: [],
+    scenes: [],
+    references: [],
+    before: [],
+    end: [],
+  };
+  let slot: OwnSlot = 'cover';
+  for (const section of model.sections) {
+    if (section.role) {
+      slot = SLOTS[section.role];
+      continue;
+    }
+    if (!section.known) continue;
+    const definition = template.sections.find((s) => s.name === section.name);
+    if (!definition) continue;
+    const pdf = sectionPdf(definition);
+    if (!pdf.print) continue;
+    const side = pdf.sideColumn ? section.blocks.filter((b) => boxOf(template, b)?.side) : [];
+    own[slot].push({
+      title: definition.heading ?? definition.name,
+      from: section.range.start.offset,
+      blocks: section.blocks.filter((b) => !side.includes(b)).map((b) => blockOf(template, b)),
+      newPage: pdf.newPage,
+      sideBoxes: side.map((b) => blockOf(template, b)),
+    });
+  }
+  return own;
+}
+
 // The template is the one the model was parsed with: sections and fields are
 // found by their role, never by their label.
 export function toLayoutInput(
@@ -408,7 +490,13 @@ export function toLayoutInput(
     const key = template.meta.find((m) => m.role === name)?.key;
     return key === undefined ? undefined : values[key];
   };
-  const role = (name: Section['role']) => model.sections.find((s) => s.role === name);
+  // A role section the template leaves out reads as missing.
+  const printed = (name: SectionRole) => {
+    const definition = template.sections.find((s) => s.role === name);
+    return !definition || sectionPdf(definition).print;
+  };
+  const role = (name: SectionRole) => (printed(name) ? model.sections.find((s) => s.role === name) : undefined);
+  const sheetsPrint = printed('sheets');
   const box = (block: Block) => boxOf(template, block);
   const toBlock = (block: Block) => blockOf(template, block);
   const part = (section: Section | undefined, blocks?: Block[]) => partOf(template, section, blocks);
@@ -449,7 +537,65 @@ export function toLayoutInput(
   const npcs = role('npcs');
   const sheets = role('sheets');
   const before = role('before');
-  const ids = model.scenes.map((s) => s.id).filter((id): id is string => id !== null);
+  const scenes = printed('scenes') ? model.scenes : [];
+  const ids = scenes.map((s) => s.id).filter((id): id is string => id !== null);
+  const own = ownSections(template, model);
+
+  const nightParts = {
+    overview: overview ? part(overview, overviewBlocks.filter((b) => !box(b)?.side)) : null,
+    revelations:
+      overview && revelationBlocks.length > 0
+        ? partOf(template, overview, revelationBlocks, template.overview.revelations)
+        : null,
+    sideBoxes: overviewSide.map((b) => toBlock(b)),
+    reminders: part(role('reminders')),
+    clock: part(role('clock')),
+    truths: part(role('truths')),
+  };
+  const nightPrints =
+    overview !== undefined ||
+    nightParts.revelations !== null ||
+    nightParts.sideBoxes.length > 0 ||
+    nightParts.reminders !== null ||
+    nightParts.clock !== null ||
+    nightParts.truths !== null;
+
+  const references = {
+    from: from(clues, npcs, sheets),
+    clues: part(clues),
+    npcs: part(npcs),
+    sheetsTitle: headingOf(template, 'sheets', 'Schede'),
+    sheets: sheetsPrint
+      ? model.sheets.map((s) => ({
+          label: sheetLabel(s.id),
+          title: s.title,
+          from: s.range.start.offset,
+          blocks: sheetBlocks(template, s),
+        }))
+      : [],
+    pregenerated:
+      model.pregenerated && options.pregenerated && sheetsPrint
+        ? {
+            title: template.sheets.pregenerated,
+            from: model.pregenerated.range.start.offset,
+            blocks: model.pregenerated.blocks.map((b) => toBlock(b)),
+            characters: model.pregenerated.characters.map((c) => ({
+              name: c.name,
+              from: c.range.start.offset,
+              blocks: c.blocks.map((b) => toBlock(b)),
+            })),
+          }
+        : null,
+    before: part(before),
+  };
+  // The references part prints, with its tab, when it has something.
+  const referencesPrint =
+    references.clues !== null ||
+    references.npcs !== null ||
+    references.sheets.length > 0 ||
+    references.pregenerated !== null ||
+    references.before !== null ||
+    own.references.length > 0;
 
   return {
     options,
@@ -464,7 +610,8 @@ export function toLayoutInput(
           url: licenceUrl(model.meta.licence),
         }
       : null,
-    tabs: ['Notte', ...ids, 'Schede'],
+    tabs: ['Notte', ...ids, ...(referencesPrint ? ['Schede'] : [])],
+    own,
     cover: {
       from: start,
       over: metaBlocks(OVER),
@@ -474,46 +621,13 @@ export function toLayoutInput(
     },
     night: {
       from: from(overview, role('reminders')),
-      overviewTitle: headingOf(template, 'overview', "A colpo d'occhio"),
-      overview: overview ? part(overview, overviewBlocks.filter((b) => !box(b)?.side)) : null,
-      revelations:
-        overview && revelationBlocks.length > 0
-          ? partOf(template, overview, revelationBlocks, template.overview.revelations)
-          : null,
-      sideBoxes: overviewSide.map((b) => toBlock(b)),
-      reminders: part(role('reminders')),
-      clock: part(role('clock')),
-      truths: part(role('truths')),
+      overviewTitle: nightPrints ? headingOf(template, 'overview', "A colpo d'occhio") : null,
+      ...nightParts,
     },
     start: { from: from(strongStart, sceneMap), strongStart: part(strongStart), sceneMap: part(sceneMap) },
     rules: rules ? { ...part(rules, rules.blocks.filter((b) => !box(b)?.side))!, sideBoxes: rulesSide.map((b) => toBlock(b)) } : null,
-    scenes: model.scenes.map((s) => scene(template, model, s)),
-    references: {
-      from: from(clues, npcs, sheets),
-      clues: part(clues),
-      npcs: part(npcs),
-      sheetsTitle: headingOf(template, 'sheets', 'Schede'),
-      sheets: model.sheets.map((s) => ({
-        label: sheetLabel(s.id),
-        title: s.title,
-        from: s.range.start.offset,
-        blocks: sheetBlocks(template, s),
-      })),
-      pregenerated:
-        model.pregenerated && options.pregenerated
-          ? {
-              title: template.sheets.pregenerated,
-              from: model.pregenerated.range.start.offset,
-              blocks: model.pregenerated.blocks.map((b) => toBlock(b)),
-              characters: model.pregenerated.characters.map((c) => ({
-                name: c.name,
-                from: c.range.start.offset,
-                blocks: c.blocks.map((b) => toBlock(b)),
-              })),
-            }
-          : null,
-      before: part(before),
-    },
+    scenes: scenes.map((s) => scene(template, model, s, sheetsPrint)),
+    references: { ...references, print: referencesPrint },
   };
 }
 
