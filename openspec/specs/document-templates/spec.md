@@ -156,3 +156,32 @@ save bar and be listed in the save dialog as «PDF options of «X»».
 
 - **WHEN** the user views «Avventura»
 - **THEN** the column shows each section's place and its toggles disabled
+
+### Requirement: Locks enforced on save
+
+The server SHALL refuse with `invalid_template` any new version that, against the version it is based on, removes a locked section, scene field or front matter key, changes a row's role, adds a role, or renames a locked front matter key. Boxes SHALL be locked only within one edit, as the editor shows them: a box every place needs MAY be set to «any» and removed in the same save. The editor and the server SHALL share one definition of locked rows.
+
+#### Scenario: Role section renamed
+
+- **WHEN** a version renames the section with the role `strongStart` from
+  «Inizio forte» to «Apertura»
+- **THEN** the save succeeds
+
+#### Scenario: Locked key renamed
+
+- **WHEN** a version renames the front matter key `licenza`
+- **THEN** the save fails with `invalid_template` naming `licenza`
+
+### Requirement: Templates saved elsewhere
+
+The web app SHALL read the account's templates again when its window gets the
+focus back, at most once every ten seconds, so a version saved in another
+tab or through the connector shows in Settings and in an open project's
+«vN available» without a reload. An open template editor SHALL keep its
+draft.
+
+#### Scenario: Version saved by Claude
+
+- **WHEN** Claude saves v2 of the template an open project uses at v1, and
+  the user comes back to the app's window
+- **THEN** the project's top bar shows «v2 available»
