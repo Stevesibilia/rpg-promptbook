@@ -11,6 +11,15 @@ const found = (text: string, name: string, category: 'one-shot' | 'campaign' = '
   return result.target;
 };
 
+// Sabaoth with its Pregenerati block replaced by one holding three `####`
+// characters (the fixture's block is a table and a list).
+const withCharacters = (names = ['Ada Rossi', 'Bruno Valli', 'Carla Neri']) => {
+  const from = sabaoth.indexOf('### Pregenerati');
+  const to = sabaoth.indexOf('## Prima della sessione');
+  const block = `### Pregenerati\n\nTre personaggi.\n\n${names.map((n) => `#### ${n}\n\n- **Legame:** qui.\n`).join('\n')}\n`;
+  return sabaoth.slice(0, from) + block + sabaoth.slice(to);
+};
+
 describe('targetsOf an adventure', () => {
   const targets = targetsOf(sabaoth, templates.avventura);
 
@@ -36,10 +45,33 @@ describe('targetsOf an adventure', () => {
       'sheet:Tenente Donato:3',
       'sheet:Pattuglia di Quieti:3',
       'sheet:Il Circolo dello Stretto:3',
+      'pregenerated:Pregenerati:3',
       'section:Prima della sessione:2',
       'section:Appendice:2',
     ]);
     expect(targets.every((t) => t.from > sabaoth.indexOf('\n---\n'))).toBe(true);
+  });
+
+  it('lists the Pregenerati block and each character, after the sheets and in text order', () => {
+    const text = withCharacters();
+    const all = targetsOf(text, templates.avventura);
+    const at = all.findIndex((t) => t.kind === 'pregenerated');
+    expect(all.slice(at - 1, at + 5).map((t) => `${t.kind}:${t.target}:${t.level}`)).toEqual([
+      'sheet:Il Circolo dello Stretto:3',
+      'pregenerated:Pregenerati:3',
+      'character:Ada Rossi:4',
+      'character:Bruno Valli:4',
+      'character:Carla Neri:4',
+      'section:Prima della sessione:2',
+    ]);
+    const [block, ada, bruno, carla] = all.slice(at, at + 4) as [Target, Target, Target, Target];
+    expect(textOf(text, block).startsWith('### Pregenerati\n\nTre personaggi.\n\n#### Ada Rossi\n')).toBe(true);
+    expect(textOf(text, block).endsWith('#### Carla Neri\n\n- **Legame:** qui.')).toBe(true);
+    expect(textOf(text, ada)).toBe('#### Ada Rossi\n\n- **Legame:** qui.');
+    expect(text.slice(ada.to, bruno.from)).toBe('\n\n');
+    expect(textOf(text, carla)).toBe('#### Carla Neri\n\n- **Legame:** qui.');
+    // A character ends where the block does, so the block's span holds it.
+    expect(carla.to).toBe(block.to);
   });
 
   it('spans a scene from its heading line to the next scene, without the blank lines', () => {
@@ -200,6 +232,19 @@ describe('findTarget', () => {
     expect(found(sabaoth, 'verita del mondo')).toMatchObject({ kind: 'section', target: 'Verità del mondo' });
     expect(found(sabaoth, 'TENENTE  DONATO')).toMatchObject({ kind: 'sheet', target: 'Tenente Donato' });
     expect(found(sabaoth, 'appendice')).toMatchObject({ kind: 'section', target: 'Appendice' });
+  });
+
+  it('finds the Pregenerati block and a character by name, accent and case insensitive', () => {
+    const text = withCharacters(['Ada Rossi', 'Bruno Valli', 'Perché No']);
+    expect(found(text, 'pregenerati')).toMatchObject({ kind: 'pregenerated', target: 'Pregenerati', level: 3 });
+    expect(found(text, ' ADA  rossi ')).toMatchObject({ kind: 'character', target: 'Ada Rossi', level: 4 });
+    expect(found(text, 'perche no')).toMatchObject({ kind: 'character', target: 'Perché No' });
+  });
+
+  it('answers both when a character and a section share a name', () => {
+    const result = findTarget(withCharacters(['Orologio']), templates.avventura, 'orologio');
+    expect(result).toMatchObject({ ok: false, error: 'ambiguous_target' });
+    expect(result.ok ? [] : result.targets.map((t) => t.kind)).toEqual(['section', 'character']);
   });
 
   it('answers the valid targets when nothing matches', () => {

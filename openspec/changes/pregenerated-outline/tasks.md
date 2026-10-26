@@ -15,10 +15,10 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 2. Connector: targets
 
-- [ ] 2.1 `project/src/targets.ts`: the `pregenerated` and `character` target kinds (D5)
-- [ ] 2.2 `server/src/mcp/tools.ts`: the three descriptions (D6)
-- [ ] 2.3 Tests from design.md «Verification»: `project/test/targets.test.ts`, `server/test/db/mcp.test.ts`
-- [ ] 2.4 Commit `feat(connector): pregenerated characters as targets`
+- [x] 2.1 `project/src/targets.ts`: the `pregenerated` and `character` target kinds (D5)
+- [x] 2.2 `server/src/mcp/tools.ts`: the three descriptions (D6)
+- [x] 2.3 Tests from design.md «Verification»: `project/test/targets.test.ts`, `server/test/db/mcp.test.ts`
+- [x] 2.4 Commit `feat(connector): pregenerated characters as targets`
 
 ## 3. Proof, docs and hand-back
 

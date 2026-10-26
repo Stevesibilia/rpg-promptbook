@@ -347,7 +347,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'get_outline',
-    'The parts of a project’s prep document you can read and replace one at a time: sections, scenes (by id, S3) and sheets of an adventure or one-shot, with the errors and warnings in each; the ## and ### headings of a campaign, which is not checked. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
+    'The parts of a project’s prep document you can read and replace one at a time: sections, scenes (by id, S3), sheets, the pregenerated characters block (Pregenerati) and each pregenerated character (by name) of an adventure or one-shot, with the errors and warnings in each; the ## and ### headings of a campaign, which is not checked. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Get the outline', readOnly: true, idempotent: true },
     { projectId },
     async (args) => {
@@ -377,7 +377,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'read_document',
-    'Read a project’s prep document in Markdown: the whole of it, or one target from get_outline (a section’s name, a scene id such as S3, a sheet’s name; for a campaign a heading’s text). Answers the text and its hash, which replace_section needs.',
+    'Read a project’s prep document in Markdown: the whole of it, or one target from get_outline (a section’s name, a scene id such as S3, a sheet’s name, the pregenerated characters block’s name (Pregenerati) or a pregenerated character’s name; for a campaign a heading’s text). Answers the text and its hash, which replace_section needs.',
     { title: 'Read the document', readOnly: true, idempotent: true },
     {
       projectId,
@@ -396,7 +396,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
 
   tool(
     'replace_section',
-    'Replace one target of a project’s prep document (a section, a scene or a sheet; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id); the template’s field names stay in Italian. In an adventure or a one-shot the result reports the errors and warnings before and after, and the problems in the new text: problems are reported, never refused, so fix them in later edits when you can. A snapshot of the text before the edit is kept, and the user can undo it. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
+    'Replace one target of a project’s prep document (a section, a scene, a sheet, the pregenerated characters block or one pregenerated character; a heading of a campaign), heading included. Read it first with read_document and send the hash you read: if the user changed it since, the call is refused and you read it again. Keep the heading as it is (a scene keeps its id; a character keeps its name: to add, remove or rename characters, replace the Pregenerati block); the template’s field names stay in Italian. In an adventure or a one-shot the result reports the errors and warnings before and after, and the problems in the new text: problems are reported, never refused, so fix them in later edits when you can. A snapshot of the text before the edit is kept, and the user can undo it. Counts leave out problems the user hid; results still list them, marked hidden (dismissed, or snoozed until a date): leave them alone unless the user asks.',
     { title: 'Replace a section', readOnly: false, idempotent: false, destructive: true },
     {
       projectId,
