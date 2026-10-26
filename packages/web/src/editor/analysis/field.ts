@@ -14,7 +14,7 @@ import { createAnalysisClient, type AnalysisClient, type Connect } from './clien
 // A part of the document the panels point at, with its positions in the
 // current text.
 export interface Place {
-  kind: 'meta' | 'section' | 'scene' | 'sheet';
+  kind: 'meta' | 'section' | 'scene' | 'sheet' | 'pregenerated' | 'character';
   // The index in the model's list of that kind; 0 for the front matter.
   index: number;
   from: number;
@@ -71,6 +71,8 @@ function placesOf({ model }: ParseResult): Place[] {
   add('section', model.sections);
   add('scene', model.scenes);
   add('sheet', model.sheets);
+  add('pregenerated', model.pregenerated ? [model.pregenerated] : []);
+  add('character', model.pregenerated?.characters ?? []);
   return places;
 }
 

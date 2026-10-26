@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw';
 import { sheetNames, sheetQuery, slashEntries, slashLine } from '../src/editor/cm/slash.js';
 import { analysed, campaign } from './analysed.js';
+import { characters, withBlock } from './pregenerated.js';
 
 const template = templates.avventura;
 
@@ -72,6 +73,14 @@ describe('the / menu', () => {
         "insert: Riquadro (> [!riquadro])",
       ]
     `);
+  });
+
+  it('offers the sheet\'s callouts in the Pregenerati block and in a character', () => {
+    const doc = withBlock(characters);
+    const sheet = menu(doc, at(doc, '### Tenente Donato', 22));
+    expect(sheet.length).toBeGreaterThan(0);
+    expect(menu(doc, at(doc, 'Tre personaggi'))).toEqual(sheet);
+    expect(menu(doc, at(doc, 'il fratello di Ada'))).toEqual(sheet);
   });
 
   it('adds New scene in the scenes section, with the next number', () => {

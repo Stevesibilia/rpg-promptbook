@@ -49,7 +49,7 @@ export interface Hiding {
 function whereOf(items: readonly OutlineItem[], pos: number, line: number): string {
   let owner: OutlineItem | null = null;
   for (const item of items) {
-    if (item.kind === 'sheet') continue;
+    if (item.kind === 'sheet' || item.kind === 'pregenerated' || item.kind === 'character') continue;
     if (item.from <= pos && pos <= item.to && (!owner || item.depth >= owner.depth)) owner = item;
   }
   const place = owner ? (owner.kind === 'scene' ? (owner.id ?? owner.name) : owner.place) : null;

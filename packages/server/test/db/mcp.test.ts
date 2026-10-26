@@ -56,6 +56,12 @@ const ADVENTURE = [
   '',
 ].join('\n');
 
+// The same adventure with a Schede section holding the Pregenerati block and
+// three `####` characters.
+const character = (name: string, bond: string) => [`#### ${name}`, '', `- **Legame:** ${bond}`].join('\n');
+const PREGENERATED = ['### Pregenerati', '', 'Tre personaggi.', '', character('Ada Rossi', 'allieva.'), '', character('Bruno Valli', 'il fratello di Ada.'), '', character('Carla Neri', 'la vicina.')].join('\n');
+const WITH_CHARACTERS = ADVENTURE.replace('## Indizi', `## Schede\n\n${PREGENERATED}\n\n## Indizi`);
+
 // A scene body with every field the template requires: adding it adds no
 // error, only the warning of the recommended «Indizi qui».
 const FULL_BODY = [
@@ -501,6 +507,90 @@ describe('replace_section', () => {
     });
     expect(await storedText(s.id)).toContain(markdown);
     expect(await snapshots(s.id)).toHaveLength(1);
+  });
+});
+
+describe('the pregenerated characters', () => {
+  const targets = async (s: Setup) =>
+    ((await s.call('get_outline', { projectId: s.id })).value.targets as { kind: string; target: string; errors: number }[]).map(
+      (t) => `${t.kind}:${t.target}`,
+    );
+  const read = async (s: Setup, target: string) =>
+    (await s.call('read_document', { projectId: s.id, target })).value as { text: string; hash: string };
+
+  it('lists the block and each character in get_outline, and reads one by name', async () => {
+    const s = await setup({ text: WITH_CHARACTERS });
+    expect((await targets(s)).slice(-6)).toEqual([
+      'section:Schede',
+      'pregenerated:Pregenerati',
+      'character:Ada Rossi',
+      'character:Bruno Valli',
+      'character:Carla Neri',
+      'section:Indizi',
+    ]);
+    const ada = character('Ada Rossi', 'allieva.');
+    expect((await s.call('read_document', { projectId: s.id, target: 'ada  ROSSI' })).value).toEqual({
+      target: 'Ada Rossi',
+      kind: 'character',
+      title: 'Ada Rossi',
+      text: ada,
+      hash: textHash(ada),
+    });
+    expect((await read(s, 'pregenerati')).text).toBe(PREGENERATED);
+  });
+
+  it('counts a problem in a character in the character, the block and the section', async () => {
+    const s = await setup({ text: WITH_CHARACTERS.replace('- **Legame:** il fratello di Ada.', '> [!inventato] Una scatola.') });
+    const counts = Object.fromEntries(
+      ((await s.call('get_outline', { projectId: s.id })).value.targets as { target: string; errors: number }[]).map((t) => [
+        t.target,
+        t.errors,
+      ]),
+    );
+    expect([counts['Bruno Valli'], counts['Pregenerati'], counts['Schede']]).toEqual([1, 1, 1]);
+    expect([counts['Ada Rossi'], counts['Carla Neri']]).toEqual([0, 0]);
+  });
+
+  it('replaces one character with a #### heading, and only that text changes', async () => {
+    const s = await setup({ text: WITH_CHARACTERS });
+    const { text, hash } = await read(s, 'Ada Rossi');
+    const markdown = `${character('Ada Rossi', 'allieva e amica di Bruno.')}\n\n\n`;
+    const outcome = await s.call('replace_section', { projectId: s.id, target: 'Ada Rossi', markdown, hash });
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.value).toMatchObject({ target: 'Ada Rossi', title: 'Ada Rossi', hash: textHash(markdown.trimEnd()) });
+    expect(await storedText(s.id)).toBe(WITH_CHARACTERS.replace(text, markdown.trimEnd()));
+    expect((await snapshots(s.id)).map((r) => [r.target, r.before_section])).toEqual([['Ada Rossi', text]]);
+    // The stored target reads back as the text written.
+    const again = await read(s, 'Ada Rossi');
+    expect(again.hash).toBe(textHash(markdown.trimEnd()));
+  });
+
+  it.each([
+    ['a ### heading', '### Ada Rossi\n\n- **Legame:** x.'],
+    ['a renamed character', '#### Ada Verdi\n\n- **Legame:** x.'],
+    ['a second #### inside', `${character('Ada Rossi', 'x.')}\n\n#### Dina Bianchi`],
+  ])('refuses %s as invalid_markdown', async (_name, markdown) => {
+    const s = await setup({ text: WITH_CHARACTERS });
+    const { hash } = await read(s, 'Ada Rossi');
+    const outcome = await s.call('replace_section', { projectId: s.id, target: 'Ada Rossi', markdown, hash });
+    expect(outcome.error?.code).toBe('invalid_markdown');
+    expect(await storedText(s.id)).toBe(WITH_CHARACTERS);
+    expect(await snapshots(s.id)).toEqual([]);
+  });
+
+  it('adds a character by replacing the block, and get_outline then lists four', async () => {
+    const s = await setup({ text: WITH_CHARACTERS });
+    const { hash } = await read(s, 'Pregenerati');
+    const markdown = `${PREGENERATED}\n\n${character('Dario Gallo', 'il collega.')}`;
+    const outcome = await s.call('replace_section', { projectId: s.id, target: 'Pregenerati', markdown, hash });
+    expect(outcome.error).toBeUndefined();
+    expect(await storedText(s.id)).toBe(WITH_CHARACTERS.replace(PREGENERATED, markdown));
+    expect((await targets(s)).filter((t) => t.startsWith('character:'))).toEqual([
+      'character:Ada Rossi',
+      'character:Bruno Valli',
+      'character:Carla Neri',
+      'character:Dario Gallo',
+    ]);
   });
 });
 

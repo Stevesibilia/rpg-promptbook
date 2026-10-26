@@ -7,6 +7,7 @@ import { analysisField } from '../src/editor/analysis/field.js';
 import { hiddenField, setHidden } from '../src/editor/cm/hidden.js';
 import { currentItem, outlineOf } from '../src/editor/outline.js';
 import { analysed, campaign } from './analysed.js';
+import { characters, withBlock } from './pregenerated.js';
 
 const line = (item: {
   depth: number;
@@ -43,9 +44,33 @@ describe('outlineOf', () => {
       '  Tenente Donato',
       '  Pattuglia di Quieti',
       '  Il Circolo dello Stretto',
+      '  Pregenerati',
       'Prima della sessione',
       'Appendice: immagini e musica',
     ]);
+  });
+
+  it('lists the Pregenerati block and its characters one level deeper, with the badges on the right rows', () => {
+    const { state } = analysed(withBlock(characters));
+    const items = outlineOf(state);
+    const at = items.findIndex((i) => i.name === 'Pregenerati');
+    const tail = items.slice(at - 1, at + 4);
+    expect(tail.map((i) => `${i.key} ${i.depth} ${line(i).trim()}`)).toEqual([
+      'sheet:4 1 Il Circolo dello Stretto',
+      'pregenerated:0 1 Pregenerati [1 error]',
+      'character:0 2 Ada Rossi [1 error]',
+      'character:1 2 Bruno Valli',
+      'character:2 2 Carla Neri',
+    ]);
+    expect(tail.slice(1).every((i) => i.id === null && !i.movable)).toBe(true);
+  });
+
+  it('puts the block and its characters in text order, with a sheet after them', () => {
+    const doc = withBlock(characters + '\n### Dopo\n\n- **Tipo:** Minaccia\n');
+    const names = outlineOf(analysed(doc).state)
+      .filter((i) => i.kind === 'sheet' || i.kind === 'pregenerated' || i.kind === 'character')
+      .map((i) => i.name);
+    expect(names.slice(-6)).toEqual(['Il Circolo dello Stretto', 'Pregenerati', 'Ada Rossi', 'Bruno Valli', 'Carla Neri', 'Dopo']);
   });
 
   it('counts shown problems only in its badges (hide-problems design decision 13)', () => {
@@ -118,6 +143,14 @@ describe('currentItem', () => {
     expect(place(5)).toBe('Front matter');
     expect(place(at('## Appendice'))).toBe('Appendice');
     expect(place(sabaoth.length - 1)).toBe('Appendice');
+  });
+
+  it('is the character holding the cursor, and the status bar names the block and the character', () => {
+    const doc = withBlock(characters);
+    const item = currentItem(analysed(doc, doc.indexOf('il fratello di Ada')).state);
+    expect(item?.key).toBe('character:1');
+    expect(item?.place).toBe('Pregenerati · Bruno Valli');
+    expect(currentItem(analysed(doc, doc.indexOf('Tre personaggi')).state)?.place).toBe('Pregenerati');
   });
 
   it('stays on the item while typing at its end, before the next result', () => {

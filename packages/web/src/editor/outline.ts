@@ -14,8 +14,9 @@ export interface OutlineItem {
   // index among the headings.
   index: number;
   // 0 for front matter, sections and campaign ## headings; 1 for scenes,
-  // sheets and campaign ### headings.
-  depth: 0 | 1;
+  // sheets, the pregenerated block and campaign ### headings; 2 for the
+  // pregenerated characters.
+  depth: 0 | 1 | 2;
   // The scene id ("S1"), shown apart from the name.
   id: string | null;
   // What the outline shows.
@@ -63,7 +64,7 @@ function fromAnalysis(analysis: Analysis, hidden: HiddenState): OutlineItem[] {
   const sheetsSection = model.sections.findIndex((s) => s.role === 'sheets');
   const of = (kind: Place['kind']) => places.filter((p) => p.kind === kind);
 
-  const item = (place: Place, depth: 0 | 1, fields: Pick<OutlineItem, 'id' | 'name' | 'place'>): OutlineItem => ({
+  const item = (place: Place, depth: 0 | 1 | 2, fields: Pick<OutlineItem, 'id' | 'name' | 'place'>): OutlineItem => ({
     key: `${place.kind}:${place.index}`,
     kind: place.kind,
     index: place.index,
@@ -76,12 +77,25 @@ function fromAnalysis(analysis: Analysis, hidden: HiddenState): OutlineItem[] {
     movable: place.kind === 'scene',
   });
 
-  const children = (kind: 'scene' | 'sheet') =>
-    of(kind).map((place) => {
-      if (kind === 'sheet') {
+  // The sheets and the pregenerated block and characters, in text order.
+  const sheets = () => {
+    const block = model.pregenerated;
+    const blockName = analysis.template!.sheets.pregenerated;
+    return [
+      ...of('sheet').map((place) => {
         const { name } = model.sheets[place.index]!;
         return item(place, 1, { id: null, name, place: name });
-      }
+      }),
+      ...of('pregenerated').map((place) => item(place, 1, { id: null, name: blockName, place: blockName })),
+      ...of('character').map((place) => {
+        const { name } = block!.characters[place.index]!;
+        return item(place, 2, { id: null, name, place: `${blockName} · ${name}` });
+      }),
+    ].sort((a, b) => a.from - b.from);
+  };
+
+  const scenes = () =>
+    of('scene').map((place) => {
       const { id, title, heading } = model.scenes[place.index]!;
       return item(place, 1, { id, name: id ? title : heading, place: id ? `${id} · ${title}` : title });
     });
@@ -91,8 +105,8 @@ function fromAnalysis(analysis: Analysis, hidden: HiddenState): OutlineItem[] {
   for (const place of of('section')) {
     const section = model.sections[place.index]!;
     items.push(item(place, 0, { id: null, name: section.heading, place: section.name ?? section.heading }));
-    if (place.index === scenesSection) items.push(...children('scene'));
-    if (place.index === sheetsSection) items.push(...children('sheet'));
+    if (place.index === scenesSection) items.push(...scenes());
+    if (place.index === sheetsSection) items.push(...sheets());
   }
 
   // Each shown problem goes to the deepest item it starts in.

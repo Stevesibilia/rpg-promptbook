@@ -4,10 +4,11 @@ import { sameName } from './doc.js';
 // The parts of a prep document Claude reads and replaces one at a time
 // (connector design decision 3).
 export interface Target {
-  kind: 'section' | 'scene' | 'sheet' | 'heading';
+  kind: 'section' | 'scene' | 'sheet' | 'pregenerated' | 'character' | 'heading';
   // What a caller names it by: the template's section name or an unknown
-  // section's heading text, a scene's id ("S3"), a sheet's name, a campaign
-  // heading's text.
+  // section's heading text, a scene's id ("S3"), a sheet's name, the
+  // pregenerated block's name in the template, a pregenerated character's
+  // name, a campaign heading's text.
   target: string;
   // The heading's text: "Appendice: immagini e musica", "Il cordone di Donato".
   title: string;
@@ -48,8 +49,8 @@ function trimEnd(text: string, from: number, to: number): number {
 const levelAt = (text: string, offset: number) => /^ {0,3}(#+)/.exec(text.slice(offset, offset + 12))?.[1]?.length ?? 0;
 
 // Every target of the document, in text order. An adventure or a one-shot is
-// read with its template: its sections, scenes and sheets. A campaign is not
-// parsed: its ## and ### headings.
+// read with its template: its sections, scenes, sheets, pregenerated block
+// and characters. A campaign is not parsed: its ## and ### headings.
 export function targetsOf(text: string, template: Template): Target[] {
   return template.kind === 'campaign' ? headingTargets(text) : adventureTargets(text, template);
 }
@@ -94,6 +95,25 @@ function adventureTargets(text: string, template: AdventureTemplate): Target[] {
       title: sheet.title,
       ...span(sheet.headingRange.start.offset, sheet.range.end.offset),
     });
+  }
+
+  const { pregenerated } = model;
+  if (pregenerated) {
+    const name = template.sheets.pregenerated;
+    targets.push({
+      kind: 'pregenerated',
+      target: name,
+      title: name,
+      ...span(pregenerated.headingRange.start.offset, pregenerated.range.end.offset),
+    });
+    for (const character of pregenerated.characters) {
+      targets.push({
+        kind: 'character',
+        target: character.name,
+        title: character.name,
+        ...span(character.headingRange.start.offset, character.range.end.offset),
+      });
+    }
   }
   return targets.sort((a, b) => a.from - b.from);
 }
