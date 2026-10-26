@@ -166,6 +166,17 @@ scene moves.
 - **Placing a character's problem under the character in Checks**: sheets
   are placed in their section by design; one rule for the whole `Schede`.
 
+## Accepted at review
+
+- **A second `###` with the block's name** stays a sheet, as the parser reads
+  it, so the name answers `ambiguous_target` with the sheet and the block.
+  Left as is: a document with two such headings is already wrong.
+- **An empty `####`** gives a character named «» (an empty row, a target
+  that no name finds but the whole block still does). Left as is.
+- **«An open document sees it»** is asserted on the stored Yjs text, not a
+  connected client; the live path is the one every `replace_section` already
+  takes.
+
 ## Risks
 
 - **`analysis.template` null while a result exists.** D3 assumes it never

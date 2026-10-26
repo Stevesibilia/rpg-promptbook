@@ -49,8 +49,8 @@ function trimEnd(text: string, from: number, to: number): number {
 const levelAt = (text: string, offset: number) => /^ {0,3}(#+)/.exec(text.slice(offset, offset + 12))?.[1]?.length ?? 0;
 
 // Every target of the document, in text order. An adventure or a one-shot is
-// read with its template: its sections, scenes, sheets, pregenerated block and characters. A campaign is not
-// parsed: its ## and ### headings.
+// read with its template: its sections, scenes, sheets, pregenerated block
+// and characters. A campaign is not parsed: its ## and ### headings.
 export function targetsOf(text: string, template: Template): Target[] {
   return template.kind === 'campaign' ? headingTargets(text) : adventureTargets(text, template);
 }
