@@ -101,6 +101,29 @@ test('marks follow the cursor', async ({ page }) => {
   await expect(heading).toHaveText('### S1. La casa che cede');
 });
 
+test('pregenerated characters in the outline', async ({ page }) => {
+  const from = sabaoth.indexOf('### Pregenerati');
+  const to = sabaoth.indexOf('## Prima della sessione');
+  const block = [
+    '### Pregenerati',
+    '',
+    'Tre personaggi.',
+    '',
+    ...['Ada Rossi', 'Bruno Valli', 'Carla Neri'].flatMap((name) => [`#### ${name}`, '', '- **Legame:** qui.', '']),
+  ].join('\n');
+  await projectWith(page, sabaoth.slice(0, from) + block + sabaoth.slice(to));
+  const nameBox = (text: string) => outlineItem(page, text).locator('.nm').boundingBox();
+  await expect(outlineItem(page, 'Pregenerati')).toBeVisible();
+  for (const name of ['Ada Rossi', 'Bruno Valli', 'Carla Neri']) await expect(outlineItem(page, name)).toBeVisible();
+  const [blockBox, adaBox, sheetBox] = [await nameBox('Pregenerati'), await nameBox('Ada Rossi'), await nameBox('Sabaoth')];
+  expect(adaBox!.x).toBeGreaterThan(blockBox!.x + 10);
+  expect(blockBox!.x).toBe(sheetBox!.x);
+
+  await outlineItem(page, 'Bruno Valli').click();
+  await expect(cursorLine(page)).toHaveText('#### Bruno Valli');
+  await expect(statusItem(page, /Pregenerati · Bruno Valli/)).toBeVisible();
+});
+
 test('callout box', async ({ page }) => {
   const text = sabaoth.replace(
     '\n> [!leggi]\n> Una trave',

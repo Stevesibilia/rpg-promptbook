@@ -245,7 +245,7 @@ Settings → Connected apps lists every app you allowed, with its access and
 when it was last used. **Revoke** cuts it off at once; to use it again,
 connect it from claude.ai.
 
-Claude edits one section, scene or sheet at a time, and only the text it has
+Claude edits one section, scene, sheet or pregenerated character at a time, and only the text it has
 read. Checks never refuse an edit: Claude gets the document's errors and
 warnings before and after it, and the problems in the text it wrote. Problems
 you have hidden are left out of those counts and listed marked as dismissed

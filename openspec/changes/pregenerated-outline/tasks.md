@@ -22,8 +22,8 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 3. Proof, docs and hand-back
 
-- [ ] 3.1 `e2e/editor.spec.ts`: the outline test from design.md «Verification»
-- [ ] 3.2 `docs/design.md:207-208`: the outline lists sections, scenes, sheets and pregenerated characters; `README.md` «Claude connector» only if it lists target kinds
-- [ ] 3.3 Commit `test(e2e): pregenerated characters in the outline`
-- [ ] 3.4 `npm run typecheck`, `npm test`, `npm run e2e`: literal results; a screenshot of the outline (block and three characters, light theme) saved under the scratchpad, path in the hand-back
-- [ ] 3.5 Hand back: results, departures from the design, anything from «Risks» that happened
+- [x] 3.1 `e2e/editor.spec.ts`: the outline test from design.md «Verification»
+- [x] 3.2 `docs/design.md:207-208`: the outline lists sections, scenes, sheets and pregenerated characters; `README.md` «Claude connector» only if it lists target kinds
+- [x] 3.3 Commit `test(e2e): pregenerated characters in the outline`
+- [x] 3.4 `npm run typecheck`, `npm test`, `npm run e2e`: literal results; a screenshot of the outline (block and three characters, light theme) saved under the scratchpad, path in the hand-back
+- [x] 3.5 Hand back: results, departures from the design, anything from «Risks» that happened

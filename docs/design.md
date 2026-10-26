@@ -204,8 +204,8 @@ The main use is editing, so the editor takes most of the screen:
 - **Rail** (left edge, icons): Projects, Document, Inspiration, Research,
   Brainstorm log, History; Settings at the bottom. The project entries are
   off while no project is open. Images and music joins with the asset board.
-- **Outline** (left, collapsible, ⌘1): sections and scenes from the headings,
-  with error and warning badges; drag to reorder scenes.
+- **Outline** (left, collapsible, ⌘1): sections, scenes, sheets and the
+  pregenerated characters from the headings, with error and warning badges; drag to reorder scenes.
 - **Editor** (centre, ~70 characters wide): Markdown source with live preview.
   Markers (`**`, `###`, `> [!leggi]`) show only on the line being edited;
   callouts show as coloured boxes; problems get a margin dot and a squiggle
