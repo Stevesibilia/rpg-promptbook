@@ -222,19 +222,20 @@ editors without a reload.
 
 `read_document` SHALL return the whole prep document, or one target's text,
 with the SHA-256 of that text. A target SHALL be a template section's name,
-a scene id such as `S3`, or a sheet's name, compared case and accent
-insensitive; for a campaign, a `##` or `###` heading's text.
-`replace_section` SHALL replace one target's text, heading included, only
-when the hash sent equals the hash of the target's current text, and only
-when the new text starts with a heading of the same level (for a scene, the
-same id). Problems found by the checks SHALL never refuse an edit: for an
-adventure or a one-shot, the result SHALL report the document's errors and
-warnings before and after the edit and the problems in the edited text, as
-information. For a campaign no check SHALL run. `add_scene` SHALL append a
-scene with the next id at the end of the «Scene» section, reported the same
-way. Every change to the prep document by a tool SHALL first store a
-snapshot of the text it replaces, and SHALL apply as a Yjs change to the live
-document so open editors see it at once.
+a scene id such as `S3`, a sheet's name, the pregenerated characters block's
+name as the template names it (`Pregenerati`), or a pregenerated character's
+name, compared case and accent insensitive; for a campaign, a `##` or `###`
+heading's text. `replace_section` SHALL replace one target's text, heading
+included, only when the hash sent equals the hash of the target's current
+text, and only when the new text starts with a heading of the same level
+(for a scene, the same id). Problems found by the checks SHALL never refuse
+an edit: for an adventure or a one-shot, the result SHALL report the
+document's errors and warnings before and after the edit and the problems in
+the edited text, as information. For a campaign no check SHALL run.
+`add_scene` SHALL append a scene with the next id at the end of the «Scene»
+section, reported the same way. Every change to the prep document by a tool
+SHALL first store a snapshot of the text it replaces, and SHALL apply as a
+Yjs change to the live document so open editors see it at once.
 
 #### Scenario: Section changed since read
 
@@ -267,6 +268,20 @@ document so open editors see it at once.
 
 - **WHEN** Claude reads the target «S9» in a document with five scenes
 - **THEN** the call fails with `unknown_target` and lists the valid targets
+
+#### Scenario: One pregenerated character replaced
+
+- **WHEN** Claude calls `get_outline`, then replaces the target «Ada Rossi»
+  with a text starting `#### Ada Rossi` and the hash it read
+- **THEN** `get_outline` listed «Pregenerati» (`pregenerated`) and «Ada
+  Rossi» (`character`), and only Ada's text changed
+
+#### Scenario: Characters added through the block
+
+- **WHEN** Claude replaces the target «Ada Rossi» with a text that adds a
+  second `####` heading
+- **THEN** the call fails with `invalid_markdown`, and replacing the target
+  «Pregenerati» with the new character added is written
 
 ### Requirement: First-party desktop client
 
