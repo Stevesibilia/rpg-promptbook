@@ -7,9 +7,9 @@ and `npm run e2e`. Prettier only on the Markdown files you touch
 
 ## 1. Format: locks
 
-- [ ] 1.1 `template/locks.ts`: `READ_KEYS`, `isLocked` moved from `web/src/templates/draft.ts`; `lockViolations(base, next)` (D4); exported from `index.ts`; `draft.ts` imports them
-- [ ] 1.2 Tests: each violation with its message (locked section, scene field and box removed, role moved, role added, locked key renamed, box minimum lowered to 0); renaming a role section and a free key, adding and removing an own section pass
-- [ ] 1.3 Commit `feat(format): template locks shared by the editor and the server`
+- [x] 1.1 `template/locks.ts`: `READ_KEYS`, `isLocked` moved from `web/src/templates/draft.ts`; `lockViolations(base, next)` (D4); exported from `index.ts`; `draft.ts` imports them
+- [x] 1.2 Tests: each violation with its message (locked section, scene field and box removed, role moved, role added, locked key renamed, box look changed); renaming a role section and a free key, adding and removing an own section, a needed box set to «any» and removed pass
+- [x] 1.3 Commit `feat(format): template locks shared by the editor and the server`
 
 ## 2. Server: saving and updating
 

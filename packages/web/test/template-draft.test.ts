@@ -1,4 +1,4 @@
-import { defineTemplate, templateChanges, templates, type AdventureTemplate, type AdventureTemplateInput } from 'promptbook-format';
+import { defineTemplate, lockViolations, templateChanges, templates, type AdventureTemplate, type AdventureTemplateInput } from 'promptbook-format';
 import { skeletonDocument } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import { changeText, issueText } from '../src/templates/changes.js';
@@ -71,6 +71,23 @@ describe('the template draft', () => {
     // At «any» per place, it can go.
     const any = run(saved, { type: 'patch', list: 'callouts', index: leggi, patch: { perPlace: { min: 0, max: null } } });
     expect(run(any, { type: 'remove', list: 'callouts', index: leggi }).callouts).toHaveLength(3);
+  });
+
+  it('saves nothing the server’s locks refuse', () => {
+    const saved = kulthos();
+    const leggi = saved.callouts.findIndex((c) => c.type === 'leggi');
+    const fronti = saved.meta.findIndex((m) => m.key === 'fronti');
+    const added = run(demo(saved), { type: 'add', list: 'sections', name: 'Rumori', uid: 'new-2' });
+    const draft = run(
+      added,
+      { type: 'remove', list: 'sections', index: added.sections.findIndex((s) => s.name === 'Rumori') },
+      { type: 'patch', list: 'meta', index: fronti, patch: { key: 'minacce' } },
+      { type: 'patch', list: 'callouts', index: leggi, patch: { perPlace: { min: 0, max: null } } },
+      { type: 'remove', list: 'callouts', index: leggi },
+    );
+    expect(checkDraft(draft).ok).toBe(true);
+    expect(draft.callouts.some((c) => c.type === 'leggi')).toBe(false);
+    expect(lockViolations(saved, draft)).toEqual([]);
   });
 
   it('locks the keys the app reads, by role or by name', () => {

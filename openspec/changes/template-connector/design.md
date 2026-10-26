@@ -184,20 +184,16 @@ index:
 - `lockViolations(base: Template, next: Template): string[]`, each a
   sentence naming the row:
   - every locked row of `base` (sections, meta keys, and for adventures
-    scene fields and boxes) has a match in `next`, by `uid`, else by
+    scene fields) has a match in `next`, by `uid`, else by
     `role`, else by name (`name` / `key` / `label` / `type`), else
     «section «X» is locked: it cannot be removed»;
   - a matched row keeps its `role`, and `next` has no role `base` lacks:
     «roles cannot change: «X» …»;
   - a locked meta key keeps its `key`;
-  - a box with `perPlace.min ≥ 1` in `base` keeps `perPlace.min ≥ 1`
-    (lowering it would unlock it and let the next save drop it).
+  - boxes are locked only inside one draft, as the editor shows them: a box every place needs can be set to «any» and removed in the same save, so the server checks no box lock. A box paired by `uid`, else by `type`, keeps its look.
 
 `saveTemplateVersion` reads the base version's body (it holds the lock
-already) and calls `lockViolations`. The web editor never produces a
-violation, so its saves are unchanged; a test proves the editor's own
-operations (rename a role section, rename a free key, add and remove an own
-section) pass.
+already) and calls `lockViolations`. The web editor never produces a violation, so its saves are unchanged; a test proves the editor's own operations (rename a role section, rename a free key, add and remove an own section, set a needed box to «any» and remove it) pass.
 
 ### D5. Duplicate and delete (owner, architect)
 

@@ -2,11 +2,7 @@
 
 ### Requirement: Locks enforced on save
 
-The server SHALL refuse with `invalid_template` any new version that, against
-the version it is based on, removes a locked row, changes a row's role, adds
-a role, renames a locked front matter key, or lowers to zero the minimum of a
-box every place needs. The editor and the server SHALL share one definition
-of locked rows.
+The server SHALL refuse with `invalid_template` any new version that, against the version it is based on, removes a locked section, scene field or front matter key, changes a row's role, adds a role, or renames a locked front matter key. Boxes SHALL be locked only within one edit, as the editor shows them: a box every place needs MAY be set to «any» and removed in the same save. The editor and the server SHALL share one definition of locked rows.
 
 #### Scenario: Role section renamed
 
