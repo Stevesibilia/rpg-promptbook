@@ -1,7 +1,10 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   defaultTemplateRef,
   defineTemplate,
+  inheritUids,
+  lockViolations,
   resolveTemplate,
   TemplateError,
   type Template,
@@ -52,6 +55,14 @@ function readBody(row: Pick<Row, 'id' | 'version' | 'body'>): Template | null {
   }
 }
 
+const toStored = (row: Row, body: Template): StoredTemplate => ({
+  id: row.id,
+  version: row.version,
+  body,
+  note: row.note,
+  createdAt: row.created_at.toISOString(),
+});
+
 // Every version of every template of the account, by id then version. A
 // body that does not validate is left out.
 export async function listTemplates(db: Queryable, userId: string): Promise<StoredTemplate[]> {
@@ -62,6 +73,20 @@ export async function listTemplates(db: Queryable, userId: string): Promise<Stor
   return rows.flatMap((row) => {
     const body = readBody(row);
     return body ? [{ id: row.id, version: row.version, body, note: row.note, createdAt: row.created_at.toISOString() }] : [];
+  });
+}
+
+// Every version of one of the account's templates, oldest first; none for a
+// built-in or an id the account does not hold.
+export async function templateVersions(db: Queryable, userId: string, id: string): Promise<StoredTemplate[]> {
+  if (!TEMPLATE_ID.test(id)) return [];
+  const rows = await db.query<Row>(
+    'select id, version, body, note, created_at from document_templates where user_id = $1 and id = $2 order by version',
+    [userId, id],
+  );
+  return rows.flatMap((row) => {
+    const body = readBody(row);
+    return body ? [toStored(row, body)] : [];
   });
 }
 
@@ -90,7 +115,7 @@ export async function templateOfDoc(db: Queryable, userId: string, doc: Y.Doc): 
 }
 
 // The latest version of one of the account's templates, or null.
-async function latestTemplate(db: Queryable, userId: string, id: string): Promise<Template | null> {
+export async function latestTemplate(db: Queryable, userId: string, id: string): Promise<Template | null> {
   const row = await db.queryOne<Row>(
     'select id, version, body from document_templates where user_id = $1 and id = $2 order by version desc limit 1',
     [userId, id],
@@ -143,14 +168,6 @@ export async function templateUsage(db: Queryable, userId: string): Promise<Reco
   return Object.fromEntries(rows.map((r) => [r.ref, r.count]));
 }
 
-const toStored = (row: Row, body: Template): StoredTemplate => ({
-  id: row.id,
-  version: row.version,
-  body,
-  note: row.note,
-  createdAt: row.created_at.toISOString(),
-});
-
 const invalidTemplate = (error: unknown) => {
   if (error instanceof TemplateError) return new AppError(400, 'invalid_template', `body: ${error.issues.join('; ')}`);
   return error;
@@ -158,11 +175,16 @@ const invalidTemplate = (error: unknown) => {
 
 // Gives every section, scene field, callout and meta key without a uid one,
 // so an own template's items pair across renames from version 1 (design
-// decision 7, amended at build).
-function withUids(template: Template): TemplateInput {
-  const copy = JSON.parse(JSON.stringify(template)) as TemplateInput;
-  const fill = (items: { uid?: string | undefined }[]) => {
-    for (const item of items) item.uid ??= randomUUID();
+// decision 7, amended at build), and the rows a saved version adds pair from
+// the next (template-connector design decision 3). A body that is not a
+// template yet is copied as it is, for defineTemplate to name what is wrong.
+function withUids(template: Template | Record<string, unknown>): TemplateInput {
+  const copy = JSON.parse(JSON.stringify(template)) as Record<string, unknown>;
+  const fill = (items: unknown) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (item && typeof item === 'object' && !Array.isArray(item)) (item as { uid?: unknown }).uid ??= randomUUID();
+    }
   };
   fill(copy.sections);
   fill(copy.meta);
@@ -170,7 +192,7 @@ function withUids(template: Template): TemplateInput {
     fill(copy.sceneFields);
     fill(copy.callouts);
   }
-  return copy;
+  return copy as unknown as TemplateInput;
 }
 
 const UNIQUE_VIOLATION = '23505';
@@ -253,14 +275,31 @@ export async function saveTemplateVersion(
     // Two saves from the same version: the second, waiting on the lock, finds
     // the first's.
     if (baseVersion !== head.latest) throw CONFLICT();
+    // The base version as stored, which the locks and the changes are read
+    // against; one that no longer validates has nothing to compare.
+    const stored = await tx.queryOne<Pick<Row, 'id' | 'version' | 'body'>>(
+      'select id, version, body from document_templates where user_id = $1 and id = $2 and version = $3',
+      [userId, id, baseVersion],
+    );
+    const base = stored ? readBody(stored) : null;
     let template: Template;
     try {
-      template = defineTemplate({ ...body, id, version: head.latest + 1 } as TemplateInput);
+      const parsed = defineTemplate({ ...body, id, version: head.latest + 1 } as TemplateInput);
+      // A row sent back without its uid keeps the base row's, as the locks
+      // pair it; the rows still without one are new.
+      template = defineTemplate(withUids(base ? inheritUids(base, parsed) : parsed));
     } catch (error) {
       throw invalidTemplate(error);
     }
     if (template.kind !== head.kind) {
       throw new AppError(400, 'invalid_template', `body: kind must stay ${head.kind ?? 'as version 1 has it'}.`);
+    }
+    if (base) {
+      const violations = lockViolations(base, template);
+      if (violations.length > 0) throw new AppError(400, 'invalid_template', `body: ${violations.join('; ')}.`);
+      if (sameBody(base, template)) {
+        throw new AppError(400, 'no_changes', `body: is the same as version ${baseVersion}.`);
+      }
     }
     const row = await tx.queryOne<Row>(
       `insert into document_templates (user_id, id, version, body, note) values ($1, $2, $3, $4, $5)
@@ -269,6 +308,13 @@ export async function saveTemplateVersion(
     );
     return toStored(row!, template);
   });
+}
+
+// Two versions with the same body, the version number aside. Through JSON,
+// so a key left undefined reads as absent.
+function sameBody(a: Template, b: Template): boolean {
+  const plain = (t: Template) => JSON.parse(JSON.stringify({ ...t, version: 0 })) as unknown;
+  return isDeepStrictEqual(plain(a), plain(b));
 }
 
 // Deletes every version of one of the account's templates, refused while any

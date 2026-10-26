@@ -1,8 +1,8 @@
 import { defineTemplate, templates, type AdventureTemplateInput } from 'promptbook-format';
 import { adventureTemplateOf, createProjectDoc, readDocumentBoard } from 'promptbook-project';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StoredTemplate, TemplateList } from '../src/api.js';
-import { createTemplatesStore } from '../src/templates/store.js';
+import { createTemplatesStore, reloadOnReturn } from '../src/templates/store.js';
 
 // An own template: Avventura with the appendix's heading renamed.
 function own(version: number): StoredTemplate {
@@ -110,5 +110,48 @@ describe('the templates store', () => {
     // and finds no appendix with the built-in.
     expect(readDocumentBoard(doc, store.state().templates).rows.map((r) => r.sceneId)).toEqual(['S1']);
     expect(readDocumentBoard(doc).rows).toEqual([]);
+  });
+});
+
+describe('reading the templates again on return', () => {
+  afterEach(() => vi.useRealTimers());
+
+  // A window and a document as far as the watcher listens to them.
+  function page() {
+    const win = new EventTarget();
+    const doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+    return { win, doc, focus: () => win.dispatchEvent(new Event('focus')), shown: () => doc.dispatchEvent(new Event('visibilitychange')) };
+  }
+
+  it('reloads on focus and when the page shows again, at most every 10 seconds', () => {
+    vi.useFakeTimers();
+    const p = page();
+    let reloads = 0;
+    const stop = reloadOnReturn(() => reloads++, { win: p.win, doc: p.doc });
+    p.focus();
+    expect(reloads).toBe(1);
+    // The tab shown and focused at once: one read.
+    p.shown();
+    p.focus();
+    expect(reloads).toBe(1);
+    vi.advanceTimersByTime(9_999);
+    p.focus();
+    expect(reloads).toBe(1);
+    vi.advanceTimersByTime(1);
+    p.shown();
+    expect(reloads).toBe(2);
+    // Hidden: nothing to show it to.
+    vi.advanceTimersByTime(10_000);
+    p.doc.visibilityState = 'hidden';
+    p.shown();
+    expect(reloads).toBe(2);
+    p.doc.visibilityState = 'visible';
+    p.shown();
+    expect(reloads).toBe(3);
+    stop();
+    vi.advanceTimersByTime(10_000);
+    p.focus();
+    p.shown();
+    expect(reloads).toBe(3);
   });
 });

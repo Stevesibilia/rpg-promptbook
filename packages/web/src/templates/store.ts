@@ -72,3 +72,36 @@ export function createTemplatesStore(
   };
   return store;
 }
+
+// The least time between two reads on return (template-connector design
+// decision 10).
+export const RETURN_EVERY_MS = 10_000;
+
+interface Listened {
+  addEventListener(type: string, listener: () => void): void;
+  removeEventListener(type: string, listener: () => void): void;
+}
+
+// Reads the list again when the window gets the focus back or the page
+// becomes visible, at most once every `every` ms: a version saved in another
+// tab, on another device or through the connector then shows without a
+// reload. Answers the function that stops it.
+export function reloadOnReturn(
+  reload: () => void,
+  { win, doc, every = RETURN_EVERY_MS }: { win: Listened; doc: Listened & { visibilityState: string }; every?: number },
+): () => void {
+  let last = -Infinity;
+  const back = () => {
+    if (doc.visibilityState === 'hidden') return;
+    const now = Date.now();
+    if (now - last < every) return;
+    last = now;
+    reload();
+  };
+  win.addEventListener('focus', back);
+  doc.addEventListener('visibilitychange', back);
+  return () => {
+    win.removeEventListener('focus', back);
+    doc.removeEventListener('visibilitychange', back);
+  };
+}

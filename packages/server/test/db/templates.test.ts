@@ -69,6 +69,9 @@ const edited = (body: AdventureTemplate, change: (t: TemplateInput & { kind: 'ad
   return copy;
 };
 
+// A body with one change, its name, for saves that need any.
+const renamed = (body: AdventureTemplate) => ({ ...body, name: `${body.name} (bis)` });
+
 describe('duplicating a template', () => {
   it('copies a built-in as version 1 of a new template, every item with a uid', async () => {
     const { steve } = await twoAccounts();
@@ -136,7 +139,7 @@ describe('saving versions', () => {
   it('refuses a save from a version that is no longer the latest', async () => {
     const { steve } = await twoAccounts();
     const v1 = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
-    expect((await steve.save(v1.id, 1, v1.body)).statusCode).toBe(201);
+    expect((await steve.save(v1.id, 1, renamed(v1.body))).statusCode).toBe(201);
     const stale = await steve.save(v1.id, 1, v1.body);
     expect(stale.statusCode).toBe(409);
     expect(stale.json().error).toBe('template_version_conflict');
@@ -172,11 +175,68 @@ describe('saving versions', () => {
   });
 });
 
+describe('locked rows and empty versions', () => {
+  it('refuses a version that breaks a lock, naming every row, and saves nothing', async () => {
+    const { steve } = await twoAccounts();
+    const v1 = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
+    const body = edited(v1.body, (t) => {
+      t.sections = t.sections.filter((s) => s.role !== 'scenes');
+      t.meta.find((k) => k.key === 'licenza')!.key = 'licence';
+    });
+    const refused = await steve.save(v1.id, 1, body);
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json()).toEqual({
+      error: 'invalid_template',
+      message:
+        'body: section «Scene» is locked: it cannot be removed; key «licenza» is locked: the app reads it by that name, so it cannot become «licence».',
+    });
+    expect((await steve.list()).templates).toHaveLength(1);
+  });
+
+  it('refuses a version equal to its base, the note aside', async () => {
+    const { steve } = await twoAccounts();
+    const v1 = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
+    const same = await steve.save(v1.id, 1, { ...v1.body, version: 7 }, 'nothing new');
+    expect(same.statusCode).toBe(400);
+    expect(same.json()).toEqual({ error: 'no_changes', message: 'body: is the same as version 1.' });
+    expect((await steve.list()).templates).toHaveLength(1);
+  });
+
+  it('takes an editor-shaped save, and gives the rows it adds a uid', async () => {
+    const { steve } = await twoAccounts();
+    const v1 = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
+    const body = edited(v1.body, (t) => {
+      // As the editor does: a role section renamed, a free key renamed, a
+      // needed box set to «any» and removed, an own section added with its uid.
+      t.sections.find((s) => s.role === 'strongStart')!.name = 'Apertura';
+      t.meta.find((k) => k.key === 'fronti')!.key = 'minacce';
+      t.callouts = t.callouts.filter((c) => c.type !== 'leggi');
+      t.sections.splice(5, 0, { name: 'Rumori', requirement: 'optional', uid: 'from-the-editor' });
+      // As Claude may: rows with no uid.
+      t.sections.splice(6, 0, { name: 'Atmosfera', requirement: 'optional' });
+      t.sceneFields.push({ label: 'Odori', form: 'inline', requirement: 'optional', climax: false });
+      t.meta.push({ key: 'stagione', requirement: 'optional', type: 'text' });
+      t.callouts.push({ ...t.callouts[1]!, type: 'mappa', label: 'Mappa', uid: undefined });
+    });
+    const saved = await steve.save(v1.id, 1, body);
+    expect(saved.statusCode).toBe(201);
+    const v2 = saved.json().body as AdventureTemplate;
+    expect(v2.sections.find((s) => s.name === 'Rumori')!.uid).toBe('from-the-editor');
+    const uids = [v2.sections, v2.sceneFields, v2.callouts, v2.meta].flatMap((items) => items.map((i) => i.uid));
+    expect(uids.every((uid) => typeof uid === 'string' && uid.length > 0)).toBe(true);
+    expect(new Set(uids).size).toBe(uids.length);
+    // The rows v1 had keep their uids.
+    const kept = v1.body.sections.find((s) => s.role === 'strongStart')!.uid;
+    expect(v2.sections.find((s) => s.role === 'strongStart')!.uid).toBe(kept);
+    expect(v2.sections.find((s) => s.name === 'Atmosfera')!.uid).toMatch(/^[0-9a-f-]{36}$/);
+  });
+});
+
 describe('deleting a template', () => {
   it('deletes every version of an unused template; refuses one in use; leaves another account’s alone', async () => {
     const { steve, anna } = await twoAccounts();
     const unused = await steve.duplicate(AVVENTURA, 'Prova');
-    await steve.save(unused.id, 1, unused.body);
+    await steve.save(unused.id, 1, renamed(unused.body));
     expect((await anna.call('DELETE', `/api/templates/${unused.id}`)).statusCode).toBe(404);
     expect((await steve.call('DELETE', `/api/templates/${unused.id}`)).statusCode).toBe(204);
     expect((await steve.list()).templates).toEqual([]);
@@ -201,7 +261,7 @@ describe('races', () => {
     const { steve } = await twoAccounts();
     for (let i = 0; i < 5; i++) {
       const v1 = await steve.duplicate(AVVENTURA, `Prova ${i}`);
-      const [saved, deleted] = await Promise.all([steve.save(v1.id, 1, v1.body), steve.call('DELETE', `/api/templates/${v1.id}`)]);
+      const [saved, deleted] = await Promise.all([steve.save(v1.id, 1, renamed(v1.body)), steve.call('DELETE', `/api/templates/${v1.id}`)]);
       expect(deleted.statusCode).toBe(204);
       expect([201, 404]).toContain(saved.statusCode);
       expect((await steve.list()).templates.filter((t) => t.id === v1.id)).toEqual([]);
@@ -231,7 +291,7 @@ describe('usage', () => {
   it('counts the projects per version, in the bin, built-ins and rows that record none included', async () => {
     const { steve, anna } = await twoAccounts();
     const own = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
-    await steve.save(own.id, 1, own.body);
+    await steve.save(own.id, 1, renamed(own.body));
     await steve.create({ category: 'adventure', title: 'Uno' });
     const old = await steve.create({ category: 'one-shot', title: 'Due' });
     await steve.create({ category: 'campaign', title: 'Tre' });
@@ -291,7 +351,7 @@ describe('creating a project from a template', () => {
   it('starts from the default in the settings at its latest version, else the built-in', async () => {
     const { steve } = await twoAccounts();
     const own = await steve.duplicate(AVVENTURA, 'Avventura Kulthos');
-    await steve.save(own.id, 1, own.body);
+    await steve.save(own.id, 1, renamed(own.body));
     const settings = { ...defaultSettings(), defaultTemplates: { adventure: own.id, campaign: 'campagna' } };
     expect((await steve.call('PUT', '/api/settings', settings)).statusCode).toBe(200);
     const adventure = await steve.create({ category: 'one-shot', title: 'Uno' });

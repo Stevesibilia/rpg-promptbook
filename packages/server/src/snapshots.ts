@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { parseAdventure, type Template } from 'promptbook-format';
 import { countWords, findTarget, readDocument } from 'promptbook-project';
+import type * as Y from 'yjs';
 import type { Db, Queryable } from './db.js';
 import { AppError } from './errors.js';
 import { broadcastToProject, openLiveDocument, setDocumentText, snapshotMessage, type LiveDocument } from './live.js';
@@ -205,19 +206,27 @@ const strip = ({ text: _text, ...row }: Snapshot): SnapshotRow => row;
 // snapshot and starts again from the new text. So the snapshot always holds
 // exactly the text the write replaced, and no keystroke is lost. `next`
 // answers the text to write, or throws to refuse before anything is stored;
-// `moved` is the refusal once every attempt found the text moved.
+// `moved` is the refusal once every attempt found the text moved. `still`
+// says, inside the write, whether what else `next` read is unchanged (the
+// project's template, say); when it is not, the attempt counts as moved.
+// `also` changes the document in the same transaction as the text, after it,
+// and must not throw: Yjs does not roll the text back.
 export async function snapshotThenWrite(
   db: Queryable,
   live: LiveDocument,
   {
     snapshot,
     next,
+    still,
+    also,
     attempts = WRITE_ATTEMPTS,
     moved = () =>
       new AppError(409, 'document_busy', 'The document kept changing while it was being replaced; try again.'),
   }: {
     snapshot: (text: string) => Promise<Snapshot>;
     next: (text: string) => string;
+    still?: (doc: Y.Doc) => boolean;
+    also?: (doc: Y.Doc) => void;
     attempts?: number;
     moved?: () => Error;
   },
@@ -232,8 +241,9 @@ export async function snapshotThenWrite(
     let threw = false;
     try {
       written = await live.transact((doc) => {
-        if (readDocument(doc) !== text) return false;
+        if (readDocument(doc) !== text || (still && !still(doc))) return false;
         setDocumentText(doc, replacement);
+        also?.(doc);
         return true;
       });
     } catch (error) {

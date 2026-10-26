@@ -130,7 +130,7 @@ describe('the board tools in the list', () => {
   it('lists get_board as a read tool and set_scene_prompts as an idempotent write tool', async () => {
     const s = await setup();
     const tools = await mcpListTools(s.app, s.token);
-    expect(tools).toHaveLength(22);
+    expect(tools).toHaveLength(28);
     expect(tools.find((t) => t.name === 'get_board')!.annotations).toMatchObject({
       readOnlyHint: true,
       idempotentHint: true,

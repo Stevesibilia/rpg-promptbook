@@ -1,5 +1,7 @@
 import {
   defineTemplate,
+  isLocked,
+  READ_KEYS,
   TemplateError,
   withPdf,
   type SectionPdfPatch,
@@ -9,6 +11,8 @@ import {
   type SceneFieldDefinition,
   type SectionDefinition,
   type Template,
+  type TemplateListItems,
+  type TemplateListName,
 } from 'promptbook-format';
 
 // The template being edited (template-editor design decision 16): a copy of
@@ -16,56 +20,18 @@ import {
 // only. It may be invalid while the user types (an empty heading, two equal
 // names); `checkDraft` says so, and only a valid draft is previewed or saved.
 
-export type ListName = 'sections' | 'sceneFields' | 'callouts' | 'meta';
+export type ListName = TemplateListName;
+export type ListItems = TemplateListItems;
 
-export interface ListItems {
-  sections: SectionDefinition;
-  sceneFields: SceneFieldDefinition;
-  callouts: CalloutDefinition;
-  meta: MetaKeyDefinition;
-}
-
-// The front matter keys the app reads by name (template-registry design
-// decision 10): renaming one would break what reads it.
-export const READ_KEYS: ReadonlySet<string> = new Set([
-  'titolo',
-  'sottotitolo',
-  'sistema',
-  'formato',
-  'durata',
-  'giocatori',
-  'ambientazione',
-  'tempi',
-  'campagna',
-  'arco',
-  'autore',
-  'copyright',
-  'licenza',
-]);
+// Locked rows (design decision 11) show a lock and cannot be removed; the
+// server refuses a version that breaks them, so both read one definition.
+export { isLocked, READ_KEYS };
 
 // A change to a section's PDF options (template-pdf-layout design decision
 // 1): the options that differ from their defaults, no `pdf` when none does,
 // so turning an option back leaves the row as it was saved.
 export function pdfAction(index: number, section: SectionDefinition, change: SectionPdfPatch): DraftAction {
   return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change).pdf } };
-}
-
-// Locked rows (design decision 11) show a lock and cannot be removed:
-// sections and fields with a role, keys the app reads, and boxes every
-// place needs.
-export function isLocked<L extends ListName>(list: L, item: ListItems[L]): boolean {
-  switch (list) {
-    case 'sections':
-    case 'sceneFields':
-      return (item as SectionDefinition | SceneFieldDefinition).role !== undefined;
-    case 'callouts':
-      return (item as CalloutDefinition).perPlace.min >= 1;
-    case 'meta': {
-      const key = item as MetaKeyDefinition;
-      return key.role !== undefined || READ_KEYS.has(key.key);
-    }
-  }
-  return false;
 }
 
 // A locked key keeps its name: the code reads it by that name.
