@@ -175,6 +175,34 @@ describe('field blocks', () => {
     });
   });
 
+  it('takes a paragraph\'s text from the bracket group that ends it', () => {
+    // The Call of Cthulhu sample: the first brackets belong to the name.
+    const sample = kindSamples.find((k) => k.system === 'Call of Cthulhu')!;
+    const coc = parse(sheetsDocument('Call of Cthulhu', [sheetMarkdown(sample)])).model.sheets[0]!;
+    expect(value(coc, 'Attacchi')).toEqual({
+      block: 'list',
+      style: 'paras',
+      items: [
+        { name: 'Artigli 45% (22/9)', text: '1D6 + BD' },
+        { name: 'Morso 30% (15/6)', text: '1D4 + BD' },
+      ],
+    });
+    const items = (talents: string) =>
+      value(sheetOf('Outgunned', ['- **Grinta:** 10', `- **Talenti:** ${talents}`], 'Boss'), 'Talenti');
+    // Nested brackets stay in the text; text after the last group, or a group
+    // that does not close, makes the item all name.
+    expect(items('La Presenza (evoca una Pattuglia di Quieti) · Colpo (danno (2) e spinta) · Fuga (rapida) e basta · Urlo (forte')).toEqual({
+      block: 'list',
+      style: 'paras',
+      items: [
+        { name: 'La Presenza', text: 'evoca una Pattuglia di Quieti' },
+        { name: 'Colpo', text: 'danno (2) e spinta' },
+        { name: 'Fuga (rapida) e basta', text: '' },
+        { name: 'Urlo (forte', text: '' },
+      ],
+    });
+  });
+
   it('keeps text after the key before sub-bullets as first items', () => {
     const sheet = sheetOf('Not the End', ['- **Prove:** Aprirlo: media', '- **Sventure:** Mani ferite', '  - Rumore'], 'Sfida');
     expect(value(sheet, 'Sventure')).toMatchObject({ items: ['Mani ferite', 'Rumore'] });

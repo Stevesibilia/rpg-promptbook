@@ -211,11 +211,23 @@ class Reader {
 }
 
 // "La Maestà («Fermi»: chi non…)" gives the name and what is in brackets.
+// A paragraph item: the name, then its text in the bracket group that ends
+// the item, matched from the end: "Artigli 45% (22/9) (1D6 + BD)" is
+// «Artigli 45% (22/9)» and «1D6 + BD». Without a balanced group at the end
+// the item is all name.
 function paragraph(item: string): { name: string; text: string } {
-  const open = item.indexOf('(');
-  const close = item.lastIndexOf(')');
-  if (open === -1 || close < open) return { name: item.trim(), text: '' };
-  return { name: item.slice(0, open).trim(), text: item.slice(open + 1, close).trim() };
+  const trimmed = item.trim();
+  if (!trimmed.endsWith(')')) return { name: trimmed, text: '' };
+  let depth = 0;
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    const c = trimmed[i];
+    if (c === ')') depth++;
+    else if (c === '(' && --depth === 0) {
+      const name = trimmed.slice(0, i).trim();
+      return name ? { name, text: trimmed.slice(i + 1, -1).trim() } : { name: trimmed, text: '' };
+    }
+  }
+  return { name: trimmed, text: '' };
 }
 
 // Splits on the separator outside brackets, so "Prudenza (fa seguire · non
