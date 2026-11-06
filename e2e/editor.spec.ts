@@ -278,8 +278,9 @@ test('a sheet of a kind', async ({ page }) => {
   await expect(cursorLine(page)).toHaveText(/^### $/);
   await page.keyboard.type('Don Varga');
   await expect(outlineItem(page, 'Don Varga')).toBeVisible();
+  // The live preview hides the bold markers.
   const text = await page.locator('.cm-content').innerText();
-  expect(text).toMatch(/### Don Varga\n\n- \*\*Tipo:\*\* Boss\n- \*\*Grinta:\*\*/);
+  expect(text).toMatch(/### Don Varga\s+- Tipo: Boss\s+- Grinta:\s*$/);
 });
 
 test('kinds of the system', async ({ page }) => {
