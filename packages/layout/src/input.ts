@@ -377,6 +377,7 @@ function threatRow(field: SheetKindField): LayoutThreatRow | null {
       };
     }
     case 'clock':
+      if (!value.clocks.length) return null;
       return {
         block: 'clocks',
         key,

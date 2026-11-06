@@ -435,10 +435,11 @@
     let keys = rows.filter(r => r.block in keyed or (r.block == "clocks" and r.fixed)).map(r => r.key)
     let natural = keys.map(k => measure(plex-text(size: 8.5pt, k)).width + 2mm)
     let w = calc.min(20mm, calc.max(13mm, ..natural))
-    // A key wider than the column wraps in it, 2 mm short of the value.
+    // A key wider than the column wraps in it, 2 mm short of the value; a
+    // word too long for it breaks.
     let key(name) = {
       let k = plex-text(size: 8.5pt, name)
-      if measure(k).width + 2mm > w { box(width: w - 2mm, k) } else { k }
+      if measure(k).width + 2mm > w { box(width: w - 2mm, { set text(hyphenate: true); k }) } else { k }
     }
     // Kulthos's counters: a box, a gap, the next.
     let row(name, body, fill: false) = block(below: 1mm, grid(

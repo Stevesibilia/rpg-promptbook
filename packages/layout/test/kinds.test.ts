@@ -221,6 +221,54 @@ describe('the threat box of every built-in kind', () => {
   });
 });
 
+describe('the threat box at its edges', () => {
+  // A system of the test's own, with keys and counts the built-ins lack.
+  const systems = defineSystems([
+    {
+      id: 'bordi',
+      name: 'Bordi',
+      tables: [],
+      kinds: [
+        {
+          name: 'Prova',
+          fields: [
+            { key: 'Trasformazioneimprovvisa', block: 'text', show: 'row' },
+            { key: 'Tante caselle', block: 'boxes', count: { from: 'written' }, show: 'row' },
+            { key: 'Gruppi', block: 'boxes', count: { from: 'written' }, group: 4, marks: true, show: 'row' },
+            { key: 'Nessuna', block: 'boxes', count: { from: 'written' }, show: 'row' },
+            { key: 'Orologi', block: 'clock', count: { from: 'written' }, show: 'row' },
+          ],
+        },
+      ],
+    },
+  ]);
+  const text = [
+    '---\ntitolo: Prova\nsistema: Bordi\n---',
+    '## Scene',
+    '### S1. Il molo',
+    "**Chi c'è**\n\n- **Il bruto**, aspetta. → Schede: Il bruto",
+    '## Schede',
+    '### Il bruto\n\n- **Tipo:** Prova\n- **Trasformazioneimprovvisa:** di notte diventa un lupo.\n- **Tante caselle:** 30\n- **Gruppi:** 22 (4, 21)\n- **Nessuna:** 0\n- **Orologi:** Scappare: 1',
+  ].join('\n\n');
+  const input = toLayoutInput(parseAdventure(text, { template: templates.avventura, systems }).model, defaultLayoutOptions, project, templates.avventura);
+
+  it('reads the edge values', () => {
+    const rows = input.scenes[0]!.threats[0]!.rows;
+    expect(rows.map((r) => r.key)).toEqual(['Trasformazioneimprovvisa', 'Tante caselle', 'Gruppi', 'Nessuna', 'Orologi']);
+    expect(rows[3]).toMatchObject({ block: 'boxes', count: 0 });
+  });
+
+  it('builds: a long key, boxes that wrap, no boxes, a clock of one', async () => {
+    const result = await engine.build(input);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const out = process.env['PROMPTBOOK_KINDS_PDF'];
+    if (out) {
+      const { writeFile } = await import('node:fs/promises');
+      await writeFile(out.replace(/\.pdf$/, '-edges.pdf'), await engine.pdf(input));
+    }
+  });
+});
+
 describe('trackers shown only in the full sheet', () => {
   const systems = defineSystems([
     {
