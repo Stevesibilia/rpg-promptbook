@@ -47,54 +47,57 @@ Italian labels quoted. `fixes` are text edits.
 
 ## Problem codes
 
-| Code                      | Severity         | When                                                                                         |
-| ------------------------- | ---------------- | -------------------------------------------------------------------------------------------- |
-| `content.unplaced`        | error            | Content the template does not place (before the first section, inside a scene, an appendix). |
-| `meta.yaml`               | error            | The front matter is not valid YAML, or not a list of keys.                                   |
-| `meta.type`               | error            | A front matter value of the wrong type.                                                      |
-| `meta.required`           | error or warning | A required (error) or recommended (warning) key is missing.                                  |
-| `meta.unknown`            | warning          | A front matter key the template does not have.                                               |
-| `meta.licence.unknown`    | warning          | `licenza` looks like an SPDX id but is not one.                                              |
-| `section.unknown`         | warning          | A `##` section the template does not have; kept as a plain section.                          |
-| `section.missing`         | error or warning | A required or recommended section is missing.                                                |
-| `section.order`           | error            | A section out of the template's order.                                                       |
-| `section.synopsis.first`  | error            | «La vicenda in breve» does not open the document.                                            |
-| `scene.id.missing`        | error            | A scene heading without `S<n>.`.                                                             |
-| `scene.id.duplicate`      | error            | Two scenes with the same id.                                                                 |
-| `scene.field.unknown`     | error            | A bold label in a scene that is not a scene field; the fix turns it into a box.              |
-| `scene.field.missing`     | error or warning | A required or recommended scene field is missing.                                            |
-| `scene.reactions.missing` | error or warning | A scene without its «Se i PG» table.                                                         |
-| `field.blank-line`        | error            | A field label with no blank line before it.                                                  |
-| `callout.malformed`       | error            | A `[!…` first line that is not `[!type]`, `[!type] Title` or `[!type\|meta] Title`.          |
-| `callout.count`           | error            | A place with too few or too many boxes of a type (one `[!leggi]` per scene).                 |
-| `callout.title.missing`   | warning          | A `[!documento]` without a title.                                                            |
-| `callout.type.unknown`    | error            | A callout type the template does not have.                                                   |
-| `callout.place`           | warning          | A known callout type where its definition does not allow it.                                 |
-| `callout.quote.plain`     | warning          | A plain quote in a scene; the fixes mark it as a read-aloud or a handout.                    |
-| `ref.unresolved`          | error            | A `→ Schede:` name that matches no sheet.                                                    |
-| `ref.ambiguous`           | error            | A `→ Schede:` name that matches more than one sheet.                                         |
-| `ref.threat.outside`      | warning          | A graded sheet cited in a scene but not under «Chi c'è», so it gets no threat box.           |
-| `sheet.grade.counts`      | warning          | `Ferite` or `Afflizioni` disagree with the grade's table.                                    |
-| `sheet.nested-threat`     | warning          | A `####` heading or a graded threat written inside another sheet.                            |
-| `sheet.name.duplicate`    | error            | Two sheets with the same name (the part before the comma).                                   |
-| `clue.revelation.count`   | error            | A revelation with fewer clues than the minimum (3).                                          |
-| `clue.revelation.scenes`  | warning          | A revelation's clues in fewer scenes than the minimum (2).                                   |
-| `clue.revelation.missing` | error            | A clue pointing at a revelation that does not exist.                                         |
-| `clue.scene.missing`      | error            | A tracker row pointing at a scene that does not exist.                                       |
-| `clue.tracker.unwritten`  | error            | A tracker clue written in no scene.                                                          |
-| `clue.tracker.scene`      | warning          | The tracker places a clue in another scene than the one it is written in.                    |
-| `clue.text.missing`       | error            | A clue with its number and no text.                                                          |
-| `map.scene.missing`       | error            | A scene missing from the scene map.                                                          |
-| `map.row.orphan`          | error            | A scene map row for a scene that does not exist.                                             |
-| `appendix.row.missing`    | warning          | A scene without its appendix row.                                                            |
-| `appendix.row.orphan`     | warning          | An appendix row for a scene that does not exist.                                             |
-| `appendix.title.mismatch` | warning          | An appendix row whose title differs from its scene's.                                        |
-| `appendix.key.missing`    | warning          | An appendix row without `visual:` or `mood:`.                                                |
-| `appendix.key.outside`    | error            | `visual:` or `mood:` outside the appendix.                                                   |
-| `limit.synopsis.words`    | warning          | The synopsis is outside 300 to 600 words.                                                    |
-| `limit.preamble.words`    | warning          | More than 700 words from «A colpo d'occhio» to «Inizio forte».                               |
-| `limit.reminders.count`   | error            | More than 5 items in «Da non perdere stasera».                                               |
-| `style.dash`              | error            | An em or en dash.                                                                            |
+| Code                      | Severity         | When                                                                                                       |
+| ------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `content.unplaced`        | error            | Content the template does not place (before the first section, inside a scene, an appendix).               |
+| `meta.yaml`               | error            | The front matter is not valid YAML, or not a list of keys.                                                 |
+| `meta.type`               | error            | A front matter value of the wrong type.                                                                    |
+| `meta.required`           | error or warning | A required (error) or recommended (warning) key is missing.                                                |
+| `meta.unknown`            | warning          | A front matter key the template does not have.                                                             |
+| `meta.licence.unknown`    | warning          | `licenza` looks like an SPDX id but is not one.                                                            |
+| `section.unknown`         | warning          | A `##` section the template does not have; kept as a plain section.                                        |
+| `section.missing`         | error or warning | A required or recommended section is missing.                                                              |
+| `section.order`           | error            | A section out of the template's order.                                                                     |
+| `section.synopsis.first`  | error            | «La vicenda in breve» does not open the document.                                                          |
+| `scene.id.missing`        | error            | A scene heading without `S<n>.`.                                                                           |
+| `scene.id.duplicate`      | error            | Two scenes with the same id.                                                                               |
+| `scene.field.unknown`     | error            | A bold label in a scene that is not a scene field; the fix turns it into a box.                            |
+| `scene.field.missing`     | error or warning | A required or recommended scene field is missing.                                                          |
+| `scene.reactions.missing` | error or warning | A scene without its «Se i PG» table.                                                                       |
+| `field.blank-line`        | error            | A field label with no blank line before it.                                                                |
+| `callout.malformed`       | error            | A `[!…` first line that is not `[!type]`, `[!type] Title` or `[!type\|meta] Title`.                        |
+| `callout.count`           | error            | A place with too few or too many boxes of a type (one `[!leggi]` per scene).                               |
+| `callout.title.missing`   | warning          | A `[!documento]` without a title.                                                                          |
+| `callout.type.unknown`    | error            | A callout type the template does not have.                                                                 |
+| `callout.place`           | warning          | A known callout type where its definition does not allow it.                                               |
+| `callout.quote.plain`     | warning          | A plain quote in a scene; the fixes mark it as a read-aloud or a handout.                                  |
+| `ref.unresolved`          | error            | A `→ Schede:` name that matches no sheet.                                                                  |
+| `ref.ambiguous`           | error            | A `→ Schede:` name that matches more than one sheet.                                                       |
+| `ref.threat.outside`      | warning          | A sheet with a kind cited in a scene but not under «Chi c'è», so it gets no threat box.                    |
+| `system.unknown`          | warning          | The front matter names a game system that does not exist; its sheets are plain text.                       |
+| `sheet.field.required`    | warning          | A sheet of a kind lacks a required field of the kind; it gets no threat box.                               |
+| `sheet.value.invalid`     | warning          | A field its block cannot read (a choice outside its table, boxes with no number…); it prints as written.   |
+| `sheet.grade.counts`      | warning          | Boxes counted from a table (Kulthos's `Ferite`, `Afflizioni`) written with another count.                  |
+| `sheet.nested-threat`     | warning          | A `####` heading, or a threat named by a required choice's table (Kulthos's grades), inside another sheet. |
+| `sheet.name.duplicate`    | error            | Two sheets with the same name (the part before the comma).                                                 |
+| `clue.revelation.count`   | error            | A revelation with fewer clues than the minimum (3).                                                        |
+| `clue.revelation.scenes`  | warning          | A revelation's clues in fewer scenes than the minimum (2).                                                 |
+| `clue.revelation.missing` | error            | A clue pointing at a revelation that does not exist.                                                       |
+| `clue.scene.missing`      | error            | A tracker row pointing at a scene that does not exist.                                                     |
+| `clue.tracker.unwritten`  | error            | A tracker clue written in no scene.                                                                        |
+| `clue.tracker.scene`      | warning          | The tracker places a clue in another scene than the one it is written in.                                  |
+| `clue.text.missing`       | error            | A clue with its number and no text.                                                                        |
+| `map.scene.missing`       | error            | A scene missing from the scene map.                                                                        |
+| `map.row.orphan`          | error            | A scene map row for a scene that does not exist.                                                           |
+| `appendix.row.missing`    | warning          | A scene without its appendix row.                                                                          |
+| `appendix.row.orphan`     | warning          | An appendix row for a scene that does not exist.                                                           |
+| `appendix.title.mismatch` | warning          | An appendix row whose title differs from its scene's.                                                      |
+| `appendix.key.missing`    | warning          | An appendix row without `visual:` or `mood:`.                                                              |
+| `appendix.key.outside`    | error            | `visual:` or `mood:` outside the appendix.                                                                 |
+| `limit.synopsis.words`    | warning          | The synopsis is outside 300 to 600 words.                                                                  |
+| `limit.preamble.words`    | warning          | More than 700 words from «A colpo d'occhio» to «Inizio forte».                                             |
+| `limit.reminders.count`   | error            | More than 5 items in «Da non perdere stasera».                                                             |
+| `style.dash`              | error            | An em or en dash.                                                                                          |
 
 The converter's notices have their own codes: `convert.header.unknown` (a
 header label kept under its own name), `convert.header.duplicate`,

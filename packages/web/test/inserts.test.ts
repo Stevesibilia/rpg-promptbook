@@ -1,5 +1,5 @@
 import { EditorState } from '@codemirror/state';
-import { defineTemplate, templates, type AdventureTemplateInput } from 'promptbook-format';
+import { builtinSystems, defineTemplate, findKind, templates, type AdventureTemplateInput } from 'promptbook-format';
 import { skeletonDocument } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw';
@@ -181,6 +181,28 @@ describe('placeInsert at the cursor', () => {
     );
     expect(run(text, { kind: 'field', label: 'In gioco' }, slash, { from: slash, to: slash + 1 })).toBe(
       '## Scene\n\n### S1. Uno\n\nTesto.\n\n**In gioco:** ‸\n\n### S2. Due\n',
+    );
+  });
+
+  it('writes a sheet of a kind on the / line, the cursor on its heading', () => {
+    const kind = (system: string, name: string) =>
+      findKind(
+        builtinSystems.find((s) => s.name === system),
+        name,
+      )!;
+    const text = '---\ntitolo: Prova\nsistema: Outgunned\n---\n\n## Schede\n\n/\n';
+    const slash = text.indexOf('/');
+    expect(run(text, { kind: 'sheet', sheetKind: kind('Outgunned', 'Boss') }, slash, { from: slash, to: slash + 1 })).toBe(
+      '---\ntitolo: Prova\nsistema: Outgunned\n---\n\n## Schede\n\n### ‸\n\n- **Tipo:** Boss\n- **Grinta:** \n',
+    );
+    // Required and recommended keys, in the kind's order; optional ones are
+    // left out.
+    expect(insertText({ kind: 'sheet', sheetKind: kind('Kulthos', 'Minaccia') }, template)).toEqual({
+      text: '### \n\n- **Tipo:** Minaccia\n- **Grado:** ',
+      cursor: 4,
+    });
+    expect(insertText({ kind: 'sheet', sheetKind: kind('D&D 5e', 'Creatura') }, template).text).toBe(
+      '### \n\n- **Tipo:** Creatura\n- **CA:** \n- **PF:** \n- **Caratteristiche:** ',
     );
   });
 

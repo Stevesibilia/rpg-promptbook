@@ -1,7 +1,7 @@
 import type { Heading, RootContent } from 'mdast';
-import type { Block, JsonValue, Pregenerated, Sheet, SheetField, Threat } from '../model.js';
-import type { SheetKeyDefinition } from '../template/schema.js';
-import { toBlock, toList, type BoxIds, type ParseContext } from './blocks.js';
+import type { Block, JsonValue, Pregenerated, Sheet, SheetField } from '../model.js';
+import { itemLead, toBlock, toList, type BoxIds, type ParseContext } from './blocks.js';
+import { readKind } from './kinds.js';
 import { plainText, slug } from './source.js';
 
 // A sheet from its ### heading and the blocks up to the next one. List items
@@ -12,7 +12,7 @@ export function readSheet(
   nodes: RootContent[],
   system: JsonValue | undefined,
 ): Sheet {
-  const { source, template } = ctx;
+  const { source } = ctx;
   const title = plainText(heading).trim();
   const name = title.split(',')[0]!.trim();
   const id = slug(name);
@@ -23,9 +23,15 @@ export function readSheet(
 
   for (const node of nodes) {
     if (node.type === 'list') {
-      for (const item of toList(ctx, node).items) {
-        fields.push({ key: item.label, value: item.value, range: item.range });
-      }
+      toList(ctx, node).items.forEach((item, index) => {
+        fields.push({
+          key: item.label,
+          value: item.value,
+          lead: itemLead(ctx, node.children[index]!),
+          items: item.items.map((sub) => sub.text.trim()),
+          range: item.range,
+        });
+      });
     } else {
       blocks.push(toBlock(ctx, node, ids));
     }
@@ -38,46 +44,8 @@ export function readSheet(
     range: source.range(source.start(heading), source.end(last)),
     headingRange: source.nodeRange(heading),
     fields,
-    threat: readThreat(ctx, fields, system),
+    kind: readKind(ctx, fields, system),
     blocks,
-  };
-}
-
-function readThreat(ctx: ParseContext, fields: SheetField[], system: JsonValue | undefined): Threat | null {
-  const { template, systems } = ctx;
-  const value = (role: SheetKeyDefinition['role']): string | null => {
-    const key = template.sheets.keys.find((k) => k.role === role)?.key;
-    return fields.find((f) => key !== undefined && f.key === key)?.value ?? null;
-  };
-  const values = template.sheets.keys.map((k) => value(k.role));
-  if (values.every((v) => v === null)) return null;
-
-  const grade = value('grade');
-  const talents = value('talents');
-  const systemName = typeof system === 'string' ? system.trim().toLowerCase() : null;
-  const definition = systems.find((s) => s.name.toLowerCase() === systemName);
-  const gradeDefinition = definition?.grades.find((g) => g.name.toLowerCase() === grade?.trim().toLowerCase());
-  return {
-    type: value('type'),
-    grade,
-    nature: value('nature'),
-    wounds: value('wounds'),
-    afflictions: value('afflictions'),
-    pack: value('pack'),
-    talents: talents
-      ? talents
-          .split(template.sheets.listSeparator)
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [],
-    counts:
-      definition && gradeDefinition
-        ? {
-            wounds: gradeDefinition.wounds,
-            afflictions: gradeDefinition.afflictions,
-            woundsPerCounter: definition.woundsPerCounter,
-          }
-        : null,
   };
 }
 

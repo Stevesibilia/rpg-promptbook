@@ -8,10 +8,11 @@ import {
 } from '@codemirror/autocomplete';
 import { EditorSelection, type EditorState, type Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import type { AdventureTemplate, CalloutDefinition, Model, Place } from 'promptbook-format';
+import { findKind, type AdventureTemplate, type CalloutDefinition, type Model, type Place } from 'promptbook-format';
 import { analysisField, writableResult } from '../analysis/field.js';
 import { insertText, nextSceneNumber, placeInsert, sceneAt, type Insert } from '../inserts.js';
-import { currentItem } from '../outline.js';
+import { currentItem, outlineOf, type OutlineItem } from '../outline.js';
+import { projectSystem, typeKeyOf } from '../system.js';
 import { frontMatterOf } from './preview.js';
 import { write } from '../writes.js';
 
@@ -22,14 +23,15 @@ export type SlashInsert = Insert | { kind: 'heading'; level: 2 | 3 };
 export interface SlashEntry {
   label: string;
   detail: string;
-  group: 'missing' | 'insert' | 'headings';
+  group: 'missing' | 'sheets' | 'insert' | 'headings';
   insert: SlashInsert;
 }
 
 const groups: Record<SlashEntry['group'], { name: string; rank: number }> = {
   missing: { name: 'Missing fields', rank: 0 },
-  insert: { name: 'Insert', rank: 1 },
-  headings: { name: 'Headings', rank: 2 },
+  sheets: { name: 'Insert a sheet', rank: 1 },
+  insert: { name: 'Insert', rank: 2 },
+  headings: { name: 'Headings', rank: 3 },
 };
 
 // The `/` line holding `pos`: a `/` alone at the start of the line, then
@@ -46,6 +48,22 @@ const headings: SlashEntry[] = [
   { label: 'Subheading', detail: '###', group: 'headings', insert: { kind: 'heading', level: 3 } },
 ];
 
+// The item the `/` line belongs to. Typed on a blank line after an item's
+// last line (under a bare «## Schede», after the last sheet), the analysis
+// does not hold the `/` yet and no item holds the line; the next parse puts
+// it in the item before it, the latest one that starts before it, the
+// deepest of those.
+function slashItem(state: EditorState, pos: number): OutlineItem | null {
+  const holding = currentItem(state, pos);
+  if (holding) return holding;
+  let before: OutlineItem | null = null;
+  for (const item of outlineOf(state)) {
+    if (item.from > pos) continue;
+    if (!before || item.from > before.from || (item.from === before.from && item.depth > before.depth)) before = item;
+  }
+  return before;
+}
+
 const calloutSyntax = (c: CalloutDefinition) => `> [!${c.meta ? `${c.type}|${c.meta}` : c.type}]`;
 
 // What the menu offers at `pos`, from the latest analysis (fresh or stale:
@@ -61,7 +79,7 @@ export function slashEntries(state: EditorState, pos: number, template: Adventur
     return fm && pos <= fm.to ? [] : headings;
   }
   const model = value.result?.model;
-  const item = model ? currentItem(state, pos) : null;
+  const item = model ? slashItem(state, pos) : null;
   if (!model || !item) return [];
 
   const callouts = (allowed: (places: readonly Place[]) => boolean, count: (c: CalloutDefinition) => number) =>
@@ -109,9 +127,28 @@ export function slashEntries(state: EditorState, pos: number, template: Adventur
       newScene(),
     ];
   }
+  // Under «Schede», a sheet of each kind of the project's system first
+  // (design D9); not among the pregenerated characters.
+  const sheetKinds = (): SlashEntry[] => {
+    const system = projectSystem(model, template);
+    const typeKey = typeKeyOf(template);
+    if (!system || typeKey === undefined) return [];
+    return system.kinds.map((kind): SlashEntry => {
+      // The keys the insert writes after the type key, four at most.
+      const keys = kind.fields.filter((f) => f.requirement !== 'optional').map((f) => f.key);
+      return {
+        label: `Sheet: ${kind.name}`,
+        detail: keys.length === 0 ? typeKey : keys.length > 4 ? `${keys.slice(0, 4).join(', ')}…` : keys.join(', '),
+        group: 'sheets',
+        insert: { kind: 'sheet', sheetKind: kind },
+      };
+    });
+  };
+
   if (item.kind === 'section') {
     const role = model.sections[item.index]!.role;
     return [
+      ...(role === 'sheets' ? sheetKinds() : []),
       ...callouts(
         (places) => places.includes('anySection') || (!!role && places.includes(role)),
         () => 0,
@@ -120,10 +157,13 @@ export function slashEntries(state: EditorState, pos: number, template: Adventur
     ];
   }
   if (item.kind === 'sheet' || item.kind === 'pregenerated' || item.kind === 'character') {
-    return callouts(
-      (places) => places.includes('sheet') || places.includes('anySection'),
-      () => 0,
-    );
+    return [
+      ...(item.kind === 'sheet' ? sheetKinds() : []),
+      ...callouts(
+        (places) => places.includes('sheet') || places.includes('anySection'),
+        () => 0,
+      ),
+    ];
   }
   return [];
 }
@@ -145,6 +185,13 @@ export function applySlash(view: EditorView, insert: SlashInsert, template: Adve
   }
   const result = writableResult(state);
   if (!result) return;
+  // Listed from an older analysis: the kind must still be one of the
+  // system the front matter names now, else nothing is written.
+  if (insert.kind === 'sheet') {
+    const kind = findKind(projectSystem(result.model, template), insert.sheetKind.name);
+    if (!kind) return;
+    insert = { kind: 'sheet', sheetKind: kind };
+  }
   const existing = insert.kind === 'field' ? existingField(result.model, slash.from, insert.label) : null;
   if (existing !== null) {
     // Listed from an older analysis; the field is there now: no second copy,

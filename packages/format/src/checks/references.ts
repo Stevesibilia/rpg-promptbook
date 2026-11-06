@@ -3,13 +3,13 @@ import { findSheets } from '../parse/references.js';
 import type { Check } from './index.js';
 import { problem } from './util.js';
 
-// "→ Schede:" targets that match no sheet or several, and graded sheets cited
+// "→ Schede:" targets that match no sheet or several, and sheets with a kind cited
 // in a scene without being listed among its cast. The parser has already put
 // the resolved sheet's id on each reference that matches exactly one.
 export const checkReferences: Check = ({ model, template }) => {
   const out: Problem[] = [];
   const cast = template.sceneFields.find((f) => f.role === 'cast')?.label;
-  const graded = new Set(model.sheets.filter((s) => s.threat?.grade).map((s) => s.id));
+  const withKind = new Set(model.sheets.filter((s) => s.kind).map((s) => s.id));
 
   for (const scene of model.scenes) {
     const sceneId = scene.id ?? undefined;
@@ -29,14 +29,14 @@ export const checkReferences: Check = ({ model, template }) => {
                 { sceneId },
               ),
         );
-      } else if (graded.has(reference.sheet) && !inCast.has(reference.sheet) && !warned.has(reference.sheet)) {
+      } else if (withKind.has(reference.sheet) && !inCast.has(reference.sheet) && !warned.has(reference.sheet)) {
         warned.add(reference.sheet);
         const sheet = model.sheets.find((s) => s.id === reference.sheet)!;
         out.push(
           problem(
             'ref.threat.outside',
             'warning',
-            `"${sheet.name}" has a grade but is not listed under "${cast ?? 'the cast'}" in ${scene.id ?? 'this scene'}, so it gets no threat box.`,
+            `"${sheet.name}" is a sheet with a kind (${sheet.kind!.kind}) but is not listed under "${cast ?? 'the cast'}" in ${scene.id ?? 'this scene'}, so it gets no threat box.`,
             reference.range,
             { sceneId },
           ),

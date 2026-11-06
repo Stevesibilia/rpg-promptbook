@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  builtinSystems,
-  defineSystems,
   defineTemplate,
   templateName,
   templates,
   TemplateError,
   type AdventureTemplateInput,
-  type SystemInput,
   type TemplateInput,
 } from '../src/index.js';
 
@@ -131,23 +128,6 @@ describe('shipped template', () => {
   });
 });
 
-describe('built-in systems', () => {
-  it('has the Kulthos grade table', () => {
-    expect(builtinSystems).toEqual([
-      {
-        name: 'Kulthos',
-        woundsPerCounter: 3,
-        grades: [
-          { name: 'Ordinaria', wounds: 3, afflictions: 1 },
-          { name: 'Straordinaria', wounds: 6, afflictions: 2 },
-          { name: 'Leggendaria', wounds: 9, afflictions: 3 },
-        ],
-      },
-    ]);
-  });
-
-});
-
 describe('shipped template, limits', () => {
   const template = templates.avventura;
 
@@ -244,30 +224,6 @@ describe('campaign template', () => {
       ['PNG ricorrenti', 'optional', undefined],
       ['Fili aperti', 'optional', undefined],
       ['Sessioni', 'optional', undefined],
-    ]);
-  });
-});
-
-describe('defineSystems', () => {
-  const kulthos = (): SystemInput[] => JSON.parse(JSON.stringify(builtinSystems)) as SystemInput[];
-
-  it('returns a valid list unchanged', () => {
-    expect(defineSystems(kulthos())).toEqual(builtinSystems);
-  });
-
-  it('names a bad grade', () => {
-    const systems = kulthos();
-    systems[0]!.grades[1]!.wounds = 0;
-    expect(failure(systems, defineSystems).issues.map((issue) => issue.split(':')[0])).toEqual(['[0].grades[1].wounds']);
-  });
-
-  it('names a system or a grade given twice', () => {
-    const systems = kulthos();
-    systems[0]!.grades[2]!.name = 'Ordinaria';
-    systems.push(kulthos()[0]!);
-    expect(failure(systems, defineSystems).issues).toEqual([
-      '[1]: duplicate system "Kulthos"',
-      '[0].grades[2]: duplicate grade "Ordinaria"',
     ]);
   });
 });

@@ -427,28 +427,232 @@
     for b in f.blocks { md(b.markdown) }
   }
 
+  // The rows of a threat box, each drawn by its block (design D6). Keys sit
+  // in a label column at least 13 mm wide, as wide as the widest key up to
+  // 26 mm; a longer key wraps at its spaces, never inside a word.
+  //
+  // Kulthos's boxes beside a one-line key are drawn as before this column
+  // grew. Its talents print with the tight leading of the other blocks since
+  // the owner re-baselined Sabaoth's PDF (2026-11-06).
+  let threat-rows(rows) = context {
+    // Inside a value, lines sit closer than two rows do.
+    let tight = 0.4em
+    let gap = 1.6mm
+    let key-text(k) = plex-text(size: 8.5pt, k)
+    let keyed = ("text", "number", "boxes")
+    let keys = rows.filter(r => r.block in keyed or (r.block == "clocks" and r.fixed)).map(r => r.key)
+    let width-of(k) = measure(key-text(k)).width + 2mm
+    let longest-word(k) = calc.max(..k.split(" ").map(word => width-of(word)))
+    // A single word wider than 30 mm prints smaller instead of breaking.
+    let w = calc.min(30mm, calc.max(13mm, ..keys.map(k => calc.max(calc.min(width-of(k), 26mm), longest-word(k)))))
+    let fits(k) = width-of(k) <= w
+    let key(name) = if fits(name) { key-text(name) } else {
+      let word = longest-word(name)
+      let size = if word > w { 8.5pt * ((w - 2mm) / (word - 2mm)) } else { 8.5pt }
+      box(width: w - 2mm, plex-text(size: size, name))
+    }
+    // Kulthos's counters: the boxes beside the key, centred on it.
+    let row(name, body) = block(below: 1mm, grid(
+      columns: (w, auto),
+      align: if fits(name) { horizon } else { top },
+      key(name),
+      body,
+    ))
+    // A text value beside its key on the same baseline; its wrapped lines
+    // under the value, not under the key. A key on several lines sits beside
+    // the value, both from the top.
+    let text-row(name, body) = block(below: gap, if fits(name) {
+      par(leading: tight, hanging-indent: w, [#box(width: w, key(name))#body])
+    } else {
+      grid(columns: (w, 1fr), align: top, key(name), par(leading: tight, body))
+    })
+    let mark-fill = rule.lighten(55%)
+    let numbered(n, marked) = box(
+      width: 3.4mm,
+      height: 3.4mm,
+      stroke: 0.35mm + ink,
+      baseline: 0.6mm,
+      fill: if marked { mark-fill },
+      align(center + horizon, plex-text(size: 6pt, weight: 600, str(n))),
+    )
+    let one(i, r) = {
+      let marked = (i + 1) in r.marked
+      if r.values { numbered(i + 1, marked) } else if marked {
+        box(width: 3mm, height: 3mm, stroke: 0.35mm + ink, baseline: 0.4mm, fill: mark-fill)
+      } else { checkbox() }
+    }
+    let group(r, from, n) = box(stack(dir: ltr, spacing: 0.6mm, ..range(from, from + n).map(i => one(i, r))))
+    // On one line, as Kulthos's counters: groups 2 mm apart. When they do not
+    // fit beside the key they wrap between groups, or between boxes when the
+    // kind sets no group, from the key's first line.
+    let boxes-row(r) = {
+      if r.count == 0 { return row(r.key, text(fill: grey, "0")) }
+      let starts = range(0, r.count, step: r.group)
+      let groups = starts.map(s => group(r, s, calc.min(r.group, r.count - s)))
+      let natural = r.count * 3mm + (r.count - groups.len()) * 0.6mm + (groups.len() - 1) * 2mm
+      block(below: 1mm, layout(size => if natural <= size.width - w {
+        grid(columns: (w, auto), align: if fits(r.key) { horizon } else { top }, key(r.key), if groups.len() == 1 { groups.first() } else { stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..groups) })
+      } else {
+        let pieces = if groups.len() == 1 { range(r.count).map(i => one(i, r)).join([#h(0.6mm)#sym.zws]) } else {
+          groups.join([#h(2mm)#sym.zws])
+        }
+        grid(columns: (w, 1fr), align: top, key(r.key), par(leading: 1mm, pieces))
+      }))
+    }
+    let clock(n) = {
+      let r = 3mm
+      box(width: 2 * r, height: 2 * r, baseline: 30%, {
+        place(circle(radius: r, stroke: 0.35mm + ink, fill: white))
+        for i in range(n) {
+          let a = i / n * 360deg - 90deg
+          place(line(start: (r, r), end: (r + r * calc.cos(a), r + r * calc.sin(a)), stroke: 0.25mm + ink))
+        }
+      })
+    }
+    // Tokens: the number a table gives a word, as small filled dots.
+    let tokens(n) = if n != none and n > 0 {
+      h(1mm)
+      box(stack(dir: ltr, spacing: 0.5mm, ..range(n).map(_ => circle(radius: 0.75mm, fill: ink))))
+    }
+    let write-in(width) = box(width: width, height: 1.8mm, stroke: (bottom: 0.25mm + ink))
+    for r in rows {
+      if r.block == "text" {
+        text-row(r.key, md(r.text))
+      } else if r.block == "number" {
+        text-row(r.key, if r.line { [#write-in(12mm) / #md(r.text)] } else { md(r.text) })
+      } else if r.block == "boxes" {
+        boxes-row(r)
+      } else if r.block == "clocks" {
+        if r.fixed {
+          row(r.key, clock(r.clocks.first().size))
+        } else {
+          for c in r.clocks {
+            block(below: 1mm, grid(columns: (auto, 1fr), column-gutter: 2mm, align: horizon, clock(c.size), { set par(leading: tight); md(c.label) }))
+          }
+        }
+      } else if r.block == "stats" {
+        // As many cells a line as the longest label allows, the lines even:
+        // six short labels on one line, six long ones three by three. Every
+        // value on one line, all at the size the widest one fits at.
+        let label(s) = plex-text(size: 6pt, weight: 600, tracking: 0.04em, fill: grey, upper(s.label))
+        let value(s, size) = text(weight: "semibold", size: size, if s.value != none { md(s.value) } else { "–" })
+        let n = calc.max(r.stats.len(), 1)
+        block(above: 1.5mm, below: 1.5mm, layout(size => {
+          let widest = calc.max(0pt, ..r.stats.map(s => measure(label(s)).width))
+          let fit = calc.max(1, calc.min(n, calc.floor(size.width / (widest + 1.6mm))))
+          let lines = calc.ceil(n / fit)
+          let per = calc.ceil(n / lines)
+          let room = size.width / per - 1.2mm
+          let longest = calc.max(0pt, ..r.stats.map(s => measure(value(s, 8.5pt)).width))
+          let value-size = if longest <= room { 8.5pt } else { calc.max(6pt, 8.5pt * (room / longest)) }
+          table(
+            columns: (1fr,) * per,
+            stroke: 0.25mm + ink,
+            inset: (x: 0.6mm, y: 0.9mm),
+            align: center,
+            ..r.stats.map(s => [
+              #label(s)\
+              #box(value(s, value-size))
+            ]),
+          )
+        }))
+      } else if r.block == "list" and r.style == "paras" {
+        if r.names != none {
+          par(leading: tight)[#label-text(r.key + ":") #md(r.names)]
+        } else {
+          for talent in r.items {
+            par(leading: tight)[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
+          }
+        }
+      } else if r.block == "list" and r.style == "check" {
+        block(below: gap, {
+          label-text(r.key)
+          for item in r.items {
+            block(above: 1mm, below: 0mm, grid(
+              columns: (3.6mm, 1fr),
+              align: top,
+              move(dy: 0.15mm, circle(radius: 1.05mm, stroke: 0.3mm + ink)),
+              { set par(leading: tight); md(item) },
+            ))
+          }
+        })
+      } else if r.block == "list" {
+        block(below: gap, par(leading: tight)[#label-text(r.key + ":") #md(r.items.join(" · "))])
+      } else if r.block == "rows" {
+        // Columns as a browser sizes them: each at least its longest word, the
+        // room left shared by how much more each needs to print on one line;
+        // with room to spare the first takes it. Words never break, and a
+        // word keeps its tokens on its line. When the narrowest columns are
+        // still too wide the cells print smaller, and only then may tokens go
+        // under their word.
+        let head(c) = plex-text(size: 6.5pt, weight: 600, tracking: 0.04em, fill: grey, upper(c))
+        let cell(c, together) = [#md(c.text)#if together { sym.wj }#tokens(c.tokens)]
+        let n = r.columns.len()
+        let least-of(i, size, together) = calc.max(
+          measure(head(r.columns.at(i))).width,
+          ..r.rows.map(row => {
+            let c = row.at(i)
+            let words = c.text.split(" ")
+            let last = text(size: size, cell((text: words.last(), tokens: c.tokens), together))
+            calc.max(
+              measure(text(size: size, tokens(c.tokens))).width,
+              ..words.map(x => measure(text(size: size, x)).width),
+              if together { measure(last).width } else { 0pt },
+            )
+          }),
+        )
+        let full-of(i, size) = calc.max(measure(head(r.columns.at(i))).width, ..r.rows.map(row => measure(text(size: size, cell(row.at(i), true))).width))
+        block(below: gap, {
+          label-text(r.key)
+          block(above: 1mm, layout(size => {
+            let gutter = 1.5mm
+            let room = size.width - (n - 1) * gutter
+            let tries = ((8.3pt, true), (7.6pt, true), (8.3pt, false), (7.6pt, false), (6.8pt, false))
+            let fitting = tries.filter(t => range(n).map(i => least-of(i, ..t)).sum() <= room)
+            let (cell-size, together) = if fitting.len() > 0 { fitting.first() } else { tries.last() }
+            let least = range(n).map(i => least-of(i, cell-size, together))
+            let full = range(n).map(i => full-of(i, cell-size))
+            let spare = room - least.sum()
+            let wanted = range(n).map(i => full.at(i) - least.at(i)).sum()
+            let widths = if full.sum() <= room {
+              (1fr, ..full.slice(1))
+            } else if spare <= 0pt or wanted <= 0pt {
+              least
+            } else {
+              range(n).map(i => least.at(i) + spare * ((full.at(i) - least.at(i)) / wanted))
+            }
+            set text(size: cell-size)
+            set par(leading: tight)
+            table(
+              columns: widths,
+              column-gutter: gutter,
+              stroke: (x, y) => (bottom: if y == 0 { 0.3mm + ink } else { 0.2mm + rule.lighten(40%) }),
+              inset: (x: 0mm, y: 0.9mm),
+              align: left + top,
+              ..r.columns.map(head),
+              ..r.rows.flatten().map(c => cell(c, together)),
+            )
+          }))
+        })
+      } else if r.block == "lines" {
+        block(below: gap, {
+          label-text(r.key)
+          for l in r.labels {
+            block(above: 1.2mm, below: 0mm, [#md(l)#h(1.5mm)#box(width: 1fr, height: 2.6mm, stroke: (bottom: 0.25mm + ink))])
+          }
+        })
+      }
+    }
+  }
+
   let threat-box(t) = block(width: 100%, stroke: 0.45mm + ink, inset: 3mm, below: 3.5mm, breakable: false, {
     set text(size: 8.8pt)
     set par(spacing: 1.2mm)
-    block(below: 1mm, text(font: fell, size: 14pt, bottom-edge: "descender", t.name))
-    block(below: 1.5mm, plex-text(size: 8.5pt, fill: grey, "Minaccia " + t.grade + if t.pack { " · branco" }))
-    let row(name, boxes) = block(below: 1mm, grid(
-      columns: (13mm, auto),
-      align: horizon,
-      plex-text(size: 8.5pt, name),
-      boxes,
-    ))
-    let group(n) = box(stack(dir: ltr, spacing: 0.6mm, ..range(n).map(_ => checkbox())))
-    let counters = calc.div-euclid(t.wounds, t.woundsPerCounter)
-    row("Ferite", stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..range(counters).map(_ => group(t.woundsPerCounter))))
-    row("Afflizioni", group(t.afflictions))
-    if t.talentNames != none {
-      par[#label-text("Talenti:") #md(t.talentNames)]
-    } else {
-      for talent in t.talents {
-        par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
-      }
-    }
+    // A name on two lines keeps them close; on one line it prints as before.
+    block(below: 1mm, { set par(leading: 0.3em); text(font: fell, size: 14pt, bottom-edge: "descender", t.name) })
+    block(below: 1.5mm, plex-text(size: 8.5pt, fill: grey, t.subtitle))
+    for q in t.quotes { block(below: 1.5mm, emph(md(q))) }
+    threat-rows(t.rows)
     if t.sheet != none {
       block(above: 1.5mm, plex-text(size: 8.5pt, fill: grey, [#link(label(t.sheet))[scheda completa], p. #page-of(label(t.sheet))]))
     }
@@ -574,8 +778,13 @@
         [#block(width: 100%, stroke: 0.3mm + rule, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
           pos("block", sheet.from)
           set text(size: 9.3pt)
+          // Sub-bullets of a field: Spectral has no ‣, Typst's second marker.
+          set list(marker: ([•], [–]))
           block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", sheet.title))
           any-blocks(sheet.blocks)
+          if sheet.trackers.len() > 0 {
+            block(above: 1mm, below: 2mm, { set text(size: 8.8pt); set par(spacing: 1.2mm); threat-rows(sheet.trackers) })
+          }
         })#label(sheet.label)]
       }
     }

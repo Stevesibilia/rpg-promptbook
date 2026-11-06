@@ -9,8 +9,8 @@ import { parseAdventure } from '../parse/index.js';
 import { matchSection } from '../parse/sections.js';
 import { createSource, escapeRegExp, plainText, type Source } from '../parse/source.js';
 import { avventura } from '../template/avventura.js';
-import { builtinSystems } from '../systems.js';
-import type { AdventureTemplate, CalloutDefinition, SheetKeyDefinition } from '../template/schema.js';
+import { builtinSystems, findKind } from '../systems.js';
+import type { AdventureTemplate, CalloutDefinition } from '../template/schema.js';
 
 // The conventions of today's notes that the template does not hold, since
 // they are not part of the format: the word a threat's Tipo line opens with,
@@ -411,8 +411,7 @@ function convertPlace(ctx: Context, nodes: RootContent[], readAloud: CalloutDefi
 
 function splitThreats(ctx: Context, children: RootContent[]): void {
   const { template, source } = ctx;
-  const key = (role: SheetKeyDefinition['role']) => template.sheets.keys.find((k) => k.role === role)?.key;
-  const typeKey = key('type');
+  const typeKey = template.sheets.keys.find((k) => k.role === 'type')?.key;
   if (!typeKey) return;
   for (const part of partsOf(ctx, children, 'sheets')) {
     if (plainText(part.heading).trim() === template.sheets.pregenerated) continue;
@@ -423,7 +422,7 @@ function splitThreats(ctx: Context, children: RootContent[]): void {
     for (const list of lists) {
       for (const item of list.children) {
         if (itemKey(source, item.children[0]) !== typeKey) continue;
-        splitThreat(ctx, list, item, written);
+        splitThreat(ctx, typeKey, list, item, written);
       }
     }
   }
@@ -436,16 +435,20 @@ function itemKey(source: Source, node: Nodes | undefined): string | null {
   return match ? match[1]!.replace(/:$/, '').trim() : null;
 }
 
-function splitThreat(ctx: Context, list: List, item: List['children'][number], written: Set<string | null>): void {
+function splitThreat(
+  ctx: Context,
+  typeKey: string,
+  list: List,
+  item: List['children'][number],
+  written: Set<string | null>,
+): void {
   const { source, template } = ctx;
-  const keys = template.sheets.keys;
-  const keyOf = (role: SheetKeyDefinition['role']) => keys.find((k) => k.role === role)?.key;
   const range = source.nodeRange(item);
   const from = lineStart(source, source.start(item));
   const to = source.end(item);
   const line = source.text.slice(from, to);
   const leave = (why: string) =>
-    ctx.notices.push({ code: 'convert.threat', message: `The "${keyOf('type')}" line was left as it is: ${why}.`, range });
+    ctx.notices.push({ code: 'convert.threat', message: `The "${typeKey}" line was left as it is: ${why}.`, range });
 
   const match = /^([ \t]*[-*+][ \t]+)\*\*([^*\n]+?)\*\*:?[ \t]*(.*)$/.exec(line);
   if (!match || list.ordered || item.checked !== null && item.checked !== undefined) {
@@ -456,17 +459,26 @@ function splitThreat(ctx: Context, list: List, item: List['children'][number], w
   const value = match[3]!.trim();
   if (value === legacy.threat) return;
 
+  // The Kulthos kind the line becomes: its required choice is the grade, its
+  // first text field the nature, its flag the pack.
+  const system = builtinSystems.find((s) => s.id === 'kulthos')!;
+  const kind = findKind(system, legacy.threat)!;
+  const gradeField = kind.fields.find((f) => f.block === 'choice' && f.requirement === 'required')!;
+  const natureField = kind.fields.find((f) => f.block === 'text')!;
+  const packField = kind.fields.find((f) => f.block === 'flag')!;
+  const grades = gradeField.block === 'choice' ? system.tables.find((t) => t.name === gradeField.table)!.rows.map((r) => r[0]!) : [];
+
   const separator = template.sheets.listSeparator;
   const [head, ...rest] = value.split(separator).map((s) => s.trim());
-  const grades = builtinSystems.flatMap((s) => s.grades.map((g) => g.name));
   const opening = new RegExp(`^${escapeRegExp(legacy.threat)}[ \\t]+(\\S+?)(?:[ \\t]*,[ \\t]*(.*))?$`, 'u').exec(head ?? '');
   const grade = opening ? grades.find((g) => g.toLowerCase() === opening[1]!.toLowerCase()) : undefined;
   if (!opening || grade === undefined) {
-    leave(`it does not read "${legacy.threat} <grade>, <nature>", with a grade of the template's systems`);
+    leave(`it does not read "${legacy.threat} <grade>, <nature>", with a grade of ${system.name}`);
     return;
   }
 
-  const out = new Map<SheetKeyDefinition['role'], string>([['type', legacy.threat], ['grade', opening[1]!]]);
+  // By the kind's field key.
+  const out = new Map<string, string>([[gradeField.key, opening[1]!]]);
   const packWord = new RegExp(`(?<![\\p{L}])${escapeRegExp(legacy.pack)}(?![\\p{L}])`, 'iu');
   let pack = false;
   const nature = (opening[2] ?? '')
@@ -476,36 +488,34 @@ function splitThreat(ctx: Context, list: List, item: List['children'][number], w
       if (packWord.test(part)) pack = true;
       return part !== '' && part.toLowerCase() !== legacy.pack;
     });
-  if (nature.length) out.set('nature', nature.join(', '));
+  if (nature.length) out.set(natureField.key, nature.join(', '));
   for (const segment of rest) {
     if (segment.toLowerCase() === legacy.pack) {
       pack = true;
       continue;
     }
     const pair = /^([^:]+?):[ \t]*(.+)$/.exec(segment);
-    const definition = pair ? keys.find((k) => k.key.toLowerCase() === pair[1]!.trim().toLowerCase()) : undefined;
-    if (!pair || !definition || out.has(definition.role)) {
-      leave(`"${segment}" is not one of the template's threat keys`);
+    const field = pair ? kind.fields.find((f) => f.key.toLowerCase() === pair[1]!.trim().toLowerCase()) : undefined;
+    if (!pair || !field || out.has(field.key)) {
+      leave(`"${segment}" is not one of the keys of ${system.name}'s "${kind.name}"`);
       return;
     }
-    out.set(definition.role, pair[2]!.trim());
+    out.set(field.key, pair[2]!.trim());
   }
-  if (pack && !out.has('pack')) out.set('pack', legacy.yes);
+  if (pack && !out.has(packField.key)) out.set(packField.key, legacy.yes);
 
-  const already = [...out.keys()].map(keyOf).filter((k) => k !== keyOf('type') && written.has(k ?? null));
+  const already = [...out.keys()].filter((k) => written.has(k));
   if (already.length) {
     leave(`the sheet already has ${already.map((k) => `"${k}"`).join(', ')}`);
     return;
   }
-  const lines = keys.filter((k) => out.has(k.role)).map((k) => `${prefix}**${k.key}:** ${out.get(k.role)}`);
+  const keys = [typeKey, ...kind.fields.map((f) => f.key).filter((k) => out.has(k))];
+  out.set(typeKey, legacy.threat);
   ctx.edits.push({
     kind: 'threat',
     from,
     to,
-    insert: lines.join('\n'),
-    message: `Split the "${keyOf('type')}" line into ${keys
-      .filter((k) => out.has(k.role))
-      .map((k) => `"${k.key}"`)
-      .join(', ')}.`,
+    insert: keys.map((k) => `${prefix}**${k}:** ${out.get(k)}`).join('\n'),
+    message: `Split the "${typeKey}" line into ${keys.map((k) => `"${k}"`).join(', ')}.`,
   });
 }

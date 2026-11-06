@@ -1,4 +1,4 @@
-import type { AdventureTemplate, CalloutDefinition, Model, Scene, TextEdit } from 'promptbook-format';
+import type { AdventureTemplate, CalloutDefinition, Model, Scene, SheetKindDefinition, TextEdit } from 'promptbook-format';
 
 // Every insert of design decision 8, shared by This scene, the `/` menu and
 // the palette so each writes the same text. Labels, callout types, the
@@ -28,7 +28,9 @@ export type Insert =
   // The reactions table after the cursor's block.
   | { kind: 'reactions' }
   // A new scene heading with the next free number, at the cursor's line.
-  | { kind: 'scene' };
+  | { kind: 'scene' }
+  // A sheet of a kind of the project's game system, under «Schede».
+  | { kind: 'sheet'; sheetKind: SheetKindDefinition };
 
 export interface InsertContext {
   // The text the model was read from.
@@ -81,7 +83,18 @@ export function insertText(what: Insert, template: AdventureTemplate, model?: Mo
     }
     case 'scene':
       return end(`### ${template.ids.scene}${model ? nextSceneNumber(model, template) : 1}. `);
+    case 'sheet':
+      return { text: sheetText(what.sheetKind, template), cursor: '### '.length };
   }
+}
+
+// A sheet of a kind (design D9): the heading to name, the type key, then the
+// kind's required and recommended keys in its order, each waiting for its
+// value.
+export function sheetText(kind: SheetKindDefinition, template: AdventureTemplate): string {
+  const typeKey = template.sheets.keys.find((k) => k.role === 'type')?.key ?? 'Tipo';
+  const keys = kind.fields.filter((f) => f.requirement !== 'optional').map((f) => `- **${f.key}:** `);
+  return ['### ', '', `- **${typeKey}:** ${kind.name}`, ...keys].join('\n');
 }
 
 // The template's read-aloud box; a template may have none (template-editor
@@ -126,6 +139,7 @@ export function placeInsert(what: Insert, ctx: InsertContext): Placed | null {
     }
     case 'callout':
     case 'reactions':
+    case 'sheet':
       return finish(text, afterBlockAt(lines, pos), block, cursor, what);
     case 'sheetRef': {
       const line = lines.at(pos);

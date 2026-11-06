@@ -112,15 +112,8 @@ export const avventura = defineTemplate({
     npcs: { name: 'PNG' },
   },
   sheets: {
-    keys: [
-      { key: 'Tipo', role: 'type' },
-      { key: 'Grado', role: 'grade' },
-      { key: 'Natura', role: 'nature' },
-      { key: 'Ferite', role: 'wounds' },
-      { key: 'Afflizioni', role: 'afflictions' },
-      { key: 'Branco', role: 'pack' },
-      { key: 'Talenti', role: 'talents' },
-    ],
+    // The game system's kinds name the other keys.
+    keys: [{ key: 'Tipo', role: 'type' }],
     listSeparator: ' · ',
     pregenerated: 'Pregenerati',
   },

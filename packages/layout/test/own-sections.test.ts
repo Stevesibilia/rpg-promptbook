@@ -104,10 +104,20 @@ describe('sections left out', () => {
 });
 
 describe('the built-in template', () => {
-  it('prints Sabaoth with the same bytes as before PDF options', async () => {
+  // Recorded on main before game systems (tasks 0.1 of system-threat-sheets),
+  // re-baselined 2026-11-06 by owner decision: tight leading in talent
+  // paragraphs. The text is the same as before.
+  const hashes: [string, Partial<typeof defaultLayoutOptions>, number, string][] = [
+    ['the default options', {}, 302113, '42adc6e28813cb30fb2e983c7a5d31bfc46e69a602437bf4d154b06014357318'],
+    ['ink saver', { inkSaver: true }, 298454, 'e785911a3083f997691b678fbde6e81f96b5427d550a4b1afbffc715d71fd52a'],
+    ['no pregenerated', { pregenerated: false }, 288029, '842e47e98588059b2c6d404139e8d8219010ac93dbd2c7a92c57edb5a34be7a2'],
+    ['US letter', { paper: 'us-letter' }, 303189, 'f92bb33ea0e6debcff49775beb60f6e551d03219678fd0b699ef5d9f40ad97d8'],
+  ];
+  it.each(hashes)('prints Sabaoth with the recorded bytes, %s', async (_, options, length, hash) => {
     const t = templates.avventura;
-    const pdf = await engine.pdf(toLayoutInput(parseAdventure(sabaoth(), { template: t }).model, defaultLayoutOptions, { title: 'Sabaoth' }, t));
-    expect(pdf.length).toBe(302099);
-    expect(createHash('sha256').update(pdf).digest('hex')).toBe('22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef');
+    const model = parseAdventure(sabaoth(), { template: t }).model;
+    const pdf = await engine.pdf(toLayoutInput(model, { ...defaultLayoutOptions, ...options }, { title: 'Sabaoth' }, t));
+    expect(createHash('sha256').update(pdf).digest('hex')).toBe(hash);
+    expect(pdf.length).toBe(length);
   });
 });

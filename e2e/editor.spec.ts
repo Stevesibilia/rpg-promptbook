@@ -263,6 +263,37 @@ test('sheet matches the template', async ({ page }) => {
   await expect(sheet).toHaveCount(0);
 });
 
+test('a sheet of a kind', async ({ page }) => {
+  const outgunned = '---\ntitolo: Rapina\nsistema: Outgunned\n---\n\n## Scene\n\n### S1. Il magazzino\n\n## Schede\n\n';
+  await projectWith(page, outgunned, 'Outgunned', 'S1');
+  // The new project's skeleton has an S1 too: wait for this text's analysis.
+  await expect(outlineItem(page, 'S1')).toContainText('Il magazzino');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.type('/');
+  const menu = page.locator('.cm-tooltip-autocomplete');
+  await expect(menu.getByRole('option', { name: /Sheet: Scagnozzi/ })).toBeVisible();
+  await expect(menu.getByRole('option', { name: /Sheet: Cattivo/ })).toBeVisible();
+  await menu.getByRole('option', { name: /Sheet: Boss/ }).click();
+  await expect(cursorLine(page)).toHaveText(/^### $/);
+  await page.keyboard.type('Don Varga');
+  await expect(outlineItem(page, 'Don Varga')).toBeVisible();
+  // The live preview hides the bold markers.
+  const text = await page.locator('.cm-content').innerText();
+  expect(text).toMatch(/### Don Varga\s+- Tipo: Boss\s+- Grinta:\s*$/);
+});
+
+test('kinds of the system', async ({ page }) => {
+  await openSabaoth(page);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+/');
+  const sheet = page.getByRole('dialog', { name: /^Syntax/ });
+  const minaccia = sheet.locator('section', { hasText: 'Sheet kind «Minaccia» (Kulthos)' });
+  const grado = minaccia.locator('tr', { hasText: '**Grado:**' });
+  await expect(grado).toContainText('required');
+  await expect(grado).toContainText('choice from «Gradi»');
+});
+
 test('go to a scene by name', async ({ page }) => {
   await openSabaoth(page);
   await page.locator('.cm-content').click();
@@ -332,7 +363,7 @@ const hiddenList = (page: Page) => page.locator('.inspector .hid');
 const hiddenCount = (page: Page) => page.locator('.status .hcount');
 const toast = (page: Page) => page.locator('.toast');
 const UNKNOWN = 'Se il tempo stringe';
-const THREAT = 'has a grade but is not listed';
+const THREAT = 'is a sheet with a kind (Minaccia) but is not listed';
 
 // «Wed 28 Oct»: a snooze's end as the app shows it, this year.
 const snoozeDay = (ms: number) =>

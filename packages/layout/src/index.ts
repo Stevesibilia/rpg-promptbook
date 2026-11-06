@@ -23,6 +23,7 @@ export {
   type LayoutScene,
   type LayoutSheet,
   type LayoutThreat,
+  type LayoutThreatRow,
 } from './input.js';
 export { licenceShort, licenceUrl, type Licence } from './licence.js';
 export { blockAt, pageOf, sortPositions, type Position } from './positions.js';
