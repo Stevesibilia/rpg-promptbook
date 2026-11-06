@@ -1,6 +1,8 @@
 import type { Problem, Sheet } from '../model.js';
 import { escapeRegExp } from '../parse/source.js';
 import type { AdventureTemplate } from '../template/schema.js';
+import { legacyGrades } from '../legacy-grades.js';
+import { findSystem } from '../systems.js';
 import type { Check } from './index.js';
 import { plural, problem } from './util.js';
 
@@ -13,10 +15,7 @@ export const checkSheets: Check = ({ model, template, systems }) => {
   const out: Problem[] = [];
   const systemKey = template.meta.find((m) => m.role === 'system')?.key;
   const systemName = systemKey === undefined ? undefined : model.meta.values[systemKey];
-  const system = systems.find(
-    (s) => typeof systemName === 'string' && s.name.toLowerCase() === systemName.trim().toLowerCase(),
-  );
-  const gradeNames = system?.grades.map((g) => g.name) ?? [];
+  const gradeNames = legacyGrades(findSystem(systems, systemName)).names;
   const gradeWord = gradeNames.length
     ? new RegExp(`(?<![\\p{L}])(?:${gradeNames.map(escapeRegExp).join('|')})(?![\\p{L}])`, 'iu')
     : null;

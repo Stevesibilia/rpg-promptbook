@@ -13,14 +13,18 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 0. Baseline
 
-- [ ] 0.1 On `main`, build Sabaoth's PDF with the four option sets of `layout/test/own-sections.test.ts` and record each SHA-256 here (D11)
+- [x] 0.1 On `main`, build Sabaoth's PDF with the four option sets of `layout/test/own-sections.test.ts` and record each SHA-256 here (D11)
+  - `defaultLayoutOptions`: `22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef` (302099 bytes)
+  - `inkSaver`: `4ea88fe77ee700cfd0a6ab326345699086897ce76acd373fc8ab9b3296636f4a` (298435 bytes)
+  - `pregenerated: false`: `a776c76020a9ca07763122e0bb0dfbd4bc8cfb63e65928672b043e87743eb5df` (288015 bytes)
+  - `paper: 'us-letter'`: `7b5faae7226a54b04528ffc8a65a67b17dc126d67cfafed2a6f091f3c4aa62c3` (303178 bytes)
 
 ## 1. Format: systems and built-ins
 
-- [ ] 1.1 `systems.ts`: the schema and validation of D1; `defineSystems`, `builtinSystems`, types exported from `index.ts`
-- [ ] 1.2 `systems/`: the 12 built-ins of D2, from the mockup's `builtins()`
-- [ ] 1.3 Tests: every validation rule of D1 fails with a message naming the path; the built-ins validate; Historia equals D&D 5e but for name and id
-- [ ] 1.4 Commit `feat(format): game systems with sheet kinds`
+- [x] 1.1 `systems.ts`: the schema and validation of D1; `defineSystems`, `builtinSystems`, types exported from `index.ts`
+- [x] 1.2 `systems/`: the 12 built-ins of D2, from the mockup's `builtins()`
+- [x] 1.3 Tests: every validation rule of D1 fails with a message naming the path; the built-ins validate; Historia equals D&D 5e but for name and id
+- [x] 1.4 Commit `feat(format): game systems with sheet kinds`
 
 ## 2. Format: reading sheets by kind
 

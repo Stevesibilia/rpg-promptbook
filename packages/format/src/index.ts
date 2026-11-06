@@ -30,7 +30,20 @@ export {
   type TemplateListName,
 } from './template/locks.js';
 export { sectionPdf, withPdf, type SectionPdf, type SectionPdfPatch } from './template/pdf.js';
-export { builtinSystems, defineSystems, type SystemDefinition, type SystemInput } from './systems.js';
+export {
+  builtinSystems,
+  defineSystems,
+  findKind,
+  findSystem,
+  tableRow,
+  type FieldBlock,
+  type FieldDefinition,
+  type FieldShow,
+  type LookupTable,
+  type SheetKindDefinition,
+  type SystemDefinition,
+  type SystemInput,
+} from './systems.js';
 export type {
   AdventureTemplate,
   AdventureTemplateInput,

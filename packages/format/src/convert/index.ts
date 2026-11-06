@@ -9,6 +9,7 @@ import { parseAdventure } from '../parse/index.js';
 import { matchSection } from '../parse/sections.js';
 import { createSource, escapeRegExp, plainText, type Source } from '../parse/source.js';
 import { avventura } from '../template/avventura.js';
+import { legacyGrades } from '../legacy-grades.js';
 import { builtinSystems } from '../systems.js';
 import type { AdventureTemplate, CalloutDefinition, SheetKeyDefinition } from '../template/schema.js';
 
@@ -458,7 +459,7 @@ function splitThreat(ctx: Context, list: List, item: List['children'][number], w
 
   const separator = template.sheets.listSeparator;
   const [head, ...rest] = value.split(separator).map((s) => s.trim());
-  const grades = builtinSystems.flatMap((s) => s.grades.map((g) => g.name));
+  const grades = builtinSystems.flatMap((s) => legacyGrades(s).names);
   const opening = new RegExp(`^${escapeRegExp(legacy.threat)}[ \\t]+(\\S+?)(?:[ \\t]*,[ \\t]*(.*))?$`, 'u').exec(head ?? '');
   const grade = opening ? grades.find((g) => g.toLowerCase() === opening[1]!.toLowerCase()) : undefined;
   if (!opening || grade === undefined) {

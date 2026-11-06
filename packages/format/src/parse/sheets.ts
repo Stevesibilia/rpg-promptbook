@@ -1,6 +1,8 @@
 import type { Heading, RootContent } from 'mdast';
 import type { Block, JsonValue, Pregenerated, Sheet, SheetField, Threat } from '../model.js';
 import type { SheetKeyDefinition } from '../template/schema.js';
+import { legacyGrades } from '../legacy-grades.js';
+import { findSystem } from '../systems.js';
 import { toBlock, toList, type BoxIds, type ParseContext } from './blocks.js';
 import { plainText, slug } from './source.js';
 
@@ -54,9 +56,7 @@ function readThreat(ctx: ParseContext, fields: SheetField[], system: JsonValue |
 
   const grade = value('grade');
   const talents = value('talents');
-  const systemName = typeof system === 'string' ? system.trim().toLowerCase() : null;
-  const definition = systems.find((s) => s.name.toLowerCase() === systemName);
-  const gradeDefinition = definition?.grades.find((g) => g.name.toLowerCase() === grade?.trim().toLowerCase());
+  const counts = legacyGrades(findSystem(systems, system)).counts(grade);
   return {
     type: value('type'),
     grade,
@@ -70,14 +70,7 @@ function readThreat(ctx: ParseContext, fields: SheetField[], system: JsonValue |
           .map((t) => t.trim())
           .filter(Boolean)
       : [],
-    counts:
-      definition && gradeDefinition
-        ? {
-            wounds: gradeDefinition.wounds,
-            afflictions: gradeDefinition.afflictions,
-            woundsPerCounter: definition.woundsPerCounter,
-          }
-        : null,
+    counts,
   };
 }
 
