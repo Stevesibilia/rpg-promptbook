@@ -431,9 +431,9 @@
   // in a label column at least 13 mm wide, as wide as the widest key up to
   // 26 mm; a longer key wraps at its spaces, never inside a word.
   //
-  // Kulthos's rows (boxes beside a one-line key, its talents) are drawn as
-  // before this column grew, so Sabaoth's PDF keeps its bytes: its talents
-  // keep the page's leading, which Sabaoth's wrapped talents print with.
+  // Kulthos's boxes beside a one-line key are drawn as before this column
+  // grew. Its talents print with the tight leading of the other blocks since
+  // the owner re-baselined Sabaoth's PDF (2026-11-06).
   let threat-rows(rows) = context {
     // Inside a value, lines sit closer than two rows do.
     let tight = 0.4em
@@ -561,7 +561,7 @@
           par(leading: tight)[#label-text(r.key + ":") #md(r.names)]
         } else {
           for talent in r.items {
-            par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
+            par(leading: tight)[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
           }
         }
       } else if r.block == "list" and r.style == "check" {

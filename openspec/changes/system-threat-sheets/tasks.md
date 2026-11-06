@@ -18,6 +18,11 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
   - `inkSaver`: `4ea88fe77ee700cfd0a6ab326345699086897ce76acd373fc8ab9b3296636f4a` (298435 bytes)
   - `pregenerated: false`: `a776c76020a9ca07763122e0bb0dfbd4bc8cfb63e65928672b043e87743eb5df` (288015 bytes)
   - `paper: 'us-letter'`: `7b5faae7226a54b04528ffc8a65a67b17dc126d67cfafed2a6f091f3c4aa62c3` (303178 bytes)
+  - re-baselined 2026-11-06 by owner decision: tight leading in talent paragraphs
+    - `defaultLayoutOptions`: `42adc6e28813cb30fb2e983c7a5d31bfc46e69a602437bf4d154b06014357318` (302113 bytes)
+    - `inkSaver`: `e785911a3083f997691b678fbde6e81f96b5427d550a4b1afbffc715d71fd52a` (298454 bytes)
+    - `pregenerated: false`: `842e47e98588059b2c6d404139e8d8219010ac93dbd2c7a92c57edb5a34be7a2` (288029 bytes)
+    - `paper: 'us-letter'`: `f92bb33ea0e6debcff49775beb60f6e551d03219678fd0b699ef5d9f40ad97d8` (303189 bytes)
 
 ## 1. Format: systems and built-ins
 

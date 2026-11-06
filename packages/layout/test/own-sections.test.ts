@@ -104,15 +104,16 @@ describe('sections left out', () => {
 });
 
 describe('the built-in template', () => {
-  // Recorded on main before game systems (tasks 0.1 of system-threat-sheets):
-  // the generic threat box prints Kulthos's as before.
+  // Recorded on main before game systems (tasks 0.1 of system-threat-sheets),
+  // re-baselined 2026-11-06 by owner decision: tight leading in talent
+  // paragraphs. The text is the same as before.
   const hashes: [string, Partial<typeof defaultLayoutOptions>, number, string][] = [
-    ['the default options', {}, 302099, '22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef'],
-    ['ink saver', { inkSaver: true }, 298435, '4ea88fe77ee700cfd0a6ab326345699086897ce76acd373fc8ab9b3296636f4a'],
-    ['no pregenerated', { pregenerated: false }, 288015, 'a776c76020a9ca07763122e0bb0dfbd4bc8cfb63e65928672b043e87743eb5df'],
-    ['US letter', { paper: 'us-letter' }, 303178, '7b5faae7226a54b04528ffc8a65a67b17dc126d67cfafed2a6f091f3c4aa62c3'],
+    ['the default options', {}, 302113, '42adc6e28813cb30fb2e983c7a5d31bfc46e69a602437bf4d154b06014357318'],
+    ['ink saver', { inkSaver: true }, 298454, 'e785911a3083f997691b678fbde6e81f96b5427d550a4b1afbffc715d71fd52a'],
+    ['no pregenerated', { pregenerated: false }, 288029, '842e47e98588059b2c6d404139e8d8219010ac93dbd2c7a92c57edb5a34be7a2'],
+    ['US letter', { paper: 'us-letter' }, 303189, 'f92bb33ea0e6debcff49775beb60f6e551d03219678fd0b699ef5d9f40ad97d8'],
   ];
-  it.each(hashes)('prints Sabaoth with the same bytes as before, %s', async (_, options, length, hash) => {
+  it.each(hashes)('prints Sabaoth with the recorded bytes, %s', async (_, options, length, hash) => {
     const t = templates.avventura;
     const model = parseAdventure(sabaoth(), { template: t }).model;
     const pdf = await engine.pdf(toLayoutInput(model, { ...defaultLayoutOptions, ...options }, { title: 'Sabaoth' }, t));
