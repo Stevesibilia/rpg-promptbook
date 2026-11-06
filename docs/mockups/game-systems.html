@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game systems mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Chrome, settings, editor document and modal copied from
+   licence.html (tokens.css, settings.css, editor.css, ui/modal.css). The
+   rules marked NEW are the template editor. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --leggi-line: #0f8f69;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+    --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+    --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+    --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+    --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+a { color: var(--primary); }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus { outline: none; border-color: var(--primary); }
+code { font: .92em var(--mono); }
+.spacer { flex: 1; }
+
+/* Mockup controls (not part of the app) */
+.mock { height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px; white-space: nowrap; overflow-x: auto;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; flex: none; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock button:disabled { opacity: .4; cursor: default; }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex: none; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 1fr; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); min-width: 0; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); flex: none; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-meta select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); flex: none; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; text-decoration: none; }
+.tb:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover:not(:disabled) { background: var(--primary-hover); color: var(--on-primary); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); flex: none; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+
+.center { grid-column: 2; grid-row: 2; overflow: auto; min-width: 0; position: relative; }
+.view { display: none; } .view.on { display: block; }
+
+/* Settings (settings.css) */
+.pane { max-width: 1080px; margin: 0 auto; padding: 24px 28px 160px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.set { display: grid; grid-template-columns: 190px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.card.narrow { max-width: 520px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+.field .with-btn { display: flex; gap: 8px; }
+.field .with-btn input { flex: 1; min-width: 0; }
+.saved { color: var(--primary); }
+
+/* Editor document (editor.html, editor.css) */
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.fm { font: 13px/26px var(--mono); color: var(--muted); background: var(--surface); border-left: 3px solid var(--border); padding-left: 10px; overflow-wrap: anywhere; }
+.fm.fence { color: var(--faint); }
+.fm .k { color: var(--info); }
+.fm.active { background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
+.fm .caret { display: inline-block; width: 2px; height: 16px; background: var(--primary); vertical-align: -3px; margin-left: 1px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.fm-more { display: block; width: 100%; text-align: left; font: 13px/26px var(--mono); color: var(--faint); background: var(--surface); border-left: 3px solid var(--border); padding: 0 0 0 16px; }
+.fm-more:hover { color: var(--primary); }
+.fm .val.changed { background: color-mix(in srgb, var(--primary) 14%, transparent); border-radius: 3px; }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.callout { margin: 8px 0; padding: 4px 14px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.callout .ct { font: 600 12px/24px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+.callout.leggi { background: var(--leggi); border-color: var(--leggi-line); } .callout.leggi .ct { color: var(--leggi-line); }
+.callout.leggi .tx { font-style: italic; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; }
+
+/* Scrim and modal (ui/modal.css) */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(5,10,8,.62); display: flex; align-items: flex-start; justify-content: center; padding-top: 6vh; }
+.scrim[hidden] { display: none; }
+.modal { width: min(880px, calc(100vw - 32px)); max-height: 86vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex: none; }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 12px 18px 14px; overflow: auto; min-height: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); flex: none; flex-wrap: wrap; }
+.modal .mf .note { margin-right: auto; color: var(--faint); font-size: 12.5px; }
+
+
+.mock { position: relative; z-index: 60; }
+
+/* Annotation (mockup only) */
+.anno { position: fixed; left: 62px; bottom: 36px; width: 410px; z-index: 50; background: var(--surface); border: 1px dashed var(--note); border-radius: 8px; font-size: 12.5px; color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.anno.closed { display: none; }
+.anno h5 { margin: 0; padding: 8px 12px 0; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); display: flex; }
+.anno h5 button { margin-left: auto; color: var(--faint); font-size: 12px; }
+.anno ul { margin: 6px 0 10px; padding: 0 12px 0 28px; }
+.anno li { margin: 2px 0; }
+.anno code { font: 11.5px var(--mono); }
+
+/* NEW: template list */
+.tgroup { margin-bottom: 20px; }
+.tgroup h3 { font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-bottom-width: 0; }
+.trow:first-of-type { border-radius: 8px 8px 0 0; } .trow:last-of-type { border-radius: 0 0 8px 8px; border-bottom-width: 1px; }
+.trow:only-of-type { border-radius: 8px; }
+.trow .tn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.trow .tn b { font: 600 15px var(--font); }
+.trow .tm { grid-column: 1; color: var(--faint); font-size: 12.5px; }
+.trow .acts { grid-column: 2; grid-row: 1 / 3; display: flex; gap: 6px; align-items: center; }
+.chip { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.chip.def { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.chip.ver { font: 500 11px var(--mono); text-transform: none; letter-spacing: 0; }
+.chip.amber { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); }
+
+/* NEW: template editor */
+.pane.wide { max-width: 1480px; }
+.pane.wide .set { grid-template-columns: 160px 1fr; }
+.te-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.te-head .back { color: var(--muted); }
+.te-head h2 { margin: 0; }
+.banner { margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--info) 9%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border)); color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.banner b { color: var(--text); }
+.banner .tb { margin-left: auto; }
+.te-gen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.te-gen .field { margin: 0; }
+.te-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 310px); gap: 16px; align-items: start; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.tabs button { padding: 7px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--primary); font-weight: 600; }
+.tabs .n { font-size: 11px; color: var(--faint); margin-left: 3px; }
+.rows { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.rh, .rr { display: grid; gap: 8px; align-items: center; padding: 6px 10px; }
+.rh { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--border); }
+.rr { border-bottom: 1px solid var(--border); }
+.rr:last-child { border-bottom: 0; }
+.rr.changed { box-shadow: inset 3px 0 0 var(--amber); }
+.rr.added { box-shadow: inset 3px 0 0 var(--primary); }
+.rr input, .rr select { width: 100%; min-width: 0; padding: 4px 7px; font-size: 13.5px; }
+.rr input:disabled, .rr select:disabled { background: transparent; border-color: transparent; color: var(--text); opacity: 1; }
+.g-sec { grid-template-columns: 44px minmax(0, 1fr) 118px 112px 150px 30px; }
+.g-fld { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 70px 30px; }
+.g-box { grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.3fr) 82px 30px; }
+.g-key { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 30px; }
+.mv { display: flex; flex-direction: column; }
+.mv button { color: var(--faint); font-size: 10px; line-height: 12px; padding: 0 6px; border-radius: 3px; }
+.mv button:hover:not(:disabled) { color: var(--text); background: var(--hover); }
+.role { font: 500 11.5px var(--font); color: var(--muted); display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.role .ic { width: 13px; height: 13px; }
+.role.custom { color: var(--faint); font-style: italic; }
+.pdf { display: flex; flex-wrap: wrap; gap: 3px; }
+.tg { font: 500 11.5px var(--font); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); white-space: nowrap; }
+.tg.on { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); background: color-mix(in srgb, var(--primary) 9%, transparent); }
+.tg.fixed { border-style: dashed; cursor: default; }
+.tg:disabled { opacity: .55; }
+.del { color: var(--faint); padding: 2px 6px; border-radius: 4px; }
+.del:hover:not(:disabled) { color: var(--danger); background: var(--hover); }
+.places { display: flex; flex-wrap: wrap; gap: 3px; }
+.add { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px dashed var(--border); }
+.add input { flex: 1; min-width: 0; }
+.sub { color: var(--faint); font-size: 12.5px; margin: 8px 2px 0; }
+.lim { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 14px; }
+.lim .field { margin: 0; }
+.lim .pair { display: flex; gap: 6px; align-items: center; }
+.lim .pair input { width: 80px; }
+
+/* NEW: the starting document preview */
+.pv { position: sticky; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pv .ph { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.pv .ph .chip { margin-left: auto; }
+.pv .pb { max-height: calc(100vh - 290px); overflow: auto; padding: 10px 14px 14px; font: 14px/22px var(--prose); }
+.pv .l { min-height: 22px; overflow-wrap: anywhere; }
+.pv .fm { font: 12px/22px var(--mono); }
+.pv .h2 { font: 700 19px/28px var(--display); margin-top: 10px; }
+.pv .h3 { font: 600 16px/24px var(--prose); margin-top: 6px; }
+.pv .fl { font-size: 14px; }
+.pv .callout { margin: 4px 0; padding: 2px 10px 4px; }
+.pv .callout .ct { font-size: 11px; line-height: 20px; }
+.pv .tbl { font: 12px/20px var(--mono); color: var(--muted); }
+.pv .hl { background: color-mix(in srgb, var(--amber) 16%, transparent); border-radius: 3px; }
+.pv .new { background: color-mix(in srgb, var(--primary) 14%, transparent); border-radius: 3px; }
+.pv .out { color: var(--faint); font: italic 12px var(--font); margin-left: 6px; }
+
+/* NEW: the save bar */
+.savebar { position: sticky; bottom: 0; margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border)); border-radius: 8px; box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
+.savebar .msg { margin-right: auto; color: var(--muted); font-size: 13px; }
+.savebar .msg b { color: var(--amber); }
+
+/* NEW: dialogs */
+.modal.sm { width: min(560px, calc(100vw - 32px)); }
+.chg { list-style: none; margin: 0 0 12px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); }
+.chg li { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: baseline; }
+.chg li:last-child { border-bottom: 0; }
+.chg .k { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; width: 62px; flex: none; }
+.chg .k.a { color: var(--primary); } .chg .k.c { color: var(--amber); } .chg .k.r { color: var(--danger); }
+.chk { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; }
+.chk input { margin-top: 3px; }
+.chk small { display: block; color: var(--faint); }
+.mb p { margin: 0 0 10px; color: var(--muted); }
+.mb .field select, .mb .field input { width: 100%; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button { flex: 1; padding: 6px 8px; color: var(--muted); }
+.seg button.on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); font-weight: 600; }
+
+/* NEW: editor top bar template chip */
+.tpl-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--amber) 50%, var(--border)); color: var(--amber); white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; }
+.tpl-chip:hover { background: color-mix(in srgb, var(--amber) 10%, transparent); }
+
+@media (max-width: 980px) {
+  .te-body { grid-template-columns: 1fr; }
+  .pv { position: static; }
+  .pv .pb { max-height: 360px; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: 0 1fr; }
+  .rail { display: none; }
+  .logo { width: 40px; }
+  .hide-narrow { display: none !important; }
+  .pane { padding: 16px 16px 160px; }
+  .set { grid-template-columns: 1fr; gap: 12px; }
+  .set nav { flex-direction: row; flex-wrap: wrap; }
+  .set nav button { padding: 4px 8px; font-size: 13px; }
+  .doc { padding: 16px 16px 120px; }
+  .te-gen { grid-template-columns: 1fr; }
+  .rows { overflow-x: auto; }
+  .rh, .rr { min-width: 620px; }
+  .trow { grid-template-columns: 1fr; }
+  .trow .acts { grid-column: 1; grid-row: auto; flex-wrap: wrap; }
+  .scrim { padding-top: 2vh; }
+  .modal .mh, .modal .mb, .modal .mf { padding-left: 14px; padding-right: 14px; }
+  .anno { left: 16px; right: 16px; width: auto; bottom: 32px; }
+}
+
+/* NEW (game systems). The PDF is paper in both themes, so the box keeps its own ink. */
+:root { --paper: #ffffff; --ink: #141414; --ink-2: #5d5d5d; --mark: #b3202f; }
+.g-gf { grid-template-columns: 44px minmax(0, 1fr) 150px minmax(0, 1.2fr) 128px 104px 30px; }
+.g-tb { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)) 30px; }
+.opt { font: 12.5px var(--font); color: var(--muted); text-align: left; padding: 3px 7px; border-radius: 4px; border: 1px dashed var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt:hover:not(:disabled) { color: var(--text); border-color: var(--primary); }
+.opt.on { border-style: solid; border-color: var(--primary); color: var(--text); }
+.optp { padding: 10px 14px 12px 62px; border-bottom: 1px solid var(--border); background: var(--surface-2); display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.optp .field { margin: 0; }
+.optp .field input, .optp .field select { width: 100%; }
+.optp .say { grid-column: 1 / -1; font-size: 12.5px; color: var(--faint); margin: 0; }
+.optp .say code { color: var(--text); }
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.kind { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.kind.on { border-color: var(--primary); color: var(--text); background: color-mix(in srgb, var(--primary) 10%, transparent); font-weight: 600; }
+.kindbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 10px; }
+.kindbar .field { margin: 0; }
+.md { font: 12px/19px var(--mono); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; padding: 10px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.md b { color: var(--info); font-weight: 500; }
+.pv .pb.paper { background: color-mix(in srgb, var(--bg) 70%, var(--surface)); padding: 14px; font: inherit; }
+
+/* The scene box as the PDF draws it (threat-box in avventura.typ) */
+.tbox { background: var(--paper); color: var(--ink); border: 1.3px solid var(--ink); padding: 9px 12px 10px; font: 12.5px/1.38 var(--prose); break-inside: avoid; }
+.tbox .tn { font: 700 19px/1.1 var(--display); letter-spacing: .01em; }
+.tbox .ts { color: var(--ink-2); font-size: 11.5px; margin-bottom: 4px; }
+.tbox .tq { font-style: italic; margin: 2px 0 4px; }
+.tbox .r { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
+.tbox .r > b:first-child { font-weight: 600; }
+.tbox .p { margin-top: 3px; }
+.tbox .p b { font-weight: 600; }
+.tbox .bx { display: inline-flex; gap: 2.5px; margin-right: 7px; }
+.tbox .bx i { width: 10px; height: 10px; border: 1px solid var(--ink); display: inline-block; }
+.tbox .bx i.m { border-color: var(--mark); box-shadow: inset 0 0 0 1.5px var(--paper), inset 0 0 0 10px color-mix(in srgb, var(--mark) 18%, transparent); }
+.tbox .bx i.v { width: auto; min-width: 12px; height: 12px; font: 600 8px/10px var(--font); text-align: center; padding: 0 2px; }
+.tbox .st { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); border: 1px solid var(--ink); margin-top: 5px; }
+.tbox .st div { text-align: center; border-left: 1px solid var(--ink); padding: 1px 2px 2px; min-width: 0; }
+.tbox .st div:first-child { border-left: 0; }
+.tbox .st small { display: block; font: 600 8.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbox .st span { font: 600 13px var(--display); }
+.tbox table { border-collapse: collapse; width: 100%; margin-top: 4px; font-size: 11.5px; }
+.tbox th { text-align: left; font: 600 8.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--ink); padding: 1px 4px 1px 0; }
+.tbox td { padding: 2px 4px 1px 0; vertical-align: top; border-bottom: .5px solid #c9c9c9; }
+.tbox .tok { display: inline-flex; gap: 2px; vertical-align: -1px; margin-left: 3px; }
+.tbox .tok i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink); display: inline-block; }
+.tbox .ck { list-style: none; margin: 2px 0 0; padding: 0; }
+.tbox .ck li { padding-left: 15px; text-indent: -15px; }
+.tbox .ck li::before { content: '○'; display: inline-block; width: 15px; text-indent: 0; }
+.tbox .wl { display: inline-block; min-width: 54px; border-bottom: 1px solid var(--ink); height: 11px; }
+.tbox .clk { width: 30px; height: 30px; vertical-align: middle; }
+.tbox .more { margin-top: 5px; color: var(--ink-2); font-size: 11px; font-style: italic; }
+.tbox.plain .ts { color: var(--mark); }
+
+/* Gallery of every built-in */
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; align-items: start; }
+.gal h4 { margin: 0 0 6px; font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); display: flex; gap: 6px; }
+.gal h4 span { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 500; }
+.gal .g { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* Editor problems (state 9) */
+.sq { text-decoration: underline wavy var(--amber); text-underline-offset: 3px; }
+.sq.err { text-decoration-color: var(--danger); }
+.probs { margin-top: 14px; font: 13px var(--font); }
+.probs li { margin: 4px 0; }
+.probs .w { color: var(--amber); font-weight: 600; } .probs .e { color: var(--danger); font-weight: 600; }
+.slash { margin: 6px 0 0 22px; width: min(360px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.18); font: 13.5px var(--font); overflow: hidden; }
+.slash div { padding: 6px 12px; display: flex; justify-content: space-between; gap: 10px; }
+.slash div.on { background: var(--hover); }
+.slash small { color: var(--faint); }
+.slash .hd { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-top: 8px; }
+@media (max-width: 760px) { .optp { padding-left: 14px; } }
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup</span>
+  <button data-state="1" class="on">1 · Systems</button>
+  <button data-state="2">2 · Built-in</button>
+  <button data-state="3">3 · Your copy: fields</button>
+  <button data-state="4">4 · Tables</button>
+  <button data-state="5">5 · Sheet kinds</button>
+  <button data-state="6">6 · All 12 in the PDF</button>
+  <button data-state="7">7 · Template picker</button>
+  <button data-state="8">8 · Delete</button>
+  <button data-state="9">9 · In the editor</button>
+  <span class="sep"></span>
+  <button id="mReset">Reset data</button>
+  <button id="mTheme">Light / dark</button>
+  <button id="mNotes">Notes</button>
+</nav>
+
+<div class="app" id="app">
+  <header class="topbar" id="topbar"></header>
+  <nav class="rail" id="rail"></nav>
+  <main class="center" id="center">
+    <section class="view" id="v-settings"><div class="pane">
+      <div class="head"><h1>Settings</h1></div>
+      <div class="set">
+        <nav aria-label="Settings">
+          <button>To-do templates</button><button id="navDocs">Document templates</button><button id="navSys" class="on">Game systems</button><button>Author and licence</button>
+          <button>Account</button><button>Connected apps</button><button>Sync and storage</button><button>Appearance</button>
+        </nav>
+        <section id="setBody"></section>
+      </div>
+    </div></section>
+    <section class="view" id="v-editor"><div class="doc"><div class="ed" id="ed"></div></div></section>
+  </main>
+  <footer class="status" id="status"></footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="mh"><h3 id="dlgTitle"></h3><button class="tb" id="dlgX" aria-label="Close">✕</button></div>
+    <div class="mb" id="dlgBody"></div>
+    <div class="mf" id="dlgFoot"></div>
+  </div>
+</div>
+
+<aside class="anno" id="anno" aria-label="Mockup notes">
+  <h5><span id="annoH">Mockup note</span><button id="annoX" aria-label="Hide notes">✕</button></h5>
+  <ul id="annoL"></ul>
+</aside>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const IC = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  img: '<rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/>',
+  log: '<path d="M4 5h16v11H8l-4 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24">${IC[k]}</svg>`;
+
+/* ---------- The model ----------
+   A system has sheet kinds (picked by the sheet's «Tipo» line) and lookup tables.
+   A kind is a list of fields: the bold key in the sheet, the block that reads and
+   draws it, where it shows in the scene box, and the block's options. */
+const BLOCK = {
+  text: 'Text', number: 'Number', choice: 'Choice from a table', stats: 'Stat row', boxes: 'Boxes',
+  clock: 'Clock', list: 'List', rows: 'Rows', lines: 'Lines to fill in', flag: 'Yes / no',
+};
+const SHOW = { row: 'Row', sub: 'Subtitle', quote: 'Quote', none: 'Full sheet only' };
+const NEED = ['optional', 'recommended', 'required'];
+const F = (key, block, show, o = {}, req = 'optional') => ({ key, block, show, o, req });
+const T = (name, cols, rows) => ({ name, cols, rows });
+
+function builtins() {
+  const kul = { id: 'kulthos', name: 'Kulthos', builtin: true, used: 4, tables: [
+      T('Gradi', ['Grado', 'Ferite', 'Afflizioni'], [['Ordinaria', '3', '1'], ['Straordinaria', '6', '2'], ['Leggendaria', '9', '3']])],
+    kinds: [{ name: 'Minaccia', fields: [
+      F('Grado', 'choice', 'sub', { table: 'Gradi' }, 'required'), F('Natura', 'text', 'none'),
+      F('Branco', 'flag', 'sub', { word: 'branco' }),
+      F('Ferite', 'boxes', 'row', { count: 'table', table: 'Gradi', col: 'Ferite', group: 3 }),
+      F('Afflizioni', 'boxes', 'row', { count: 'table', table: 'Gradi', col: 'Afflizioni' }),
+      F('Volontà', 'text', 'none'), F('Condotta', 'text', 'none'),
+      F('Talenti', 'list', 'row', { style: 'paras' })],
+      sample: { name: 'Tenente Donato, il Primo dei Quieti', v: { Grado: 'Straordinaria', Natura: 'non risvegliata', Branco: 'no',
+        Volontà: 'che tutto sia fermo; chi si muove senza permesso è uno sciacallo.', Condotta: '1. Fermezza · 2. Impeto · 3. Prudenza · 4. Acume',
+        Talenti: 'La Presenza (evoca una Pattuglia di Quieti) · Il Nulla (separa i Dormienti)' } } }] };
+
+  const vile = { id: 'vileborn', name: 'Vileborn', builtin: true, used: 1, tables: [
+      T('Difficoltà', ['Parola', 'Valore'], [['facile', '4'], ['normale', '5'], ['difficile', '6'], ['molto difficile', '7']])],
+    kinds: [{ name: 'Sfida', fields: [
+      F('Specie', 'text', 'sub'), F('Motto', 'text', 'quote'),
+      F('Approcci', 'stats', 'row', { labels: 'Forza · Sotterfugio · Precisione · Ragione · Influenza · Volontà' }, 'required'),
+      F('Resistenze', 'list', 'row', { style: 'line' }), F('Debolezze', 'list', 'row', { style: 'line' }),
+      F('Colpi', 'boxes', 'row', { count: 'written', marks: true }, 'required'),
+      F('Eventi', 'text', 'row'), F('Regole uniche', 'text', 'row'),
+      F('Complicazioni', 'list', 'row', { style: 'check' }),
+      F('Dado dell’oscurità', 'rows', 'row', { cols: 'Soglia · Effetto' })],
+      sample: { name: 'Il Balivo Cavo', v: { Specie: 'Caduto', Motto: '«Il tuo debito è mio.»',
+        Approcci: 'Forza 6 · Sotterfugio 5 · Precisione 6 · Ragione 4 · Influenza 5 · Volontà 7',
+        Resistenze: 'Ferro freddo', Debolezze: 'Olio santo · Senso di colpa', Colpi: '6 (3)',
+        Eventi: 'Al 3° colpo diventa incorporeo: da lì solo Volontà funziona.', 'Regole uniche': 'Se il debito viene pagato, se ne va.',
+        Complicazioni: ['Le catene ti sferzano; segna una ferita.', 'Pronuncia il tuo nome; segna paura.', 'Il registro si apre alla tua pagina; segna vergogna.'],
+        'Dado dell’oscurità': ['7+: sussurri; prova normale (5) di Volontà o segna paura', '10+: tutti segnano una ferita'] } } }] };
+
+  const dnd = { id: 'dnd5e', name: 'D&D 5e', builtin: true, used: 0, tables: [
+      T('Grado di sfida', ['GS', 'PE', 'BC'], [['1/4', '50', '+2'], ['1/2', '100', '+2'], ['1', '200', '+2'], ['2', '450', '+2'], ['3', '700', '+2'], ['5', '1.800', '+3'], ['8', '3.900', '+3'], ['10', '5.900', '+4']])],
+    kinds: [{ name: 'Creatura', fields: [
+      F('Taglia e tipo', 'text', 'sub'), F('CA', 'text', 'row', {}, 'required'),
+      F('PF', 'number', 'row', { line: true }, 'required'), F('Velocità', 'text', 'row'),
+      F('Caratteristiche', 'stats', 'row', { labels: 'FOR · DES · COS · INT · SAG · CAR' }, 'required'),
+      F('Tiri salvezza', 'text', 'none'), F('Abilità', 'text', 'row'), F('Immunità', 'text', 'row'), F('Sensi', 'text', 'none'), F('Linguaggi', 'text', 'none'),
+      F('Sfida', 'choice', 'row', { table: 'Grado di sfida', also: true }),
+      F('Tratti', 'list', 'row', { style: 'paras' }), F('Azioni', 'list', 'row', { style: 'paras' }),
+      F('Azioni leggendarie', 'boxes', 'row', { count: 'written' })],
+      sample: { name: 'Ghoul della cantina', v: { 'Taglia e tipo': 'Non morto Medio, caotico malvagio', CA: '12', PF: '22 (4d8+4)', Velocità: '9 m',
+        Caratteristiche: 'FOR 13 (+1) · DES 15 (+2) · COS 10 (+0) · INT 7 (−2) · SAG 10 (+0) · CAR 6 (−2)', Abilità: 'Furtività +4',
+        Immunità: 'veleno; affascinato, avvelenato', Sensi: 'scurovisione 18 m, Percezione passiva 10', Linguaggi: 'Comune', Sfida: '1',
+        Tratti: 'Fame di tomba (vantaggio contro le creature sotto metà PF)', Azioni: 'Artigli (+4, portata 1,5 m; 7 (2d4+2) taglienti; TS COS CD 10 o paralizzato 1 minuto)' } } }] };
+  const hist = { ...clone(dnd), id: 'historia', name: 'Historia', used: 0, note: 'Same sheet as D&D 5e',
+    kinds: [{ ...clone(dnd.kinds[0]), sample: { name: 'Capitano Ottone Vairo', v: { 'Taglia e tipo': 'Familia del Tasso, Medio, legale neutrale', CA: '16', PF: '52 (8d8+16)', Velocità: '7,5 m',
+      Caratteristiche: 'FOR 16 (+3) · DES 11 (+0) · COS 14 (+2) · INT 12 (+1) · SAG 13 (+1) · CAR 14 (+2)', Sfida: '3',
+      Tratti: 'Veterano di Vesteria (vantaggio ai TS contro la paura)', Azioni: 'Multiattacco (due attacchi di picca) · Picca (+5, portata 3 m; 8 (1d10+3) perforanti)', 'Azioni leggendarie': '' } } }] };
+
+  const nte = { id: 'nte', name: 'Not the End', builtin: true, used: 2, tables: [
+      T('Difficoltà', ['Parola', 'Gettoni'], [['facilissima', '1'], ['facile', '2'], ['media', '3'], ['difficile', '4'], ['difficilissima', '5'], ['quasi impossibile', '6'], ['impossibile', '']]),
+      T('Pericolo', ['Parola', 'Esce con'], [['estremamente pericolosa', '1'], ['molto pericolosa', '2'], ['abbastanza pericolosa', '3'], ['poco pericolosa', '4'], ['per niente pericolosa', '']])],
+    kinds: [{ name: 'Sfida', fields: [
+      F('Descrizione', 'text', 'none'),
+      F('Prove', 'rows', 'row', { cols: 'Azione · Difficoltà (tabella Difficoltà) · Pericolo (tabella Pericolo)' }, 'required'),
+      F('Sventure', 'list', 'row', { style: 'line' }), F('Complicazioni', 'list', 'row', { style: 'line' }),
+      F('Approfondimenti', 'text', 'none'), F('Regole speciali', 'text', 'row')],
+      sample: { name: 'Il portone del Conte', v: { Descrizione: 'Quercia nera, borchie di ferro, un battente a forma di lupo.',
+        Prove: ['Affrontarlo: difficile · poco pericolosa', 'Scassinare la serratura: media', 'Sfondarlo: difficilissima · molto pericolosa'],
+        Sventure: 'Mani ferite · Rumore', Complicazioni: 'Il cane del custode si sveglia · La chiave si spezza dentro' } } }] };
+
+  const out = { id: 'outgunned', name: 'Outgunned', builtin: true, used: 0, tables: [
+      T('Livelli', ['Livello'], [['Base'], ['Critico'], ['Estremo'], ['Impossibile']])],
+    kinds: ['Scagnozzi', 'Cattivo', 'Boss'].map((k, i) => ({ name: k, fields: [
+      F('Grinta', 'boxes', 'row', { count: 'written', marks: true }, 'required'),
+      F('Difesa', 'choice', 'row', { table: 'Livelli' }), F('Attacco', 'text', 'row'),
+      ...(i ? [F('Talenti', 'list', 'row', { style: 'paras' })] : [F('Branco', 'flag', 'sub', { word: 'in gruppo' })])],
+      sample: [
+        { name: 'I picchiatori del magazzino', v: { Grinta: '6', Difesa: 'Base', Attacco: '1 Base', Branco: 'sì' } },
+        { name: 'Lefty Moretti', v: { Grinta: '8 (8)', Difesa: 'Critico', Attacco: '2 Base', Talenti: 'Sparo alla cieca (spende 1 Adrenalina: colpisce tutti a portata)' } },
+        { name: 'Don Varga', v: { Grinta: '10 (8, 10)', Difesa: 'Critico', Attacco: '2 Critico', Talenti: 'Scudo umano (un picchiatore prende il colpo al suo posto) · Ultima parola (a 0 Grinta fa ancora una mossa)' } }][i] })) };
+
+  const blades = { id: 'blades', name: 'Blades in the Dark', builtin: true, used: 0, tables: [
+      T('Presa', ['Presa'], [['debole'], ['forte']])],
+    kinds: [{ name: 'Fazione', fields: [
+      F('Livello', 'text', 'sub', {}, 'required'), F('Presa', 'choice', 'sub', { table: 'Presa' }), F('Natura', 'text', 'sub'),
+      F('Territorio', 'list', 'row', { style: 'line' }), F('Risorse', 'list', 'row', { style: 'line' }),
+      F('Obiettivi', 'clock', 'row', { count: 'written' }), F('Alleati', 'list', 'row', { style: 'line' }), F('Nemici', 'list', 'row', { style: 'line' }),
+      F('Situazione', 'text', 'none')],
+      sample: { name: 'I Lampionai', v: { Livello: 'II', Presa: 'forte', Natura: 'contrabbandieri', Territorio: 'tre moli di Barrowcleft',
+        Risorse: 'luci fantasma · squadre di funi', Obiettivi: ['Prendere il magazzino dei Portuali: 6', 'Comprare un ispettore: 4'], Alleati: 'Vetturini (+1)', Nemici: 'Portuali (−2)' } } },
+      { name: 'PNG', fields: [F('Ruolo', 'text', 'sub'), F('Qualità', 'number', 'row'), F('Tratti', 'list', 'row', { style: 'line' }), F('Vuole', 'text', 'row')],
+        sample: { name: 'Mylera Klev', v: { Ruolo: 'capo dei Lampionai', Qualità: '2', Tratti: 'spietata · paziente · leale ai suoi', Vuole: 'i moli senza pagare pedaggio' } } }] };
+
+  const pbta = { id: 'pbta', name: 'PbtA', builtin: true, used: 0, note: 'Apocalypse World and Monster of the Week kinds; duplicate for Dungeon World and others', tables: [],
+    kinds: [{ name: 'Minaccia', fields: [
+      F('Tipo di minaccia', 'text', 'sub'), F('Impulso', 'text', 'quote'), F('Danno', 'text', 'row'), F('Armatura', 'number', 'row'),
+      F('Ferite', 'clock', 'row', { count: 'fixed', n: 6 }), F('Mosse', 'list', 'row', { style: 'line' })],
+      sample: { name: 'Dremmer', v: { 'Tipo di minaccia': 'Signore della guerra (schiavista)', Impulso: 'possedere l’acqua', Danno: '2 (banda) · 3 (il suo fucile)', Armatura: '1',
+        Mosse: 'manda squadre a prendere gli alambicchi · offre una pace falsa · rompe una promessa' } } },
+      { name: 'Mostro', fields: [
+        F('Specie', 'text', 'sub'), F('Motivazione', 'text', 'quote'), F('Attacchi', 'list', 'row', { style: 'line' }),
+        F('Capacità di danno', 'boxes', 'row', { count: 'written' }), F('Armatura', 'number', 'row'), F('Debolezza', 'text', 'row'), F('Poteri', 'list', 'row', { style: 'line' })],
+        sample: { name: 'Lo Spettro della palude', v: { Specie: 'spettro', Motivazione: 'trascinare i vivi sotto', Attacchi: 'mani che afferrano (2-danno, intimo, ignora-armatura)',
+          'Capacità di danno': '7', Armatura: '0', Debolezza: 'acqua salata; le sue ossa nella buca', Poteri: 'tira sott’acqua · ruba un nome · svanisce nella nebbia' } } }] };
+
+  const fate = { id: 'fate', name: 'Fate', builtin: true, used: 0, tables: [],
+    kinds: [{ name: 'PNG principale', fields: [
+      F('Concetto', 'text', 'sub', {}, 'required'), F('Problema', 'text', 'row'), F('Aspetti', 'list', 'row', { style: 'line' }),
+      F('Abilità', 'list', 'row', { style: 'line' }), F('Stunt', 'list', 'row', { style: 'paras' }),
+      F('Stress fisico', 'boxes', 'row', { count: 'written', values: true }), F('Stress mentale', 'boxes', 'row', { count: 'written', values: true }),
+      F('Conseguenze', 'lines', 'row', { labels: 'Lieve −2 · Moderata −4 · Grave −6' })],
+      sample: { name: 'Capitana Ines Valdor', v: { Concetto: 'Ufficiale di marina caduta in disgrazia, ora contrabbandiera', Problema: 'L’Ammiragliato la rivuole',
+        Aspetti: 'Non lascio indietro nessuno', Abilità: 'Ottimo (+4) Combattere · Buono (+3) Guidare, Volontà · Discreto (+2) Empatia, Notare',
+        Stunt: 'Mano lesta (+2 a Sparare quando estrae per prima)', 'Stress fisico': '3', 'Stress mentale': '2' } } },
+      { name: 'Comparsa', fields: [F('Aspetti', 'list', 'sub', { style: 'line' }), F('Abilità', 'list', 'row', { style: 'line' }), F('Stress', 'boxes', 'row', { count: 'written' })],
+        sample: { name: 'Marinai del molo', v: { Aspetti: 'Tanti e rumorosi', Abilità: 'Discreto (+2) Combattere', Stress: '2' } } }] };
+
+  const coc = { id: 'coc', name: 'Call of Cthulhu', builtin: true, used: 0, tables: [],
+    kinds: [{ name: 'Creatura', fields: [
+      F('Caratteristiche', 'stats', 'row', { labels: 'FOR · COS · TAG · DES · INT · POT' }, 'required'),
+      F('PF', 'boxes', 'row', { count: 'written', group: 5 }, 'required'), F('PM', 'number', 'row'), F('Movimento', 'text', 'row'),
+      F('Bonus al danno', 'text', 'row'), F('Corporatura', 'number', 'row'), F('Attacchi', 'list', 'row', { style: 'paras' }),
+      F('Schivare', 'text', 'row'), F('Armatura', 'text', 'row'), F('Perdita di Sanità', 'text', 'row'), F('Incantesimi', 'list', 'none', { style: 'line' })],
+      sample: { name: 'Servitore dei Profondi', v: { Caratteristiche: 'FOR 80 · COS 70 · TAG 70 · DES 55 · INT 60 · POT 55', PF: '14', PM: '11', Movimento: '8 (nuoto 10)',
+        'Bonus al danno': '+1D4', Corporatura: '1', Attacchi: 'Artigli 45% (22/9) (1D6 + BD) · Morso 30% (15/6) (1D4 + BD)', Schivare: '30% (15/6)', Armatura: '1 (scaglie)', 'Perdita di Sanità': '0/1D6' } } }] };
+
+  const mork = { id: 'mork', name: 'Mörk Borg', builtin: true, used: 0, tables: [],
+    kinds: [{ name: 'Creatura', fields: [
+      F('PF', 'boxes', 'row', { count: 'written', group: 5 }, 'required'), F('Morale', 'number', 'row'), F('Armatura', 'text', 'row'),
+      F('Attacco', 'text', 'row'), F('Speciale', 'text', 'row')],
+      sample: { name: 'Segugio della peste', v: { PF: '9', Morale: '8', Armatura: '−d2', Attacco: 'Morso d6', Speciale: 'Il morso infetta: prova di Robustezza CD 12.' } } }] };
+
+  const cor = { id: 'coriolis', name: 'Coriolis', builtin: true, used: 0, tables: [],
+    kinds: [{ name: 'PNG', fields: [
+      F('Ruolo', 'text', 'sub'), F('Attributi', 'stats', 'row', { labels: 'FOR · AGI · ACU · EMP' }, 'required'),
+      F('Abilità', 'list', 'row', { style: 'line' }), F('PF', 'boxes', 'row', { count: 'written' }), F('PM', 'boxes', 'row', { count: 'written' }),
+      F('Reputazione', 'number', 'none'), F('Armatura', 'number', 'row'),
+      F('Armi', 'rows', 'row', { cols: 'Arma · Danno · Critico · Gittata' }), F('Talenti', 'list', 'row', { style: 'line' })],
+      sample: { name: 'Guardia della stazione', v: { Ruolo: 'sicurezza del Coriolis', Attributi: 'FOR 4 · AGI 3 · ACU 2 · EMP 2', Abilità: 'Combattimento ravvicinato 3 · A distanza 3 · Osservare 2',
+        PF: '7', PM: '4', Armatura: '2', Armi: ['Manganello stordente: 1 · 2 · ravvicinata', 'Pistola vulcan: 2 · 3 · corta'], Talenti: 'Reazione rapida' } } }] };
+
+  return [kul, vile, nte, out, dnd, hist, blades, pbta, fate, coc, mork, cor];
+}
+
+let SYS, draft, saved, kindIx = 0, tab = 'kinds', openOpt = null, state = 1, view = 'settings', back = null;
+function seed() {
+  SYS = builtins();
+  const mine = { ...clone(SYS[0]), id: 'kulcasa', name: 'Kulthos (casa)', builtin: false, from: 'Kulthos', used: 2 };
+  mine.kinds[0].fields.splice(5, 0, F('Allarme', 'clock', 'row', { count: 'fixed', n: 4 }));
+  mine.kinds[0].fields[5].added = true;
+  mine.tables[0].rows.push(['Mitica', '12', '4']);
+  mine.tables[0].rows[3].added = true;
+  SYS.push(mine);
+}
+const sysOf = id => SYS.find(s => s.id === id);
+const kindSample = k => k.sample;
+
+/* ---------- Reading values ---------- */
+const SEP = /\s+·\s+/;
+function tableRow(sys, table, key) {
+  const t = sys.tables.find(x => x.name === table); if (!t) return null;
+  const r = t.rows.find(x => x[0].toLowerCase() === String(key || '').trim().toLowerCase());
+  return r ? Object.fromEntries(t.cols.map((c, i) => [c, r[i]])) : null;
+}
+function count(sys, f, v, vals) {
+  const o = f.o;
+  if (o.count === 'fixed') return { n: +o.n || 0, marks: [] };
+  if (o.count === 'table') {
+    const choice = sys.kinds.flatMap(k => k.fields).find(x => x.block === 'choice' && x.o.table === o.table);
+    const r = choice && tableRow(sys, o.table, vals[choice.key]);
+    return { n: r ? +r[o.col] || 0 : 0, marks: [] };
+  }
+  const m = String(v || '').match(/^\s*(\d+)\s*(?:\(([\d,\s]+)\))?/);
+  return m ? { n: +m[1], marks: (m[2] || '').split(',').map(x => +x).filter(Boolean) } : null;
+}
+const boxes = (n, group, marks = [], values) => {
+  const g = +group || n || 1; let h = '';
+  for (let s = 0; s < n; s += g) {
+    h += '<span class="bx">';
+    for (let i = s; i < Math.min(n, s + g); i++) h += values ? `<i class="v${marks.includes(i + 1) ? ' m' : ''}">${i + 1}</i>` : `<i${marks.includes(i + 1) ? ' class="m"' : ''}></i>`;
+    h += '</span>';
+  }
+  return h;
+};
+function clock(n) {
+  const r = 13, c = 15; let lines = '';
+  for (let i = 0; i < n; i++) { const a = (i / n) * 2 * Math.PI - Math.PI / 2; lines += `<line x1="${c}" y1="${c}" x2="${(c + r * Math.cos(a)).toFixed(2)}" y2="${(c + r * Math.sin(a)).toFixed(2)}" stroke="currentColor" stroke-width=".8"/>`; }
+  return `<svg class="clk" viewBox="0 0 30 30" aria-label="clock of ${n}"><circle cx="${c}" cy="${c}" r="${r}" fill="var(--paper)" stroke="currentColor" stroke-width="1.2"/>${lines}</svg>`;
+}
+const tokens = n => n ? `<span class="tok" title="${n}">${'<i></i>'.repeat(+n)}</span>` : '';
+const asList = v => Array.isArray(v) ? v : String(v || '').split(SEP).filter(Boolean);
+const split1 = s => { const m = s.match(/^(.*?)\s*\((.*)\)\s*$/); return m ? [m[1], m[2]] : [s, '']; };
+
+function cell(sys, f, v, vals) {
+  const k = `<b>${esc(f.key)}</b>`;
+  switch (f.block) {
+    case 'text': return `<div class="r">${k}<span>${esc(v)}</span></div>`;
+    case 'number': return f.o.line ? `<div class="r">${k}<span class="wl"></span><span>/ ${esc(v)}</span></div>` : `<div class="r">${k}<span>${esc(v)}</span></div>`;
+    case 'choice': {
+      const r = f.o.also && tableRow(sys, f.o.table, v);
+      const more = r ? ' (' + Object.entries(r).slice(1).map(([c, x]) => `${c} ${x}`).join(' · ') + ')' : '';
+      return `<div class="r">${k}<span>${esc(v)}${esc(more)}</span></div>`;
+    }
+    case 'stats': {
+      const labels = String(f.o.labels || '').split(SEP).filter(Boolean);
+      const got = Object.fromEntries(asList(v).map(x => { const m = x.match(/^(\S+(?:\s\S+)*?)\s+(\S.*)$/); return m ? [m[1], m[2]] : [x, '']; }));
+      const ls = labels.length ? labels : Object.keys(got);
+      return `<div class="st" style="--n:${ls.length}">${ls.map(l => `<div><small>${esc(l)}</small><span>${esc(got[l] ?? '–')}</span></div>`).join('')}</div>`;
+    }
+    case 'boxes': {
+      const c = count(sys, f, v, vals);
+      if (!c) return `<div class="r">${k}<span>${esc(v)}</span></div>`;
+      return `<div class="r">${k}${boxes(c.n, f.o.group, c.marks, f.o.values)}</div>`;
+    }
+    case 'clock': {
+      if (f.o.count === 'fixed') return `<div class="r">${k}${clock(+f.o.n)}</div>`;
+      return asList(v).map(x => { const m = x.match(/^(.*?):\s*(\d+)\s*$/) || ['', '', x]; return `<div class="r">${clock(+m[2] || 4)}<span>${esc(m[1] || f.key)}</span></div>`; }).join('');
+    }
+    case 'list': {
+      const items = asList(v);
+      if (f.o.style === 'check') return `<div class="p">${k}<ul class="ck">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+      if (f.o.style === 'paras') return items.map(x => { const [n, t] = split1(x); return `<div class="p"><b>${esc(n)}</b>${t ? ': ' + esc(t) : ''}</div>`; }).join('');
+      return `<div class="p">${k}: ${items.map(esc).join(' · ')}</div>`;
+    }
+    case 'rows': {
+      const cols = String(f.o.cols || '').split(SEP).map(c => { const m = c.match(/^(.*?)\s*\(tabella (.*)\)$/); return m ? { n: m[1], t: m[2] } : { n: c }; });
+      const rows = asList(v).map(x => { const m = x.match(/^(.*?):\s*(.*)$/); return m ? [m[1], ...m[2].split(SEP)] : [x]; });
+      const td = (c, x) => { if (!c || !c.t || !x) return esc(x || ''); const r = tableRow(sys, c.t, x); const n = r && Object.values(r)[1]; return esc(x) + tokens(n); };
+      return `<div class="p">${k}<table><thead><tr>${cols.map(c => `<th>${esc(c.n)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map((c, i) => `<td>${td(c, r[i])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+    case 'lines': return `<div class="p">${k}${String(f.o.labels || '').split(SEP).map(l => `<div class="r"><span>${esc(l)}</span><span class="wl" style="flex:1"></span></div>`).join('')}</div>`;
+    default: return '';
+  }
+}
+function threatBox(sys, kind, sample, page = 14) {
+  if (!sample) return '';
+  const vals = sample.v, has = f => vals[f.key] !== undefined && vals[f.key] !== '' || (f.block === 'boxes' && f.o.count !== 'written') || (f.block === 'clock' && f.o.count === 'fixed') || f.block === 'lines';
+  const sub = [kind.name, ...kind.fields.filter(f => f.show === 'sub' && has(f)).map(f => f.block === 'flag' ? (/^s[iì]/i.test(vals[f.key]) ? f.o.word : null) : asList(vals[f.key]).join(', '))].filter(Boolean).join(' · ');
+  const quote = kind.fields.filter(f => f.show === 'quote' && has(f)).map(f => `<div class="tq">${esc(vals[f.key])}</div>`).join('');
+  const rows = kind.fields.filter(f => f.show === 'row' && has(f)).map(f => cell(sys, f, vals[f.key], vals)).join('');
+  return `<div class="tbox"><div class="tn">${esc(sample.name)}</div><div class="ts">${esc(sub)}</div>${quote}${rows}<div class="more">scheda completa, p. ${page}</div></div>`;
+}
+function sheetMd(kind, sample) {
+  const out = [`### ${sample.name}`, '', `- **Tipo:** ${kind.name}`];
+  for (const f of kind.fields) {
+    const v = sample.v[f.key]; if (v === undefined || v === '') continue;
+    if (Array.isArray(v)) { out.push(`- **${f.key}:**`); v.forEach(x => out.push(`  - ${x}`)); } else out.push(`- **${f.key}:** ${v}`);
+  }
+  return out.map(l => esc(l).replace(/\*\*(.*?)\*\*/g, '<b>**$1**</b>')).join('\n');
+}
+
+/* ---------- Chrome ---------- */
+function renderChrome() {
+  const ed = view === 'editor';
+  $('#v-settings').classList.toggle('on', !ed);
+  $('#v-editor').classList.toggle('on', ed);
+  $('#rail').innerHTML = `
+    <button title="Projects">${svg('grid')}</button>
+    <button${ed ? ' class="on"' : ''} title="Document">${svg('doc')}</button>
+    <button title="Inspiration">${svg('bulb')}</button><button title="Research">${svg('search')}</button>
+    <button title="Images and music">${svg('img')}</button><button title="Brainstorm log">${svg('log')}</button>
+    <button class="bottom last${ed ? '' : ' on'}" title="Settings and templates">${svg('gear')}</button>`;
+  if (!ed) {
+    $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div><div class="crumbs"><b>Settings</b></div>
+      <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span><span class="kbd hide-narrow">⌘K</span><span class="avatar" title="Signed in as Stefano">S</span>`;
+    $('#status').innerHTML = '';
+    return;
+  }
+  $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span class="hide-narrow">Projects ›</span> <b>Lex Umbræ al Molo</b></div>
+    <div class="top-meta"><span class="cat hide-narrow">One-shot</span></div>
+    <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb primary hide-narrow" title="PDF preview"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+    <span class="kbd hide-narrow">⌘K</span>`;
+  $('#status').innerHTML = `<span>3 scenes · 0 errors, 3 warnings</span><span class="r">Avventura v1 · Vileborn · Saved on the server</span>`;
+}
+
+/* ---------- 1 · List ---------- */
+function renderList() {
+  $('.pane').classList.remove('wide');
+  const row = s => `<div class="trow">
+      <div class="tn"><b>${esc(s.name)}</b>${s.builtin ? '<span class="chip">Built-in</span>' : ''}</div>
+      <div class="tm">${s.builtin ? 'Comes with Promptbook' : `Copied from ${esc(s.from)}`} · ${s.kinds.map(k => esc(k.name)).join(', ')}${s.note ? ' · ' + esc(s.note) : ''} · ${s.used ? `${s.used} project${s.used > 1 ? 's' : ''}` : 'no projects'}</div>
+      <div class="acts">
+        <button class="tb line" data-dup="${s.id}">Duplicate</button>
+        <button class="tb line" data-open="${s.id}">${s.builtin ? 'View' : 'Edit'}</button>
+        ${s.builtin ? '' : `<button class="tb del" data-del="${s.id}" title="Delete this system">Delete</button>`}
+      </div></div>`;
+  $('#setBody').innerHTML = `<h2>Game systems</h2>
+    <p class="lead">A game system says how a sheet under «Schede» reads and what its box in a scene draws: boxes, clocks, stat rows, lists. A project picks its system with <code>sistema:</code> in the front matter. To change a built-in, duplicate it.</p>
+    <div class="tgroup"><h3>Yours</h3>${SYS.filter(s => !s.builtin).map(row).join('') || '<p class="sub">None yet.</p>'}</div>
+    <div class="tgroup"><h3>Built-in</h3>${SYS.filter(s => s.builtin).map(row).join('')}</div>
+    <p class="sub">Editing a system changes every project that uses it, at once. A sheet that no longer fits gets a warning; nothing is rewritten.</p>`;
+  $$('[data-open]').forEach(b => b.onclick = () => { openSys(b.dataset.open); renderEditor(); });
+  $$('[data-dup]').forEach(b => b.onclick = () => {
+    const src = sysOf(b.dataset.dup);
+    const copy = { ...clone(src), id: 'c' + Date.now(), name: `${src.name} (copia)`, builtin: false, from: src.name, used: 0, note: '' };
+    SYS.push(copy); openSys(copy.id); renderEditor();
+  });
+  $$('[data-del]').forEach(b => b.onclick = () => openDelete(b.dataset.del));
+}
+
+/* ---------- 2-5 · The system editor ---------- */
+function openSys(id) { draft = clone(sysOf(id)); saved = clone(draft); kindIx = 0; tab = 'kinds'; openOpt = null; }
+const sel = (val, opts, attrs) => `<select ${attrs}>${opts.map(([v, l]) => `<option value="${esc(v)}"${v === val ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+function optText(f) {
+  const o = f.o;
+  switch (f.block) {
+    case 'choice': return `from «${o.table || '?'}»${o.also ? ', shows the other columns' : ''}`;
+    case 'stats': return o.labels || 'labels as written';
+    case 'boxes': return (o.count === 'table' ? `count from «${o.table}» · ${o.col}` : o.count === 'fixed' ? `${o.n} boxes` : 'count as written') + (o.group ? `, groups of ${o.group}` : '') + (o.marks ? ', marked boxes' : '') + (o.values ? ', numbered' : '');
+    case 'clock': return o.count === 'fixed' ? `${o.n} segments` : 'one clock per line, «Text: 6»';
+    case 'list': return { line: 'one line, · between items', paras: 'a paragraph per item, «Name (text)»', check: 'a tick box per item' }[o.style || 'line'];
+    case 'rows': return o.cols || '';
+    case 'lines': return o.labels || '';
+    case 'number': return o.line ? 'write-in line ___ / value' : 'as written';
+    case 'flag': return `«sì» adds «${o.word || ''}»`;
+    default: return 'as written';
+  }
+}
+function optPanel(f, ro) {
+  const d = ro ? 'disabled' : '', o = f.o, tables = draft.tables.map(t => [t.name, t.name]);
+  const inp = (k, label, val, hint = '') => `<div class="field"><label>${label}</label><input data-o="${k}" value="${esc(val ?? '')}" ${d}>${hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
+  const pick = (k, label, val, opts) => `<div class="field"><label>${label}</label>${sel(val, opts, `data-o="${k}" ${d}`)}</div>`;
+  const chk = (k, label) => `<label class="chk"><input type="checkbox" data-o="${k}" ${o[k] ? 'checked' : ''} ${d}> <span>${label}</span></label>`;
+  let h = '', say = '';
+  switch (f.block) {
+    case 'boxes': {
+      const cols = (draft.tables.find(t => t.name === o.table)?.cols || []).slice(1).map(c => [c, c]);
+      h = pick('count', 'How many boxes', o.count || 'written', [['written', 'Written in the sheet'], ['table', 'From a table'], ['fixed', 'Always the same']]) +
+        (o.count === 'table' ? pick('table', 'Table', o.table, tables) + pick('col', 'Column', o.col, cols) : o.count === 'fixed' ? inp('n', 'Boxes', o.n) : '') +
+        inp('group', 'In groups of', o.group, 'Kulthos: counters of 3') + `<div class="field">${chk('marks', 'Marked boxes, written in brackets')}${chk('values', 'Number the boxes')}</div>`;
+      say = o.count === 'table' ? `The sheet's «${draft.kinds[kindIx].fields.find(x => x.block === 'choice')?.key || 'choice'}» picks the row; checks warn if «${f.key}» is written and disagrees.` : 'In the sheet: <code>- **' + esc(f.key) + ':** 6</code>' + (o.marks ? ', or <code>6 (3)</code> to mark the 3rd box (Vileborn events, Outgunned Hot Boxes).' : '.');
+      break;
+    }
+    case 'clock': h = pick('count', 'Segments', o.count || 'written', [['written', 'Written per clock'], ['fixed', 'Always the same']]) + (o.count === 'fixed' ? inp('n', 'Segments', o.n) : '');
+      say = o.count === 'fixed' ? 'Drawn empty, to fill in at the table.' : 'One clock per line: <code>- Prendere il magazzino: 6</code> under the key.'; break;
+    case 'choice': h = pick('table', 'Table', o.table, tables) + `<div class="field">${chk('also', 'Show the row\'s other columns')}</div>`; say = 'The value must be a row of the table; other blocks can take numbers from that row.'; break;
+    case 'stats': h = inp('labels', 'Labels, in order', o.labels, 'Separated by ·'); say = 'In the sheet: <code>FOR 13 (+1) · DES 15 (+2) …</code> Each cell prints what you wrote.'; break;
+    case 'list': h = pick('style', 'Drawn as', o.style || 'line', [['line', 'One line'], ['paras', 'A paragraph per item'], ['check', 'A tick box per item']]); say = 'Items separated by <code> · </code>, or one per sub-bullet.'; break;
+    case 'rows': h = inp('cols', 'Columns', o.cols, 'Separated by ·; «(tabella X)» turns a word into its number'); say = 'One row per sub-bullet: <code>- Affrontarlo: difficile · poco pericolosa</code>'; break;
+    case 'lines': h = inp('labels', 'Lines', o.labels, 'Separated by ·'); say = 'Empty lines to write on at the table; nothing to write in the sheet.'; break;
+    case 'number': h = `<div class="field">${chk('line', 'Draw a write-in line before it (PF ___ / 22)')}</div>`; break;
+    case 'flag': h = inp('word', 'Word added to the subtitle', o.word); break;
+    default: say = 'Printed as written.';
+  }
+  return `<div class="optp" data-for="${f.key}">${h}${say ? `<p class="say">${say}</p>` : ''}</div>`;
+}
+function renderEditor() {
+  $('.pane').classList.add('wide');
+  const ro = draft.builtin, d = ro ? 'disabled' : '';
+  const kind = draft.kinds[kindIx];
+  const nChanges = JSON.stringify(draft) === JSON.stringify(saved) ? 0 : 1;
+  const tabsH = `<div class="tabs"><button data-tab="kinds" class="${tab === 'kinds' ? 'on' : ''}">Sheet kinds<span class="n">${draft.kinds.length}</span></button><button data-tab="tables" class="${tab === 'tables' ? 'on' : ''}">Tables<span class="n">${draft.tables.length}</span></button></div>`;
+  let body;
+  if (tab === 'kinds') {
+    const rows = kind.fields.map((f, i) => `<div class="rr g-gf${f.added ? ' added' : ''}" data-i="${i}">
+        <div class="mv"><button data-up="${i}" ${d || (i ? '' : 'disabled')} aria-label="Move up">▲</button><button data-dn="${i}" ${d || (i < kind.fields.length - 1 ? '' : 'disabled')} aria-label="Move down">▼</button></div>
+        <input data-k="key" value="${esc(f.key)}" ${d} aria-label="Key">
+        ${sel(f.block, Object.entries(BLOCK), `data-k="block" ${d} aria-label="Block"`)}
+        <button class="opt${openOpt === i ? ' on' : ''}" data-opt="${i}" title="${esc(optText(f))}">${esc(optText(f))}</button>
+        ${sel(f.show, Object.entries(SHOW), `data-k="show" ${d} aria-label="In the scene box"`)}
+        ${sel(f.req, NEED.map(x => [x, x]), `data-k="req" ${d} aria-label="Needed"`)}
+        <button class="del" data-rm="${i}" ${d} aria-label="Remove field">✕</button>
+      </div>${openOpt === i ? optPanel(f, ro) : ''}`).join('');
+    body = `<div class="te-body"><div>
+      <div class="kinds">${draft.kinds.map((k, i) => `<button class="kind${i === kindIx ? ' on' : ''}" data-kind="${i}">${esc(k.name)}</button>`).join('')}${ro ? '' : '<button class="tb" id="addKind">+ Kind</button>'}</div>
+      <div class="kindbar"><div class="field"><label for="kName">«Tipo» value</label><input id="kName" value="${esc(kind.name)}" ${d}></div>
+        <span class="sub" style="margin:0 0 6px">A sheet with <code>- **Tipo:** ${esc(kind.name)}</code> is read with these fields.</span></div>
+      <div class="rows"><div class="rh g-gf"><span></span><span>Key in the sheet</span><span>Block</span><span>Options</span><span>In the scene box</span><span>Needed</span><span></span></div>${rows}
+        ${ro ? '' : '<div class="add"><input id="newKey" placeholder="New key, e.g. Paura"><button class="tb line" id="addField">Add field</button></div>'}</div>
+      <p class="sub">The full sheet under «Schede» prints every field, boxes and clocks included. «Tipo» and the sheet's name are always there.</p>
+    </div>
+    <aside class="pv"><div class="ph">Example: scene box in the PDF<span class="chip">${esc(kind.name)}</span></div>
+      <pre class="md">${sheetMd(kind, kind.sample)}</pre>
+      <div class="pb paper">${threatBox(draft, kind, kind.sample)}</div></aside></div>`;
+  } else {
+    body = draft.tables.map((t, ti) => `<div class="field" style="margin-bottom:6px"><label>Table</label><input value="${esc(t.name)}" ${d} style="max-width:260px"></div>
+      <div class="rows" style="margin-bottom:16px;--cols:${t.cols.length}">
+        <div class="rh g-tb">${t.cols.map(c => `<span>${esc(c)}</span>`).join('')}<span></span></div>
+        ${t.rows.map((r, ri) => `<div class="rr g-tb${r.added ? ' added' : ''}">${t.cols.map((c, ci) => `<input value="${esc(r[ci])}" ${d} aria-label="${esc(c)}">`).join('')}<button class="del" ${d} aria-label="Remove row">✕</button></div>`).join('')}
+        ${ro ? '' : `<div class="add"><button class="tb line" data-addrow="${ti}">Add row</button><button class="tb" >Add column</button></div>`}
+      </div>`).join('') + (draft.tables.length ? '' : '<p class="sub">No tables: every count is written in the sheet.</p>') +
+      (ro ? '' : '<button class="tb line" id="addTable">New table</button>') +
+      '<p class="sub">The first column is what the sheet writes (a grade, a word); the other columns are numbers that boxes, clocks and rows can use. Kulthos: «Grado: Straordinaria» gives 6 wounds in counters of 3 and 2 afflictions.</p>';
+  }
+  $('#setBody').innerHTML = `
+    <div class="te-head"><button class="tb back" id="back">‹ Game systems</button><h2>${esc(draft.name)}</h2>${ro ? '<span class="chip">Built-in</span>' : ''}<span class="chip">${draft.used ? draft.used + ' projects' : 'no projects'}</span></div>
+    ${ro ? `<div class="banner"><span>Built-in systems can't be changed. <b>Duplicate</b> it to make your own.</span><button class="tb primary" id="dupB">Duplicate</button></div>` : ''}
+    <div class="te-gen"><div class="field"><label for="sName">Name</label><input id="sName" value="${esc(draft.name)}" ${d}><span class="hint">What <code>sistema:</code> writes; any case.</span></div>
+      <div class="field"><label>Based on</label><input value="${esc(draft.from || '—')}" disabled></div></div>
+    ${tabsH}${body}
+    ${!ro && nChanges ? `<div class="savebar"><span class="msg"><b>Unsaved changes.</b> Saving changes ${draft.used} project${draft.used === 1 ? '' : 's'} at once.</span><button class="tb line" id="disc">Discard</button><button class="tb primary" id="save">Save</button></div>` : ''}`;
+  wireEditor();
+}
+function wireEditor() {
+  $('#back').onclick = () => { draft = saved = null; renderList(); };
+  if ($('#dupB')) $('#dupB').onclick = () => { const copy = { ...clone(draft), id: 'c' + Date.now(), name: `${draft.name} (copia)`, builtin: false, from: draft.name, used: 0 }; SYS.push(copy); openSys(copy.id); renderEditor(); };
+  $$('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderEditor(); });
+  $$('[data-kind]').forEach(b => b.onclick = () => { kindIx = +b.dataset.kind; openOpt = null; renderEditor(); });
+  const kind = draft.kinds[kindIx];
+  $$('.rr[data-i]').forEach(r => {
+    const f = kind.fields[+r.dataset.i];
+    r.querySelectorAll('[data-k]').forEach(el => el.onchange = () => {
+      const k = el.dataset.k, old = f[k]; f[k] = el.value;
+      if (k === 'key' && kind.sample) { kind.sample.v[el.value] = kind.sample.v[old]; }
+      if (k === 'block') { f.o = { boxes: { count: 'written' }, list: { style: 'line' }, clock: { count: 'fixed', n: 4 }, choice: { table: draft.tables[0]?.name }, flag: { word: f.key.toLowerCase() } }[el.value] || {}; openOpt = +r.dataset.i; }
+      renderEditor();
+    });
+  });
+  $$('[data-opt]').forEach(b => b.onclick = () => { openOpt = openOpt === +b.dataset.opt ? null : +b.dataset.opt; renderEditor(); });
+  $$('.optp [data-o]').forEach(el => el.onchange = () => {
+    const f = kind.fields[openOpt]; f.o[el.dataset.o] = el.type === 'checkbox' ? el.checked : el.value;
+    if (el.dataset.o === 'table' && f.block === 'boxes') f.o.col = (draft.tables.find(t => t.name === el.value)?.cols || [])[1];
+    renderEditor();
+  });
+  $$('[data-up]').forEach(b => b.onclick = () => { const i = +b.dataset.up; [kind.fields[i - 1], kind.fields[i]] = [kind.fields[i], kind.fields[i - 1]]; openOpt = null; renderEditor(); });
+  $$('[data-dn]').forEach(b => b.onclick = () => { const i = +b.dataset.dn; [kind.fields[i + 1], kind.fields[i]] = [kind.fields[i], kind.fields[i + 1]]; openOpt = null; renderEditor(); });
+  $$('[data-rm]').forEach(b => b.onclick = () => { kind.fields.splice(+b.dataset.rm, 1); openOpt = null; renderEditor(); });
+  if ($('#addField')) $('#addField').onclick = () => { const k = $('#newKey').value.trim(); if (!k) return; kind.fields.push({ ...F(k, 'text', 'row'), added: true }); kind.sample.v[k] = '…'; openOpt = kind.fields.length - 1; renderEditor(); };
+  if ($('#addKind')) $('#addKind').onclick = () => { draft.kinds.push({ name: 'Nuovo tipo', fields: [F('Descrizione', 'text', 'row')], sample: { name: 'Esempio', v: { Descrizione: '…' } } }); kindIx = draft.kinds.length - 1; renderEditor(); };
+  if ($('#kName')) $('#kName').onchange = e => { kind.name = e.target.value; renderEditor(); };
+  if ($('#sName')) $('#sName').onchange = e => { draft.name = e.target.value; renderEditor(); };
+  $$('[data-addrow]').forEach(b => b.onclick = () => { const t = draft.tables[+b.dataset.addrow]; const r = t.cols.map(() => ''); r.added = true; t.rows.push(r); renderEditor(); });
+  if ($('#addTable')) $('#addTable').onclick = () => { draft.tables.push(T('Nuova tabella', ['Parola', 'Valore'], [['', '']])); renderEditor(); };
+  if ($('#disc')) $('#disc').onclick = () => { draft = clone(saved); renderEditor(); };
+  if ($('#save')) $('#save').onclick = () => { const i = SYS.findIndex(s => s.id === draft.id); SYS[i] = clone(draft); saved = clone(draft); renderEditor(); };
+}
+
+/* ---------- 6 · Gallery ---------- */
+function renderGallery() {
+  $('.pane').classList.add('wide');
+  const all = SYS.filter(s => s.builtin);
+  $('#setBody').innerHTML = `<h2>Every built-in, as the PDF draws it</h2>
+    <p class="lead">One made-up sheet per kind, drawn by the same rules as the scene box. Mockup page only; in the app each system shows its own example in its editor.</p>
+    <div class="gal">${all.map(s => s.kinds.map(k => `<div class="g"><h4>${esc(s.name)} <span>· ${esc(k.name)}</span></h4>${threatBox(s, k, k.sample)}</div>`).join('')).join('')}</div>`;
+}
+
+/* ---------- 7 · Template picker ---------- */
+function renderPicker() {
+  $('.pane').classList.add('wide');
+  $$('.set nav button').forEach(b => b.classList.remove('on')); $('#navDocs').classList.add('on');
+  const opts = [['', 'None'], ...SYS.filter(s => !s.builtin).map(s => [s.name, s.name + ' (yours)']), ...SYS.filter(s => s.builtin).map(s => [s.name, s.name])];
+  $('#setBody').innerHTML = `<div class="te-head"><button class="tb back">‹ Document templates</button><h2>Avventura Kulthos</h2><span class="chip ver">v2</span></div>
+    <div class="te-gen"><div class="field"><label>Name</label><input value="Avventura Kulthos"></div><div class="field"><label>Category</label><select><option>Adventures and one-shots</option></select></div>
+      <div class="field"><label for="tSys">Game system</label><select id="tSys"><optgroup label="Yours">${opts.slice(1, 1 + SYS.filter(s => !s.builtin).length).map(([v, l]) => `<option${v === 'Kulthos (casa)' ? ' selected' : ''}>${esc(l)}</option>`).join('')}</optgroup>
+        <optgroup label="Built-in">${SYS.filter(s => s.builtin).map(s => `<option>${esc(s.name)}</option>`).join('')}</optgroup><option>None</option></select>
+        <span class="hint">New projects get it in <code>sistema:</code>. Sheet kinds and their boxes come from Settings → Game systems.</span></div></div>
+    <div class="banner" style="margin-top:12px"><span>The template no longer lists the threat keys (Grado, Ferite, Afflizioni, Branco, Talenti) under «Schede»: they moved to the Kulthos system. «Schede» keeps only <b>Tipo</b> and <b>Pregenerati</b>.</span></div>`;
+}
+
+/* ---------- 8 · Delete ---------- */
+let backFocus = null;
+function dialog(title, body, foot) {
+  backFocus = document.activeElement;
+  $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = body; $('#dlgFoot').innerHTML = foot;
+  $('#scrim').hidden = false; ($('#dlgFoot .primary') || $('#dlgX')).focus();
+}
+function closeDialog() { $('#scrim').hidden = true; if (backFocus && document.contains(backFocus)) backFocus.focus(); }
+$('#dlgX').onclick = closeDialog;
+$('#scrim').onclick = e => { if (e.target.id === 'scrim') closeDialog(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#scrim').hidden) closeDialog(); });
+function openDelete(id) {
+  const s = sysOf(id);
+  dialog(`Delete ${s.name}?`,
+    `<p>${s.used ? `<b>${s.used} projects</b> and <b>1 template</b> name it in <code>sistema:</code>.` : 'No project or template uses it.'}</p>
+     ${s.used ? `<p>Their text stays as it is. Until they name another system, their sheets print as plain «Key: value» lines with no boxes, and the checks show a warning: «Kulthos (casa)» isn't one of your game systems.</p>` : ''}
+     <p>This can't be undone; duplicate it first if you might want it back.</p>`,
+    `<button class="tb line" id="dCancel">Cancel</button><button class="tb primary" id="dDel" style="background:var(--danger)">Delete</button>`);
+  $('#dCancel').onclick = closeDialog;
+  $('#dDel').onclick = () => { SYS = SYS.filter(x => x.id !== id); closeDialog(); renderList(); };
+}
+
+/* ---------- 9 · Editor ---------- */
+function renderDoc() {
+  $('#ed').innerHTML = `<div class="l fm fence">---</div>
+    <div class="l fm"><span class="k">titolo:</span> Lex Umbræ al Molo</div><div class="l fm"><span class="k">sistema:</span> Vileborn</div><div class="l fm fence">---</div>
+    <div class="l h2"><span class="mk">## </span>Schede</div>
+    <div class="l h3"><span class="mk">### </span>Il Balivo Cavo</div>
+    <div class="l li">- <span class="fl">Tipo:</span> Sfida</div>
+    <div class="l li">- <span class="fl">Approcci:</span> Forza 6 · Sotterfugio 5 · Precisione 6 · Ragione 4 · <span class="sq">Influnza 5</span> · Volontà 7</div>
+    <div class="l li">- <span class="fl">Colpi:</span> <span class="sq">sei</span></div>
+    <div class="l li">- <span class="fl">Complicazioni:</span></div>
+    <div class="l li" style="padding-left:44px">- Le catene ti sferzano; segna una ferita.</div>
+    <div class="l h3"><span class="mk">### </span>La Vedova del faro</div>
+    <div class="l li">- <span class="fl">Tipo:</span> <span class="sq">Sfide</span></div>
+    <div class="l li">/scheda</div>
+    <div class="slash"><div class="hd">Insert a sheet · Vileborn</div><div class="on"><span>Sfida</span><small>Specie, Motto, Approcci, Colpi…</small></div><div><span>Empty sheet</span><small>### Nome, Tipo</small></div></div>
+    <ul class="probs">
+      <li><span class="w">Warning</span> · Il Balivo Cavo · Approcci: «Influnza» isn't one of Forza, Sotterfugio, Precisione, Ragione, Influenza, Volontà.</li>
+      <li><span class="w">Warning</span> · Il Balivo Cavo · Colpi: write a number of boxes, like <code>6</code>, or <code>6 (3)</code> to mark the 3rd. The box prints the text instead.</li>
+      <li><span class="w">Warning</span> · La Vedova del faro · Tipo: «Sfide» isn't a sheet kind of Vileborn (Sfida). The sheet prints as plain text.</li>
+    </ul>`;
+}
+
+/* ---------- States and notes ---------- */
+const NOTES = {
+  1: ['Game systems', [
+    'Settings → <b>Game systems</b>, beside Document templates. Built-ins (all 12 systems you run) are read-only; <b>Duplicate</b> makes one you can edit.',
+    'The row says the sheet kinds and how many projects name it in <code>sistema:</code>.',
+    '<b>No versions</b>: saving a system changes every project that uses it. A sheet that no longer fits gets a warning; the text is never rewritten.',
+    'Built-ins describe structure only (keys, boxes, tables), no rules text. Key names are Italian, to match your adventures: check them against your books.']],
+  2: ['A built-in: Vileborn', [
+    'Read-only, with a <b>Duplicate</b> banner, like built-in templates.',
+    'One row per bold key of the sheet: the <b>block</b> says how it is read and drawn, <b>Options</b> opens its settings, <b>In the scene box</b> places it (row, subtitle, quote, or full sheet only).',
+    'Right: a made-up sheet in Markdown and the box the PDF draws from it. «Colpi: 6 (3)» draws six boxes with the 3rd marked (the event); complications get tick circles; the darkness die is a two-column table.',
+    'Click any Options cell to see its settings (read-only here).']],
+  3: ['Your copy: fields', [
+    '«Kulthos (casa)» is a copy with one demo edit: a new field <b>Allarme</b> (green bar), a clock of 4 drawn empty in the box.',
+    '<b>Ferite</b> has its options open: count from the «Gradi» table, column Ferite, in groups of 3. That is today\'s Kulthos box, now described as data.',
+    'Change a block, a placement, the order, add a field: the box on the right follows.',
+    'The save bar says how many projects change when you save.']],
+  4: ['Tables', [
+    'Lookup tables: the first column is what the sheet writes, the others are numbers.',
+    'Kulthos (casa) adds a grade «Mitica» (12 wounds, 4 afflictions). Not the End uses two tables to turn «difficile» into 4 black tokens and «poco pericolosa» into «leaves on 4».',
+    'No formulas: derived numbers (modifiers, half/fifth) are written in the sheet as in the books. Tables only give counts and labels.']],
+  5: ['Several sheet kinds', [
+    'Outgunned has three kinds: Scagnozzi, Cattivo, Boss. The sheet\'s <code>Tipo</code> line picks the kind.',
+    'Scagnozzi: 6 Grinta boxes and «in gruppo» in the subtitle. Boss «Grinta: 10 (8, 10)» marks two Hot Boxes.',
+    'Blades has Fazione (with clocks per goal) and PNG; Fate has PNG principale and Comparsa; PbtA has Minaccia (harm clock of 6) and Mostro.']],
+  6: ['All 12 in the PDF', [
+    'Every built-in kind with a made-up sheet, drawn with the box rules. Check that each looks like what you need at the table.',
+    'Historia uses the same sheet as D&D 5e (you said: plain 5e blocks).',
+    'PbtA ships two kinds (Apocalypse World, Monster of the Week); Dungeon World and the rest are a duplicate away.',
+    'Outgunned and Vileborn counts are written per sheet (you didn\'t know fixed numbers; the quickstart has 5 and 6).']],
+  7: ['Template picker', [
+    'The template editor\'s «Game system» lists yours first, then the built-ins. It sets <code>sistema:</code> for new projects, as today.',
+    'The threat keys leave the template: they belong to the system. «Schede» keeps Tipo and Pregenerati.',
+    'Existing projects keep working: the built-in Kulthos reads exactly today\'s keys, and the Sabaoth PDF stays byte-identical.']],
+  8: ['Delete a system', [
+    'Only your own systems; built-ins can\'t be deleted.',
+    'Allowed even when in use (checks never block). Projects that name it get a warning and their sheets print as plain text until they name another.',
+    'The same happens when <code>sistema:</code> names a system you don\'t have, e.g. a typo.']],
+  9: ['In the editor', [
+    'Warnings, never errors: a stat label not in the system, a box count that isn\'t a number, a <code>Tipo</code> that isn\'t a kind of the system.',
+    'The <b>/</b> menu gets «Insert a sheet»: one entry per kind of the project\'s system, which writes the sheet\'s keys in order.',
+    'The full sheet under «Schede» prints every field, boxes and clocks included.']],
+};
+const anno = n => { const [h, l] = NOTES[n]; $('#annoH').textContent = `Mockup note · ${h}`; $('#annoL').innerHTML = l.map(x => `<li>${x}</li>`).join(''); };
+function setState(n) {
+  closeDialog();
+  state = n;
+  $$('.mock [data-state]').forEach(b => b.classList.toggle('on', +b.dataset.state === n));
+  anno(n);
+  view = n === 9 ? 'editor' : 'settings';
+  renderChrome();
+  $$('.set nav button').forEach(b => b.classList.remove('on')); $('#navSys').classList.add('on');
+  if (n === 1) return renderList();
+  if (n === 2) { openSys('vileborn'); return renderEditor(); }
+  if (n === 3) { openSys('kulcasa'); saved = clone(draft); saved.kinds[0].fields.splice(5, 1); openOpt = 3; return renderEditor(); }
+  if (n === 4) { openSys('kulcasa'); tab = 'tables'; return renderEditor(); }
+  if (n === 5) { openSys('outgunned'); kindIx = 2; openOpt = 0; return renderEditor(); }
+  if (n === 6) return renderGallery();
+  if (n === 7) return renderPicker();
+  if (n === 8) { renderList(); return openDelete('kulcasa'); }
+  if (n === 9) return renderDoc();
+}
+$$('.mock [data-state]').forEach(b => b.onclick = () => setState(+b.dataset.state));
+$('#mReset').onclick = () => { seed(); setState(state); };
+$('#mTheme').onclick = () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+};
+$('#mNotes').onclick = () => $('#anno').classList.toggle('closed');
+$('#annoX').onclick = () => $('#anno').classList.add('closed');
+seed();
+setState(1);
+</script>
+</body>
+</html>

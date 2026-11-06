@@ -1,0 +1,53 @@
+Each numbered group below is one commit, in Conventional Commits, that leaves
+`npm run typecheck` and `npm test` green, with the trailers:
+
+```
+Refs: Stevesibilia/rpg-promptbook#52
+Assisted-by: claude-code/<model-id>
+Co-Authored-By: Claude <model name> <noreply@anthropic.com>
+```
+
+The checks are `npm run typecheck`, `npm test` (with `--reporter=default`
+when you need passing tests' output) and `npm run e2e`. Prettier only on the
+Markdown files you touch (`npx --yes prettier@3 --write <files>`).
+
+## 0. Baseline
+
+- [ ] 0.1 On `main`, build Sabaoth's PDF with the four option sets of `layout/test/own-sections.test.ts` and record each SHA-256 here (D11)
+
+## 1. Format: systems and built-ins
+
+- [ ] 1.1 `systems.ts`: the schema and validation of D1; `defineSystems`, `builtinSystems`, types exported from `index.ts`
+- [ ] 1.2 `systems/`: the 12 built-ins of D2, from the mockup's `builtins()`
+- [ ] 1.3 Tests: every validation rule of D1 fails with a message naming the path; the built-ins validate; Historia equals D&D 5e but for name and id
+- [ ] 1.4 Commit `feat(format): game systems with sheet kinds`
+
+## 2. Format: reading sheets by kind
+
+- [ ] 2.1 `template/avventura.ts`, `template/schema.ts`: sheet keys reduced to `Tipo`, old roles still accepted (D3)
+- [ ] 2.2 `parse/blocks.ts`: nested items on a list item; `parse/sheets.ts`: kind lookup and the block readers of D4; `model.ts`: `Sheet.kind` (D5)
+- [ ] 2.3 `checks/`: `system.unknown`, `sheet.field.required`, `sheet.value.invalid`, `sheet.grade.counts`, `sheet.nested-threat`, `ref.threat.outside` as in D8
+- [ ] 2.4 `convert/index.ts` from the Kulthos kind (D10)
+- [ ] 2.5 Tests: each block, sub-bullets and one-line forms; every mockup sample parses with no problem; each new problem; the existing parse, check, convert and acceptance tests pass, updated only where `threat` became `kind`
+- [ ] 2.6 Commit `feat(format): read sheets by their system's kind`
+
+## 3. Layout: threat boxes by kind
+
+- [ ] 3.1 `input.ts`: generic `LayoutThreat` and its rows (D6); trackers with `show: 'none'` on the full sheet (D7)
+- [ ] 3.2 `avventura.typ`: `threat-box` draws every row variant (D6)
+- [ ] 3.3 Tests: rows of each mockup sample; a test adventure citing one sheet of each of the 17 kinds builds without error; Sabaoth's four hashes equal 0.1
+- [ ] 3.4 Commit `feat(layout): threat boxes for every sheet kind`
+
+## 4. Web: insert and syntax sheet
+
+- [ ] 4.1 Insert menu «Sheet: <kind>» under `## Schede` (D9)
+- [ ] 4.2 Syntax sheet lists `Tipo` and the kinds' fields (D9)
+- [ ] 4.3 Tests: the menu entries for Kulthos and Outgunned, the inserted text; the syntax sheet test against the system
+- [ ] 4.4 Commit `feat(web): insert sheets by kind`
+
+## 5. Proof and hand-back
+
+- [ ] 5.1 `npm run typecheck`, `npm test`, `npm run e2e`: literal results in the hand-back
+- [ ] 5.2 Sabaoth's four hashes on the branch equal 0.1
+- [ ] 5.3 PNG pages of the 17-kind test PDF, paths in the hand-back
+- [ ] 5.4 Hand back: results, hashes, PNG paths, departures from the design
