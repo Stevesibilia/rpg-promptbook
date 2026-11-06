@@ -16,7 +16,8 @@ draw its marks in the full sheet under «Schede».
 
 - **WHEN** the PDF of «L'Ancora di Sabaoth» is built with each of the four
   option sets of the layout tests
-- **THEN** its bytes equal the bytes built before this change
+- **THEN** its text equals the text built before this change, and its
+  threat boxes differ only in the tighter leading of wrapped talents
 
 #### Scenario: An Outgunned boss
 
@@ -27,5 +28,6 @@ draw its marks in the full sheet under «Schede».
 
 #### Scenario: Every built-in kind prints
 
-- **WHEN** an adventure cites one sheet of each built-in sheet kind
-- **THEN** its PDF builds without error, with one threat box per sheet
+- **WHEN** an adventure for each built-in system cites one sheet of each of
+  its sheet kinds
+- **THEN** each PDF builds without error, with one threat box per sheet

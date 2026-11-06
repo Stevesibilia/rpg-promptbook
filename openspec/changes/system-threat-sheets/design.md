@@ -256,3 +256,31 @@ these ways, all accepted by the architect:
   systems.
 - **Layout bridge.** `threat()` in `layout/src/input.ts` reads `Sheet.kind`
   for Kulthos-shaped kinds only; group 3 replaces it.
+
+## Review of groups 3 to 5 (accepted departures)
+
+Brief B (b6d77b7 to 491ac0d) departed in these ways, accepted by the
+architect; the owner chose the re-baseline.
+
+- **D11.** Twelve test adventures, one per system, and one test-only merged
+  layout input for the 17-kind proof PDF. The samples live in
+  `packages/format/fixtures/kind-samples.json`.
+- **Sabaoth re-baselined.** Talent paragraphs use the tight leading of the
+  other blocks, so a wrapped talent no longer reads as two items. Sabaoth's
+  PDF text is unchanged; its four hashes are recorded anew in tasks 0.1 and
+  in `own-sections.test.ts`.
+- **D6.** Stat rows and written clocks print no key, as the mockup draws
+  them. The label column is the widest key, at least 13 mm, capped at
+  26 mm; keys never hyphenate and wrap at spaces. Rows tables size columns by
+  content; when three columns do not fit, tokens sit under their word. Stat
+  values stay on one line, shrinking down to 6 pt. Marked boxes are light
+  grey, also with ink saver. A zero count prints «0».
+- **D6, talents.** A paragraph item splits on the last bracket group at its
+  end: «Artigli 45% (22/9) (1D6 + BD)» is named «Artigli 45% (22/9)».
+- **Full sheet.** Fields written with sub-bullets print as a nested list.
+- **D9.** The menu group is «Insert a sheet»; each entry shows the keys it
+  inserts. A `/` on a blank line after an item belongs to that item, so the
+  menu works under a bare `## Schede`. The kind is looked up again when an
+  entry is applied.
+- **D9.** The syntax sheet lists `Tipo` with the kinds, then one group per
+  kind with each field's block, place and requirement.
