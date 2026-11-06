@@ -501,9 +501,15 @@ function scene(template: AdventureTemplate, model: Model, found: Scene, sheets: 
 // A sheet's list items are its fields; they print again as a list, in their
 // place among the sheet's other blocks.
 function sheetBlocks(template: AdventureTemplate, sheet: Sheet): LayoutBlock[] {
+  // A field written with sub-bullets keeps them as a nested list.
   const items = sheet.fields.map((f) => ({
     from: f.range.start.offset,
-    line: f.key === null ? `- ${f.value}` : `- **${f.key}:** ${f.value}`,
+    line:
+      f.key === null
+        ? `- ${f.value}`
+        : f.items.length
+          ? [`- **${f.key}:** ${f.lead}`.trimEnd(), ...f.items.map((item) => `  - ${item}`)].join('\n')
+          : `- **${f.key}:** ${f.value}`,
   }));
   const blocks = sheet.blocks.map((b) => blockOf(template, b));
   const out: LayoutBlock[] = [];

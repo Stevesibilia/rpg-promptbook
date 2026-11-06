@@ -706,6 +706,8 @@
         [#block(width: 100%, stroke: 0.3mm + rule, inset: (x: 4mm, top: 3mm, bottom: 1mm), below: 4mm, breakable: false, {
           pos("block", sheet.from)
           set text(size: 9.3pt)
+          // Sub-bullets of a field: Spectral has no ‣, Typst's second marker.
+          set list(marker: ([•], [–]))
           block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", sheet.title))
           any-blocks(sheet.blocks)
           if sheet.trackers.len() > 0 {

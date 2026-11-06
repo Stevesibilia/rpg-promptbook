@@ -208,6 +208,14 @@ describe('the threat box of every built-in kind', () => {
     ]);
   });
 
+  it('keeps a field\'s sub-bullets as a nested list in the full sheet', () => {
+    const { input } = inputOf('Vileborn');
+    const markdown = input.references.sheets[0]!.blocks.map((b) => b.markdown).join('\n');
+    expect(markdown).toContain(
+      '- **Complicazioni:**\n  - Le catene ti sferzano; segna una ferita.\n  - Pronuncia il tuo nome; segna paura.\n',
+    );
+  });
+
   it('prints a field its block cannot read as written', () => {
     const sample = samples.find((s) => s.system === 'Outgunned' && s.kind === 'Boss')!;
     const broken = { ...sample, values: { ...sample.values, Difesa: 'Leggero' } };
