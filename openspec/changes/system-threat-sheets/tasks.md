@@ -28,12 +28,12 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 2. Format: reading sheets by kind
 
-- [ ] 2.1 `template/avventura.ts`, `template/schema.ts`: sheet keys reduced to `Tipo`, old roles still accepted (D3)
-- [ ] 2.2 `parse/blocks.ts`: nested items on a list item; `parse/sheets.ts`: kind lookup and the block readers of D4; `model.ts`: `Sheet.kind` (D5)
-- [ ] 2.3 `checks/`: `system.unknown`, `sheet.field.required`, `sheet.value.invalid`, `sheet.grade.counts`, `sheet.nested-threat`, `ref.threat.outside` as in D8
-- [ ] 2.4 `convert/index.ts` from the Kulthos kind (D10)
-- [ ] 2.5 Tests: each block, sub-bullets and one-line forms; every mockup sample parses with no problem; each new problem; the existing parse, check, convert and acceptance tests pass, updated only where `threat` became `kind`
-- [ ] 2.6 Commit `feat(format): read sheets by their system's kind`
+- [x] 2.1 `template/avventura.ts`, `template/schema.ts`: sheet keys reduced to `Tipo`, old roles still accepted (D3)
+- [x] 2.2 `parse/blocks.ts`: nested items on a list item; `parse/sheets.ts`: kind lookup and the block readers of D4; `model.ts`: `Sheet.kind` (D5)
+- [x] 2.3 `checks/`: `system.unknown`, `sheet.field.required`, `sheet.value.invalid`, `sheet.grade.counts`, `sheet.nested-threat`, `ref.threat.outside` as in D8
+- [x] 2.4 `convert/index.ts` from the Kulthos kind (D10)
+- [x] 2.5 Tests: each block, sub-bullets and one-line forms; every mockup sample parses with no problem; each new problem; the existing parse, check, convert and acceptance tests pass, updated only where `threat` became `kind`
+- [x] 2.6 Commit `feat(format): read sheets by their system's kind`
 
 ## 3. Layout: threat boxes by kind
 

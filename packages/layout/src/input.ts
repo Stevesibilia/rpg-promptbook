@@ -318,31 +318,34 @@ function field(template: AdventureTemplate, scene: Scene, found: SceneField | un
   return { label: found.label, from, blocks: found.blocks.map((b) => blockOf(template, b, scene.references, sheets)) };
 }
 
-// "La Maestà («Fermi»: chi non…)" gives the name and what is in brackets.
-function talent(value: string): { name: string; text: string } {
-  const open = value.indexOf('(');
-  const close = value.lastIndexOf(')');
-  if (open === -1 || close < open) return { name: value.trim(), text: '' };
-  return { name: value.slice(0, open).trim(), text: value.slice(open + 1, close).trim() };
-}
-
 // The first sentence, for the short sheet in the side column.
 function firstSentence(value: string): string {
   return /^(.+?[.!?])(\s|$)/.exec(value)?.[1] ?? value;
 }
 
+// A bridge until threat boxes are drawn from every kind: the box of a kind
+// shaped like Kulthos's (a required choice in the subtitle, boxes in groups and
+// single boxes, a pack flag, paragraph talents).
 function threat(sheet: Sheet, sheets: boolean): LayoutThreat | null {
-  const found = sheet.threat;
-  if (!found?.counts || !found.grade) return null;
-  const talents = found.talents.map(talent);
+  const kind = sheet.kind;
+  if (!kind || kind.missing.length) return null;
+  const grade = kind.fields.find((f) => f.value?.block === 'choice' && f.definition.requirement === 'required');
+  const boxes = (grouped: boolean) =>
+    kind.fields.find((f) => f.value?.block === 'boxes' && f.definition.block === 'boxes' && (f.definition.group !== undefined) === grouped);
+  const wounds = boxes(true);
+  const afflictions = boxes(false);
+  if (!grade || wounds?.value?.block !== 'boxes' || afflictions?.value?.block !== 'boxes' || wounds.definition.block !== 'boxes') return null;
+  const pack = kind.fields.find((f) => f.value?.block === 'flag');
+  const list = kind.fields.find((f) => f.value?.block === 'list' && f.value.style === 'paras')?.value;
+  const talents = list?.block === 'list' && list.style === 'paras' ? list.items : [];
   const many = talents.length > 2;
   return {
     name: sheet.name,
-    grade: found.grade,
-    pack: found.pack !== null,
-    wounds: found.counts.wounds,
-    woundsPerCounter: found.counts.woundsPerCounter,
-    afflictions: found.counts.afflictions,
+    grade: grade.text,
+    pack: pack?.value?.block === 'flag' && pack.value.on,
+    wounds: wounds.value.count,
+    woundsPerCounter: wounds.definition.group!,
+    afflictions: afflictions.value.count,
     talentNames: many ? talents.map((t) => t.name).join(' · ') : null,
     talents: many ? [] : talents.map((t) => ({ name: t.name, text: firstSentence(t.text) })),
     sheet: sheets ? sheetLabel(sheet.id) : null,

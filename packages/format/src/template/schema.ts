@@ -103,6 +103,8 @@ const calloutSchema = z.object({
   uid: z.string().min(1).optional(),
 });
 
+// Only the type key is read: a sheet's other keys come from its game system's
+// kind. The other roles stay so templates saved with them still load.
 const sheetKeySchema = z.object({
   key: label,
   role: z.enum(['type', 'grade', 'nature', 'wounds', 'afflictions', 'pack', 'talents']),

@@ -75,7 +75,18 @@ function toListItem(ctx: ParseContext, item: MdListItem): ListItem {
     checked: item.checked ?? null,
     label: label?.label ?? null,
     value: label ? afterLabel(source.text.slice(label.end, source.end(item))) : text,
+    items: item.children.flatMap((child) => (child.type === 'list' ? child.children.map((c) => toListItem(ctx, c)) : [])),
   };
+}
+
+// An item's first paragraph after its bold label: its own line, without the
+// sub-bullets or paragraphs that follow.
+export function itemLead(ctx: ParseContext, item: MdListItem): string {
+  const { source } = ctx;
+  const first = item.children[0];
+  if (!first || first.type !== 'paragraph') return '';
+  const label = leadingLabel(ctx, first);
+  return afterLabel(source.text.slice(label ? label.end : source.start(first), source.end(first)));
 }
 
 // The bold text a paragraph opens with: "**Tipo:** …" gives "Tipo".

@@ -31,6 +31,27 @@ const cases: Case[] = [
     at: '- **Afflizioni:** 3',
   },
   {
+    name: 'a system no list holds (the spec example)',
+    code: 'system.unknown',
+    doc: change('sistema: Kulthos', 'sistema: Altro'),
+    severity: 'warning',
+    at: 'sistema: Altro',
+  },
+  {
+    name: 'a required field missing (the spec example)',
+    code: 'sheet.field.required',
+    doc: change('- **Grado:** Straordinaria\n', ''),
+    severity: 'warning',
+    at: '### Guardiano',
+  },
+  {
+    name: 'a value outside the table (the spec example)',
+    code: 'sheet.value.invalid',
+    doc: change('- **Grado:** Straordinaria', '- **Grado:** Mitica'),
+    severity: 'warning',
+    at: '- **Grado:** Mitica',
+  },
+  {
     name: 'a #### heading inside a sheet',
     code: 'sheet.nested-threat',
     doc: change('### Pregenerati', '#### Il cane\n\nUn cane nero.\n\n### Pregenerati'),
@@ -268,7 +289,7 @@ describe('every problem code of the checks', () => {
   it('has a table-driven test', () => {
     const dir = new URL('../src/checks/', import.meta.url);
     const emitted = new Set<string>();
-    for (const file of ['sections', 'scenes', 'callouts', 'references', 'sheets', 'clues', 'appendix', 'limits', 'style']) {
+    for (const file of ['sections', 'scenes', 'callouts', 'references', 'system', 'sheets', 'clues', 'appendix', 'limits', 'style']) {
       const text = readFileSync(new URL(`${file}.ts`, dir), 'utf8');
       for (const match of text.matchAll(/problem\(\s*'([a-z.-]+)'/g)) emitted.add(match[1]!);
     }

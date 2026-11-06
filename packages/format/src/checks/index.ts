@@ -11,6 +11,7 @@ import { checkScenes } from './scenes.js';
 import { checkSections } from './sections.js';
 import { checkSheets } from './sheets.js';
 import { checkStyle } from './style.js';
+import { checkSystem } from './system.js';
 
 export interface CheckInput {
   model: Model;
@@ -29,6 +30,7 @@ export const checks: Check[] = [
   checkScenes,
   checkCallouts,
   checkReferences,
+  checkSystem,
   checkSheets,
   checkClues,
   checkAppendix,

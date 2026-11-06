@@ -343,7 +343,7 @@ describe('clue tracker and NPC table', () => {
 });
 
 describe('sheets', () => {
-  it('reads fields and threat data, with counts from the grade table', () => {
+  it('reads fields, and the kind of its system with counts from the grade table', () => {
     const sheet = parse(sample).model.sheets[0];
     expect([sheet?.id, sheet?.name, sheet?.title]).toEqual([
       'guardiano',
@@ -351,16 +351,25 @@ describe('sheets', () => {
       'Guardiano, il custode della porta',
     ]);
     expect(sheet?.fields.map((f) => f.key)).toEqual(['Tipo', 'Grado', 'Natura', 'Ferite', 'Talenti', 'Volontà']);
-    expect(sheet?.threat).toEqual({
-      type: 'Minaccia',
-      grade: 'Straordinaria',
-      nature: 'non risvegliata',
-      wounds: '2 contatori da 3',
-      afflictions: null,
-      pack: null,
-      talents: ['La Presenza', 'Il Nulla'],
-      counts: { wounds: 6, afflictions: 2, woundsPerCounter: 3 },
-    });
+    expect(sheet?.kind).toMatchObject({ system: 'Kulthos', kind: 'Minaccia', missing: [] });
+    expect(sheet?.kind?.fields.map((f) => [f.key, f.value])).toEqual([
+      ['Grado', { block: 'choice', columns: ['Grado', 'Ferite', 'Afflizioni'], row: ['Straordinaria', '6', '2'] }],
+      ['Natura', { block: 'text', text: 'non risvegliata' }],
+      ['Ferite', { block: 'boxes', count: 6, marked: [] }],
+      ['Afflizioni', { block: 'boxes', count: 2, marked: [] }],
+      ['Volontà', { block: 'text', text: 'che nessuno entri.' }],
+      [
+        'Talenti',
+        {
+          block: 'list',
+          style: 'paras',
+          items: [
+            { name: 'La Presenza', text: '' },
+            { name: 'Il Nulla', text: '' },
+          ],
+        },
+      ],
+    ]);
   });
 
   it('keeps a #### heading inside a sheet in its blocks, for the checks', () => {
@@ -378,9 +387,9 @@ describe('sheets', () => {
     expect(model.pregenerated?.characters.map((c) => [c.name, c.blocks.length])).toEqual([['Elena', 1]]);
   });
 
-  it('has no counts when the document names no system', () => {
-    const text = '## Schede\n\n### Ombra\n\n- **Grado:** Ordinaria\n';
-    expect(parse(text).model.sheets[0]?.threat?.counts).toBeNull();
+  it('has no kind when the document names no system', () => {
+    const text = '## Schede\n\n### Ombra\n\n- **Tipo:** Minaccia\n- **Grado:** Ordinaria\n';
+    expect(parse(text).model.sheets[0]?.kind).toBeNull();
   });
 
   it("keeps Sabaoth's threats written inside other sheets as fields", () => {

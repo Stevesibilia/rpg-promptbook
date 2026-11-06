@@ -2,6 +2,7 @@
 // here is plain data (JSON-safe): it crosses the Electron IPC and the MCP
 // boundary. Every item keeps its position in the text.
 
+import type { FieldDefinition } from './systems.js';
 import type { SectionRole } from './template/schema.js';
 
 export interface Point {
@@ -61,6 +62,8 @@ export interface ListItem {
   label: string | null;
   // What follows the label, without the colon or comma after it.
   value: string;
+  // The items of a list nested in this one, [] when there is none.
+  items: ListItem[];
 }
 
 export interface ListBlock {
@@ -253,21 +256,57 @@ export interface NpcRow {
 export interface SheetField {
   // The bold key the item opens with, null for an item without one.
   key: string | null;
+  // Everything after the key, sub-bullets included.
   value: string;
+  // The item's own line after the key, without its sub-bullets.
+  lead: string;
+  // The text of each sub-bullet, [] when there are none.
+  items: string[];
   range: Range;
 }
 
-export interface Threat {
-  type: string | null;
-  grade: string | null;
-  nature: string | null;
-  wounds: string | null;
-  afflictions: string | null;
-  pack: string | null;
-  talents: string[];
-  // From the system's grade table, when the document names a system the
-  // template knows and the grade is in its table.
-  counts: { wounds: number; afflictions: number; woundsPerCounter: number } | null;
+// What a field's block reads from its text.
+export type BlockValue =
+  | { block: 'text'; text: string }
+  | { block: 'number'; text: string }
+  // The table row the value picks, as the cells in column order.
+  | { block: 'choice'; columns: string[]; row: string[] }
+  // Every label of the kind, in its order; null when not written.
+  | { block: 'stats'; stats: { label: string; value: string | null }[] }
+  // 1-based numbers of the marked boxes.
+  | { block: 'boxes'; count: number; marked: number[] }
+  // label null: a fixed clock, named by the field's key.
+  | { block: 'clock'; clocks: { label: string | null; size: number }[] }
+  | { block: 'list'; style: 'line' | 'check'; items: string[] }
+  | { block: 'list'; style: 'paras'; items: { name: string; text: string }[] }
+  // tokens: the number a column's table gives the cell, null for none.
+  | { block: 'rows'; rows: { cells: { text: string; tokens: number | null }[] }[] }
+  | { block: 'lines'; labels: string[] }
+  | { block: 'flag'; on: boolean };
+
+export interface SheetKindField {
+  key: string;
+  block: FieldDefinition['block'];
+  show: FieldDefinition['show'];
+  // The field's definition in the kind, for the options its block draws with.
+  definition: FieldDefinition;
+  // The written item, null for a field present without being written (fixed
+  // boxes and clocks, boxes counted from a table, lines).
+  range: Range | null;
+  text: string;
+  // null when the block cannot read the text; error says why.
+  value: BlockValue | null;
+  error: string | null;
+}
+
+export interface SheetKindData {
+  // The system's and the kind's names, as the system writes them.
+  system: string;
+  kind: string;
+  // The kind's fields that are written or always present, in the kind's order.
+  fields: SheetKindField[];
+  // Keys of required fields not written.
+  missing: string[];
 }
 
 export interface Sheet {
@@ -279,8 +318,9 @@ export interface Sheet {
   range: Range;
   headingRange: Range;
   fields: SheetField[];
-  // Present when the sheet has any of the template's threat keys.
-  threat: Threat | null;
+  // Present when the front matter names a known system and the sheet's type
+  // key names one of its kinds.
+  kind: SheetKindData | null;
   // Everything in the sheet that is not a list item, #### headings included.
   blocks: Block[];
 }
