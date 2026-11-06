@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import type { AdventureTemplate } from 'promptbook-format';
+import type { AdventureTemplate, SystemDefinition } from 'promptbook-format';
 import { Modal } from '../ui/Modal.js';
 import { syntaxOf } from './syntax.js';
 
@@ -7,14 +7,17 @@ import { syntaxOf } from './syntax.js';
 // its data.
 export function SyntaxSheet({
   template,
+  system,
   checked,
   onClose,
 }: {
   template: AdventureTemplate;
+  // The project's game system, for its sheet kinds.
+  system: SystemDefinition | undefined;
   checked: boolean;
   onClose(): void;
 }) {
-  const groups = useMemo(() => syntaxOf(template), [template]);
+  const groups = useMemo(() => syntaxOf(template, system), [template, system]);
   // The dialog takes the focus, so the page's shortcuts stand aside and
   // Escape closes it.
   useEffect(() => {

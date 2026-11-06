@@ -1,4 +1,4 @@
-import { templates } from 'promptbook-format';
+import { builtinSystems, templates } from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
 import { syntaxOf } from '../src/editor/syntax.js';
 
@@ -38,11 +38,44 @@ describe('the syntax sheet', () => {
 
   it('lists the reference marker, the reactions table, the sheet keys and the ids', () => {
     expect(group('References').rows.map((r) => r.syntax)).toEqual(['→ Schede: Name', '| Se i PG… | Allora… |']);
-    expect(group('Sheet keys').rows.map((r) => r.name)).toEqual(template.sheets.keys.map((k) => k.key));
+    expect(group('Sheet keys').rows.map((r) => r.name)).toEqual(['Tipo']);
     expect(group('Ids').rows.map((r) => r.syntax)).toEqual([
       '### S1. Title',
       '- **R1.** … (I1, I2)',
       '- **I1.** … (R1)',
     ]);
+  });
+
+  it('lists the kinds of the project\'s system with their fields', () => {
+    const kulthos = syntaxOf(template, builtinSystems.find((s) => s.name === 'Kulthos'));
+    const tipo = kulthos.find((g) => g.title.startsWith('Sheet keys'))!.rows[0]!;
+    expect(tipo.note).toBe("the sheet's kind in Kulthos: Minaccia");
+    const minaccia = kulthos.find((g) => g.title === 'Sheet kind «Minaccia» (Kulthos)')!;
+    expect(minaccia.rows.map((r) => `${r.syntax} | ${r.requirement} | ${r.note}`)).toEqual([
+      '- **Grado:** … | required | choice from «Gradi» · in the subtitle',
+      '- **Natura:** … | optional | text · full sheet only',
+      '- **Branco:** … | optional | yes or no, «branco» when yes · in the subtitle',
+      '- **Ferite:** … | optional | boxes from «Gradi», column Ferite, in groups of 3',
+      '- **Afflizioni:** … | optional | boxes from «Gradi», column Afflizioni',
+      '- **Volontà:** … | optional | text · full sheet only',
+      '- **Condotta:** … | optional | text · full sheet only',
+      '- **Talenti:** … | optional | items «Name (text)», separated by «·» or as sub-bullets',
+    ]);
+    // A group per kind, in the system's order.
+    const outgunned = syntaxOf(template, builtinSystems.find((s) => s.name === 'Outgunned'));
+    expect(outgunned.filter((g) => g.title.startsWith('Sheet kind')).map((g) => g.title)).toEqual([
+      'Sheet kind «Scagnozzi» (Outgunned)',
+      'Sheet kind «Cattivo» (Outgunned)',
+      'Sheet kind «Boss» (Outgunned)',
+    ]);
+    const prove = syntaxOf(template, builtinSystems.find((s) => s.name === 'Not the End'))
+      .find((g) => g.title.startsWith('Sheet kind «Sfida»'))!
+      .rows.find((r) => r.name === 'Prove')!;
+    expect(prove.note).toBe('a row per sub-bullet, «Azione: Difficoltà from «Difficoltà» · Pericolo from «Pericolo»»');
+  });
+
+  it('lists only the type key without a system', () => {
+    expect(groups.some((g) => g.title.startsWith('Sheet kind'))).toBe(false);
+    expect(group('Sheet keys').rows[0]!.note).toBe("the sheet's kind, from the game system the front matter names");
   });
 });

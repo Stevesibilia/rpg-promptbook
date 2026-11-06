@@ -44,10 +44,10 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 4. Web: insert and syntax sheet
 
-- [ ] 4.1 Insert menu «Sheet: <kind>» under `## Schede` (D9)
-- [ ] 4.2 Syntax sheet lists `Tipo` and the kinds' fields (D9)
-- [ ] 4.3 Tests: the menu entries for Kulthos and Outgunned, the inserted text; the syntax sheet test against the system
-- [ ] 4.4 Commit `feat(web): insert sheets by kind`
+- [x] 4.1 Insert menu «Sheet: <kind>» under `## Schede` (D9)
+- [x] 4.2 Syntax sheet lists `Tipo` and the kinds' fields (D9)
+- [x] 4.3 Tests: the menu entries for Kulthos and Outgunned, the inserted text; the syntax sheet test against the system
+- [x] 4.4 Commit `feat(web): insert sheets by kind`
 
 ## 5. Proof and hand-back
 

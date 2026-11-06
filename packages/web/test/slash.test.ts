@@ -77,7 +77,8 @@ describe('the / menu', () => {
 
   it('offers the sheet\'s callouts in the Pregenerati block and in a character', () => {
     const doc = withBlock(characters);
-    const sheet = menu(doc, at(doc, '### Tenente Donato', 22));
+    // A sheet also offers the system's kinds; the pregenerated do not.
+    const sheet = menu(doc, at(doc, '### Tenente Donato', 22)).filter((e) => !e.startsWith('sheets:'));
     expect(sheet.length).toBeGreaterThan(0);
     expect(menu(doc, at(doc, 'Tre personaggi'))).toEqual(sheet);
     expect(menu(doc, at(doc, 'il fratello di Ada'))).toEqual(sheet);
@@ -90,6 +91,50 @@ describe('the / menu', () => {
         "insert: New scene (### S6.)",
       ]
     `);
+  });
+
+  it('offers a sheet of each kind of the project\'s system under «Schede»', () => {
+    const outgunned = '---\ntitolo: Prova\nsistema: Outgunned\n---\n\n## Schede\n\n/\n';
+    expect(menu(outgunned, at(outgunned, '/'))).toEqual([
+      'sheets: Sheet: Scagnozzi (Grinta)',
+      'sheets: Sheet: Cattivo (Grinta)',
+      'sheets: Sheet: Boss (Grinta)',
+      'insert: Riquadro (> [!riquadro])',
+    ]);
+    // Kulthos, in a sheet as on the section's line.
+    expect(menu(sabaoth, at(sabaoth, '### Tenente Donato', 22)).filter((e) => e.startsWith('sheets:'))).toEqual([
+      'sheets: Sheet: Minaccia (Grado)',
+    ]);
+    expect(menu(sabaoth, at(sabaoth, '## Schede', 3))[0]).toBe('sheets: Sheet: Minaccia (Grado)');
+    // The keys the insert writes; the type key when there are none.
+    const blades = '---\ntitolo: Prova\nsistema: Blades in the Dark\n---\n\n## Schede\n\n/\n';
+    expect(menu(blades, at(blades, '/')).slice(0, 2)).toEqual(['sheets: Sheet: Fazione (Livello)', 'sheets: Sheet: PNG (Tipo)']);
+  });
+
+  it('offers the kinds on a / typed after the analysis, on a blank line under «Schede»', () => {
+    // The analysis does not hold the / yet: the line is in no item until the
+    // next parse, which puts it in the item before it.
+    const typed = (doc: string) => {
+      const { state } = analysed(doc, doc.length);
+      const next = state.update({ changes: { from: doc.length, insert: '/' } }).state;
+      return slashEntries(next, doc.length, template).map((e) => e.label);
+    };
+    const front = '---\ntitolo: Prova\nsistema: Outgunned\n---\n\n## Scene\n\n### S1. Uno\n\n## Schede\n\n';
+    expect(typed(front).slice(0, 3)).toEqual(['Sheet: Scagnozzi', 'Sheet: Cattivo', 'Sheet: Boss']);
+    expect(typed(`${front}### Lefty\n\n- **Tipo:** Cattivo\n\n`).slice(0, 3)).toEqual([
+      'Sheet: Scagnozzi',
+      'Sheet: Cattivo',
+      'Sheet: Boss',
+    ]);
+  });
+
+  it('offers no sheet kinds without a known system, nor among the pregenerated', () => {
+    const none = '---\ntitolo: Prova\n---\n\n## Schede\n\n/\n';
+    expect(menu(none, at(none, '/')).some((e) => e.startsWith('sheets:'))).toBe(false);
+    const other = '---\ntitolo: Prova\nsistema: Altro\n---\n\n## Schede\n\n/\n';
+    expect(menu(other, at(other, '/')).some((e) => e.startsWith('sheets:'))).toBe(false);
+    const doc = withBlock(characters);
+    expect(menu(doc, at(doc, 'Tre personaggi')).some((e) => e.startsWith('sheets:'))).toBe(false);
   });
 
   it('offers nothing in the front matter', () => {

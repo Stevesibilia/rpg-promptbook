@@ -38,6 +38,7 @@ import { useProjectTemplate } from '../templates/TemplatesContext.js';
 import { TemplateUpdate } from '../templates/TemplateUpdate.js';
 import { SyntaxSheet } from './SyntaxSheet.js';
 import { analysisField } from './analysis/field.js';
+import { projectSystem } from './system.js';
 import { jumpTo, write } from './writes.js';
 import './editor.css';
 import './pdf/pdf.css';
@@ -440,7 +441,14 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         />
       )}
       {toast}
-      {dialog === 'syntax' && <SyntaxSheet template={template} checked={checked} onClose={closeDialog} />}
+      {dialog === 'syntax' && (
+        <SyntaxSheet
+          template={template}
+          system={projectSystem(view?.state.field(analysisField, false)?.result?.model, template)}
+          checked={checked}
+          onClose={closeDialog}
+        />
+      )}
       {dialog === 'licence' && (
         <LicencePane current={licence} context="editor" onPick={pickLicence} onClose={closeDialog} />
       )}
