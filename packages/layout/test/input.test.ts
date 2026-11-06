@@ -65,19 +65,25 @@ describe('toLayoutInput on Sabaoth', () => {
     expect(markdown(input.scenes[4]!.mustHave?.blocks)).toContain('(→ [Sabaoth, «Cosa offre»](#sheet-sabaoth))');
   });
 
-  it('gives a threat box to each graded sheet the cast cites', () => {
+  it('gives a threat box to each sheet with a kind the cast cites', () => {
     const [donato, quieti] = input.scenes[2]!.threats;
     expect(donato).toEqual({
       name: 'Tenente Donato',
-      grade: 'Straordinaria',
-      pack: false,
-      wounds: 6,
-      woundsPerCounter: 3,
-      afflictions: 2,
-      talentNames: null,
-      talents: [
-        { name: 'La Presenza', text: 'evoca una Pattuglia di Quieti' },
-        { name: 'Il Nulla', text: 'separa i Dormienti' },
+      subtitle: 'Minaccia Straordinaria',
+      quotes: [],
+      rows: [
+        { block: 'boxes', key: 'Ferite', count: 6, group: 3, marked: [], values: false },
+        { block: 'boxes', key: 'Afflizioni', count: 2, group: 2, marked: [], values: false },
+        {
+          block: 'list',
+          key: 'Talenti',
+          style: 'paras',
+          names: null,
+          items: [
+            { name: 'La Presenza', text: 'evoca una Pattuglia di Quieti' },
+            { name: 'Il Nulla', text: 'separa i Dormienti' },
+          ],
+        },
       ],
       sheet: 'sheet-tenente-donato',
     });

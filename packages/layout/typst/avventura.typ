@@ -427,28 +427,159 @@
     for b in f.blocks { md(b.markdown) }
   }
 
+  // The rows of a threat box, each drawn by its block (design D6). Keys sit
+  // in a label column at least 13 mm wide, wider for a longer key up to
+  // 20 mm; longer keys wrap in it.
+  let threat-rows(rows) = context {
+    let keyed = ("text", "number", "boxes")
+    let keys = rows.filter(r => r.block in keyed or (r.block == "clocks" and r.fixed)).map(r => r.key)
+    let natural = keys.map(k => measure(plex-text(size: 8.5pt, k)).width + 2mm)
+    let w = calc.min(20mm, calc.max(13mm, ..natural))
+    // A key wider than the column wraps in it, 2 mm short of the value.
+    let key(name) = {
+      let k = plex-text(size: 8.5pt, name)
+      if measure(k).width + 2mm > w { box(width: w - 2mm, k) } else { k }
+    }
+    // Kulthos's counters: a box, a gap, the next.
+    let row(name, body, fill: false) = block(below: 1mm, grid(
+      columns: (w, if fill { 1fr } else { auto }),
+      align: if fill { top } else { horizon },
+      key(name),
+      body,
+    ))
+    let mark-fill = rule.lighten(55%)
+    let numbered(n, marked) = box(
+      width: 3.4mm,
+      height: 3.4mm,
+      stroke: 0.35mm + ink,
+      baseline: 0.6mm,
+      fill: if marked { mark-fill },
+      align(center + horizon, plex-text(size: 6pt, weight: 600, str(n))),
+    )
+    let one(i, r) = {
+      let marked = (i + 1) in r.marked
+      if r.values { numbered(i + 1, marked) } else if marked {
+        box(width: 3mm, height: 3mm, stroke: 0.35mm + ink, baseline: 0.4mm, fill: mark-fill)
+      } else { checkbox() }
+    }
+    let group(r, from, n) = box(stack(dir: ltr, spacing: 0.6mm, ..range(from, from + n).map(i => one(i, r))))
+    // On one line, as Kulthos's counters: groups 2 mm apart. When they do not
+    // fit beside the key they wrap between groups, or between boxes when the
+    // kind sets no group, with the key at the top.
+    let boxes-row(r) = {
+      if r.count == 0 { return row(r.key, text(fill: grey, "0")) }
+      let starts = range(0, r.count, step: r.group)
+      let groups = starts.map(s => group(r, s, calc.min(r.group, r.count - s)))
+      let natural = r.count * 3mm + (r.count - groups.len()) * 0.6mm + (groups.len() - 1) * 2mm
+      block(below: 1mm, layout(size => if natural <= size.width - w {
+        grid(columns: (w, auto), align: horizon, key(r.key), if groups.len() == 1 { groups.first() } else { stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..groups) })
+      } else {
+        let pieces = if groups.len() == 1 { range(r.count).map(i => one(i, r)).join([#h(0.6mm)#sym.zws]) } else {
+          groups.join([#h(2mm)#sym.zws])
+        }
+        grid(columns: (w, 1fr), align: top, key(r.key), par(leading: 1mm, pieces))
+      }))
+    }
+    let clock(n) = {
+      let r = 3mm
+      box(width: 2 * r, height: 2 * r, baseline: 30%, {
+        place(circle(radius: r, stroke: 0.35mm + ink, fill: white))
+        for i in range(n) {
+          let a = i / n * 360deg - 90deg
+          place(line(start: (r, r), end: (r + r * calc.cos(a), r + r * calc.sin(a)), stroke: 0.25mm + ink))
+        }
+      })
+    }
+    let tokens(n) = if n != none and n > 0 {
+      h(1mm)
+      box(stack(dir: ltr, spacing: 0.5mm, ..range(n).map(_ => circle(radius: 0.75mm, fill: ink))))
+    }
+    let write-in(width) = box(width: width, height: 1.8mm, stroke: (bottom: 0.25mm + ink))
+    for r in rows {
+      if r.block == "text" {
+        row(r.key, md(r.text), fill: true)
+      } else if r.block == "number" {
+        if r.line { row(r.key, [#write-in(12mm) / #md(r.text)], fill: true) } else { row(r.key, md(r.text), fill: true) }
+      } else if r.block == "boxes" {
+        boxes-row(r)
+      } else if r.block == "clocks" {
+        if r.fixed {
+          row(r.key, clock(r.clocks.first().size))
+        } else {
+          for c in r.clocks {
+            block(below: 1mm, grid(columns: (auto, 1fr), column-gutter: 2mm, align: horizon, clock(c.size), md(c.label)))
+          }
+        }
+      } else if r.block == "stats" {
+        // As many cells a line as the longest label allows, the lines even:
+        // six short labels on one line, six long ones three by three.
+        let label(s) = plex-text(size: 6pt, weight: 600, tracking: 0.04em, fill: grey, upper(s.label))
+        let n = calc.max(r.stats.len(), 1)
+        block(above: 1.5mm, below: 1.5mm, layout(size => {
+          let widest = calc.max(0pt, ..r.stats.map(s => measure(label(s)).width))
+          let fit = calc.max(1, calc.min(n, calc.floor(size.width / (widest + 1.6mm))))
+          let lines = calc.ceil(n / fit)
+          let per = calc.ceil(n / lines)
+          table(
+            columns: (1fr,) * per,
+            stroke: 0.25mm + ink,
+            inset: (x: 0.6mm, y: 0.9mm),
+            align: center,
+            ..r.stats.map(s => [
+              #label(s)\
+              #text(weight: "semibold", size: 8.5pt, if s.value != none { md(s.value) } else { "–" })
+            ]),
+          )
+        }))
+      } else if r.block == "list" and r.style == "paras" {
+        if r.names != none {
+          par[#label-text(r.key + ":") #md(r.names)]
+        } else {
+          for talent in r.items {
+            par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
+          }
+        }
+      } else if r.block == "list" and r.style == "check" {
+        block(below: 1mm, {
+          label-text(r.key)
+          for item in r.items {
+            block(above: 0.8mm, below: 0mm, par(hanging-indent: 3.6mm, [#box(width: 3.6mm, box(baseline: 0.2mm, circle(radius: 1.1mm, stroke: 0.3mm + ink)))#md(item)]))
+          }
+        })
+      } else if r.block == "list" {
+        par[#label-text(r.key + ":") #md(r.items.join(" · "))]
+      } else if r.block == "rows" {
+        block(below: 1mm, {
+          label-text(r.key)
+          block(above: 1mm, table(
+            columns: r.columns.len(),
+            column-gutter: 1.5mm,
+            stroke: (x, y) => (bottom: if y == 0 { 0.3mm + ink } else { 0.2mm + rule.lighten(40%) }),
+            inset: (x: 0.4mm, y: 0.9mm),
+            align: left + top,
+            ..r.columns.map(c => plex-text(size: 6.5pt, weight: 600, tracking: 0.04em, fill: grey, upper(c))),
+            // A word longer than its column breaks, «difficilis-sima».
+            ..r.rows.flatten().map(c => [#set text(hyphenate: true); #md(c.text)#tokens(c.tokens)]),
+          ))
+        })
+      } else if r.block == "lines" {
+        block(below: 1mm, {
+          label-text(r.key)
+          for l in r.labels {
+            block(above: 1.2mm, below: 0mm, [#md(l)#h(1.5mm)#box(width: 1fr, height: 2.6mm, stroke: (bottom: 0.25mm + ink))])
+          }
+        })
+      }
+    }
+  }
+
   let threat-box(t) = block(width: 100%, stroke: 0.45mm + ink, inset: 3mm, below: 3.5mm, breakable: false, {
     set text(size: 8.8pt)
     set par(spacing: 1.2mm)
     block(below: 1mm, text(font: fell, size: 14pt, bottom-edge: "descender", t.name))
-    block(below: 1.5mm, plex-text(size: 8.5pt, fill: grey, "Minaccia " + t.grade + if t.pack { " · branco" }))
-    let row(name, boxes) = block(below: 1mm, grid(
-      columns: (13mm, auto),
-      align: horizon,
-      plex-text(size: 8.5pt, name),
-      boxes,
-    ))
-    let group(n) = box(stack(dir: ltr, spacing: 0.6mm, ..range(n).map(_ => checkbox())))
-    let counters = calc.div-euclid(t.wounds, t.woundsPerCounter)
-    row("Ferite", stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..range(counters).map(_ => group(t.woundsPerCounter))))
-    row("Afflizioni", group(t.afflictions))
-    if t.talentNames != none {
-      par[#label-text("Talenti:") #md(t.talentNames)]
-    } else {
-      for talent in t.talents {
-        par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
-      }
-    }
+    block(below: 1.5mm, plex-text(size: 8.5pt, fill: grey, t.subtitle))
+    for q in t.quotes { block(below: 1.5mm, emph(md(q))) }
+    threat-rows(t.rows)
     if t.sheet != none {
       block(above: 1.5mm, plex-text(size: 8.5pt, fill: grey, [#link(label(t.sheet))[scheda completa], p. #page-of(label(t.sheet))]))
     }
@@ -576,6 +707,9 @@
           set text(size: 9.3pt)
           block(below: 2mm, text(font: fell, size: 15pt, fill: accent, bottom-edge: "descender", sheet.title))
           any-blocks(sheet.blocks)
+          if sheet.trackers.len() > 0 {
+            block(above: 1mm, below: 2mm, { set text(size: 8.8pt); set par(spacing: 1.2mm); threat-rows(sheet.trackers) })
+          }
         })#label(sheet.label)]
       }
     }

@@ -37,10 +37,10 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 3. Layout: threat boxes by kind
 
-- [ ] 3.1 `input.ts`: generic `LayoutThreat` and its rows (D6); trackers with `show: 'none'` on the full sheet (D7)
-- [ ] 3.2 `avventura.typ`: `threat-box` draws every row variant (D6)
-- [ ] 3.3 Tests: rows of each mockup sample; a test adventure citing one sheet of each of the 17 kinds builds without error; Sabaoth's four hashes equal 0.1
-- [ ] 3.4 Commit `feat(layout): threat boxes for every sheet kind`
+- [x] 3.1 `input.ts`: generic `LayoutThreat` and its rows (D6); trackers with `show: 'none'` on the full sheet (D7)
+- [x] 3.2 `avventura.typ`: `threat-box` draws every row variant (D6)
+- [x] 3.3 Tests: rows of each mockup sample; a test adventure citing one sheet of each of the 17 kinds builds without error; Sabaoth's four hashes equal 0.1
+- [x] 3.4 Commit `feat(layout): threat boxes for every sheet kind`
 
 ## 4. Web: insert and syntax sheet
 

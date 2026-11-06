@@ -104,10 +104,19 @@ describe('sections left out', () => {
 });
 
 describe('the built-in template', () => {
-  it('prints Sabaoth with the same bytes as before PDF options', async () => {
+  // Recorded on main before game systems (tasks 0.1 of system-threat-sheets):
+  // the generic threat box prints Kulthos's as before.
+  const hashes: [string, Partial<typeof defaultLayoutOptions>, number, string][] = [
+    ['the default options', {}, 302099, '22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef'],
+    ['ink saver', { inkSaver: true }, 298435, '4ea88fe77ee700cfd0a6ab326345699086897ce76acd373fc8ab9b3296636f4a'],
+    ['no pregenerated', { pregenerated: false }, 288015, 'a776c76020a9ca07763122e0bb0dfbd4bc8cfb63e65928672b043e87743eb5df'],
+    ['US letter', { paper: 'us-letter' }, 303178, '7b5faae7226a54b04528ffc8a65a67b17dc126d67cfafed2a6f091f3c4aa62c3'],
+  ];
+  it.each(hashes)('prints Sabaoth with the same bytes as before, %s', async (_, options, length, hash) => {
     const t = templates.avventura;
-    const pdf = await engine.pdf(toLayoutInput(parseAdventure(sabaoth(), { template: t }).model, defaultLayoutOptions, { title: 'Sabaoth' }, t));
-    expect(pdf.length).toBe(302099);
-    expect(createHash('sha256').update(pdf).digest('hex')).toBe('22a799aed0ce74b8d8e4b14be1c7226d003d8c96632d6a2a4356d0647423b6ef');
+    const model = parseAdventure(sabaoth(), { template: t }).model;
+    const pdf = await engine.pdf(toLayoutInput(model, { ...defaultLayoutOptions, ...options }, { title: 'Sabaoth' }, t));
+    expect(createHash('sha256').update(pdf).digest('hex')).toBe(hash);
+    expect(pdf.length).toBe(length);
   });
 });

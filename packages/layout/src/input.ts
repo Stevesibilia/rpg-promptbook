@@ -15,6 +15,7 @@ import {
   type Section,
   type SectionRole,
   type Sheet,
+  type SheetKindField,
 } from 'promptbook-format';
 import { licenceShort, licenceUrl } from './licence.js';
 
@@ -64,16 +65,35 @@ export interface LayoutField {
   blocks: LayoutBlock[];
 }
 
+// A row of a threat box, drawn by its block (design D6). Text rows hold
+// Markdown; keys are plain.
+export type LayoutThreatRow =
+  // text, choice (with the row's other columns when the kind asks), a flag
+  // shown as a row, and any field its block cannot read, as written.
+  | { block: 'text'; key: string; text: string }
+  // line: a write-in line before the number, «PF ___ / 22».
+  | { block: 'number'; key: string; text: string; line: boolean }
+  // Every label of the kind, in its order; null when not written.
+  | { block: 'stats'; key: string; stats: { label: string; value: string | null }[] }
+  // Boxes in groups of `group` (the count when the kind sets none); marked:
+  // 1-based; values: each box carries its number.
+  | { block: 'boxes'; key: string; count: number; group: number; marked: number[]; values: boolean }
+  // fixed: one clock named by the key; else one clock per written item.
+  | { block: 'clocks'; key: string; fixed: boolean; clocks: { label: string; size: number }[] }
+  | { block: 'list'; key: string; style: 'line' | 'check'; items: string[] }
+  // Up to two items print as «Name: first sentence»; more print their names
+  // on one line after the key (names set, items empty).
+  | { block: 'list'; key: string; style: 'paras'; names: string | null; items: { name: string; text: string }[] }
+  // tokens: the number the column's table gives the cell, null for none.
+  | { block: 'rows'; key: string; columns: string[]; rows: { text: string; tokens: number | null }[][] }
+  | { block: 'lines'; key: string; labels: string[] };
+
 export interface LayoutThreat {
   name: string;
-  grade: string;
-  pack: boolean;
-  wounds: number;
-  woundsPerCounter: number;
-  afflictions: number;
-  // More than two talents print as their names on one line.
-  talentNames: string | null;
-  talents: { name: string; text: string }[];
+  // The kind's name and its subtitle fields: «Minaccia Straordinaria · branco».
+  subtitle: string;
+  quotes: string[];
+  rows: LayoutThreatRow[];
   // The label of the sheet, for «scheda completa, p. N»; null when the sheets
   // do not print.
   sheet: string | null;
@@ -116,6 +136,8 @@ export interface LayoutSheet {
   title: string;
   from: number;
   blocks: LayoutBlock[];
+  // Boxes and clocks shown only in the full sheet, drawn after its text (D7).
+  trackers: LayoutThreatRow[];
 }
 
 export interface LayoutPregenerated {
@@ -323,33 +345,108 @@ function firstSentence(value: string): string {
   return /^(.+?[.!?])(\s|$)/.exec(value)?.[1] ?? value;
 }
 
-// A bridge until threat boxes are drawn from every kind: the box of a kind
-// shaped like Kulthos's (a required choice in the subtitle, boxes in groups and
-// single boxes, a pack flag, paragraph talents).
+// A field as its block draws it; one the block cannot read prints as written.
+function threatRow(field: SheetKindField): LayoutThreatRow | null {
+  const { key, value, definition } = field;
+  const asText = (text: string): LayoutThreatRow | null => (text.trim() ? { block: 'text', key, text: text.trim() } : null);
+  if (!value) return asText(field.text);
+  switch (value.block) {
+    case 'text':
+      return asText(value.text);
+    case 'number':
+      return { block: 'number', key, text: value.text, line: definition.block === 'number' && definition.line === true };
+    case 'choice': {
+      const also = definition.block === 'choice' && definition.also === true;
+      const more = value.columns
+        .slice(1)
+        .map((column, i) => (value.row[i + 1] ? `${column} ${value.row[i + 1]}` : ''))
+        .filter(Boolean);
+      return asText(also && more.length ? `${field.text.trim()} (${more.join(' · ')})` : field.text);
+    }
+    case 'stats':
+      return { block: 'stats', key, stats: value.stats };
+    case 'boxes': {
+      const options = definition.block === 'boxes' ? definition : null;
+      return {
+        block: 'boxes',
+        key,
+        count: value.count,
+        group: options?.group ?? Math.max(value.count, 1),
+        marked: value.marked,
+        values: options?.values === true,
+      };
+    }
+    case 'clock':
+      return {
+        block: 'clocks',
+        key,
+        fixed: definition.block === 'clock' && definition.count.from === 'fixed',
+        clocks: value.clocks.map((c) => ({ label: c.label ?? key, size: c.size })),
+      };
+    case 'list': {
+      if (value.style !== 'paras') return value.items.length ? { block: 'list', key, style: value.style, items: value.items } : null;
+      if (!value.items.length) return null;
+      const many = value.items.length > 2;
+      return {
+        block: 'list',
+        key,
+        style: 'paras',
+        names: many ? value.items.map((t) => t.name).join(' · ') : null,
+        items: many ? [] : value.items.map((t) => ({ name: t.name, text: firstSentence(t.text) })),
+      };
+    }
+    case 'rows': {
+      const columns = definition.block === 'rows' ? definition.columns.map((c) => c.name) : [];
+      const rows = value.rows.map((r) => columns.map((_, i) => r.cells[i] ?? { text: '', tokens: null }));
+      return rows.length ? { block: 'rows', key, columns, rows } : null;
+    }
+    case 'lines':
+      return { block: 'lines', key, labels: value.labels };
+    case 'flag': {
+      const word = definition.block === 'flag' ? definition.word : key;
+      return value.on ? { block: 'text', key, text: word } : null;
+    }
+  }
+}
+
+// What a subtitle or a quote field prints.
+function shortText(field: SheetKindField): string {
+  const { value } = field;
+  if (value?.block === 'flag') return value.on && field.definition.block === 'flag' ? field.definition.word : '';
+  if (value?.block === 'list') return value.items.map((i) => (typeof i === 'string' ? i : i.name)).join(', ');
+  return field.text.trim();
+}
+
+// The box of a sheet with a kind and no required field missing (D6).
 function threat(sheet: Sheet, sheets: boolean): LayoutThreat | null {
   const kind = sheet.kind;
   if (!kind || kind.missing.length) return null;
-  const grade = kind.fields.find((f) => f.value?.block === 'choice' && f.definition.requirement === 'required');
-  const boxes = (grouped: boolean) =>
-    kind.fields.find((f) => f.value?.block === 'boxes' && f.definition.block === 'boxes' && (f.definition.group !== undefined) === grouped);
-  const wounds = boxes(true);
-  const afflictions = boxes(false);
-  if (!grade || wounds?.value?.block !== 'boxes' || afflictions?.value?.block !== 'boxes' || wounds.definition.block !== 'boxes') return null;
-  const pack = kind.fields.find((f) => f.value?.block === 'flag');
-  const list = kind.fields.find((f) => f.value?.block === 'list' && f.value.style === 'paras')?.value;
-  const talents = list?.block === 'list' && list.style === 'paras' ? list.items : [];
-  const many = talents.length > 2;
+  let subtitle = kind.kind;
+  for (const field of kind.fields.filter((f) => f.show === 'sub')) {
+    const part = shortText(field);
+    if (part) subtitle += (field.definition.afterType ? ' ' : ' · ') + part;
+  }
   return {
     name: sheet.name,
-    grade: grade.text,
-    pack: pack?.value?.block === 'flag' && pack.value.on,
-    wounds: wounds.value.count,
-    woundsPerCounter: wounds.definition.group!,
-    afflictions: afflictions.value.count,
-    talentNames: many ? talents.map((t) => t.name).join(' · ') : null,
-    talents: many ? [] : talents.map((t) => ({ name: t.name, text: firstSentence(t.text) })),
+    subtitle,
+    quotes: kind.fields
+      .filter((f) => f.show === 'quote')
+      .map(shortText)
+      .filter(Boolean),
+    rows: kind.fields
+      .filter((f) => f.show === 'row')
+      .map(threatRow)
+      .filter((r): r is LayoutThreatRow => r !== null),
     sheet: sheets ? sheetLabel(sheet.id) : null,
   };
+}
+
+// The boxes and clocks a kind shows only in the full sheet (D7).
+function trackers(sheet: Sheet): LayoutThreatRow[] {
+  return (sheet.kind?.fields ?? [])
+    .filter((f) => f.show === 'none' && (f.block === 'boxes' || f.block === 'clock') && f.value)
+    .map(threatRow)
+    .filter((r): r is LayoutThreatRow => r !== null);
 }
 
 function scene(template: AdventureTemplate, model: Model, found: Scene, sheets: boolean): LayoutScene {
@@ -574,6 +671,7 @@ export function toLayoutInput(
           title: s.title,
           from: s.range.start.offset,
           blocks: sheetBlocks(template, s),
+          trackers: trackers(s),
         }))
       : [],
     pregenerated:
