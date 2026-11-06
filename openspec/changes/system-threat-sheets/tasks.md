@@ -51,7 +51,7 @@ Markdown files you touch (`npx --yes prettier@3 --write <files>`).
 
 ## 5. Proof and hand-back
 
-- [ ] 5.1 `npm run typecheck`, `npm test`, `npm run e2e`: literal results in the hand-back
-- [ ] 5.2 Sabaoth's four hashes on the branch equal 0.1
-- [ ] 5.3 PNG pages of the 17-kind test PDF, paths in the hand-back
-- [ ] 5.4 Hand back: results, hashes, PNG paths, departures from the design
+- [x] 5.1 `npm run typecheck`, `npm test`, `npm run e2e`: literal results in the hand-back
+- [x] 5.2 Sabaoth's four hashes on the branch equal 0.1
+- [x] 5.3 PNG pages of the 17-kind test PDF, paths in the hand-back
+- [x] 5.4 Hand back: results, hashes, PNG paths, departures from the design
