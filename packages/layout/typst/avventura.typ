@@ -443,9 +443,14 @@
     let keys = rows.filter(r => r.block in keyed or (r.block == "clocks" and r.fixed)).map(r => r.key)
     let width-of(k) = measure(key-text(k)).width + 2mm
     let longest-word(k) = calc.max(..k.split(" ").map(word => width-of(word)))
-    let w = calc.max(13mm, ..keys.map(k => calc.max(calc.min(width-of(k), 26mm), longest-word(k))))
+    // A single word wider than 30 mm prints smaller instead of breaking.
+    let w = calc.min(30mm, calc.max(13mm, ..keys.map(k => calc.max(calc.min(width-of(k), 26mm), longest-word(k)))))
     let fits(k) = width-of(k) <= w
-    let key(name) = if fits(name) { key-text(name) } else { box(width: w - 2mm, key-text(name)) }
+    let key(name) = if fits(name) { key-text(name) } else {
+      let word = longest-word(name)
+      let size = if word > w { 8.5pt * ((w - 2mm) / (word - 2mm)) } else { 8.5pt }
+      box(width: w - 2mm, plex-text(size: size, name))
+    }
     // Kulthos's counters: the boxes beside the key, centred on it.
     let row(name, body) = block(below: 1mm, grid(
       columns: (w, auto),
@@ -454,8 +459,13 @@
       body,
     ))
     // A text value beside its key on the same baseline; its wrapped lines
-    // under the value, not under the key.
-    let text-row(name, body) = block(below: gap, par(leading: tight, hanging-indent: w, [#box(width: w, key(name))#body]))
+    // under the value, not under the key. A key on several lines sits beside
+    // the value, both from the top.
+    let text-row(name, body) = block(below: gap, if fits(name) {
+      par(leading: tight, hanging-indent: w, [#box(width: w, key(name))#body])
+    } else {
+      grid(columns: (w, 1fr), align: top, key(name), par(leading: tight, body))
+    })
     let mark-fill = rule.lighten(55%)
     let numbered(n, marked) = box(
       width: 3.4mm,
@@ -525,7 +535,7 @@
         // six short labels on one line, six long ones three by three. Every
         // value on one line, all at the size the widest one fits at.
         let label(s) = plex-text(size: 6pt, weight: 600, tracking: 0.04em, fill: grey, upper(s.label))
-        let value(s, size) = text(weight: "semibold", size: size, if s.value != none { s.value } else { "–" })
+        let value(s, size) = text(weight: "semibold", size: size, if s.value != none { md(s.value) } else { "–" })
         let n = calc.max(r.stats.len(), 1)
         block(above: 1.5mm, below: 1.5mm, layout(size => {
           let widest = calc.max(0pt, ..r.stats.map(s => measure(label(s)).width))
@@ -569,30 +579,39 @@
       } else if r.block == "list" {
         block(below: gap, par(leading: tight)[#label-text(r.key + ":") #md(r.items.join(" · "))])
       } else if r.block == "rows" {
-        // Columns as a browser sizes them: each at least its longest word
-        // (and its tokens), the room left shared by how much more each needs
-        // to print on one line; with room to spare the first takes it. Words
-        // never break; a word's tokens follow it, under it only when even the
-        // narrowest columns leave no room.
-        let cell-size = 8.3pt
+        // Columns as a browser sizes them: each at least its longest word, the
+        // room left shared by how much more each needs to print on one line;
+        // with room to spare the first takes it. Words never break, and a
+        // word keeps its tokens on its line. When the narrowest columns are
+        // still too wide the cells print smaller, and only then may tokens go
+        // under their word.
         let head(c) = plex-text(size: 6.5pt, weight: 600, tracking: 0.04em, fill: grey, upper(c))
-        let cell(c) = [#md(c.text)#tokens(c.tokens)]
+        let cell(c, together) = [#md(c.text)#if together { sym.wj }#tokens(c.tokens)]
         let n = r.columns.len()
-        let least-of(i) = calc.max(
+        let least-of(i, size, together) = calc.max(
           measure(head(r.columns.at(i))).width,
           ..r.rows.map(row => {
             let c = row.at(i)
-            calc.max(0pt, measure(text(size: cell-size, tokens(c.tokens))).width, ..c.text.split(" ").map(x => measure(text(size: cell-size, x)).width))
+            let words = c.text.split(" ")
+            let last = text(size: size, cell((text: words.last(), tokens: c.tokens), together))
+            calc.max(
+              measure(text(size: size, tokens(c.tokens))).width,
+              ..words.map(x => measure(text(size: size, x)).width),
+              if together { measure(last).width } else { 0pt },
+            )
           }),
         )
-        let full-of(i) = calc.max(measure(head(r.columns.at(i))).width, ..r.rows.map(row => measure(text(size: cell-size, cell(row.at(i)))).width))
+        let full-of(i, size) = calc.max(measure(head(r.columns.at(i))).width, ..r.rows.map(row => measure(text(size: size, cell(row.at(i), true))).width))
         block(below: gap, {
           label-text(r.key)
           block(above: 1mm, layout(size => {
             let gutter = 1.5mm
             let room = size.width - (n - 1) * gutter
-            let least = range(n).map(least-of)
-            let full = range(n).map(full-of)
+            let tries = ((8.3pt, true), (7.6pt, true), (8.3pt, false), (7.6pt, false), (6.8pt, false))
+            let fitting = tries.filter(t => range(n).map(i => least-of(i, ..t)).sum() <= room)
+            let (cell-size, together) = if fitting.len() > 0 { fitting.first() } else { tries.last() }
+            let least = range(n).map(i => least-of(i, cell-size, together))
+            let full = range(n).map(i => full-of(i, cell-size))
             let spare = room - least.sum()
             let wanted = range(n).map(i => full.at(i) - least.at(i)).sum()
             let widths = if full.sum() <= room {
@@ -611,7 +630,7 @@
               inset: (x: 0mm, y: 0.9mm),
               align: left + top,
               ..r.columns.map(head),
-              ..r.rows.flatten().map(cell),
+              ..r.rows.flatten().map(c => cell(c, together)),
             )
           }))
         })
