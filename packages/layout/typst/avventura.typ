@@ -428,26 +428,34 @@
   }
 
   // The rows of a threat box, each drawn by its block (design D6). Keys sit
-  // in a label column at least 13 mm wide, wider for a longer key up to
-  // 20 mm; longer keys wrap in it.
+  // in a label column at least 13 mm wide, as wide as the widest key up to
+  // 26 mm; a longer key wraps at its spaces, never inside a word.
+  //
+  // Kulthos's rows (boxes beside a one-line key, its talents) are drawn as
+  // before this column grew, so Sabaoth's PDF keeps its bytes: its talents
+  // keep the page's leading, which Sabaoth's wrapped talents print with.
   let threat-rows(rows) = context {
+    // Inside a value, lines sit closer than two rows do.
+    let tight = 0.4em
+    let gap = 1.6mm
+    let key-text(k) = plex-text(size: 8.5pt, k)
     let keyed = ("text", "number", "boxes")
     let keys = rows.filter(r => r.block in keyed or (r.block == "clocks" and r.fixed)).map(r => r.key)
-    let natural = keys.map(k => measure(plex-text(size: 8.5pt, k)).width + 2mm)
-    let w = calc.min(20mm, calc.max(13mm, ..natural))
-    // A key wider than the column wraps in it, 2 mm short of the value; a
-    // word too long for it breaks.
-    let key(name) = {
-      let k = plex-text(size: 8.5pt, name)
-      if measure(k).width + 2mm > w { box(width: w - 2mm, { set text(hyphenate: true); k }) } else { k }
-    }
-    // Kulthos's counters: a box, a gap, the next.
-    let row(name, body, fill: false) = block(below: 1mm, grid(
-      columns: (w, if fill { 1fr } else { auto }),
-      align: if fill { top } else { horizon },
+    let width-of(k) = measure(key-text(k)).width + 2mm
+    let longest-word(k) = calc.max(..k.split(" ").map(word => width-of(word)))
+    let w = calc.max(13mm, ..keys.map(k => calc.max(calc.min(width-of(k), 26mm), longest-word(k))))
+    let fits(k) = width-of(k) <= w
+    let key(name) = if fits(name) { key-text(name) } else { box(width: w - 2mm, key-text(name)) }
+    // Kulthos's counters: the boxes beside the key, centred on it.
+    let row(name, body) = block(below: 1mm, grid(
+      columns: (w, auto),
+      align: if fits(name) { horizon } else { top },
       key(name),
       body,
     ))
+    // A text value beside its key on the same baseline; its wrapped lines
+    // under the value, not under the key.
+    let text-row(name, body) = block(below: gap, par(leading: tight, hanging-indent: w, [#box(width: w, key(name))#body]))
     let mark-fill = rule.lighten(55%)
     let numbered(n, marked) = box(
       width: 3.4mm,
@@ -466,14 +474,14 @@
     let group(r, from, n) = box(stack(dir: ltr, spacing: 0.6mm, ..range(from, from + n).map(i => one(i, r))))
     // On one line, as Kulthos's counters: groups 2 mm apart. When they do not
     // fit beside the key they wrap between groups, or between boxes when the
-    // kind sets no group, with the key at the top.
+    // kind sets no group, from the key's first line.
     let boxes-row(r) = {
       if r.count == 0 { return row(r.key, text(fill: grey, "0")) }
       let starts = range(0, r.count, step: r.group)
       let groups = starts.map(s => group(r, s, calc.min(r.group, r.count - s)))
       let natural = r.count * 3mm + (r.count - groups.len()) * 0.6mm + (groups.len() - 1) * 2mm
       block(below: 1mm, layout(size => if natural <= size.width - w {
-        grid(columns: (w, auto), align: horizon, key(r.key), if groups.len() == 1 { groups.first() } else { stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..groups) })
+        grid(columns: (w, auto), align: if fits(r.key) { horizon } else { top }, key(r.key), if groups.len() == 1 { groups.first() } else { stack(dir: ltr, spacing: 1.4mm + 0.6mm, ..groups) })
       } else {
         let pieces = if groups.len() == 1 { range(r.count).map(i => one(i, r)).join([#h(0.6mm)#sym.zws]) } else {
           groups.join([#h(2mm)#sym.zws])
@@ -491,6 +499,7 @@
         }
       })
     }
+    // Tokens: the number a table gives a word, as small filled dots.
     let tokens(n) = if n != none and n > 0 {
       h(1mm)
       box(stack(dir: ltr, spacing: 0.5mm, ..range(n).map(_ => circle(radius: 0.75mm, fill: ink))))
@@ -498,9 +507,9 @@
     let write-in(width) = box(width: width, height: 1.8mm, stroke: (bottom: 0.25mm + ink))
     for r in rows {
       if r.block == "text" {
-        row(r.key, md(r.text), fill: true)
+        text-row(r.key, md(r.text))
       } else if r.block == "number" {
-        if r.line { row(r.key, [#write-in(12mm) / #md(r.text)], fill: true) } else { row(r.key, md(r.text), fill: true) }
+        text-row(r.key, if r.line { [#write-in(12mm) / #md(r.text)] } else { md(r.text) })
       } else if r.block == "boxes" {
         boxes-row(r)
       } else if r.block == "clocks" {
@@ -508,19 +517,24 @@
           row(r.key, clock(r.clocks.first().size))
         } else {
           for c in r.clocks {
-            block(below: 1mm, grid(columns: (auto, 1fr), column-gutter: 2mm, align: horizon, clock(c.size), md(c.label)))
+            block(below: 1mm, grid(columns: (auto, 1fr), column-gutter: 2mm, align: horizon, clock(c.size), { set par(leading: tight); md(c.label) }))
           }
         }
       } else if r.block == "stats" {
         // As many cells a line as the longest label allows, the lines even:
-        // six short labels on one line, six long ones three by three.
+        // six short labels on one line, six long ones three by three. Every
+        // value on one line, all at the size the widest one fits at.
         let label(s) = plex-text(size: 6pt, weight: 600, tracking: 0.04em, fill: grey, upper(s.label))
+        let value(s, size) = text(weight: "semibold", size: size, if s.value != none { s.value } else { "–" })
         let n = calc.max(r.stats.len(), 1)
         block(above: 1.5mm, below: 1.5mm, layout(size => {
           let widest = calc.max(0pt, ..r.stats.map(s => measure(label(s)).width))
           let fit = calc.max(1, calc.min(n, calc.floor(size.width / (widest + 1.6mm))))
           let lines = calc.ceil(n / fit)
           let per = calc.ceil(n / lines)
+          let room = size.width / per - 1.2mm
+          let longest = calc.max(0pt, ..r.stats.map(s => measure(value(s, 8.5pt)).width))
+          let value-size = if longest <= room { 8.5pt } else { calc.max(6pt, 8.5pt * (room / longest)) }
           table(
             columns: (1fr,) * per,
             stroke: 0.25mm + ink,
@@ -528,43 +542,81 @@
             align: center,
             ..r.stats.map(s => [
               #label(s)\
-              #text(weight: "semibold", size: 8.5pt, if s.value != none { md(s.value) } else { "–" })
+              #box(value(s, value-size))
             ]),
           )
         }))
       } else if r.block == "list" and r.style == "paras" {
         if r.names != none {
-          par[#label-text(r.key + ":") #md(r.names)]
+          par(leading: tight)[#label-text(r.key + ":") #md(r.names)]
         } else {
           for talent in r.items {
             par[#label-text(talent.name)#if talent.text != "" [: #md(talent.text)]]
           }
         }
       } else if r.block == "list" and r.style == "check" {
-        block(below: 1mm, {
+        block(below: gap, {
           label-text(r.key)
           for item in r.items {
-            block(above: 0.8mm, below: 0mm, par(hanging-indent: 3.6mm, [#box(width: 3.6mm, box(baseline: 0.2mm, circle(radius: 1.1mm, stroke: 0.3mm + ink)))#md(item)]))
+            block(above: 1mm, below: 0mm, grid(
+              columns: (3.6mm, 1fr),
+              align: top,
+              move(dy: 0.15mm, circle(radius: 1.05mm, stroke: 0.3mm + ink)),
+              { set par(leading: tight); md(item) },
+            ))
           }
         })
       } else if r.block == "list" {
-        par[#label-text(r.key + ":") #md(r.items.join(" · "))]
+        block(below: gap, par(leading: tight)[#label-text(r.key + ":") #md(r.items.join(" · "))])
       } else if r.block == "rows" {
-        block(below: 1mm, {
+        // Columns as a browser sizes them: each at least its longest word
+        // (and its tokens), the room left shared by how much more each needs
+        // to print on one line; with room to spare the first takes it. Words
+        // never break; a word's tokens follow it, under it only when even the
+        // narrowest columns leave no room.
+        let cell-size = 8.3pt
+        let head(c) = plex-text(size: 6.5pt, weight: 600, tracking: 0.04em, fill: grey, upper(c))
+        let cell(c) = [#md(c.text)#tokens(c.tokens)]
+        let n = r.columns.len()
+        let least-of(i) = calc.max(
+          measure(head(r.columns.at(i))).width,
+          ..r.rows.map(row => {
+            let c = row.at(i)
+            calc.max(0pt, measure(text(size: cell-size, tokens(c.tokens))).width, ..c.text.split(" ").map(x => measure(text(size: cell-size, x)).width))
+          }),
+        )
+        let full-of(i) = calc.max(measure(head(r.columns.at(i))).width, ..r.rows.map(row => measure(text(size: cell-size, cell(row.at(i)))).width))
+        block(below: gap, {
           label-text(r.key)
-          block(above: 1mm, table(
-            columns: r.columns.len(),
-            column-gutter: 1.5mm,
-            stroke: (x, y) => (bottom: if y == 0 { 0.3mm + ink } else { 0.2mm + rule.lighten(40%) }),
-            inset: (x: 0.4mm, y: 0.9mm),
-            align: left + top,
-            ..r.columns.map(c => plex-text(size: 6.5pt, weight: 600, tracking: 0.04em, fill: grey, upper(c))),
-            // A word longer than its column breaks, «difficilis-sima».
-            ..r.rows.flatten().map(c => [#set text(hyphenate: true); #md(c.text)#tokens(c.tokens)]),
-          ))
+          block(above: 1mm, layout(size => {
+            let gutter = 1.5mm
+            let room = size.width - (n - 1) * gutter
+            let least = range(n).map(least-of)
+            let full = range(n).map(full-of)
+            let spare = room - least.sum()
+            let wanted = range(n).map(i => full.at(i) - least.at(i)).sum()
+            let widths = if full.sum() <= room {
+              (1fr, ..full.slice(1))
+            } else if spare <= 0pt or wanted <= 0pt {
+              least
+            } else {
+              range(n).map(i => least.at(i) + spare * ((full.at(i) - least.at(i)) / wanted))
+            }
+            set text(size: cell-size)
+            set par(leading: tight)
+            table(
+              columns: widths,
+              column-gutter: gutter,
+              stroke: (x, y) => (bottom: if y == 0 { 0.3mm + ink } else { 0.2mm + rule.lighten(40%) }),
+              inset: (x: 0mm, y: 0.9mm),
+              align: left + top,
+              ..r.columns.map(head),
+              ..r.rows.flatten().map(cell),
+            )
+          }))
         })
       } else if r.block == "lines" {
-        block(below: 1mm, {
+        block(below: gap, {
           label-text(r.key)
           for l in r.labels {
             block(above: 1.2mm, below: 0mm, [#md(l)#h(1.5mm)#box(width: 1fr, height: 2.6mm, stroke: (bottom: 0.25mm + ink))])
@@ -577,7 +629,8 @@
   let threat-box(t) = block(width: 100%, stroke: 0.45mm + ink, inset: 3mm, below: 3.5mm, breakable: false, {
     set text(size: 8.8pt)
     set par(spacing: 1.2mm)
-    block(below: 1mm, text(font: fell, size: 14pt, bottom-edge: "descender", t.name))
+    // A name on two lines keeps them close; on one line it prints as before.
+    block(below: 1mm, { set par(leading: 0.3em); text(font: fell, size: 14pt, bottom-edge: "descender", t.name) })
     block(below: 1.5mm, plex-text(size: 8.5pt, fill: grey, t.subtitle))
     for q in t.quotes { block(below: 1.5mm, emph(md(q))) }
     threat-rows(t.rows)
