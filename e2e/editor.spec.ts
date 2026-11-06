@@ -362,7 +362,7 @@ const hiddenList = (page: Page) => page.locator('.inspector .hid');
 const hiddenCount = (page: Page) => page.locator('.status .hcount');
 const toast = (page: Page) => page.locator('.toast');
 const UNKNOWN = 'Se il tempo stringe';
-const THREAT = 'has a grade but is not listed';
+const THREAT = 'is a sheet with a kind (Minaccia) but is not listed';
 
 // «Wed 28 Oct»: a snooze's end as the app shows it, this year.
 const snoozeDay = (ms: number) =>
