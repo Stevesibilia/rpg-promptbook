@@ -218,3 +218,41 @@ by eye, so the hand-back carries the PNG pages of that test PDF.
   PDF at once. Accepted by the owner; built-ins change only in releases.
 - **Key names guessed.** Several Italian keys for Outgunned and Vileborn are
   guesses; the owner fixes them later by duplicating, or a follow-up release.
+
+## Review of groups 0 to 2 (accepted departures)
+
+Brief A (commits 0380171, 17fa95d) departed from the decisions above in
+these ways, all accepted by the architect:
+
+- **D5.** `SheetKindField` also carries its `definition` (the layout needs
+  group, marks, values, word, afterType, style, line, labels, also without
+  the systems), its `error` (the reason, read once) and a `range` that is
+  null for a field the block fills without being written. `SheetField` has
+  `lead` and `items`, `ListItem` has `items`.
+- **D5.** Boxes counted from a table are present unwritten when the choice
+  picks a row, as Kulthos's `Afflizioni` prints today. A required field the
+  block fills unwritten is not missing.
+- **D4 rows.** The separator splits cells, so a rows field on one line is
+  one row; several rows need sub-bullets. Text before the sub-bullets is the
+  first row.
+- **D4 flag.** Off when the first word is `no`, `false` or `0`; an empty
+  `Branco:` is on. `Branco: no` no longer draws «branco».
+- **D4 boxes.** Brackets mark boxes only with `marks`; marks split on commas
+  or spaces; a mark outside 1..count is `sheet.value.invalid`; text after the
+  number is accepted.
+- **D4 splitting.** On the separator outside brackets, plain when brackets do
+  not balance; empty items dropped; soft-wrapped items joined; single-value
+  blocks read the item's own line; stat labels match ignoring case, a colon
+  and emphasis.
+- **D1.** Also: a column a boxes count uses holds whole numbers; a rows first
+  cell is not empty; table columns unique; names compared ignoring case;
+  `requirement` defaults to optional.
+- **D10.** Converted lines follow `Tipo` and kind order (Branco before
+  Ferite); `Volontà` and `Condotta` segments are converted too. The Sabaoth
+  golden file is unchanged.
+- **D8.** `sheet.nested-threat` skips every key of the sheet's kind;
+  `ref.threat.outside` fires for any sheet with a kind; one
+  `sheet.field.required` per missing key; `system.unknown` lists the known
+  systems.
+- **Layout bridge.** `threat()` in `layout/src/input.ts` reads `Sheet.kind`
+  for Kulthos-shaped kinds only; group 3 replaces it.
