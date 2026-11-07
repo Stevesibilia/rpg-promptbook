@@ -47,6 +47,7 @@ export function PdfReview({
   snapshot,
   initialPage,
   template,
+  templateMissing = false,
   options,
   setOptions,
   onClose,
@@ -59,6 +60,9 @@ export function PdfReview({
   // The project's template, named in the options; a campaign template has
   // no pregenerated sheets (campaign-pdf design decision 10).
   template: Template;
+  // The project records a template this device does not hold: the PDF is
+  // built with the kind's built-in meanwhile, and says so.
+  templateMissing?: boolean;
   options: LayoutOptions;
   setOptions(change: Partial<LayoutOptions>): void;
   onClose(): void;
@@ -253,6 +257,7 @@ export function PdfReview({
               <select value={options.template} disabled>
                 <option value={options.template}>
                   {template.name} v{template.version}
+                  {templateMissing ? ' · template not found' : ''}
                 </option>
               </select>
             </label>

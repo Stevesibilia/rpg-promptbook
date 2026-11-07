@@ -49,7 +49,7 @@ function decorationsOf(state: EditorState, marks: readonly LineMark[]): Decorati
     if (mark?.optional) builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('optional'), side: 1 }));
     if (mark?.out) builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('not in the PDF'), side: 2 }));
     if (mark?.newPage)
-      builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('new page', 'pv-out np'), side: 2 }));
+      builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('new page', 'pv-out pv-np'), side: 2 }));
   }
   return builder.finish();
 }

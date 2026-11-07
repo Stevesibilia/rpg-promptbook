@@ -445,6 +445,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
           snapshot={pdfSnapshot}
           initialPage={review}
           template={documentTemplate}
+          templateMissing={templateMissing}
           options={pdfOptions}
           setOptions={setPdfOptions}
           onClose={closeReview}

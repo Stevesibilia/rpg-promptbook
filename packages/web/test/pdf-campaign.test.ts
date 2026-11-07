@@ -83,15 +83,32 @@ describe('the campaign outline', () => {
     // Only ### headings take an id.
     expect(outlineOf(campaign('## F1. Fronti\n')).map((i) => i.id)).toEqual([null]);
   });
+
+  it('reads a heading as the parser does, without its Markdown marks', () => {
+    const doc = '## *Aggiornamenti* ##\n\n### F1. **La Compagnia** di `Valmora`\n\nTesto.\n';
+    expect(outlineOf(campaign(doc)).map((i) => [i.id, i.name])).toEqual([
+      [null, 'Aggiornamenti'],
+      ['F1', 'La Compagnia di Valmora'],
+    ]);
+    expect(currentSection(campaign(doc, doc.indexOf('Testo')))).toBe('Aggiornamenti');
+    expect(unprintedSection(leftOut('Aggiornamenti'), currentSection(campaign(doc, doc.indexOf('Testo'))))).toBe(
+      '«Aggiornamenti»',
+    );
+  });
 });
 
 describe('the review of a campaign', () => {
-  const render = (template: Parameters<typeof PdfReview>[0]['template'], layout: 'avventura@1' | 'campagna@1') =>
+  const render = (
+    template: Parameters<typeof PdfReview>[0]['template'],
+    layout: 'avventura@1' | 'campagna@1',
+    templateMissing = false,
+  ) =>
     renderToStaticMarkup(
       createElement(PdfReview, {
         snapshot: null,
         initialPage: 1,
         template,
+        templateMissing,
         options: { ...defaultLayoutOptions, template: layout },
         setOptions: () => {},
         onClose: () => {},
@@ -106,6 +123,12 @@ describe('the review of a campaign', () => {
     expect(html).not.toContain('Pregenerated sheets');
     expect(html).toContain('<option value="campagna@1" selected="">Campagna v2</option>');
     expect(html).toContain('Ink saver');
+  });
+
+  it('says when the project’s own template is not on this device', () => {
+    expect(render(templates.campagnaV2, 'campagna@1', true)).toContain(
+      '<option value="campagna@1" selected="">Campagna v2 · template not found</option>',
+    );
   });
 
   it('keeps the adventure’s options', () => {
