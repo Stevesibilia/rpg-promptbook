@@ -252,26 +252,51 @@ function Toggle({
 // The «In the PDF» cell (template-pdf-layout design decision 7): a role
 // section's fixed place and «Printed / Left out», the appendix's place
 // only; an own section's «Printed / Left out», then «New page» and «Side
-// column» while it prints.
+// column» while it prints. A campaign's (campaign-pdf design decision 12):
+// the appendix «Never in the PDF», any other section «Printed / Left out»
+// and «New page» while it prints, never a side column.
 function PdfOptions({
   section,
   index,
+  kind,
   dispatch,
   readOnly,
 }: {
   section: SectionDefinition;
   index: number;
+  kind: Template['kind'];
   dispatch: Dispatch<DraftAction>;
   readOnly: boolean;
 }) {
-  const pdf = sectionPdf(section, 'adventure');
+  const pdf = sectionPdf(section, kind);
   const name = section.heading ?? section.name;
-  const toggle = (change: Parameters<typeof pdfAction>[2]) => () => dispatch(pdfAction(index, section, change));
+  const toggle = (change: Parameters<typeof pdfAction>[2]) => () => dispatch(pdfAction(index, section, change, kind));
   const printed = (
     <Toggle on={pdf.print} label={`In the PDF, ${name}`} readOnly={readOnly} onToggle={toggle({ print: !pdf.print })}>
       {pdf.print ? 'Printed' : 'Left out'}
     </Toggle>
   );
+  if (kind === 'campaign') {
+    if (section.role === 'appendix') {
+      return (
+        <span className="pdf">
+          <span className="tg fixed" title="The appendix holds image and music prompts">
+            Never in the PDF
+          </span>
+        </span>
+      );
+    }
+    return (
+      <span className="pdf">
+        {printed}
+        {pdf.print ? (
+          <Toggle on={pdf.newPage} label={`New page, ${name}`} readOnly={readOnly} onToggle={toggle({ newPage: !pdf.newPage })}>
+            New page
+          </Toggle>
+        ) : null}
+      </span>
+    );
+  }
   if (section.role) {
     return (
       <span className="pdf">
@@ -312,7 +337,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
             <span>Heading</span>
             <span>Needed</span>
             <span>Used for</span>
-            <span>{campaign ? '' : 'In the PDF'}</span>
+            <span>In the PDF</span>
             <span />
           </>
         }
@@ -355,7 +380,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
                     : 'Your own section: checked for presence only'
                 }
               />
-              {campaign ? <span /> : <PdfOptions section={s} index={i} dispatch={dispatch} readOnly={readOnly} />}
+              <PdfOptions section={s} index={i} kind={draft.kind} dispatch={dispatch} readOnly={readOnly} />
               <Remove
                 list="sections"
                 index={i}
@@ -371,7 +396,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
       </Rows>
       <p className="sub">
         {campaign
-          ? 'Campaigns have no PDF yet; their sections are checked for presence only.'
+          ? 'Sections the template does not list still print, flowing after the section before them.'
           : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}
       </p>
     </>
@@ -579,6 +604,7 @@ export function BoxesTab({ draft, saved, dispatch, readOnly, newUid }: TabProps 
 
 export function KeysTab({ draft, saved, dispatch, readOnly, newUid }: TabProps) {
   const marks = rowMarks(saved, draft, 'meta');
+  const campaign = draft.kind === 'campaign';
   return (
     <>
       <Rows
@@ -637,6 +663,12 @@ export function KeysTab({ draft, saved, dispatch, readOnly, newUid }: TabProps) 
           );
         })}
       </Rows>
+      {campaign && (
+        <p className="sub">
+          <code>sistema</code> and <code>formato</code> print on the line above the title; <code>autore</code>,{' '}
+          <code>copyright</code> and <code>licenza</code> on the credits line and in the footer.
+        </p>
+      )}
     </>
   );
 }

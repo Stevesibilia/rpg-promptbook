@@ -13,18 +13,22 @@ import '../editor/editor.css';
 // (template-editor design decision 9): skeletonDocument's text in a
 // read-only editor with the app's own live preview, so it looks as the
 // project's editor will. Lines the draft changed are amber, added ones green,
-// and headings say when their section is optional or not in the PDF.
+// and headings say when their section is optional or not in the PDF, and for
+// a campaign when it starts a page.
 
 class TagWidget extends WidgetType {
-  constructor(readonly text: string) {
+  constructor(
+    readonly text: string,
+    readonly className = 'pv-out',
+  ) {
     super();
   }
   eq(other: TagWidget) {
-    return other.text === this.text;
+    return other.text === this.text && other.className === this.className;
   }
   toDOM() {
     const span = document.createElement('span');
-    span.className = 'pv-out';
+    span.className = this.className;
     span.textContent = this.text;
     return span;
   }
@@ -44,6 +48,8 @@ function decorationsOf(state: EditorState, marks: readonly LineMark[]): Decorati
     else if (at.length === 0) builder.add(at.from, at.from, Decoration.line({ class: 'pv-blank' }));
     if (mark?.optional) builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('optional'), side: 1 }));
     if (mark?.out) builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('not in the PDF'), side: 2 }));
+    if (mark?.newPage)
+      builder.add(at.to, at.to, Decoration.widget({ widget: new TagWidget('new page', 'pv-out np'), side: 2 }));
   }
   return builder.finish();
 }

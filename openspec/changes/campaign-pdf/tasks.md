@@ -78,10 +78,10 @@ never written into the repository (D15).
 
 ## 7. Web: the template editor for campaigns (brief B)
 
-- [ ] 7.1 `TemplateRows.tsx`: the campaign «In the PDF» column, the appendix tag, the Sections note, the Front matter note (D12); `draft.ts` passes the kind to `withPdf`
-- [ ] 7.2 `marks.ts`, `StartingPreview.tsx`: «not in the PDF» and «new page» for campaigns (D12)
-- [ ] 7.3 Tests: the built-in v2 column disabled with its values; a copy's toggles patch and toggle back to no change; no «Side column» for a campaign; the preview marks; the save dialog's «PDF options of «X»» for a campaign
-- [ ] 7.4 Commit `feat(web): PDF options in campaign templates`
+- [x] 7.1 `TemplateRows.tsx`: the campaign «In the PDF» column, the appendix tag, the Sections note, the Front matter note (D12); `draft.ts` passes the kind to `withPdf`
+- [x] 7.2 `marks.ts`, `StartingPreview.tsx`: «not in the PDF» and «new page» for campaigns (D12)
+- [x] 7.3 Tests: the built-in v2 column disabled with its values; a copy's toggles patch and toggle back to no change; no «Side column» for a campaign; the preview marks; the save dialog's «PDF options of «X»» for a campaign
+- [x] 7.4 Commit `feat(web): PDF options in campaign templates`
 
 ## 8. e2e, docs and hand-back of brief B
 

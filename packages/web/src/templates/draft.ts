@@ -30,8 +30,13 @@ export { isLocked, READ_KEYS };
 // A change to a section's PDF options (template-pdf-layout design decision
 // 1): the options that differ from their defaults, no `pdf` when none does,
 // so turning an option back leaves the row as it was saved.
-export function pdfAction(index: number, section: SectionDefinition, change: SectionPdfPatch): DraftAction {
-  return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change, 'adventure').pdf } };
+export function pdfAction(
+  index: number,
+  section: SectionDefinition,
+  change: SectionPdfPatch,
+  kind: Template['kind'],
+): DraftAction {
+  return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change, kind).pdf } };
 }
 
 // A locked key keeps its name: the code reads it by that name.
