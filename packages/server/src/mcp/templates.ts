@@ -1,5 +1,7 @@
 import {
   builtinTemplates,
+  builtinVersions,
+  latestBuiltin,
   resolveTemplate,
   templateChanges,
   type Template,
@@ -54,12 +56,11 @@ async function orNoTemplate<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-const isBuiltin = (id: string) => builtinTemplates.some((t) => t.id === id);
-
-// The latest version of a template id: the account's latest, or 1 for a
-// built-in; null for an id neither holds.
+// The latest version of a template id: the account's latest, or the
+// built-in's highest; null for an id neither holds.
 async function latestVersion(kit: ToolKit, id: string): Promise<number | null> {
-  if (isBuiltin(id)) return 1;
+  const builtin = latestBuiltin(id);
+  if (builtin) return builtin.version;
   if (!TEMPLATE_ID.test(id)) return null;
   return (await latestTemplate(kit.db, kit.caller.userId, id))?.version ?? null;
 }
@@ -198,17 +199,22 @@ export function registerTemplateTools(kit: ToolKit): void {
       const defaultOf = defaultIds(settings, own);
       const used = (tid: string) =>
         Object.entries(usage).reduce((n, [ref, count]) => (ref.slice(0, ref.lastIndexOf('@')) === tid ? n + count : n), 0);
-      const builtins = builtinTemplates.map((t) => ({
-        id: t.id,
-        name: t.name,
-        kind: t.kind,
-        version: t.version,
-        builtin: true,
-        copiedFrom: null,
-        default: defaultOf(t.kind) === t.id,
-        projects: used(t.id),
-        versions: [{ version: t.version, note: '', createdAt: null }],
-      }));
+      // One entry per built-in id, at its latest version, listing every one.
+      const builtins = [...new Set(builtinTemplates.map((t) => t.id))].map((bid) => {
+        const versions = builtinVersions(bid);
+        const t = versions.at(-1)!;
+        return {
+          id: t.id,
+          name: t.name,
+          kind: t.kind,
+          version: t.version,
+          builtin: true,
+          copiedFrom: null,
+          default: defaultOf(t.kind) === t.id,
+          projects: used(t.id),
+          versions: versions.map((v) => ({ version: v.version, note: '', createdAt: null })),
+        };
+      });
       const mine = [...byId.values()]
         .map((versions) => {
           const latest = versions.at(-1)!.body;
@@ -236,13 +242,14 @@ export function registerTemplateTools(kit: ToolKit): void {
     { templateId, version: version.optional().describe('The version to read; the latest when omitted.') },
     async (args) => {
       const usage = await templateUsage(db, caller.userId);
-      const builtin = builtinTemplates.find((t) => t.id === args.templateId);
-      if (builtin) {
-        if (args.version !== undefined && args.version !== builtin.version) throw NO_TEMPLATE();
+      const builtins = builtinVersions(args.templateId);
+      if (builtins.length > 0) {
+        const builtin = args.version === undefined ? builtins.at(-1) : builtins.find((v) => v.version === args.version);
+        if (!builtin) throw NO_TEMPLATE();
         return {
           id: builtin.id,
           version: builtin.version,
-          latestVersion: builtin.version,
+          latestVersion: builtins.at(-1)!.version,
           builtin: true,
           note: '',
           createdAt: null,
@@ -287,7 +294,7 @@ export function registerTemplateTools(kit: ToolKit): void {
     'Save the next version of one of your templates. Start from get_template’s `template`, change it, and send the whole body with the version you read as baseVersion: a save from an older version is refused (template_version_conflict), as is a body equal to it (no_changes). ' +
       'Keep every key and every `uid`: unknown keys are dropped, and a row without its uid reads as removed and added again. Rows you add need no uid. ' +
       'Locked rows stay: sections and scene fields with a role, the front matter keys the app reads (titolo, sistema, licenza…) and keys with a role cannot be removed, roles cannot move or be added, and a locked key keeps its name; a section with a role can be renamed. ' +
-      'PDF options (`pdf`) go only on sections without a role, never on the appendix, and not in campaign templates. ' +
+      'PDF options (`pdf`): in adventure templates, `print` on any section but the appendix, `newPage` and `sideColumn` only on sections without a role; in campaign templates, `print` and `newPage` on any section but the appendix, never `sideColumn`. The appendix never prints. ' +
       'The answer’s `changes` lists what changed in sections, scene fields, boxes, keys, limits, name and game system; tables, sheets, the appendix, references and ids are not compared, so read the template again to check them. ' +
       'Projects keep their version until update_project_template moves them.',
     { title: 'Save a template version', readOnly: false, idempotent: false },

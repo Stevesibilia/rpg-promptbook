@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   defaultTemplateRef,
   defineTemplate,
+  implicitTemplateRef,
   inheritUids,
   lockViolations,
   resolveTemplate,
@@ -144,19 +145,21 @@ export async function templateForNewProject(
   }
   const builtin = resolveTemplate(defaultTemplateRef(kind))!;
   const id = settings.defaultTemplates[kind];
-  // A built-in's id (one version each), or a value no client writes.
+  // A built-in's id (its latest version, the kind's default), or a value no
+  // client writes.
   if (!TEMPLATE_ID.test(id)) return builtin;
   const latest = await latestTemplate(db, userId, id);
   return latest?.kind === kind ? latest : builtin;
 }
 
 // The account's projects per "<id>@<version>", built-ins included; a row
-// that records no template counts as its kind's built-in. Projects in the bin
+// that records no template counts as the built-in it was made with
+// (implicitTemplateRef: avventura@1, campagna@1). Projects in the bin
 // count too, so restoring one never meets a deleted template
 // (template-editor design decision 17).
 export async function templateUsage(db: Queryable, userId: string): Promise<Record<string, number>> {
-  const adventure = defaultTemplateRef('adventure');
-  const campaign = defaultTemplateRef('campaign');
+  const adventure = implicitTemplateRef('adventure');
+  const campaign = implicitTemplateRef('campaign');
   const rows = await db.query<{ ref: string; count: number }>(
     `select coalesce(template_id, case when category = 'campaign' then $2::text else $3::text end) || '@' ||
             coalesce(template_version, case when category = 'campaign' then $4::int else $5::int end) as ref,

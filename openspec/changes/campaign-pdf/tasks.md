@@ -59,12 +59,12 @@ never written into the repository (D15).
 
 ## 5. Built-ins in two versions: web, server, connector (brief B)
 
-- [ ] 5.1 `web/src/templates/list.ts:91` one entry per built-in id at its latest; `TemplateEditor.tsx:35` opens `latestBuiltin`, with the banner sentence of D4
+- [x] 5.1 `web/src/templates/list.ts:91` one entry per built-in id at its latest; `TemplateEditor.tsx:35` opens `latestBuiltin`, with the banner sentence of D4
   - list.ts:91 done in group 1 (brief A); TemplateEditor.tsx:35 and banner remain
-- [ ] 5.2 `server/src/mcp/templates.ts`: `latestVersion` (`:62`), `list_templates` (`:201`), `get_template` (`:239`) as D4; the `save_template_version` text of D13 (`:290`)
-- [ ] 5.3 `server/src/templates.ts`: `templateUsage` with `implicitTemplateRef` (`:158-161`), the comment at `:147`
-- [ ] 5.4 Tests: one «Campagna» v2 in the web list and in `list_templates` with versions 1 and 2; `get_template` with and without a version; `duplicate_template` and `create_project` without a version give v2; usage counts a project without a template as `campagna@1`; a project on `campagna@1` resolves to v1 in web, server and desktop (`desktop/src/main/templates.ts`, read only)
-- [ ] 5.5 Commit `feat(templates): built-ins with more than one version`
+- [x] 5.2 `server/src/mcp/templates.ts`: `latestVersion` (`:62`), `list_templates` (`:201`), `get_template` (`:239`) as D4; the `save_template_version` text of D13 (`:290`)
+- [x] 5.3 `server/src/templates.ts`: `templateUsage` with `implicitTemplateRef` (`:158-161`), the comment at `:147`
+- [x] 5.4 Tests: one «Campagna» v2 in the web list and in `list_templates` with versions 1 and 2; `get_template` with and without a version; `duplicate_template` and `create_project` without a version give v2; usage counts a project without a template as `campagna@1`; a project on `campagna@1` resolves to v1 in web, server and desktop (`desktop/src/main/templates.ts`, read only)
+- [x] 5.5 Commit `feat(templates): built-ins with more than one version`
 
 ## 6. Web: the campaign PDF (brief B)
 

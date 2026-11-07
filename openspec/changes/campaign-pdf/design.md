@@ -203,17 +203,18 @@ belong.
 `resolveTemplate` stays exact. Each place in «The code today» that looks a
 built-in up by id or kind changes:
 
-| Place                                     | Change                                                                                                 |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `web/src/templates/list.ts:91`            | one entry per built-in id, at `latestBuiltin` (one «Campagna», v2)                                     |
-| `web/src/templates/TemplateEditor.tsx:35` | opens `latestBuiltin(id)`                                                                              |
-| `server/src/mcp/templates.ts:62`          | `latestVersion` answers `latestBuiltin(id).version`                                                    |
-| `server/src/mcp/templates.ts:201`         | `list_templates`: one entry per built-in id, `version` the latest, `versions` every one                |
-| `server/src/mcp/templates.ts:239`         | `get_template`: the asked version among `builtinVersions`, else the latest; `latestVersion` the latest |
-| `project/src/template.ts:46`              | `readTemplateRef` falls back to `implicitTemplateRef`                                                  |
-| `server/src/templates.ts:158-161`         | `templateUsage` counts a row without a template as `implicitTemplateRef`                               |
-| `server/src/templates.ts:147`             | comment «one version each» corrected; the code stays                                                   |
-| `project/src/skeleton.ts:73-75`           | comment «(avventura@1, campagna@1)» corrected                                                          |
+| Place                                     | Change                                                                                                                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `web/src/templates/list.ts:91`            | one entry per built-in id, at `latestBuiltin` (one «Campagna», v2)                                                                                                             |
+| `web/src/templates/TemplateEditor.tsx:35` | opens `latestBuiltin(id)`                                                                                                                                                      |
+| `server/src/mcp/templates.ts:62`          | `latestVersion` answers `latestBuiltin(id).version`                                                                                                                            |
+| `server/src/mcp/templates.ts:201`         | `list_templates`: one entry per built-in id, `version` the latest, `versions` every one                                                                                        |
+| `server/src/mcp/templates.ts:239`         | `get_template`: the asked version among `builtinVersions`, else the latest; `latestVersion` the latest                                                                         |
+| `project/src/template.ts:46`              | `readTemplateRef` falls back to `implicitTemplateRef`                                                                                                                          |
+| `server/src/templates.ts:158-161`         | `templateUsage` counts a row without a template as `implicitTemplateRef`                                                                                                       |
+| `server/src/templates.ts:147`             | comment «one version each» corrected; the code stays                                                                                                                           |
+| `server/src/mcp/tools.ts:287`             | unchanged: `latestVersion` is what `update_project_template` can move the project to, so a project on `campagna@1` reads 1 (no update path from a built-in version, see below) |
+| `project/src/skeleton.ts:73-75`           | comment «(avventura@1, campagna@1)» corrected                                                                                                                                  |
 
 `duplicate_template` and `create_project` without a version go through
 `refOf`, so they get v2. `templateOf`'s fallback for a template the device

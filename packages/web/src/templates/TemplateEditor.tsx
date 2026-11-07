@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
   builtinSystems,
-  builtinTemplates,
+  latestBuiltin,
   templateChanges,
   templates as builtins,
   type AdventureTemplate,
@@ -15,7 +15,7 @@ import { useOffline } from '../desktop/useDevice.js';
 import { Confirm } from '../ui/Confirm.js';
 import { issueText } from './changes.js';
 import { checkDraft, draftReducer } from './draft.js';
-import { kindLabels, latestVersions } from './list.js';
+import { builtinBanner, kindLabels, latestVersions } from './list.js';
 import { previewMarks } from './marks.js';
 import { SaveDialog } from './SaveDialog.js';
 import { StartingPreview } from './StartingPreview.js';
@@ -32,7 +32,7 @@ const LIST_PATH = '/settings/documents';
 // A built-in opens read-only with a «Duplicate» banner.
 export function TemplateEditor({ id, settings }: { id: string; settings: Settings | null }) {
   const { stored, loaded, error } = useTemplates();
-  const builtin = builtinTemplates.find((t) => t.id === id);
+  const builtin = latestBuiltin(id);
   const own = latestVersions(stored).get(id)?.body;
   const saved = builtin ?? own;
   if (!saved) {
@@ -201,7 +201,7 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
       {builtin && (
         <div className="banner">
           <span>
-            <b>Built-in template.</b> It can't be changed; duplicate it to make your own.
+            <b>Built-in template.</b> {builtinBanner(initial)}
           </span>
           <NeedsServer>
             <button
