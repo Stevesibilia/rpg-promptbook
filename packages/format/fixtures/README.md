@@ -14,3 +14,7 @@ written: do not format them.
   `l-ancora-di-sabaoth.md`. A test checks that the converter still produces
   it; when a change to the converter is meant to change it, write it again
   from the converter's output.
+- `campagna-di-prova.md`: an invented, short campaign for the campaign PDF
+  (campaign-pdf design decision 15): front matter, text before the first
+  section, fronts with ID headings and task-list clocks, a six-column table,
+  a quote, a callout, a section «Campagna» v2 does not list and the appendix.

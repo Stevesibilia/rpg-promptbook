@@ -3,6 +3,15 @@ import { campagna, campagnaV2 } from './template/campagna.js';
 
 export { parseAdventure, type ParseOptions } from './parse/index.js';
 export {
+  parseCampaign,
+  type CampaignBlock,
+  type CampaignParse,
+  type CampaignParseOptions,
+  type CampaignSection,
+  type SubheadingBlock,
+} from './parse/campaign.js';
+export { matchSection } from './parse/sections.js';
+export {
   convertNote,
   type ConvertEdit,
   type ConvertEditKind,

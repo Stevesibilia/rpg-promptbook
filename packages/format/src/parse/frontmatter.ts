@@ -3,13 +3,20 @@ import { isMap, isScalar, parseDocument, type Node as YamlNode } from 'yaml';
 import spdxIds from 'spdx-license-ids/index.json' with { type: 'json' };
 import spdxDeprecated from 'spdx-license-ids/deprecated.json' with { type: 'json' };
 import type { JsonValue, Meta, MetaEntry, Range } from '../model.js';
-import type { ParseContext } from './blocks.js';
+import type { MetaKeyDefinition } from '../template/schema.js';
+import type { BlockContext } from './blocks.js';
+
+// What the front matter is read against: the template's keys only, so a
+// campaign template fits as well as an adventure's.
+export interface FrontMatterContext extends BlockContext {
+  template: { meta: readonly MetaKeyDefinition[] };
+}
 
 const SPDX = new Set<string>([...spdxIds, ...spdxDeprecated]);
 // One token, no spaces: what an SPDX id looks like. Anything else is free text.
 const SPDX_LIKE = /^[A-Za-z0-9][A-Za-z0-9.+-]*$/;
 
-export function readFrontMatter(ctx: ParseContext, node: Yaml | undefined): Meta {
+export function readFrontMatter(ctx: FrontMatterContext, node: Yaml | undefined): Meta {
   const meta: Meta = { range: null, values: {}, entries: [], licence: null };
   const { source, template, problems } = ctx;
   const documentStart = source.range(0, 0);

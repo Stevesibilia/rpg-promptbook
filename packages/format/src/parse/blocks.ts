@@ -12,13 +12,18 @@ import type { SystemDefinition } from '../systems.js';
 import type { AdventureTemplate } from '../template/schema.js';
 import { plainText, type Source } from './source.js';
 
-// What every part of the parser shares: the text, the template, and the list
-// the parser's own problems go to.
-export interface ParseContext {
+// What reading a block needs: the text, and the list the parser's own
+// problems go to. A campaign's reader shares it with the adventure's.
+export interface BlockContext {
   source: Source;
+  problems: Problem[];
+}
+
+// What every part of the adventure parser shares: the text, the template, and
+// the list the parser's own problems go to.
+export interface ParseContext extends BlockContext {
   template: AdventureTemplate;
   systems: readonly SystemDefinition[];
-  problems: Problem[];
 }
 
 // Numbers the boxes of one owner (a scene, a section, a sheet): "S3.1", "S3.2".
@@ -29,7 +34,7 @@ export interface BoxIds {
 
 const CALLOUT = /^\[!([A-Za-z][\w-]*)(?:\|([\w-]+))?\](?:[ \t]+(.*?))?[ \t]*$/;
 
-export function toBlock(ctx: ParseContext, node: RootContent, ids: BoxIds, sceneId?: string): Block {
+export function toBlock(ctx: BlockContext, node: RootContent, ids: BoxIds, sceneId?: string): Block {
   const { source } = ctx;
   const range = source.nodeRange(node);
   const text = source.slice(node);
@@ -53,7 +58,7 @@ export function toBlock(ctx: ParseContext, node: RootContent, ids: BoxIds, scene
   }
 }
 
-export function toList(ctx: ParseContext, node: List): ListBlock {
+export function toList(ctx: BlockContext, node: List): ListBlock {
   return {
     kind: 'list',
     range: ctx.source.nodeRange(node),
@@ -63,7 +68,7 @@ export function toList(ctx: ParseContext, node: List): ListBlock {
   };
 }
 
-function toListItem(ctx: ParseContext, item: MdListItem): ListItem {
+function toListItem(ctx: BlockContext, item: MdListItem): ListItem {
   const { source } = ctx;
   const first = item.children[0];
   const from = first ? source.start(first) : source.end(item);
@@ -81,7 +86,7 @@ function toListItem(ctx: ParseContext, item: MdListItem): ListItem {
 
 // An item's first paragraph after its bold label: its own line, without the
 // sub-bullets or paragraphs that follow.
-export function itemLead(ctx: ParseContext, item: MdListItem): string {
+export function itemLead(ctx: BlockContext, item: MdListItem): string {
   const { source } = ctx;
   const first = item.children[0];
   if (!first || first.type !== 'paragraph') return '';
@@ -91,7 +96,7 @@ export function itemLead(ctx: ParseContext, item: MdListItem): string {
 
 // The bold text a paragraph opens with: "**Tipo:** …" gives "Tipo".
 export function leadingLabel(
-  ctx: ParseContext,
+  ctx: BlockContext,
   node: Nodes | undefined,
 ): { label: string; colon: boolean; start: number; end: number } | null {
   if (!node || node.type !== 'paragraph') return null;
@@ -111,7 +116,7 @@ export function afterLabel(text: string): string {
   return text.replace(/^[:,]?[ \t]*/, '').trim();
 }
 
-export function toTable(ctx: ParseContext, node: Table): TableBlock {
+export function toTable(ctx: BlockContext, node: Table): TableBlock {
   const { source } = ctx;
   const rows = node.children.map((row) => ({
     range: source.nodeRange(row),
@@ -135,7 +140,7 @@ function quoteLines(raw: string): string[] {
   return raw.split(/\r?\n/).map((line) => line.replace(/^[ \t]*>[ \t]?/, ''));
 }
 
-function toBox(ctx: ParseContext, node: Nodes, ids: BoxIds, sceneId?: string): BoxBlock {
+function toBox(ctx: BlockContext, node: Nodes, ids: BoxIds, sceneId?: string): BoxBlock {
   const { source } = ctx;
   const range = source.nodeRange(node);
   const text = source.slice(node);

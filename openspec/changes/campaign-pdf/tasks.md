@@ -35,11 +35,11 @@ never written into the repository (D15).
 
 ## 2. Format: reading a campaign (brief A)
 
-- [ ] 2.1 `parse/blocks.ts`, `parse/frontmatter.ts`: the narrower context types of D5; `parseAdventure` unchanged
-- [ ] 2.2 `parse/campaign.ts`: `parseCampaign` and its types (D5); `matchSection` and `parseCampaign` exported from `index.ts`
-- [ ] 2.3 `fixtures/campagna-di-prova.md`: the invented fixture of D15, written with the `scrittura-italiana` skill
-- [ ] 2.4 Tests: the fixture's sections in order with `known`, `role`, `pdf`; lead text; ID and plain subheadings; a `> [!nota]` callout and a quote; ranges that slice back to the heading and block text; no problems returned; every existing parse test passes unchanged
-- [ ] 2.5 Commit `feat(format): read a campaign's sections and blocks`
+- [x] 2.1 `parse/blocks.ts`, `parse/frontmatter.ts`: the narrower context types of D5; `parseAdventure` unchanged
+- [x] 2.2 `parse/campaign.ts`: `parseCampaign` and its types (D5); `matchSection` and `parseCampaign` exported from `index.ts`
+- [x] 2.3 `fixtures/campagna-di-prova.md`: the invented fixture of D15, written with the `scrittura-italiana` skill
+- [x] 2.4 Tests: the fixture's sections in order with `known`, `role`, `pdf`; lead text; ID and plain subheadings; a `> [!nota]` callout and a quote; ranges that slice back to the heading and block text; no problems returned; every existing parse test passes unchanged
+- [x] 2.5 Commit `feat(format): read a campaign's sections and blocks`
 
 ## 3. Layout: the campaign template (brief A)
 
