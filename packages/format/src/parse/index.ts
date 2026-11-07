@@ -1,19 +1,14 @@
 import type { Heading, RootContent } from 'mdast';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
 import { runChecks } from '../checks/index.js';
 import type { Model, ParseResult, Problem, Unplaced } from '../model.js';
 import { builtinSystems, type SystemDefinition } from '../systems.js';
 import { templateName, type AdventureTemplate } from '../template/schema.js';
 import type { ParseContext } from './blocks.js';
 import { readFrontMatter } from './frontmatter.js';
+import { processor } from './processor.js';
 import { resolveReferences } from './references.js';
 import { readSection } from './sections.js';
 import { createSource } from './source.js';
-
-const processor = unified().use(remarkParse).use(remarkFrontmatter, ['yaml']).use(remarkGfm);
 
 export interface ParseOptions {
   template: AdventureTemplate;

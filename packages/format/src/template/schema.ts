@@ -208,8 +208,9 @@ const adventureSchema = z
     });
   });
 
-// A campaign template holds only what a campaign's skeleton needs: campaigns
-// are never parsed.
+// A campaign template holds what a campaign's skeleton and its PDF need:
+// campaigns are never checked. A section prints and may start a page; there
+// is no side column, and no role but the appendix.
 const campaignSchema = z
   .object({ ...head, kind: z.literal('campaign'), meta: z.array(metaKeySchema), sections })
   .superRefine((template, ctx) => {
@@ -220,7 +221,23 @@ const campaignSchema = z
     unique(template.sections, (s) => s.role, ['sections'], 'role');
     uniqueUids(unique, template);
     template.sections.forEach((section, index) => {
-      if (section.pdf) ctx.addIssue({ code: 'custom', path: ['sections', index, 'pdf'], message: 'campaigns have no PDF' });
+      if (section.role && section.role !== 'appendix') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sections', index, 'role'],
+          message: 'a campaign section takes no role but the appendix',
+        });
+      }
+      const { pdf } = section;
+      if (!pdf) return;
+      const at = ['sections', index, 'pdf'];
+      if (section.role === 'appendix') {
+        ctx.addIssue({ code: 'custom', path: at, message: 'the appendix is never printed' });
+        return;
+      }
+      if (pdf.sideColumn !== undefined) {
+        ctx.addIssue({ code: 'custom', path: [...at, 'sideColumn'], message: 'campaigns have no side column' });
+      }
     });
   });
 

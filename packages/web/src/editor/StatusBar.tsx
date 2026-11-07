@@ -126,7 +126,7 @@ export function StatusBar({
       {words !== null && <span>{plural(words, 'word')}</span>}
       <span className="r">
         {!snapshot.checked
-          ? 'Campaign · not checked'
+          ? `Campaign · not checked${templateMissing ? ' · template not found' : ''}`
           : templateMissing
             ? `Template: ${snapshot.templateName} (template not found)`
             : `Template: ${snapshot.template}`}

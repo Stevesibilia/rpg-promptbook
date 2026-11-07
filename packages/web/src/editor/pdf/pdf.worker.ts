@@ -1,8 +1,8 @@
 import { createTypstRenderer, type TypstRenderer } from '@myriaddreamin/typst.ts';
 import compilerWasmUrl from '@myriaddreamin/typst-ts-web-compiler/wasm?url';
 import rendererWasmUrl from '@myriaddreamin/typst-ts-renderer/wasm?url';
-import { parseAdventure } from 'promptbook-format';
-import { createEngine, layoutChecks, loadAssets, toLayoutInput, type Engine } from 'promptbook-layout';
+import { createEngine, loadAssets, type Engine } from 'promptbook-layout';
+import { prepare } from './prepare.js';
 import { prepareSvg } from './pages.js';
 import type { PdfAnswer, PdfBuild, PdfRequest } from './protocol.js';
 
@@ -35,9 +35,6 @@ let tools: Promise<Tools> | null = null;
 
 const post = (answer: PdfAnswer, transfer: Transferable[] = []) => self.postMessage(answer, { transfer });
 
-const inputOf = ({ text, options, project, template }: PdfRequest) =>
-  toLayoutInput(parseAdventure(text, { template }).model, options, project, template);
-
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const failedBuild = (diagnostics: PdfBuild['diagnostics']): PdfBuild => ({
   svg: null,
@@ -50,7 +47,8 @@ const failedBuild = (diagnostics: PdfBuild['diagnostics']): PdfBuild => ({
 const NOTHING = { severity: 'error', message: 'The layout produced no pages.' } as const;
 
 async function build({ engine, renderer }: Tools, request: PdfRequest): Promise<PdfBuild> {
-  const result = await engine.build(inputOf(request));
+  const prepared = prepare(request);
+  const result = await engine.build(prepared.input);
   if (result.diagnostics.some((d) => d.severity === 'error')) return failedBuild(result.diagnostics);
   if (!result.vector.length) return failedBuild([...result.diagnostics, NOTHING]);
   const svg = await renderer.runWithSession(async (session) => {
@@ -60,13 +58,13 @@ async function build({ engine, renderer }: Tools, request: PdfRequest): Promise<
       data_selection: { body: true, defs: true, css: false, js: false },
     });
   });
-  const prepared = prepareSvg(svg);
-  if (!prepared.pages.length) return failedBuild([...result.diagnostics, NOTHING]);
+  const drawn = prepareSvg(svg);
+  if (!drawn.pages.length) return failedBuild([...result.diagnostics, NOTHING]);
   return {
-    svg: prepared.svg,
-    pages: prepared.pages,
+    svg: drawn.svg,
+    pages: drawn.pages,
     positions: result.positions,
-    checks: layoutChecks(result.positions, result.pages),
+    checks: prepared.checks(result.positions, result.pages),
     diagnostics: result.diagnostics,
   };
 }
@@ -83,7 +81,7 @@ async function answer(request: PdfRequest): Promise<void> {
     return post({ kind: 'build', version, build: await build(loaded, request) });
   }
   // A copy of its own, so the transfer cannot take the compiler's memory.
-  const bytes = (await loaded.engine.pdf(inputOf(request))).slice();
+  const bytes = (await loaded.engine.pdf(prepare(request).input)).slice();
   post({ kind: 'pdf', version, bytes }, [bytes.buffer]);
 }
 

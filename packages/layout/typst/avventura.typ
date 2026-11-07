@@ -50,6 +50,135 @@
 
 #let label-text(body) = plex-text(weight: 600, size: 8.5pt, tracking: 0.08em, fill: accent, upper(body))
 
+// ---- Shared with campagna.typ -------------------------------------------
+//
+// Helpers that read the tints take `ink-saver` as a named argument; the
+// `avventura` function binds it once (`md.with(ink-saver: …)`).
+
+// The page of a sheet, for «Tenente Donato, p. 12».
+#let page-of(target) = context {
+  let found = query(target)
+  if found.len() > 0 { str(found.first().location().page()) } else { "?" }
+}
+
+// A drawn checkbox, as stile.css's .box: task lists and threat boxes.
+#let checkbox(checked: false) = box(
+  width: 3mm,
+  height: 3mm,
+  stroke: 0.35mm + ink,
+  baseline: 0.4mm,
+  if checked {
+    place(curve(
+      stroke: 0.35mm + ink,
+      curve.move((0.5mm, 1.5mm)),
+      curve.line((1.3mm, 2.4mm)),
+      curve.line((2.6mm, 0.5mm)),
+    ))
+  },
+)
+
+// A table as stile.css draws one: a dark header, rules under the rows,
+// every other row tinted, the whole width. cmarker builds the table; this
+// rule builds it again with the columns and the look (the label stops the
+// rule from applying to its own table). With ink saver, tints become white.
+#let layout-table(variant, it, ink-saver: false) = {
+  if it.at("label", default: none) == <pb-table> { return it }
+  let tint(colour) = if ink-saver { white } else { colour }
+  let count = if type(it.columns) == int { it.columns } else { it.columns.len() }
+  let draw(widths) = [#table(
+    columns: widths,
+    stroke: (x, y) => if y > 0 { (bottom: 0.25mm + rule) } else if ink-saver { (bottom: 0.4mm + ink) },
+    fill: (x, y) => if y == 0 { if ink-saver { white } else { ink } } else if calc.even(y) { tint(zebra-tint) },
+    inset: (x, y) => if y == 0 { (x: 2.5mm, y: 1.4mm) } else { (x: 2.2mm, y: 1.2mm) },
+    align: left + top,
+    ..it.children,
+  )<pb-table>]
+  set text(size: if variant == "small" { 8.6pt } else { 9pt })
+  // line-height 1.32.
+  set par(leading: 0.66em)
+  show table.cell.where(y: 0): c => {
+    set text(font: plex, stretch: 87.5%, weight: 600, size: 8.5pt, tracking: 0.05em, fill: if ink-saver { ink } else { white })
+    upper(c)
+  }
+  show table.cell: c => if variant == "reactions" and c.x == 0 and c.y > 0 { strong(c) } else { c }
+  block(above: 2mm, below: 3mm, if variant == "reactions" and count == 2 {
+    draw((38%, 1fr))
+  } else {
+    layout(size => {
+      let natural = measure(draw((auto,) * count), width: size.width).width
+      if natural < size.width and count > 0 { draw((auto,) * (count - 1) + (1fr,)) } else { draw((auto,) * count) }
+    })
+  })
+}
+
+// A heading inside a block's Markdown (#### in a sheet) prints like h3.
+#let h3(body) = block(
+  above: 4mm,
+  below: 2mm,
+  sticky: true,
+  stroke: (bottom: 0.25mm + rule),
+  inset: (bottom: 0.6mm),
+  width: 100%,
+  text(font: fell, size: 13pt, fill: accent, body),
+)
+
+// stile.css: a paragraph whose only element is a bold run prints that run
+// as a label («IL PASSATO.», «AMBIENTAZIONE:»). Lists and tables are not
+// paragraphs, as in HTML.
+#let marked = (strong, emph, link, raw, highlight, box, image, sub, super, strike, underline)
+#let label-pars(body) = {
+  let children = if body.func() == [].func() { body.children } else { (body,) }
+  let segments = ((),)
+  for child in children {
+    if child.func() == parbreak { segments.push(()) } else { segments.last().push(child) }
+  }
+  segments
+    .map(segment => {
+      let elements = segment.filter(c => c.func() in marked)
+      if elements.len() == 1 and elements.first().func() == strong {
+        show strong: s => label-text(s.body)
+        segment.join()
+      } else { segment.join() }
+    })
+    .join(parbreak())
+}
+
+// Markdown to Typst. Raw Typst in the text is never run.
+#let md(markdown, table: "normal", ink-saver: false) = {
+  show std.table: layout-table.with(table, ink-saver: ink-saver)
+  label-pars(cmarker.render(
+  markdown,
+  smart-punctuation: false,
+  raw-typst: false,
+  set-document-title: false,
+  task-list-marker: checked => checkbox(checked: checked),
+  scope: (
+    heading: (level: 1, body) => h3(body),
+    link: (dest, body) => if type(dest) == label {
+      [#link(dest, body), p. #page-of(dest)]
+    } else { link(dest, body) },
+    image: (..args) => none,
+  ),
+))
+}
+
+// A section's heading: IM Fell 18 pt in the accent colour, a rule under it.
+#let section-heading(title, from: none, breaking: false) = {
+  if breaking { pagebreak(weak: true) }
+  block(
+    above: 5mm,
+    below: 2.5mm,
+    sticky: true,
+    width: 100%,
+    stroke: (bottom: 0.3mm + rule),
+    inset: (bottom: 0.9mm),
+    {
+      if from != none { pos("block", from) }
+      text(font: fell, size: 18pt, fill: accent, title)
+    },
+  )
+}
+
 #let avventura(input) = {
   let options = input.options
   let ink-saver = options.inkSaver
@@ -58,111 +187,8 @@
   // With the tint gone, a tinted box keeps a thin border instead.
   let tint-border = if ink-saver { 0.3mm + rule } else { none }
 
-  // The page of a sheet, for «Tenente Donato, p. 12».
-  let page-of(target) = context {
-    let found = query(target)
-    if found.len() > 0 { str(found.first().location().page()) } else { "?" }
-  }
-
-  // A drawn checkbox, as stile.css's .box: task lists and threat boxes.
-  let checkbox(checked: false) = box(
-    width: 3mm,
-    height: 3mm,
-    stroke: 0.35mm + ink,
-    baseline: 0.4mm,
-    if checked {
-      place(curve(
-        stroke: 0.35mm + ink,
-        curve.move((0.5mm, 1.5mm)),
-        curve.line((1.3mm, 2.4mm)),
-        curve.line((2.6mm, 0.5mm)),
-      ))
-    },
-  )
-
-  // A table as stile.css draws one: a dark header, rules under the rows,
-  // every other row tinted, the whole width. cmarker builds the table; this
-  // rule builds it again with the columns and the look (the label stops the
-  // rule from applying to its own table).
-  let layout-table(variant, it) = {
-    if it.at("label", default: none) == <pb-table> { return it }
-    let count = if type(it.columns) == int { it.columns } else { it.columns.len() }
-    let draw(widths) = [#table(
-      columns: widths,
-      stroke: (x, y) => if y > 0 { (bottom: 0.25mm + rule) } else if ink-saver { (bottom: 0.4mm + ink) },
-      fill: (x, y) => if y == 0 { if ink-saver { white } else { ink } } else if calc.even(y) { tint(zebra-tint) },
-      inset: (x, y) => if y == 0 { (x: 2.5mm, y: 1.4mm) } else { (x: 2.2mm, y: 1.2mm) },
-      align: left + top,
-      ..it.children,
-    )<pb-table>]
-    set text(size: if variant == "small" { 8.6pt } else { 9pt })
-    // line-height 1.32.
-    set par(leading: 0.66em)
-    show table.cell.where(y: 0): c => {
-      set text(font: plex, stretch: 87.5%, weight: 600, size: 8.5pt, tracking: 0.05em, fill: if ink-saver { ink } else { white })
-      upper(c)
-    }
-    show table.cell: c => if variant == "reactions" and c.x == 0 and c.y > 0 { strong(c) } else { c }
-    block(above: 2mm, below: 3mm, if variant == "reactions" and count == 2 {
-      draw((38%, 1fr))
-    } else {
-      layout(size => {
-        let natural = measure(draw((auto,) * count), width: size.width).width
-        if natural < size.width and count > 0 { draw((auto,) * (count - 1) + (1fr,)) } else { draw((auto,) * count) }
-      })
-    })
-  }
-
-  // A heading inside a block's Markdown (#### in a sheet) prints like h3.
-  let h3(body) = block(
-    above: 4mm,
-    below: 2mm,
-    sticky: true,
-    stroke: (bottom: 0.25mm + rule),
-    inset: (bottom: 0.6mm),
-    width: 100%,
-    text(font: fell, size: 13pt, fill: accent, body),
-  )
-
-  // stile.css: a paragraph whose only element is a bold run prints that run
-  // as a label («IL PASSATO.», «AMBIENTAZIONE:»). Lists and tables are not
-  // paragraphs, as in HTML.
-  let marked = (strong, emph, link, raw, highlight, box, image, sub, super, strike, underline)
-  let label-pars(body) = {
-    let children = if body.func() == [].func() { body.children } else { (body,) }
-    let segments = ((),)
-    for child in children {
-      if child.func() == parbreak { segments.push(()) } else { segments.last().push(child) }
-    }
-    segments
-      .map(segment => {
-        let elements = segment.filter(c => c.func() in marked)
-        if elements.len() == 1 and elements.first().func() == strong {
-          show strong: s => label-text(s.body)
-          segment.join()
-        } else { segment.join() }
-      })
-      .join(parbreak())
-  }
-
-  // Markdown to Typst. Raw Typst in the text is never run.
-  let md(markdown, table: "normal") = {
-    show std.table: layout-table.with(table)
-    label-pars(cmarker.render(
-    markdown,
-    smart-punctuation: false,
-    raw-typst: false,
-    set-document-title: false,
-    task-list-marker: checked => checkbox(checked: checked),
-    scope: (
-      heading: (level: 1, body) => h3(body),
-      link: (dest, body) => if type(dest) == label {
-        [#link(dest, body), p. #page-of(dest)]
-      } else { link(dest, body) },
-      image: (..args) => none,
-    ),
-  ))
-  }
+  // The shared helpers above, with this PDF's ink saver.
+  let md = md.with(ink-saver: ink-saver)
 
   // A block of the input: its position, then its Markdown.
   let blk(b, table: "normal") = {
@@ -172,22 +198,6 @@
     parbreak()
   }
   let blocks(list, table: "normal") = for b in list { blk(b, table: table) }
-
-  let section-heading(title, from: none, breaking: false) = {
-    if breaking { pagebreak(weak: true) }
-    block(
-      above: 5mm,
-      below: 2.5mm,
-      sticky: true,
-      width: 100%,
-      stroke: (bottom: 0.3mm + rule),
-      inset: (bottom: 0.9mm),
-      {
-        if from != none { pos("block", from) }
-        text(font: fell, size: 18pt, fill: accent, title)
-      },
-    )
-  }
 
   let side-box(title, body) = block(
     width: 100%,

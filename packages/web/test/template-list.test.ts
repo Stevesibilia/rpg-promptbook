@@ -1,8 +1,8 @@
 import { defineTemplate, templates, type AdventureTemplateInput } from 'promptbook-format';
-import { defaultSettings } from 'promptbook-project';
+import { defaultSettings, templateOf } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import type { StoredTemplate } from '../src/api.js';
-import { copyName, projectCount, projectsOn, templateEntries } from '../src/templates/list.js';
+import { builtinBanner, copyName, projectCount, projectsOn, templateEntries } from '../src/templates/list.js';
 
 function own(id: string, version: number, name: string, createdAt: string, system?: string): StoredTemplate {
   const body = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
@@ -22,7 +22,7 @@ describe('the template list', () => {
     const entries = templateEntries(stored, usage, defaultSettings());
     expect(entries.map((e) => [e.id, e.name, e.version, e.builtin, e.projects, e.isDefault])).toEqual([
       ['avventura', 'Avventura', 1, true, 4, true],
-      ['campagna', 'Campagna', 1, true, 1, true],
+      ['campagna', 'Campagna', 2, true, 1, true],
       ['t-kulthos0001', 'Avventura Kulthos', 2, false, 3, false],
       ['t-dnd0000001', 'One-shot D&D 5e', 1, false, 0, false],
     ]);
@@ -46,6 +46,20 @@ describe('the template list', () => {
     expect(projectCount(0)).toBe('no projects');
     expect(projectCount(1)).toBe('1 project');
     expect(projectCount(3)).toBe('3 projects');
+  });
+
+  it('lists «Campagna» once, at v2; a project on campagna@1 still reads v1', () => {
+    const campaigns = templateEntries([], {}, defaultSettings()).filter((e) => e.kind === 'campaign');
+    expect(campaigns.map((e) => [e.id, e.version, e.latest])).toEqual([['campagna', 2, templates.campagnaV2]]);
+    expect(templateOf({ category: 'campaign', template: { id: 'campagna', version: 1 } })).toBe(templates.campagna);
+    expect(templateOf({ category: 'campaign', template: { id: 'campagna', version: 2 } })).toBe(templates.campagnaV2);
+  });
+
+  it('says in a built-in’s banner that its older versions stay', () => {
+    expect(builtinBanner(templates.campagnaV2)).toBe(
+      "It can't be changed; duplicate it to make your own. v1 stays available for the projects that use it.",
+    );
+    expect(builtinBanner(templates.avventura)).toBe("It can't be changed; duplicate it to make your own.");
   });
 
   it('names a copy «Copia di …», numbered when the name is taken', () => {

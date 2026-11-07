@@ -84,16 +84,24 @@ describe('skeleton documents', () => {
       licenza: null,
     });
     expect(text.split('\n').filter((line) => line.startsWith('#'))).toEqual([
-      '## Premessa',
+'## Premessa',
+      '## Verità del mondo',
       '## Fronti',
+      '## Fazioni',
       '## PNG ricorrenti',
+      '## PG e agganci',
+      '## Archi',
+      '## Finali possibili',
       '## Fili aperti',
-      '## Sessioni',
+      '## Temi e motivi',
+      '## Prima della campagna',
+      '## Aggiornamenti',
+      '## Appendice: stile visivo e sonoro',
     ]);
   });
 
   // The starting documents of template-editor design decision 9: the
-  // campaign's is the text it always was; an adventure's first scene holds
+  // campaign's is v2's headings (campaign-pdf design decision 2); an adventure's first scene holds
   // its required and recommended fields, the boxes a scene needs and an
   // empty reactions table, and the strong start the boxes it needs.
   it('writes the starting documents from the built-in templates', () => {
@@ -103,16 +111,21 @@ describe('skeleton documents', () => {
       "## La vicenda in breve\n\n## Antefatto\n\n## A colpo d'occhio\n\n## Da non perdere stasera\n\n## Orologio\n\n## Verità del mondo\n\n## Inizio forte\n\n> [!leggi]\n> \n\n## Mappa delle scene\n\n## Regole della notte\n\n## Scene\n\n### S1. Prima scena\n\n**Luogo e momento:** \n\n**In gioco:** \n\n**Da non perdere qui**\n\n**Cosa succede da sé**\n\n**Indizi qui**\n\n**Se deragliano:** \n\n> [!leggi]\n> \n\n| Se i PG… | Allora… |\n| --- | --- |\n|  |  |\n\n## Indizi\n\n## PNG\n\n## Schede\n\n## Prima della sessione\n\n## Appendice: immagini e musica\n";
     const expected = {
       campaign:
-        '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: campagna\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## Premessa\n\n## Fronti\n\n## PNG ricorrenti\n\n## Fili aperti\n\n## Sessioni\n',
+        '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: campagna\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## Premessa\n\n## Verità del mondo\n\n## Fronti\n\n## Fazioni\n\n## PNG ricorrenti\n\n## PG e agganci\n\n## Archi\n\n## Finali possibili\n\n## Fili aperti\n\n## Temi e motivi\n\n## Prima della campagna\n\n## Aggiornamenti\n\n## Appendice: stile visivo e sonoro\n',
       adventure: `---\ntitolo: Il ballo\nsistema: Kulthos\nformato: avventura\ncampagna: Blacksad\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n${sections}`,
       oneShot: `---\ntitolo: Il ballo\nsistema:\nformato: one-shot\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n${sections}`,
     };
     expect(skeletonDocument('campaign', input)).toBe(expected.campaign);
     expect(skeletonDocument('adventure', input)).toBe(expected.adventure);
     expect(skeletonDocument('one-shot', oneShot)).toBe(expected.oneShot);
-    const campagna = templateOf({ category: 'campaign', template: { id: 'campagna', version: 1 } });
+    const campagna = templateOf({ category: 'campaign', template: { id: 'campagna', version: 2 } });
     const avventura = templateOf({ category: 'adventure', template: { id: 'avventura', version: 1 } });
     expect(skeletonDocument('campaign', input, campagna)).toBe(expected.campaign);
+    // A campaign on v1 keeps the text it always had.
+    const v1 = templateOf({ category: 'campaign', template: { id: 'campagna', version: 1 } });
+    expect(skeletonDocument('campaign', input, v1)).toBe(
+      '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: campagna\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## Premessa\n\n## Fronti\n\n## PNG ricorrenti\n\n## Fili aperti\n\n## Sessioni\n',
+    );
     expect(skeletonDocument('adventure', input, avventura)).toBe(expected.adventure);
   });
 

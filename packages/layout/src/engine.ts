@@ -3,7 +3,8 @@
 // hands it the bytes (see assets.ts).
 
 import { createTypstCompiler, type BeforeBuildFn, type TypstCompiler } from '@myriaddreamin/typst.ts';
-import type { LayoutInput } from './input.js';
+import type { AnyLayoutInput } from './campaign.js';
+import type { LayoutOptions } from './input.js';
 import { sortPositions, type Position } from './positions.js';
 
 export interface EngineAssets {
@@ -28,9 +29,9 @@ export interface BuildResult {
 }
 
 export interface Engine {
-  build(input: LayoutInput): Promise<BuildResult>;
+  build(input: AnyLayoutInput): Promise<BuildResult>;
   // Throws a LayoutError when the document does not build.
-  pdf(input: LayoutInput): Promise<Uint8Array>;
+  pdf(input: AnyLayoutInput): Promise<Uint8Array>;
 }
 
 export class LayoutError extends Error {
@@ -44,8 +45,10 @@ export class LayoutError extends Error {
 
 const MAIN = '/main.typ';
 const INPUT = '/input.json';
-const TEMPLATES: Record<LayoutInput['options']['template'], string> = {
-  'avventura@1': '/avventura.typ',
+// Each layout template's file and the function it exports.
+const TEMPLATES: Record<LayoutOptions['template'], { file: string; fn: string }> = {
+  'avventura@1': { file: '/avventura.typ', fn: 'avventura' },
+  'campagna@1': { file: '/campagna.typ', fn: 'campagna' },
 };
 // The compile format is the enum's value: the string "pdf" silently gives
 // the vector format.
@@ -152,9 +155,9 @@ export async function createEngine(assets: EngineAssets): Promise<Engine> {
     return run;
   };
 
-  const prepare = (input: LayoutInput) => {
-    const template = TEMPLATES[input.options.template];
-    compiler.addSource(MAIN, `#import "${template}": avventura\n#avventura(json("${INPUT}"))\n`);
+  const prepare = (input: AnyLayoutInput) => {
+    const { file, fn } = TEMPLATES[input.options.template];
+    compiler.addSource(MAIN, `#import "${file}": ${fn}\n#${fn}(json("${INPUT}"))\n`);
     compiler.mapShadow(INPUT, new TextEncoder().encode(JSON.stringify(input)));
   };
 

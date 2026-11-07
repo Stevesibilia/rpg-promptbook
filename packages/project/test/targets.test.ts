@@ -119,8 +119,22 @@ describe('targetsOf a campaign', () => {
       copyright: '',
       licence: '',
     });
-    const targets = targetsOf(text, templates.campagna);
-    expect(targets.map((t) => t.target)).toEqual(['Premessa', 'Fronti', 'PNG ricorrenti', 'Fili aperti', 'Sessioni']);
+    const targets = targetsOf(text, templates.campagnaV2);
+    expect(targets.map((t) => t.target)).toEqual([
+      'Premessa',
+      'Verità del mondo',
+      'Fronti',
+      'Fazioni',
+      'PNG ricorrenti',
+      'PG e agganci',
+      'Archi',
+      'Finali possibili',
+      'Fili aperti',
+      'Temi e motivi',
+      'Prima della campagna',
+      'Aggiornamenti',
+      'Appendice: stile visivo e sonoro',
+    ]);
     expect(targets.every((t) => t.kind === 'heading' && t.level === 2)).toBe(true);
     expect(textOf(text, targets[0]!)).toBe('## Premessa');
   });

@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { changeText } from '../src/templates/changes.js';
 import { draftReducer, pdfAction, type DraftAction } from '../src/templates/draft.js';
 import { previewMarks, rowMarks } from '../src/templates/marks.js';
-import { SectionsTab } from '../src/templates/TemplateRows.js';
+import { KeysTab, SectionsTab } from '../src/templates/TemplateRows.js';
 
 // The «In the PDF» column (template-pdf-layout design decisions 6 and 7).
 
@@ -29,10 +29,10 @@ function own<T extends Template>(built: T): T {
   return defineTemplate(body as never) as T;
 }
 
-const run = (t: AdventureTemplate, ...actions: DraftAction[]) => actions.reduce(draftReducer, t as never) as AdventureTemplate;
+const run = <T extends Template>(t: T, ...actions: DraftAction[]) => actions.reduce(draftReducer, t as Template) as T;
 const at = (t: Template, name: string) => t.sections.findIndex((s) => s.name === name);
-const toggle = (t: AdventureTemplate, name: string, change: Parameters<typeof pdfAction>[2]) =>
-  run(t, pdfAction(at(t, name), t.sections[at(t, name)]!, change));
+const toggle = <T extends Template>(t: T, name: string, change: Parameters<typeof pdfAction>[2]) =>
+  run(t, pdfAction(at(t, name), t.sections[at(t, name)]!, change, t.kind));
 
 const saved = run(own(templates.avventura), { type: 'add', list: 'sections', name: 'Atmosfera', uid: 'new-1' });
 
@@ -93,13 +93,57 @@ describe('the «In the PDF» column', () => {
     expect(cells[at(templates.avventura, 'Schede') + 1]).toBe('{References}[Printed on disabled]');
   });
 
-  it('has no column for a campaign', () => {
+});
+
+// The campaign column (campaign-pdf design decision 12).
+describe('the «In the PDF» column of a campaign', () => {
+  const copy = own(templates.campagnaV2 as CampaignTemplate);
+
+  it('shows the built-in v2\'s options, disabled, the appendix never in the PDF', () => {
+    const cells = column(templates.campagnaV2, true);
+    expect(cells[0]).toBe('In the PDF');
+    expect(cells[at(templates.campagnaV2, 'Premessa') + 1]).toBe('[Printed on disabled][New page disabled]');
+    expect(cells[at(templates.campagnaV2, 'Fronti') + 1]).toBe('[Printed on disabled][New page on disabled]');
+    expect(cells[at(templates.campagnaV2, 'Fili aperti') + 1]).toBe('[Printed on disabled][New page on disabled]');
+    expect(cells[at(templates.campagnaV2, 'Appendice') + 1]).toBe('{Never in the PDF}');
     const html = renderToStaticMarkup(
-      createElement(SectionsTab, { draft: templates.campagna as CampaignTemplate, saved: templates.campagna, dispatch: () => {}, readOnly: false, newUid: () => 'x' }),
+      createElement(SectionsTab, { draft: templates.campagnaV2, saved: templates.campagnaV2, dispatch: () => {}, readOnly: true, newUid: () => 'x' }),
     );
-    expect(html).not.toContain('In the PDF');
-    expect(html).not.toContain('class="pdf"');
-    expect(html).toContain('Campaigns have no PDF yet');
+    expect(html).not.toContain('Side column');
+    expect(html).toContain('title="The appendix holds image and music prompts"');
+    expect(html).toContain('Sections the template does not list still print, flowing after the section before them.');
+    expect(html).not.toContain('Campaigns have no PDF yet');
+  });
+
+  it('patches a copy\'s toggles, no change once turned back, a «PDF options» change otherwise', () => {
+    const out = toggle(copy, 'Aggiornamenti', { print: false });
+    expect(out.sections[at(out, 'Aggiornamenti')]!.pdf).toEqual({ print: false });
+    expect(column(out)[at(out, 'Aggiornamenti') + 1]).toBe('[Left out]');
+    const fazioni = toggle(copy, 'Fazioni', { newPage: true });
+    expect(fazioni.sections[at(fazioni, 'Fazioni')]!.pdf).toEqual({ newPage: true });
+    expect(column(fazioni)[at(fazioni, 'Fazioni') + 1]).toBe('[Printed on][New page on]');
+    const fronti = toggle(copy, 'Fronti', { newPage: false });
+    expect(fronti.sections[at(fronti, 'Fronti')]!.pdf).toBeUndefined();
+
+    const back = toggle(toggle(copy, 'Fazioni', { newPage: true }), 'Fazioni', { newPage: false });
+    expect(JSON.stringify(back)).toBe(JSON.stringify(copy));
+    expect(templateChanges(copy, back)).toEqual([]);
+    expect(rowMarks(copy, back, 'sections').filter(Boolean)).toEqual([]);
+    expect(templateChanges(copy, out).map((c) => changeText(c, out))).toEqual(['PDF options of «Aggiornamenti»']);
+    expect(rowMarks(copy, out, 'sections')[at(out, 'Aggiornamenti')]).toBe('changed');
+  });
+
+  it('notes on the Front matter tab where the keys print', () => {
+    const html = renderToStaticMarkup(
+      createElement(KeysTab, { draft: copy, saved: copy, dispatch: () => {}, readOnly: false, newUid: () => 'x' }),
+    );
+    expect(html).toContain(
+      '<code>sistema</code> and <code>formato</code> print on the line above the title; <code>autore</code>, <code>copyright</code> and <code>licenza</code> on the credits line and in the footer.',
+    );
+    const adventure = renderToStaticMarkup(
+      createElement(KeysTab, { draft: saved, saved, dispatch: () => {}, readOnly: false, newUid: () => 'x' }),
+    );
+    expect(adventure).not.toContain('print on the line above the title');
   });
 });
 
@@ -118,13 +162,42 @@ describe('the starting document', () => {
     ]);
   });
 
-  it('marks nothing «not in the PDF» in a campaign', () => {
+  it('marks nothing in a copy of the campaign v1, which has no appendix and no options', () => {
     const campaign = own(templates.campagna);
     const text = skeletonDocument(
       'campaign',
       { title: 'Nuova campagna', system: '', campaignTitle: null, author: '', copyright: '', licence: '' },
       campaign,
     );
-    expect(previewMarks(text, campaign, campaign).filter((m) => m.out)).toEqual([]);
+    expect(previewMarks(text, campaign, campaign).filter((m) => m.out || m.newPage)).toEqual([]);
+  });
+
+  it('marks a campaign\'s sections «not in the PDF» and «new page»; adventures get no «new page»', () => {
+    const copy = own(templates.campagnaV2 as CampaignTemplate);
+    const draft = toggle(toggle(copy, 'Aggiornamenti', { print: false }), 'Fazioni', { newPage: true });
+    const text = skeletonDocument(
+      'campaign',
+      { title: 'Nuova campagna', system: '', campaignTitle: null, author: '', copyright: '', licence: '' },
+      draft,
+    );
+    const lines = text.split('\n');
+    const marks = previewMarks(text, copy, draft);
+    expect(marks.filter((m) => m.out).map((m) => lines[m.line])).toEqual([
+      '## Aggiornamenti',
+      '## Appendice: stile visivo e sonoro',
+    ]);
+    expect(marks.filter((m) => m.newPage).map((m) => lines[m.line])).toEqual([
+      '## Fronti',
+      '## Fazioni',
+      '## PNG ricorrenti',
+      '## Archi',
+      '## Fili aperti',
+    ]);
+    const adventure = skeletonDocument(
+      'adventure',
+      { title: 'Nuova avventura', system: '', campaignTitle: null, author: '', copyright: '', licence: '' },
+      saved,
+    );
+    expect(previewMarks(adventure, saved, saved).filter((m) => m.newPage)).toEqual([]);
   });
 });

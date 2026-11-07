@@ -11,11 +11,11 @@ The project page's editor: live preview, problems and fixes, outline, inspector,
 Opening a project SHALL show the editor of
 [docs/mockups/editor.html](../../../docs/mockups/editor.html)'s Document
 view: the top bar with breadcrumbs, category, status menu, outline and
-inspector toggles, focus mode, the History button, the PDF button for
-adventures and one-shots, the ⌘K hint and the sync pill; the outline on the
-left; the prep document in a CodeMirror 6 Markdown editor bound to the
-project's Yjs text, in Spectral, about 70 characters wide; the inspector or
-the PDF preview on the right; the status bar. The rail SHALL hold Projects,
+inspector toggles, focus mode, the History button, the PDF button, the ⌘K
+hint and the sync pill; the outline on the left; the prep document in a
+CodeMirror 6 Markdown editor bound to the project's Yjs text, in Spectral,
+about 70 characters wide; the inspector or the PDF preview on the right; the
+status bar. The rail SHALL hold Projects,
 Document, Inspiration, Research, Images and music (adventures and one-shots
 only, as in [docs/mockups/board.html](../../../docs/mockups/board.html)),
 Brainstorm log and History, and Settings at the bottom, as in
@@ -40,6 +40,12 @@ NOT show export controls.
 - **WHEN** a campaign is open
 - **THEN** the rail shows no Images and music entry, and
   `/projects/<id>/board` opens the Document view instead
+
+#### Scenario: PDF button in a campaign
+
+- **WHEN** a campaign is open
+- **THEN** the top bar shows the PDF button, and the status bar still reads
+  «Campaign · not checked»
 
 ### Requirement: Live preview
 
@@ -230,10 +236,10 @@ system, each sheet kind with its fields, blocks and requirements.
 
 ⌘K and the top bar's hint SHALL open a palette that filters, case and accent
 insensitive, the outline's items and the commands: toggle outline, toggle
-inspector, focus mode, syntax sheet, set status, next and previous problem,
-PDF preview and review PDF (adventures and one-shots), choose licence, back
-to projects. Arrows SHALL move, Enter SHALL run, Escape SHALL close. Each
-command that has a shortcut SHALL show it.
+inspector, focus mode, syntax sheet, set status, next and previous problem
+(adventures and one-shots), PDF preview and review PDF, choose licence,
+back to projects. Arrows SHALL move, Enter SHALL run, Escape SHALL close.
+Each command that has a shortcut SHALL show it.
 
 #### Scenario: Go to a scene by name
 
@@ -244,6 +250,11 @@ command that has a shortcut SHALL show it.
 
 - **WHEN** the user opens the palette in a campaign and types «licence»
 - **THEN** «Choose licence…» is listed, with no shortcut
+
+#### Scenario: Review a campaign's PDF
+
+- **WHEN** the user opens the palette in a campaign and types «pdf»
+- **THEN** «PDF preview» and «Review PDF» are listed, and no problem command
 
 ### Requirement: Focus mode
 
@@ -504,3 +515,14 @@ riservati`
 - **THEN** the `licenza:` line ends with «Choose…»
 - **AND WHEN** the cursor moves to the body
 - **THEN** the line is folded with «Choose…»
+
+### Requirement: Campaign outline IDs
+
+The outline of a campaign SHALL show, for a `### X. Name` heading whose X
+is one to three capital letters followed by a number, X as the item's ID and
+Name as its name.
+
+#### Scenario: A front in the outline
+
+- **WHEN** a campaign has `### F1. La Compagnia` under «## Fronti»
+- **THEN** the outline lists «F1» «La Compagnia» one level under «Fronti»

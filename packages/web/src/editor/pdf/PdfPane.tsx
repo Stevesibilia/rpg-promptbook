@@ -1,7 +1,9 @@
 import type { EditorView } from '@codemirror/view';
+import { matchSection, sectionPdf, type Template } from 'promptbook-format';
 import { pageOf, type Position } from 'promptbook-layout';
 import { keyLabel, shortcut } from '../cm/keymap.js';
 import { useViewValue } from '../InspectorSection.js';
+import { currentSection } from '../outline.js';
 import type { UpdateSource } from '../StatusBar.js';
 import type { PdfSnapshot } from './client.js';
 import { PdfSheet } from './PdfSheet.js';
@@ -35,6 +37,17 @@ export function PdfNotice({ snapshot }: { snapshot: PdfSnapshot | null }) {
 export const stale = (snapshot: PdfSnapshot | null): boolean =>
   !!snapshot?.latest && snapshot.latest !== snapshot.good;
 
+// What a campaign's pane says when the cursor's ## section does not print
+// (campaign-pdf design decision 10): «the appendix», «Aggiornamenti» for a
+// section left out; null when it prints, or for an adventure.
+export function unprintedSection(template: Template, heading: string | null): string | null {
+  if (template.kind !== 'campaign' || heading === null) return null;
+  const definition = matchSection(template.sections, heading);
+  if (!definition) return null;
+  if (definition.role === 'appendix') return 'the appendix';
+  return sectionPdf(definition, 'campaign').print ? null : `«${heading}»`;
+}
+
 // The PDF preview in place of the inspector (design decision 11): the page
 // printing the text under the cursor.
 export function PdfPane({
@@ -42,6 +55,7 @@ export function PdfPane({
   updates,
   snapshot,
   positions,
+  template,
   onReview,
   onClose,
   onJump,
@@ -49,6 +63,8 @@ export function PdfPane({
   view: EditorView | null;
   updates: UpdateSource;
   snapshot: PdfSnapshot | null;
+  // The project's own template: for a campaign, which sections print.
+  template: Template;
   // The shown build's positions, in the text as it is now.
   positions(): Position[];
   onReview(page: number): void;
@@ -56,6 +72,10 @@ export function PdfPane({
   onJump(page: number, y: number): void;
 }) {
   const cursor = useViewValue(view, updates, head, Object.is) ?? 0;
+  // A campaign's ## heading under the cursor; an adventure's outline has no
+  // heading items, so null there.
+  const heading = useViewValue(view, updates, currentSection, Object.is) ?? null;
+  const unprinted = unprintedSection(template, heading);
   const good = snapshot?.good ?? null;
   const count = good?.pages.length ?? 0;
   const number = good ? Math.min(pageOf(positions(), cursor), count) : 0;
@@ -65,7 +85,13 @@ export function PdfPane({
   return (
     <div className="pdfpane" aria-label="PDF preview">
       <div className="bar2">
-        <span>{page ? `PDF preview · page ${number} of ${count} · follows the cursor` : 'PDF preview'}</span>
+        <span>
+          {unprinted
+            ? `PDF preview · ${unprinted} is not printed`
+            : page
+              ? `PDF preview · page ${number} of ${count} · follows the cursor`
+              : 'PDF preview'}
+        </span>
         <span>
           <button
             className="tb"
@@ -81,7 +107,12 @@ export function PdfPane({
       </div>
       <PdfNotice snapshot={snapshot} />
       {page && (
-        <PdfSheet number={number} page={page} className={stale(snapshot) ? 'stale' : ''} onJump={onJump} />
+        <PdfSheet
+          number={number}
+          page={page}
+          className={[stale(snapshot) ? 'stale' : '', unprinted ? 'unprinted' : ''].filter(Boolean).join(' ')}
+          onJump={onJump}
+        />
       )}
     </div>
   );

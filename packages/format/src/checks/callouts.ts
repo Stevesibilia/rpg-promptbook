@@ -24,7 +24,7 @@ const allowed = (definition: CalloutDefinition, where: Where): boolean =>
   where.kind === 'section'
     ? definition.allowedIn.includes('anySection') ||
       (where.role !== null && definition.allowedIn.includes(where.role)) ||
-      (definition.column === 'side' && where.definition !== undefined && sectionPdf(where.definition).sideColumn)
+      (definition.column === 'side' && where.definition !== undefined && sectionPdf(where.definition, 'adventure').sideColumn)
     : definition.allowedIn.includes(where.kind);
 
 const placeName = (template: AdventureTemplate, place: Place): string => {

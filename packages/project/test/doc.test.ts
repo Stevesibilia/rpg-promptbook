@@ -64,7 +64,7 @@ describe('project document', () => {
   it('records the template a new project is made with, its category\'s built-in by default', () => {
     expect(project().getMap('meta').get('template')).toEqual({ id: 'avventura', version: 1 });
     expect(readMeta(project({ category: 'adventure' })).template).toEqual({ id: 'avventura', version: 1 });
-    expect(readMeta(project({ category: 'campaign' })).template).toEqual({ id: 'campagna', version: 1 });
+    expect(readMeta(project({ category: 'campaign' })).template).toEqual({ id: 'campagna', version: 2 });
     expect(readMeta(project({ template: { id: 'mia', version: 3 } })).template).toEqual({ id: 'mia', version: 3 });
   });
 

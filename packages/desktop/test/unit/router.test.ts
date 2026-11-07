@@ -308,7 +308,13 @@ describe('templates', () => {
       id: 't-kulthos0001',
       version: 1,
     });
-    expect(readMeta(await made({ ...NEW, category: 'campaign' })).template).toEqual({ id: 'campagna', version: 1 });
+    expect(readMeta(await made({ ...NEW, category: 'campaign' })).template).toEqual({ id: 'campagna', version: 2 });
+    // A campaign asked on campagna@1 stays on v1: built-ins resolve exactly.
+    const v1Campaign = await made({ ...NEW, category: 'campaign', template: { id: 'campagna', version: 1 } });
+    expect(readMeta(v1Campaign).template).toEqual({ id: 'campagna', version: 1 });
+    expect(readDocument(v1Campaign).split('\n').filter((l) => l.startsWith('## '))).toEqual(
+      templates.campagna.sections.map((s) => `## ${s.heading ?? s.name}`),
+    );
     for (const template of [{ id: 't-kulthos0001', version: 3 }, { id: 'campagna', version: 1 }]) {
       expect((await w.request('POST', '/api/projects', { ...NEW, template })).json.error).toBe('template_unknown');
     }

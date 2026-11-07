@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import type { AdventureTemplate } from 'promptbook-format';
-import { adventureTemplateOf, type ProjectMeta } from 'promptbook-project';
+import type { AdventureTemplate, Template } from 'promptbook-format';
+import { adventureTemplateOf, templateOf, type ProjectMeta } from 'promptbook-project';
 import { api } from '../api.js';
 import { createTemplatesStore, emptyTemplates, reloadOnReturn, type TemplatesState } from './store.js';
 
@@ -37,23 +37,31 @@ export function useTemplates(): TemplatesValue {
 // The template a project's document is read with (template-editor design
 // decisions 4 and 13): its recorded one among the account's and the
 // built-ins, else its kind's built-in, then `missing` once the list has been
-// read. The same object while the resolved id and version stay: a version
-// never changes, so a reload does not reconfigure the editor.
+// read. `template` is the adventure template the editor's analysis, preview
+// and syntax use (the built-in adventure's for a campaign); `document` the
+// project's own, a campaign's campaign template, which the PDF prints with
+// (campaign-pdf design decision 10). Each the same object while its id and
+// version stay: a version never changes, so a reload does not reconfigure the
+// editor.
 export function useProjectTemplate(meta: Pick<ProjectMeta, 'category' | 'template'>): {
   template: AdventureTemplate;
+  document: Template;
   missing: boolean;
 } {
   const { templates, loaded, missing: ask } = useTemplates();
   const { category } = meta;
   const { id, version } = meta.template;
   const resolved = adventureTemplateOf({ category, template: { id, version } }, templates);
+  const resolvedDocument = templateOf({ category, template: { id, version } }, templates);
   const key = `${resolved.id}@${resolved.version}`;
-  // Kept by its key alone: the key says when it changes.
+  const documentKey = `${resolvedDocument.kind}:${resolvedDocument.id}@${resolvedDocument.version}`;
+  // Kept by their keys alone: the keys say when they change.
   const template = useMemo(() => resolved, [key]);
-  const missing = loaded && category !== 'campaign' && (template.id !== id || template.version !== version);
+  const document = useMemo(() => resolvedDocument, [documentKey]);
+  const missing = loaded && (document.id !== id || document.version !== version);
   // Saved elsewhere since the list was read: read it again, once.
   useEffect(() => {
     if (missing) ask(`${id}@${version}`);
   }, [missing, ask, id, version]);
-  return { template, missing };
+  return { template, document, missing };
 }

@@ -160,6 +160,59 @@ describe('reading templates', () => {
   });
 });
 
+describe('a built-in in two versions', () => {
+  it('lists «Campagna» once at v2 with both versions, reads either, copies and creates on v2, keeps a project on v1', async () => {
+    const s = await setup();
+    const { templates: listed } = await s.value('list_templates', { kind: 'campaign' });
+    expect(listed).toEqual([
+      {
+        id: 'campagna',
+        name: 'Campagna',
+        kind: 'campaign',
+        version: 2,
+        builtin: true,
+        copiedFrom: null,
+        default: true,
+        projects: 0,
+        versions: [
+          { version: 1, note: '', createdAt: null },
+          { version: 2, note: '', createdAt: null },
+        ],
+      },
+    ]);
+
+    const latest = await s.value('get_template', { templateId: 'campagna' });
+    expect(latest).toMatchObject({ id: 'campagna', version: 2, latestVersion: 2, builtin: true });
+    expect(latest.template).toEqual(JSON.parse(JSON.stringify(templates.campagnaV2)));
+    const first = await s.value('get_template', { templateId: 'campagna', version: 1 });
+    expect(first).toMatchObject({ id: 'campagna', version: 1, latestVersion: 2, builtin: true });
+    expect(first.template).toEqual(JSON.parse(JSON.stringify(templates.campagna)));
+    expect(await errorOf(s, 'get_template', { templateId: 'campagna', version: 3 })).toMatchObject({ code: 'not_found' });
+
+    const copy = await s.value('duplicate_template', { from: { id: 'campagna' }, name: 'Campagna mia' });
+    const copied = (await s.value('get_template', { templateId: copy.id })).template;
+    expect(copied.sections.map((x: { name: string }) => x.name)).toEqual(templates.campagnaV2.sections.map((x) => x.name));
+    const old = await s.value('duplicate_template', { from: { id: 'campagna', version: 1 }, name: 'Campagna vecchia' });
+    const oldBody = (await s.value('get_template', { templateId: old.id })).template;
+    expect(oldBody.sections.map((x: { name: string }) => x.name)).toEqual(templates.campagna.sections.map((x) => x.name));
+
+    const created = await s.value('create_project', { title: 'Nuova', category: 'campaign' });
+    expect(readMeta(await storedDoc(created.id)).template).toEqual({ id: 'campagna', version: 2 });
+    const pinned = await s.value('create_project', { title: 'Vecchia', category: 'campaign', template: { id: 'campagna', version: 1 } });
+    expect(readMeta(await storedDoc(pinned.id)).template).toEqual({ id: 'campagna', version: 1 });
+    expect((await s.value('get_project', { projectId: pinned.id })).template).toEqual({
+      id: 'campagna',
+      version: 1,
+      name: 'Campagna',
+      builtin: true,
+      // What update_project_template can move it to: built-ins are not updated.
+      latestVersion: 1,
+    });
+    const { templates: after } = await s.value('list_templates', { kind: 'campaign' });
+    expect(after[0]).toMatchObject({ id: 'campagna', projects: 2 });
+  });
+});
+
 describe('copying and deleting', () => {
   it('copies a built-in and an own template at their latest version, or the one asked for', async () => {
     const s = await setup();

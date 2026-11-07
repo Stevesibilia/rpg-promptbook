@@ -61,6 +61,7 @@ async function storedDoc(id: string): Promise<Y.Doc> {
 
 const AVVENTURA = { id: 'avventura', version: 1 };
 const CAMPAGNA = { id: 'campagna', version: 1 };
+const CAMPAGNA_V2 = { id: 'campagna', version: 2 };
 
 // A body as the editor sends it: the saved one with a change.
 const edited = (body: AdventureTemplate, change: (t: TemplateInput & { kind: 'adventure' }) => void) => {
@@ -295,16 +296,21 @@ describe('usage', () => {
     await steve.create({ category: 'adventure', title: 'Uno' });
     const old = await steve.create({ category: 'one-shot', title: 'Due' });
     await steve.create({ category: 'campaign', title: 'Tre' });
+    const oldCampaign = await steve.create({ category: 'campaign', title: 'Tre bis' });
     await steve.create({ category: 'adventure', title: 'Quattro', template: { id: own.id, version: 1 } });
     await steve.create({ category: 'adventure', title: 'Cinque', template: { id: own.id, version: 2 } });
     const binned = await steve.create({ category: 'adventure', title: 'Sei', template: { id: own.id, version: 2 } });
     await steve.call('DELETE', `/api/projects/${binned.id}`);
     await anna.create({ category: 'adventure', title: 'Di Anna' });
-    // A row stored before migration 007 records no template.
-    await db.query('update projects set template_id = null, template_version = null where id = $1', [old.id]);
+    // A row stored before migration 007 records no template: it counts as
+    // the built-in it was made with, campagna@1 for a campaign, never v2.
+    await db.query('update projects set template_id = null, template_version = null where id = any($1)', [
+      [old.id, oldCampaign.id],
+    ]);
     expect((await steve.list()).usage).toEqual({
       'avventura@1': 2,
       'campagna@1': 1,
+      'campagna@2': 1,
       [`${own.id}@1`]: 1,
       [`${own.id}@2`]: 2,
     });
@@ -357,12 +363,12 @@ describe('creating a project from a template', () => {
     const adventure = await steve.create({ category: 'one-shot', title: 'Uno' });
     expect(readMeta(await storedDoc(adventure.id)).template).toEqual({ id: own.id, version: 2 });
     const campaign = await steve.create({ category: 'campaign', title: 'Due' });
-    expect(readMeta(await storedDoc(campaign.id)).template).toEqual(CAMPAGNA);
+    expect(readMeta(await storedDoc(campaign.id)).template).toEqual(CAMPAGNA_V2);
 
     // A default that is gone, or of the other kind, reads as the built-in.
     await steve.call('PUT', '/api/settings', { ...settings, defaultTemplates: { adventure: 't-0000000000', campaign: own.id } });
     expect(readMeta(await storedDoc((await steve.create({ category: 'adventure', title: 'Tre' })).id)).template).toEqual(AVVENTURA);
-    expect(readMeta(await storedDoc((await steve.create({ category: 'campaign', title: 'Quattro' })).id)).template).toEqual(CAMPAGNA);
+    expect(readMeta(await storedDoc((await steve.create({ category: 'campaign', title: 'Quattro' })).id)).template).toEqual(CAMPAGNA_V2);
   });
 
   it('refuses an unknown template, one of the other kind, and another account’s', async () => {

@@ -130,28 +130,52 @@ function deepest(items: readonly OutlineItem[], holds: (item: OutlineItem) => bo
   return found;
 }
 
-const headingText = (state: EditorState, from: number, to: number) =>
-  state
-    .sliceDoc(from, to)
-    .replace(/^#+\s*/, '')
-    .replace(/\s+#+\s*$/, '');
+// The ID rule of a campaign's `### F1. La Compagnia`, as parseCampaign
+// reads it (campaign-pdf design decision 5).
+const ID_HEADING = /^([A-Z]{1,3}\d+)\.\s+(\S.*)$/;
+
+// A heading's text as parseCampaign reads it (its plain text): without the
+// #s and the Markdown marks of emphasis, code and links, so «## *Fronti*»
+// matches the template's «Fronti».
+const MARKS = new Set(['HeaderMark', 'EmphasisMark', 'CodeMark', 'LinkMark', 'URL', 'LinkTitle', 'StrikethroughMark']);
+function headingPlain(state: EditorState, from: number, to: number): string {
+  let text = '';
+  let at = from;
+  syntaxTree(state).iterate({
+    from,
+    to,
+    enter(node) {
+      if (node.from < from || node.to > to) return true;
+      if (!MARKS.has(node.name)) return true;
+      text += state.sliceDoc(at, node.from);
+      at = node.to;
+      return false;
+    },
+  });
+  text += state.sliceDoc(at, to);
+  return text.replace(/\s+/g, ' ').trim();
+}
 
 // A campaign's ## and ### headings at the top level of the Markdown tree;
-// each runs to the next heading.
+// each runs to the next heading. A `### X. Name` shows X as its id badge and
+// Name as its name (campaign-pdf design decision 10).
 function fromHeadings(state: EditorState): OutlineItem[] {
   const items: OutlineItem[] = [];
   for (let node = syntaxTree(state).topNode.firstChild; node; node = node.nextSibling) {
     if (node.name !== 'ATXHeading2' && node.name !== 'ATXHeading3') continue;
-    const name = headingText(state, node.from, node.to);
+    const text = headingPlain(state, node.from, node.to);
+    const match = node.name === 'ATXHeading3' ? ID_HEADING.exec(text) : null;
+    const id = match ? match[1]! : null;
+    const name = match ? match[2]!.trim() : text;
     const index = items.length;
     items.push({
       key: `heading:${index}`,
       kind: 'heading',
       index,
       depth: node.name === 'ATXHeading2' ? 0 : 1,
-      id: null,
+      id,
       name,
-      place: name,
+      place: id ? `${id} · ${name}` : name,
       from: node.from,
       to: state.doc.length,
       head: node.from,
@@ -168,4 +192,17 @@ function fromHeadings(state: EditorState): OutlineItem[] {
 // blank lines between two items belong to neither.
 export function currentItem(state: EditorState, pos = state.selection.main.head): OutlineItem | null {
   return deepest(outlineOf(state), (item) => item.from <= pos && pos <= item.to);
+}
+
+// The campaign ## section holding the cursor: the last ## heading at or
+// before it, by its text as written; null in the front matter or the text
+// before the first ##.
+export function currentSection(state: EditorState, pos = state.selection.main.head): string | null {
+  let found: string | null = null;
+  for (const item of outlineOf(state)) {
+    if (item.kind !== 'heading' || item.depth !== 0) continue;
+    if (item.from > pos) break;
+    found = item.name;
+  }
+  return found;
 }

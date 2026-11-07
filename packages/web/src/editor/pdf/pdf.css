@@ -23,6 +23,7 @@
   pointer-events: none;
 }
 .pdf-sheet.stale,
+.pdf-sheet.unprinted,
 .stale .pdf-sheet {
   opacity: 0.45;
 }

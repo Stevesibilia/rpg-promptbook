@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import type { AdventureTemplate } from 'promptbook-format';
+import type { Template } from 'promptbook-format';
 import type { LayoutOptions } from 'promptbook-layout';
 import type { PdfSnapshot } from './client.js';
 import { checkedPages, pageLabels, pagesLabel, shownPages, stepPage, type StageMode } from './pages.js';
@@ -47,6 +47,7 @@ export function PdfReview({
   snapshot,
   initialPage,
   template,
+  templateMissing = false,
   options,
   setOptions,
   onClose,
@@ -56,8 +57,12 @@ export function PdfReview({
 }: {
   snapshot: PdfSnapshot | null;
   initialPage: number;
-  // The project's template, named in the options.
-  template: AdventureTemplate;
+  // The project's template, named in the options; a campaign template has
+  // no pregenerated sheets (campaign-pdf design decision 10).
+  template: Template;
+  // The project records a template this device does not hold: the PDF is
+  // built with the kind's built-in meanwhile, and says so.
+  templateMissing?: boolean;
   options: LayoutOptions;
   setOptions(change: Partial<LayoutOptions>): void;
   onClose(): void;
@@ -237,19 +242,22 @@ export function PdfReview({
               Ink saver (no tints)
               <input type="checkbox" checked={options.inkSaver} onChange={(e) => setOptions({ inkSaver: e.target.checked })} />
             </label>
-            <label className="opt">
-              Pregenerated sheets
-              <input
-                type="checkbox"
-                checked={options.pregenerated}
-                onChange={(e) => setOptions({ pregenerated: e.target.checked })}
-              />
-            </label>
+            {template.kind === 'adventure' && (
+              <label className="opt">
+                Pregenerated sheets
+                <input
+                  type="checkbox"
+                  checked={options.pregenerated}
+                  onChange={(e) => setOptions({ pregenerated: e.target.checked })}
+                />
+              </label>
+            )}
             <label className="opt">
               Template
               <select value={options.template} disabled>
-                <option value="avventura@1">
+                <option value={options.template}>
                   {template.name} v{template.version}
+                  {templateMissing ? ' · template not found' : ''}
                 </option>
               </select>
             </label>

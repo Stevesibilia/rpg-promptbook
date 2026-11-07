@@ -198,7 +198,9 @@ describe('defineTemplate', () => {
   });
 
   it('keeps only what a campaign needs in a campaign template', () => {
-    const campaign = defineTemplate({ ...copy(), id: 'altra', kind: 'campaign' } as TemplateInput);
+    // Campaign sections take no role but the appendix.
+    const sections = copy().sections.map(({ role: _role, ...s }) => s);
+    const campaign = defineTemplate({ ...copy(), id: 'altra', kind: 'campaign', sections } as TemplateInput);
     expect(Object.keys(campaign).sort()).toEqual(['id', 'kind', 'meta', 'name', 'sections', 'version']);
   });
 

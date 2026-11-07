@@ -71,8 +71,8 @@ function firstScene(template: AdventureTemplate): string[] {
 // The prep document a new project starts with, from its template: every
 // section in order, empty; for an adventure or a one-shot, the boxes the
 // strong start needs and one scene with its parts. A campaign's skeleton has
-// no checks. The template is the category's built-in when not given
-// (avventura@1, campagna@1); one of the other kind is refused.
+// no checks. The template is the category's latest built-in when not given
+// (avventura@1, campagna@2); one of the other kind is refused.
 export function skeletonDocument(
   category: Category,
   input: SkeletonInput,

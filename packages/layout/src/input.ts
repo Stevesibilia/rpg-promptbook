@@ -25,7 +25,9 @@ export interface LayoutOptions {
   inkSaver: boolean;
   // False leaves out the Pregenerati part.
   pregenerated: boolean;
-  template: 'avventura@1';
+  // The layout template: the adventure's, or the campaign's (toCampaignLayoutInput
+  // sets it).
+  template: 'avventura@1' | 'campagna@1';
 }
 
 export const defaultLayoutOptions: LayoutOptions = {
@@ -237,7 +239,7 @@ const PLACED: readonly SceneFieldRole[] = [
 const roleField = (template: AdventureTemplate, role: SceneFieldRole) =>
   template.sceneFields.find((f) => f.role === role)?.label;
 
-const text = (value: JsonValue | undefined): string | null =>
+export const text = (value: JsonValue | undefined): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
 
 const capitalised = (key: string) => key.charAt(0).toUpperCase() + key.slice(1);
@@ -570,7 +572,7 @@ function ownSections(template: AdventureTemplate, model: Model): Record<OwnSlot,
     if (!section.known) continue;
     const definition = template.sections.find((s) => s.name === section.name);
     if (!definition) continue;
-    const pdf = sectionPdf(definition);
+    const pdf = sectionPdf(definition, 'adventure');
     if (!pdf.print) continue;
     const side = pdf.sideColumn ? section.blocks.filter((b) => boxOf(template, b)?.side) : [];
     own[slot].push({
@@ -600,7 +602,7 @@ export function toLayoutInput(
   // A role section the template leaves out reads as missing.
   const printed = (name: SectionRole) => {
     const definition = template.sections.find((s) => s.role === name);
-    return !definition || sectionPdf(definition).print;
+    return !definition || sectionPdf(definition, 'adventure').print;
   };
   const role = (name: SectionRole) => (printed(name) ? model.sections.find((s) => s.role === name) : undefined);
   const sheetsPrint = printed('sheets');
@@ -706,7 +708,8 @@ export function toLayoutInput(
     own.references.length > 0;
 
   return {
-    options,
+    // The adventure's layout template, whatever the options say.
+    options: { ...options, template: 'avventura@1' },
     title: text(metaValue('title')) ?? project.title,
     subtitle: text(metaValue('subtitle')),
     author: authors(values['autore']),
@@ -740,7 +743,7 @@ export function toLayoutInput(
 }
 
 // `autore` is one name, or a list of names joined with «, ».
-function authors(value: JsonValue | undefined): string | null {
+export function authors(value: JsonValue | undefined): string | null {
   if (Array.isArray(value)) {
     const names = value.map((v) => text(v)).filter((v): v is string => v !== null);
     return names.length > 0 ? names.join(', ') : null;

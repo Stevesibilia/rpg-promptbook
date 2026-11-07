@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { EditorView } from '@codemirror/view';
-import type { AdventureTemplate } from 'promptbook-format';
+import type { Template } from 'promptbook-format';
 import type { LayoutOptions, Position } from 'promptbook-layout';
 import type { UpdateSource } from '../StatusBar.js';
 import { connectPdfWorker, createPdfClient, type PdfClient, type PdfConnect, type PdfSnapshot } from './client.js';
@@ -29,7 +29,7 @@ export function usePdf({
   active: boolean;
   options: LayoutOptions;
   title: string;
-  template: AdventureTemplate;
+  template: Template;
   connect?: PdfConnect;
 }): { client: PdfClient | null; snapshot: PdfSnapshot | null; positions(): Position[] } {
   const source = useRef({ view, options, title, template });
@@ -82,7 +82,7 @@ export function usePdf({
     client: PdfClient | null;
     options: LayoutOptions;
     title: string;
-    template: AdventureTemplate;
+    template: Template;
   } | null>(null);
   useEffect(() => {
     const last = built.current;

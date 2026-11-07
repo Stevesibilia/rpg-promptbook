@@ -24,9 +24,13 @@ export interface PaletteEntry {
   action: PaletteAction;
 }
 
-// Commands first, then every outline item. Problems and the PDF are offered
-// only where there are checks: adventures and one-shots.
-export function paletteEntries(items: readonly OutlineItem[], { checked }: { checked: boolean }): PaletteEntry[] {
+// Commands first, then every outline item. Problems are offered only where
+// there are checks (adventures and one-shots), the PDF where the project
+// prints (every category since campaign-pdf).
+export function paletteEntries(
+  items: readonly OutlineItem[],
+  { checked, printable }: { checked: boolean; printable: boolean },
+): PaletteEntry[] {
   const fromTable = (id: Exclude<ShortcutId, 'palette' | 'escape'>): PaletteEntry => ({
     key: `cmd:${id}`,
     label: shortcut(id).label,
@@ -44,10 +48,9 @@ export function paletteEntries(items: readonly OutlineItem[], { checked }: { che
       keys: null,
       action: { kind: 'status', status },
     })),
-    ...(checked
+    ...(checked ? [fromTable('nextProblem'), fromTable('previousProblem')] : []),
+    ...(printable
       ? [
-          fromTable('nextProblem'),
-          fromTable('previousProblem'),
           { key: 'pdf', label: 'PDF preview', keys: null, action: { kind: 'pdf' } } satisfies PaletteEntry,
           fromTable('pdfReview'),
         ]

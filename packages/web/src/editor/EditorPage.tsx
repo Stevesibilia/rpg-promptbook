@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { nextDiagnostic, previousDiagnostic } from '@codemirror/lint';
 import { Prec } from '@codemirror/state';
 import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
-import { blockAt, pageOf } from 'promptbook-layout';
+import { blockAt, pageOf, type LayoutOptions } from 'promptbook-layout';
 import { readMeta, setStatus } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { ClaudeBanner } from '../claude/ClaudeBanner.js';
@@ -59,11 +59,16 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const meta = useDocValue(doc, readMeta);
   const campaign = useCampaignRow(meta);
   useWindowTitle(meta.title);
+  // Checked: problems, Checks and the status bar's counts, adventures and
+  // one-shots only. Printable: the PDF pane, review and button, every
+  // category (campaign-pdf design decision 10).
   const checked = meta.category !== 'campaign';
+  const printable = true;
   // The project's template among the account's (template-editor design
-  // decision 4); a campaign is never parsed, and its preview and syntax use
-  // the built-in adventure's.
-  const { template, missing: templateMissing } = useProjectTemplate(meta);
+  // decision 4); a campaign is never parsed by the editor, and its preview and
+  // syntax use the built-in adventure's (`template`). The PDF prints with the
+  // project's own (`document`), a campaign's campaign template.
+  const { template, document: documentTemplate, missing: templateMissing } = useProjectTemplate(meta);
 
   const [outline, setOutline] = usePanel(OUTLINE_KEY);
   const [inspector, setInspector] = usePanel(INSPECTOR_KEY);
@@ -77,9 +82,16 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   const [pdfOpen, setPdfOpen] = usePanel(PDF_KEY, false);
   // The page the review opened on, while it is open.
   const [review, setReview] = useState<number | null>(null);
-  const [pdfOptions, setPdfOptions] = usePdfOptions(meta.id);
-  // The pane takes the inspector's place for adventures and one-shots.
-  const pane = checked && pdfOpen;
+  const [storedPdfOptions, setPdfOptions] = usePdfOptions(meta.id);
+  // The layout template follows the project's template's kind; stored
+  // options never name one.
+  const layoutTemplate = documentTemplate.kind === 'campaign' ? 'campagna@1' : 'avventura@1';
+  const pdfOptions = useMemo(
+    (): LayoutOptions => ({ ...storedPdfOptions, template: layoutTemplate }),
+    [storedPdfOptions, layoutTemplate],
+  );
+  // The pane takes the inspector's place.
+  const pane = printable && pdfOpen;
   const [toast, showToast] = useToast();
   const hiding = useHiding(doc, showToast);
   const latestHiding = useRef(hiding);
@@ -105,10 +117,10 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
   } = usePdf({
     view,
     updates,
-    active: checked && ((pane && !focus) || review !== null),
+    active: printable && ((pane && !focus) || review !== null),
     options: pdfOptions,
     title: meta.title,
-    template,
+    template: documentTemplate,
   });
   const openReview = (page?: number) => {
     const good = pdfSnapshot?.good;
@@ -177,7 +189,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
           previousProblem: toProblem(previousDiagnostic),
           syntax: () => setDialog('syntax'),
           palette: () => setDialog('palette'),
-          ...(checked ? { pdfReview: () => openReview() } : {}),
+          ...(printable ? { pdfReview: () => openReview() } : {}),
           // Left alone outside focus mode, so Escape keeps its other uses.
           ...(focus ? { escape: () => setFocus(false) } : {}),
         };
@@ -352,7 +364,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
               <path d="M15 4v16" />
             </svg>
           </button>
-          {checked && (
+          {printable && (
             <button
               className="tb primary hide-in-focus"
               title="PDF preview"
@@ -395,6 +407,7 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
             updates={updates}
             snapshot={pdfSnapshot}
             positions={pdfPositions}
+            template={documentTemplate}
             onReview={openReview}
             onClose={() => setPdfOpen(false)}
             onJump={jumpFromPdf}
@@ -431,7 +444,8 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         <PdfReview
           snapshot={pdfSnapshot}
           initialPage={review}
-          template={template}
+          template={documentTemplate}
+          templateMissing={templateMissing}
           options={pdfOptions}
           setOptions={setPdfOptions}
           onClose={closeReview}
@@ -453,7 +467,14 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         <LicencePane current={licence} context="editor" onPick={pickLicence} onClose={closeDialog} />
       )}
       {dialog === 'palette' && (
-        <CommandPalette view={view} updates={updates} checked={checked} onRun={runPalette} onClose={closeDialog} />
+        <CommandPalette
+          view={view}
+          updates={updates}
+          checked={checked}
+          printable={printable}
+          onRun={runPalette}
+          onClose={closeDialog}
+        />
       )}
     </Shell>
   );

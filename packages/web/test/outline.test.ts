@@ -124,10 +124,18 @@ describe('outlineOf', () => {
     const items = outlineOf(campaign(doc));
     expect(items.map(line)).toEqual([
       'Premessa',
+      'Verità del mondo',
       'Fronti',
+      'Fazioni',
       'PNG ricorrenti',
+      'PG e agganci',
+      'Archi',
+      'Finali possibili',
       'Fili aperti',
-      'Sessioni',
+      'Temi e motivi',
+      'Prima della campagna',
+      'Aggiornamenti',
+      'Appendice: stile visivo e sonoro',
       '  Sessione 1',
     ]);
     expect(items.some((i) => i.movable || i.badge)).toBe(false);
