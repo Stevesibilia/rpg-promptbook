@@ -1,3 +1,4 @@
+import type { CampaignLayoutInput } from './campaign.js';
 import type { Position } from './positions.js';
 
 // Warnings about the layout, for the review only: they never join the
@@ -8,7 +9,8 @@ export interface LayoutCheck {
   where: string;
   // The page the check is about, 1-based.
   page: number;
-  sceneId: string;
+  // The scene the check is about; null for a campaign's.
+  sceneId: string | null;
 }
 
 export interface PageSize {
@@ -67,4 +69,20 @@ export function layoutChecks(positions: Position[], pages: PageSize[]): LayoutCh
     }
   });
   return checks;
+}
+
+// A campaign's checks (campaign-pdf design decision 11): the sections that
+// start a page past the last edge tab. The scene checks never apply: a
+// campaign prints no scenes.
+export function campaignChecks(input: CampaignLayoutInput, positions: Position[]): LayoutCheck[] {
+  const untabbed = input.sections.filter((s) => s.newPage && s.tab === null);
+  const first = untabbed[0];
+  if (!first) return [];
+  const page = positions.find((p) => p.kind === 'part' && p.from === first.from)?.page ?? 1;
+  const more = untabbed.length - 1;
+  const message =
+    more === 0
+      ? `«${first.title}» starts a page without a tab`
+      : `«${first.title}» and ${more} more ${more === 1 ? 'section' : 'sections'} start a page without a tab`;
+  return [{ message, where: `${first.title} · page ${page}`, page, sceneId: null }];
 }

@@ -43,12 +43,12 @@ never written into the repository (D15).
 
 ## 3. Layout: the campaign template (brief A)
 
-- [ ] 3.1 `src/campaign.ts`: `toCampaignLayoutInput` and `CampaignLayoutInput` (D6); `LayoutOptions.template` widened; exports in `index.ts`
-- [ ] 3.2 `typst/avventura.typ`: move `page-of`, `checkbox`, `layout-table`, `h3`, `label-pars`, `md`, `section-heading` to top level with `ink-saver` (D7); run the four Sabaoth hash tests before going on; if any moves, stop and follow Risks
-- [ ] 3.3 `typst/campagna.typ`: head, contents box, sections, ID subheadings, blocks, quote box (D8), tabs, footer mark rule and part positions (D9)
-- [ ] 3.4 `src/engine.ts` (`TEMPLATES` with file and function, `build`/`pdf` input type), `src/assets.ts` (`/campagna.typ`), `src/checks.ts` (`campaignChecks`, `sceneId: string | null`) (D7, D11)
-- [ ] 3.5 Tests: `toCampaignLayoutInput` on the fixture (appendix absent, a section left out absent, the unknown section present and flowing, tabs «Fronti»… from first words, `mark` of flowing sections, a callout as a quote box, the 13th tab dropped with its check); the fixture builds A4, Letter and ink saver without error, within an expected page range, twice with the same bytes; contents page numbers equal the `part` positions' pages; Sabaoth's four hashes equal 0.1
-- [ ] 3.6 Commit `feat(layout): the campaign PDF template`
+- [x] 3.1 `src/campaign.ts`: `toCampaignLayoutInput` and `CampaignLayoutInput` (D6); `LayoutOptions.template` widened; exports in `index.ts`
+- [x] 3.2 `typst/avventura.typ`: move `page-of`, `checkbox`, `layout-table`, `h3`, `label-pars`, `md`, `section-heading` to top level with `ink-saver` (D7); run the four Sabaoth hash tests before going on; if any moves, stop and follow Risks
+- [x] 3.3 `typst/campagna.typ`: head, contents box, sections, ID subheadings, blocks, quote box (D8), tabs, footer mark rule and part positions (D9)
+- [x] 3.4 `src/engine.ts` (`TEMPLATES` with file and function, `build`/`pdf` input type), `src/assets.ts` (`/campagna.typ`), `src/checks.ts` (`campaignChecks`, `sceneId: string | null`) (D7, D11)
+- [x] 3.5 Tests: `toCampaignLayoutInput` on the fixture (appendix absent, a section left out absent, the unknown section present and flowing, tabs «Fronti»… from first words, `mark` of flowing sections, a callout as a quote box, the 13th tab dropped with its check); the fixture builds A4, Letter and ink saver without error, within an expected page range, twice with the same bytes; contents page numbers equal the `part` positions' pages; Sabaoth's four hashes equal 0.1
+- [x] 3.6 Commit `feat(layout): the campaign PDF template`
 
 ## 4. Proof and hand-back of brief A
 

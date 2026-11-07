@@ -25,7 +25,9 @@ export interface LayoutOptions {
   inkSaver: boolean;
   // False leaves out the Pregenerati part.
   pregenerated: boolean;
-  template: 'avventura@1';
+  // The layout template: the adventure's, or the campaign's (toCampaignLayoutInput
+  // sets it).
+  template: 'avventura@1' | 'campagna@1';
 }
 
 export const defaultLayoutOptions: LayoutOptions = {
@@ -237,7 +239,7 @@ const PLACED: readonly SceneFieldRole[] = [
 const roleField = (template: AdventureTemplate, role: SceneFieldRole) =>
   template.sceneFields.find((f) => f.role === role)?.label;
 
-const text = (value: JsonValue | undefined): string | null =>
+export const text = (value: JsonValue | undefined): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
 
 const capitalised = (key: string) => key.charAt(0).toUpperCase() + key.slice(1);
@@ -740,7 +742,7 @@ export function toLayoutInput(
 }
 
 // `autore` is one name, or a list of names joined with «, ».
-function authors(value: JsonValue | undefined): string | null {
+export function authors(value: JsonValue | undefined): string | null {
   if (Array.isArray(value)) {
     const names = value.map((v) => text(v)).filter((v): v is string => v !== null);
     return names.length > 0 ? names.join(', ') : null;

@@ -23,6 +23,7 @@ export const fontUrls: URL[] = [
 
 export const typstFiles: AssetFile[] = [
   { path: '/avventura.typ', url: new URL('../typst/avventura.typ', import.meta.url) },
+  { path: '/campagna.typ', url: new URL('../typst/campagna.typ', import.meta.url) },
   { path: '/cmarker/lib.typ', url: new URL('../typst/cmarker/lib.typ', import.meta.url) },
   { path: '/cmarker/plugin.wasm', url: new URL('../typst/cmarker/plugin.wasm', import.meta.url) },
   { path: '/cmarker/typst.toml', url: new URL('../typst/cmarker/typst.toml', import.meta.url) },

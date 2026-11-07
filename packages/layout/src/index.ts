@@ -1,5 +1,15 @@
 export { loadAssets, fontUrls, typstFiles, type AssetFile } from './assets.js';
-export { layoutChecks, type LayoutCheck, type PageSize } from './checks.js';
+export {
+  MAX_TABS,
+  tabOf,
+  toCampaignLayoutInput,
+  type AnyLayoutInput,
+  type CampaignLayoutBlock,
+  type CampaignLayoutInput,
+  type CampaignLayoutSection,
+  type CampaignLayoutSubheading,
+} from './campaign.js';
+export { campaignChecks, layoutChecks, type LayoutCheck, type PageSize } from './checks.js';
 export {
   createEngine,
   LayoutError,
