@@ -32,9 +32,10 @@
 // contents box.
 #let section-label(index) = label("pb-section-" + str(index))
 
-// The table variant of a block's Markdown: the small one from six columns up.
+// The table variant of a block's Markdown: the small one from six columns up,
+// counted on the header line without its escaped pipes.
 #let table-variant(markdown) = {
-  let head = markdown.split("\n").first().trim()
+  let head = markdown.split("\n").first().trim().replace("\\|", "")
   if head.starts-with("|") { head = head.slice(1) }
   if head.ends-with("|") { head = head.slice(0, -1) }
   if head.split("|").len() >= 6 { "small" } else { "normal" }
