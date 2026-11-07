@@ -47,11 +47,11 @@ Orologio della Gilda:
 
 ## Fazioni
 
-| Fazione | Capo | Sede | Vuole | Teme | Offre |
-| --- | --- | --- | --- | --- | --- |
-| Gilda dei Lumi | Maestra Orsola | Palazzo dell'Olio | I ponti | Il buio | Lavoro |
-| Barcaioli | Nane Spina | Darsena vecchia | I canali liberi | La Gilda | Passaggi |
-| Confraternita del Rintocco | Padre Ilario | Campanile di San Vio | Il silenzio | Le acque basse | Rifugio |
+| Fazione                    | Capo           | Sede                 | Vuole           | Teme           | Offre    |
+| -------------------------- | -------------- | -------------------- | --------------- | -------------- | -------- |
+| Gilda dei Lumi             | Maestra Orsola | Palazzo dell'Olio    | I ponti         | Il buio        | Lavoro   |
+| Barcaioli                  | Nane Spina     | Darsena vecchia      | I canali liberi | La Gilda       | Passaggi |
+| Confraternita del Rintocco | Padre Ilario   | Campanile di San Vio | Il silenzio     | Le acque basse | Rifugio  |
 
 ## PNG ricorrenti
 
