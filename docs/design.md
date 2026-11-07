@@ -227,12 +227,14 @@ The main use is editing, so the editor takes most of the screen:
     ignored), with a link to open each.
   - **Seed:** the original idea, at a glance.
 - **PDF preview:** takes the Inspector's place, beside the editor, and follows
-  the cursor's scene. In the desktop app it can also open in its own window,
+  the cursor's scene (in a campaign, its section; the appendix and sections
+  left out say they are not printed). In the desktop app it can also open in its own window,
   for a second screen.
 - **PDF review** (full screen, ⌘⇧P or "Review" in the preview): page
   thumbnails with the scene tabs, single page or spread, zoom; layout checks
-  (half-empty pages, a scene running long, a missing image); options (paper,
-  images, ink saver, pregenerated sheets, template); earlier PDF versions to
+  (half-empty pages, a scene running long, a missing image; for a campaign,
+  sections past the twelfth tab); options (paper, images, ink saver,
+  pregenerated sheets for adventures, template); earlier PDF versions to
   compare; Save PDF and Print. Double-click any text to jump to it in the
   editor; Esc goes back.
 - **Focus mode** (⌘.): only the text, the sync indicator and the status bar.
@@ -504,6 +506,12 @@ ahead of the desktop app, so the web client builds it with the
   prints it, rather than a print dialog over the page.
 - Print options (paper, ink saver, pregenerated sheets) are kept per project
   on the device, not in the document.
+- Campaigns print too (#55, `campagna.typ`): the campaign document's own
+  sections in document order, linked adventures not included, the appendix
+  never. Campaign templates set per section «Printed / Left out» and «New
+  page»; a section that starts a page gets an edge tab (twelve at most).
+  Sections the template does not list print, flowing. The built-in
+  «Campagna» v2 sets the default page breaks; projects on v1 keep it.
 - Later: images in the PDF and the missing-image check (phase 2, with the
   asset board), earlier PDF versions and compare (#4, with snapshots), the A5
   booklet.

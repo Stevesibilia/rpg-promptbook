@@ -85,9 +85,9 @@ never written into the repository (D15).
 
 ## 8. e2e, docs and hand-back of brief B
 
-- [ ] 8.1 `e2e/pdf.spec.ts`: replace «campaign has no PDF» with the campaign PDF: button, pane, ⌘⇧P review without «Pregenerated sheets», Template «Campagna v2», «Save PDF» whose `pdfTexts` hold the section titles and not «Appendice»
-- [ ] 8.2 `e2e/templates.spec.ts`: the built-in «Campagna» v2 column; a copy with «Aggiornamenti» left out and «Fazioni» on a new page, saved
-- [ ] 8.3 Docs: `docs/design.md` (PDF preview and review, PDF for the table) and `README.md` where they say the PDF is for adventures only; check, change only what is wrong
-- [ ] 8.4 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`; literal results
-- [ ] 8.5 Screenshots (1440 x 900) of the states in design.md «Verification», under the scratchpad
-- [ ] 8.6 Hand back: results, screenshot paths, departures from the design
+- [x] 8.1 `e2e/pdf.spec.ts`: replace «campaign has no PDF» with the campaign PDF: button, pane, ⌘⇧P review without «Pregenerated sheets», Template «Campagna v2», «Save PDF» whose `pdfTexts` hold the section titles and not «Appendice»
+- [x] 8.2 `e2e/templates.spec.ts`: the built-in «Campagna» v2 column; a copy with «Aggiornamenti» left out and «Fazioni» on a new page, saved
+- [x] 8.3 Docs: `docs/design.md` (PDF preview and review, PDF for the table) and `README.md` where they say the PDF is for adventures only; check, change only what is wrong
+- [x] 8.4 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`; literal results
+- [x] 8.5 Screenshots (1440 x 900) of the states in design.md «Verification», under the scratchpad
+- [x] 8.6 Hand back: results, screenshot paths, departures from the design

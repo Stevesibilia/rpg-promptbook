@@ -294,6 +294,52 @@ test('an own section prints in the PDF and a section left out does not', async (
   expect(pages.some((text) => text.includes('Prima della sessione'))).toBe(false);
 });
 
+// Campaign templates' PDF options (campaign-pdf design decision 12): the
+// built-in «Campagna» v2 read only, then a copy with «Aggiornamenti» left out
+// and «Fazioni» on a new page, saved.
+test('a copy of Campagna v2 with a section left out and one on a new page', async ({ page }) => {
+  const name = `Campagna PDF ${Date.now().toString(36)}`;
+  await expect(row(page, 'Campagna')).toHaveCount(1);
+  await row(page, 'Campagna').getByRole('button', { name: 'View' }).click();
+  await expect(
+    page.getByText(
+      "Built-in template. It can't be changed; duplicate it to make your own. v1 stays available for the projects that use it.",
+    ),
+  ).toBeVisible();
+  const fronti = sectionRow(page, 'Fronti');
+  await expect(fronti.getByRole('button', { name: 'In the PDF, Fronti' })).toHaveText('Printed');
+  await expect(fronti.getByRole('button', { name: 'In the PDF, Fronti' })).toBeDisabled();
+  await expect(fronti.getByRole('button', { name: 'New page, Fronti' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(sectionRow(page, 'Fazioni').getByRole('button', { name: 'New page, Fazioni' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(sectionRow(page, 'Appendice: stile visivo e sonoro').locator('.tg.fixed')).toHaveText('Never in the PDF');
+  await expect(page.getByRole('button', { name: /^Side column/ })).toHaveCount(0);
+  await expect(page.getByText('Sections the template does not list still print, flowing after the section before them.')).toBeVisible();
+  await page.getByRole('tab', { name: /Front matter/ }).click();
+  await expect(page.getByText(/print on the line above the title/)).toBeVisible();
+  await page.getByRole('tab', { name: /Sections/ }).click();
+
+  await page.getByRole('button', { name: 'Duplicate' }).click();
+  await expect(page).toHaveURL(/\/settings\/documents\/t-[0-9a-z]{10}$/);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue(/^Copia di Campagna/);
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  const aggiornamenti = sectionRow(page, 'Aggiornamenti');
+  await aggiornamenti.getByRole('button', { name: 'In the PDF, Aggiornamenti' }).click();
+  await expect(aggiornamenti.getByRole('button', { name: 'In the PDF, Aggiornamenti' })).toHaveText('Left out');
+  await expect(aggiornamenti.getByRole('button', { name: 'New page, Aggiornamenti' })).toHaveCount(0);
+  const fazioni = sectionRow(page, 'Fazioni');
+  await fazioni.getByRole('button', { name: 'New page, Fazioni' }).click();
+  await expect(fazioni.getByRole('button', { name: 'New page, Fazioni' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(saveBar(page)).toContainText('3 unsaved changes');
+  const preview = page.getByTestId('starting-document');
+  await expect(preview.locator('.cm-line', { hasText: 'Aggiornamenti' })).toContainText('not in the PDF');
+  await expect(preview.locator('.cm-line', { hasText: 'Fazioni' })).toContainText('new page');
+  await save(page, 2, 'PDF', ['PDF options of «Aggiornamenti»', 'PDF options of «Fazioni»']);
+  await expect(page.getByRole('button', { name: 'In the PDF, Aggiornamenti' })).toHaveText('Left out');
+});
+
 // Claude through the connector (template-connector): a copy of Avventura, a
 // project on its v1 open in the editor, v2 saved by Claude, the «v2
 // available» chip once the window gets the focus back, and the project

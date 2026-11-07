@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './helpers.js';
+import { pdfTexts } from './pdf-text.js';
 
 // The PDF pane and review against the compose stack and its seeded Sabaoth,
 // read only. The first PDF of a page loads the engine, 29 MB of WebAssembly
@@ -147,10 +148,75 @@ test('Esc returns to the editor', async ({ page }) => {
   await expect(page.locator('.cm-content')).toBeFocused();
 });
 
-test('campaign has no PDF', async ({ page }) => {
-  await open(page, 'Blacksad - Il Continentale');
+// The seeded campaign is on «Campagna» v2's skeleton: its thirteen headings,
+// Fronti, PNG ricorrenti, Archi and Fili aperti each on a new page, the
+// appendix never printed (campaign-pdf design decision 2).
+const CAMPAIGN = 'Blacksad - Il Continentale';
+const headingItem = (page: Page, name: string) => page.locator('.ol li').filter({ hasText: name }).first();
+
+test('campaign PDF: button, pane following the cursor, the appendix not printed', async ({ page }) => {
+  await open(page, CAMPAIGN);
   await expect(page.locator('.status')).toContainText('Campaign · not checked');
-  await expect(page.getByRole('button', { name: 'PDF', exact: true })).toHaveCount(0);
+  await headingItem(page, 'Premessa').click();
+  await openPane(page);
+  const premessa = await panePage(page);
+  expect(premessa).toBe(1);
+
+  await headingItem(page, 'Archi').click();
+  await expect.poll(() => panePage(page)).toBeGreaterThan(premessa);
+  const archi = await panePage(page);
+
+  // The appendix: the caption says so and the page shown is dimmed.
+  await headingItem(page, 'Appendice: stile visivo e sonoro').click();
+  const header = pane(page).locator('.bar2 span').first();
+  await expect(header).toHaveText('PDF preview · the appendix is not printed');
+  await expect(pane(page).locator('.pdf-sheet.unprinted')).toBeVisible();
+
+  await headingItem(page, 'Archi').click();
+  await expect.poll(() => panePage(page)).toBe(archi);
+  await expect(pane(page).locator('.pdf-sheet.unprinted')).toHaveCount(0);
+});
+
+test('campaign PDF: review, jump back and save', async ({ page }) => {
+  await open(page, CAMPAIGN);
+  await headingItem(page, 'PNG ricorrenti').click();
+  await openPane(page);
+  const png = await panePage(page);
+
   await page.keyboard.press('ControlOrMeta+Shift+P');
+  await expect(review(page)).toBeVisible();
+  const thumbs = review(page).locator('.thumbs-col .th');
+  await expect(thumbs.first()).toHaveText('1 · Premessa', ENGINE);
+  await expect(review(page).getByRole('button', { name: `Page ${png}, PNG ricorrenti`, exact: true })).toBeVisible();
+  await expect(review(page).getByText('Pregenerated sheets')).toHaveCount(0);
+  await expect(review(page).getByLabel('Template')).toHaveText('Campagna v2');
+  await expect(review(page).getByLabel('Template')).toBeDisabled();
+
+  // A double-click on PNG ricorrenti's heading puts the cursor in it. The
+  // skeleton's sections are empty, so «PG e agganci» follows a line below:
+  // the heading's line is 4-7 % down the page.
+  await page.keyboard.press('Escape');
+  await headingItem(page, 'Premessa').click();
+  await pane(page).getByRole('button', { name: '⤢ Review' }).click();
+  await review(page).getByRole('button', { name: `Page ${png}, PNG ricorrenti`, exact: true }).click();
+  const sheet = review(page).locator(`.stage .pdf-sheet[data-page="${png}"]`);
+  await expect(sheet).toBeVisible();
+  const box = (await sheet.boundingBox())!;
+  await sheet.dblclick({ position: { x: box.width * 0.3, y: box.height * 0.06 } });
   await expect(review(page)).toHaveCount(0);
+  await expect(page.locator('.status span').first()).toHaveText('PNG ricorrenti');
+  await expect(page.locator('.cm-content')).toBeFocused();
+
+  await page.keyboard.press('ControlOrMeta+Shift+P');
+  const download = page.waitForEvent('download');
+  await review(page).getByRole('button', { name: 'Save PDF' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('blacksad-il-continentale.pdf');
+  const chunks: Buffer[] = [];
+  for await (const chunk of await file.createReadStream()) chunks.push(chunk as Buffer);
+  const text = pdfTexts(Buffer.concat(chunks)).join('\n');
+  for (const title of ['Premessa', 'Fronti', 'PNG ricorrenti', 'Archi', 'Fili aperti', 'Aggiornamenti']) {
+    expect(text, title).toContain(title);
+  }
+  expect(text).not.toContain('Appendice');
 });
