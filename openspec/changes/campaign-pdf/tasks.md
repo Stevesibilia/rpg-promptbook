@@ -68,13 +68,13 @@ never written into the repository (D15).
 
 ## 6. Web: the campaign PDF (brief B)
 
-- [ ] 6.1 `TemplatesContext.tsx`: `useProjectTemplate` answers `document` and covers campaigns in `missing` (D10)
-- [ ] 6.2 `pdf/protocol.ts`, `usePdf.ts`, `pdf.worker.ts`: `Template` in the request; the campaign path with `campaignChecks`; `options.template` from the kind (D10, D11)
-- [ ] 6.3 `EditorPage.tsx`: `printable` beside `checked` at `:82`, `:108`, `:180`, `:355`; `palette.ts` `{ checked, printable }`
-- [ ] 6.4 `PdfReview.tsx`: no «Pregenerated sheets» for a campaign, the template's name and version; `PdfPane.tsx`: the «not printed» caption and dimmed page (D10)
-- [ ] 6.5 `outline.ts` `fromHeadings`: ID badges for `### X. Name` (D10)
-- [ ] 6.6 Tests: palette entries for a campaign; the worker answers a campaign build; the review options; the pane caption in the appendix; the outline IDs; the adventure's tests unchanged
-- [ ] 6.7 Commit `feat(web): PDF preview and review for campaigns`
+- [x] 6.1 `TemplatesContext.tsx`: `useProjectTemplate` answers `document` and covers campaigns in `missing` (D10)
+- [x] 6.2 `pdf/protocol.ts`, `usePdf.ts`, `pdf.worker.ts`: `Template` in the request; the campaign path with `campaignChecks`; `options.template` from the kind (D10, D11)
+- [x] 6.3 `EditorPage.tsx`: `printable` beside `checked` at `:82`, `:108`, `:180`, `:355`; `palette.ts` `{ checked, printable }`
+- [x] 6.4 `PdfReview.tsx`: no «Pregenerated sheets» for a campaign, the template's name and version; `PdfPane.tsx`: the «not printed» caption and dimmed page (D10)
+- [x] 6.5 `outline.ts` `fromHeadings`: ID badges for `### X. Name` (D10)
+- [x] 6.6 Tests: palette entries for a campaign; the worker answers a campaign build; the review options; the pane caption in the appendix; the outline IDs; the adventure's tests unchanged
+- [x] 6.7 Commit `feat(web): PDF preview and review for campaigns`
 
 ## 7. Web: the template editor for campaigns (brief B)
 

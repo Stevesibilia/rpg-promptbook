@@ -16,17 +16,19 @@ export function CommandPalette({
   view,
   updates,
   checked,
+  printable,
   onRun,
   onClose,
 }: {
   view: EditorView | null;
   updates: UpdateSource;
   checked: boolean;
+  printable: boolean;
   onRun(action: PaletteAction): void;
   onClose(): void;
 }) {
   const items = useViewValue(view, updates, outlineOf, same);
-  const entries = useMemo(() => paletteEntries(items ?? [], { checked }), [items, checked]);
+  const entries = useMemo(() => paletteEntries(items ?? [], { checked, printable }), [items, checked, printable]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const shown = useMemo(() => filterEntries(entries, query), [entries, query]);
