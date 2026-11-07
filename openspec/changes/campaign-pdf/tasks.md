@@ -52,10 +52,10 @@ never written into the repository (D15).
 
 ## 4. Proof and hand-back of brief A
 
-- [ ] 4.1 PNGs of every page of the fixture (A4, then ink saver), under the scratchpad
-- [ ] 4.2 The owner's campaign: `read_document` (projectId `10ee1b2b-c5c0-41ee-9e5e-4665b23c2095`) and `get_template` (`t-u9cjaveeg4`) into a scratch directory outside the repository; PNGs of every page with `campagna@2` and with «Campagna a fronti» v2; build times; nothing of it committed
-- [ ] 4.3 `npm run typecheck`, `npm test`: literal results; Sabaoth's four hashes on the branch equal 0.1
-- [ ] 4.4 Hand back: results, hashes, PNG paths, which helpers moved or were duplicated, departures from the design
+- [x] 4.1 PNGs of every page of the fixture (A4, then ink saver), under the scratchpad
+- [x] 4.2 The owner's campaign: `read_document` (projectId `10ee1b2b-c5c0-41ee-9e5e-4665b23c2095`) and `get_template` (`t-u9cjaveeg4`) into a scratch directory outside the repository; PNGs of every page with `campagna@2` and with «Campagna a fronti» v2; build times; nothing of it committed
+- [x] 4.3 `npm run typecheck`, `npm test`: literal results; Sabaoth's four hashes on the branch equal 0.1
+- [x] 4.4 Hand back: results, hashes, PNG paths, which helpers moved or were duplicated, departures from the design
 
 ## 5. Built-ins in two versions: web, server, connector (brief B)
 
