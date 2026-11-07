@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
   defineTemplate,
+  parseAdventure,
   parseCampaign,
   templates,
   type CampaignTemplate,
@@ -15,6 +16,7 @@ import {
   MAX_TABS,
   tabOf,
   toCampaignLayoutInput,
+  toLayoutInput,
   type Engine,
   type LayoutOptions,
 } from '../src/index.js';
@@ -108,6 +110,21 @@ describe('toCampaignLayoutInput', () => {
 
   it('sets the campaign layout template', () => {
     expect(input.options.template).toBe('campagna@1');
+  });
+
+  it('prints a prefix-matched heading as written, its tab from it', () => {
+    const doc = '## Archi narrativi\n\nUno.\n\n## Premessa: la città\n\nDue.\n';
+    const written = inputOf(doc);
+    expect(written.sections.map((s) => [s.title, s.newPage, s.tab])).toEqual([
+      ['Archi narrativi', true, 'Archi'],
+      ['Premessa: la città', false, null],
+    ]);
+  });
+
+  it('leaves the adventure layout to adventures', () => {
+    const t = templates.avventura;
+    const adventure = toLayoutInput(parseAdventure('', { template: t }).model, { ...defaultLayoutOptions, template: 'campagna@1' }, { title: 'x' }, t);
+    expect(adventure.options.template).toBe('avventura@1');
   });
 
   it('prints a quote and a callout as quote boxes, the callout without its title line', () => {

@@ -116,9 +116,10 @@ title is the value of the title-role key, else the project's title; `autore`,
 exactly as the adventure prints them (`toLayoutInput`'s `authors`,
 `licenceShort`, `licenceUrl`). Other keys do not print.
 
-A known section prints under the template's heading (`heading ?? name`), as
-adventures do (template-editor D20); an unknown one under its heading as
-written. _(Drafter's addition: the second half.)_
+Every section prints under its heading as written, known or not: a campaign
+is free-form, and a prefix match («## Archi narrativi» matches «Archi») must
+not rewrite what the owner wrote. The matched template section gives only the
+PDF options and the appendix role. _(Changed in review of brief A.)_
 
 Text before the first `##`, other than the front matter, prints untitled
 after the contents box, with no tab and no contents entry: nothing is
@@ -231,10 +232,9 @@ New `packages/format/src/parse/campaign.ts`, exported from `index.ts`:
 ```ts
 parseCampaign(text: string, { template }: { template: CampaignTemplate }): CampaignParse
 
-CampaignParse { meta: Meta; lead: Block[]; sections: CampaignSection[] }
+CampaignParse { meta: Meta; lead: CampaignBlock[]; sections: CampaignSection[] }
 CampaignSection {
-  title: string;        // the heading as written
-  heading: string;      // what the PDF prints (D1)
+  title: string;        // the heading as written, which the PDF prints (D1)
   from: number; to: number;      // source offsets of the section
   known: boolean;
   role: 'appendix' | null;
@@ -258,6 +258,11 @@ and `CampaignParse` has none.
 `readFrontMatter` and `toBlock` take a narrower context, typed by what they
 read (`source`, `problems`, and `template.meta` for the front matter), so a
 campaign template fits; `ParseContext` stays as it is for adventures.
+
+_(Recorded in review of brief A.)_ `CampaignSection` has no `heading`: the
+title as written is what prints (D1). `lead` is `CampaignBlock[]`: a `###`
+before the first `##` becomes a subheading as anywhere else. The remark
+processor is shared by both readers in `parse/processor.ts`.
 
 Why: positions come for free from the existing parser, and the ID rule is
 the scene's. Rejected: reusing `project/src/targets.ts` `headingTargets`
@@ -284,7 +289,7 @@ CampaignLayoutInput {
 CampaignLayoutSection {
   title: string; from: number; newPage: boolean;
   tab: string | null;   // its own tab: it starts a page and is among the first 12
-  mark: string | null;  // the tab filled while it prints: its own, else the last before it
+  mark: number | null;  // the tab filled while it prints, as an index into `tabs`
   blocks: CampaignLayoutBlock[];
 }
 CampaignLayoutBlock = LayoutBlock | { from: number; kind: 'subheading'; id: string | null; name: string }
@@ -299,6 +304,15 @@ line is dropped: campaign templates have no callouts); other blocks keep
 their Markdown as written. `LayoutOptions.template` widens to
 `'avventura@1' | 'campagna@1'`; `options.pregenerated` is ignored.
 `toLayoutInput` and `LayoutInput` do not change.
+
+_(Recorded in review of brief A.)_ `mark` is an index into `tabs`, so two
+sections with the same first word never light both tabs: a section's own
+tab, else the previous printed section's mark; null before the first tabbed
+section and after a section that starts a page without a tab, until the next
+tabbed one. `text` and `authors` are exported from `input.ts` (module level,
+not `index.ts`) for `campaign.ts`. `toLayoutInput` now forces
+`options.template` to `'avventura@1'` in its output, so an adventure never
+loads `campagna.typ` (Sabaoth's bytes unchanged).
 
 ### D7. `campagna.typ` and the engine
 
@@ -348,7 +362,10 @@ tables, task lists and quotes).
   flowing: the ID in IM Fell 36 pt accent, the name in IM Fell 22 pt ink,
   bottom-aligned in a two-column grid, a 0.6 mm ink rule under them, 6 mm
   above (1 mm right after a section heading) and 3 mm below; kept with the
-  next block (`sticky`). A plain subheading prints with `h3`.
+  next block (`sticky`). A plain subheading prints with `h3`. _(Recorded in
+  review of brief A.)_ Right after a section heading the gap is 2.5 mm, not
+  1 mm: Typst keeps the larger of adjacent spacings and `section-heading`'s
+  wins; accepted, touching the shared `section-heading` is not worth it.
 - **Blocks**: a paragraph whose only marked run is bold prints that run as
   an accent caps label (`label-pars`: «OBIETTIVO:»), other bold stays bold;
   task lists print drawn checkboxes; tables use `layout-table`, the `small`
@@ -494,7 +511,9 @@ hand-back says this to the owner.
   `toCampaignLayoutInput` (appendix absent, a left-out section absent, the
   unknown section present and flowing, tabs and marks, the 13th tab
   dropped); the fixture builds a PDF of an expected page range, twice with
-  the same bytes; Sabaoth's four hashes unchanged.
+  the same bytes; Sabaoth's four hashes unchanged. The contents-number test
+  reads the PDF with `e2e/pdf-text.ts` through a dynamic import (the layout
+  tests' `rootDir` refuses a static one).
 - e2e: the seeded campaign «Blacksad - Il Continentale»
   (`server/src/seed.ts:40`, now on v2's skeleton) has the PDF button; the
   review has no «Pregenerated sheets»; «Save PDF» gives a PDF whose text
@@ -522,6 +541,8 @@ hand-back says this to the owner.
   on `campagna@1` may open with v2. Each call site of D4 gets a test.
 - **cmarker headings.** A subheading sent through `md()` prints as `h3`;
   subheadings must stay their own blocks (D7).
+- **The contents box does not break across pages**: around 260 long section
+  titles would overflow page 1; accepted, far beyond any real campaign.
 - **A role refused in a stored campaign template** (D3). If any stored body
   turns out to hold one, the server would fail to read it: report it, do
   not loosen the rule silently.

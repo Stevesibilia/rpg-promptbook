@@ -19,7 +19,7 @@ export interface CampaignLayoutSubheading {
 export type CampaignLayoutBlock = LayoutBlock | CampaignLayoutSubheading;
 
 export interface CampaignLayoutSection {
-  // What the PDF prints as the heading.
+  // The heading as written, which the PDF prints.
   title: string;
   from: number;
   newPage: boolean;
@@ -105,13 +105,13 @@ export function toCampaignLayoutInput(
       const newPage = s.pdf.newPage;
       let tab: string | null = null;
       if (newPage && tabs.length < MAX_TABS) {
-        tab = tabOf(s.heading);
+        tab = tabOf(s.title);
         tabs.push(tab);
         mark = tabs.length - 1;
       } else if (newPage) {
         mark = null;
       }
-      return { title: s.heading, from: s.from, newPage, tab, mark, blocks: s.blocks.map(blockOf) };
+      return { title: s.title, from: s.from, newPage, tab, mark, blocks: s.blocks.map(blockOf) };
     });
 
   return {

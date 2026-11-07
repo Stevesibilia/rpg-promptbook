@@ -708,7 +708,8 @@ export function toLayoutInput(
     own.references.length > 0;
 
   return {
-    options,
+    // The adventure's layout template, whatever the options say.
+    options: { ...options, template: 'avventura@1' },
     title: text(metaValue('title')) ?? project.title,
     subtitle: text(metaValue('subtitle')),
     author: authors(values['autore']),

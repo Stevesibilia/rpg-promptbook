@@ -1,12 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import {
-  defineTemplate,
-  parseCampaign,
-  templates,
-  type CampaignBlock,
-  type CampaignTemplateInput,
-} from '../src/index.js';
+import { parseCampaign, templates, type CampaignBlock } from '../src/index.js';
 
 const text = readFileSync(new URL('../fixtures/campagna-di-prova.md', import.meta.url), 'utf8');
 const parsed = parseCampaign(text, { template: templates.campagnaV2 });
@@ -31,13 +25,15 @@ describe('parseCampaign', () => {
     expect(parsed.sections.every((s) => !s.pdf.sideColumn)).toBe(true);
   });
 
-  it('prints a known section under the template heading, an unknown one as written', () => {
-    const definition = JSON.parse(JSON.stringify(templates.campagnaV2)) as CampaignTemplateInput;
-    definition.sections[0] = { ...definition.sections[0]!, heading: 'Premessa: la città' };
-    const renamed = parseCampaign(text, { template: defineTemplate(definition) });
-    expect(renamed.sections[0]).toMatchObject({ title: 'Premessa', heading: 'Premessa: la città', known: true });
-    expect(section('Appunti del master').heading).toBe('Appunti del master');
-    expect(section('Appendice: stile visivo e sonoro').heading).toBe('Appendice: stile visivo e sonoro');
+  it('keeps every heading as written, a prefix match giving only the options', () => {
+    const doc = '## Archi narrativi\n\nUno.\n\n## Premessa: la città\n\nDue.\n\n## Appendice: altro\n\nTre.\n';
+    const read = parseCampaign(doc, { template: templates.campagnaV2 });
+    expect(read.sections.map((s) => [s.title, s.known, s.role, s.pdf.print, s.pdf.newPage])).toEqual([
+      ['Archi narrativi', true, null, true, true],
+      ['Premessa: la città', true, null, true, false],
+      ['Appendice: altro', true, 'appendix', false, false],
+    ]);
+    expect(Object.keys(read.sections[0]!)).not.toContain('heading');
   });
 
   it('reads the front matter against the campaign template', () => {

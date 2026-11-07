@@ -23,11 +23,10 @@ export interface SubheadingBlock {
 export type CampaignBlock = Exclude<Block, HeadingBlock> | SubheadingBlock;
 
 export interface CampaignSection {
-  // The heading as written.
+  // The heading as written, which the PDF prints, known or not: a prefix
+  // match («## Archi narrativi» matches «Archi») never rewrites it. The
+  // matched template section gives only the PDF options and the role.
   title: string;
-  // What the PDF prints: the template's heading for a known section, else
-  // the heading as written.
-  heading: string;
   // Source offsets of the section, from its ## to the end of its last block.
   from: number;
   to: number;
@@ -93,7 +92,6 @@ export function parseCampaign(text: string, { template }: CampaignParseOptions):
     const ids: BoxIds = { owner: title, count: 0 };
     return {
       title,
-      heading: definition ? (definition.heading ?? definition.name) : title,
       from: source.start(heading),
       to: source.end(nodes.at(-1) ?? heading),
       known: definition !== null,
