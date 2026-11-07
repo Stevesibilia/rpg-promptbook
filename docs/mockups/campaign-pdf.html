@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign PDF mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;600&family=IM+Fell+English:ital@0;1&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only (issue #55). App chrome copied from templates.html and
+   editor.html (tokens.css, editor.css, pdf.css); the PDF pages follow
+   packages/layout/typst/avventura.typ (colours, fonts, sizes in mm/pt). */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --note: #7a3fc4;
+  --leggi: rgba(15,143,105,.08); --leggi-line: #0f8f69;
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+    --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+    --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+    --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+    --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --note: #c08cff;
+  --leggi: rgba(31,185,138,.10); --leggi-line: #1fb98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+input, select { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+code { font: .92em var(--mono); }
+.spacer { flex: 1; }
+
+/* Mockup controls (not part of the app) */
+.mock { position: relative; z-index: 60; height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 12px; white-space: nowrap; overflow-x: auto;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--note) 10%, var(--bg)) 0 8px, var(--bg) 8px 16px);
+  border-bottom: 1px dashed var(--note); color: var(--muted); }
+.mock .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); margin-right: 8px; }
+.mock button { padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; flex: none; }
+.mock button:hover { border-color: var(--border); color: var(--text); }
+.mock button.on { border-color: var(--note); color: var(--note); background: var(--surface); }
+.mock .sep { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex: none; }
+.mock .only3 { display: none; } body.v3 .mock .only3 { display: inline-flex; }
+
+.app { display: grid; height: calc(100vh - 34px); grid-template-rows: 44px 1fr 26px; grid-template-columns: 48px 1fr; }
+
+/* Top bar */
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); min-width: 0; }
+.logo { width: 48px; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); flex: none; }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-meta select { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); flex: none; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover:not(:disabled) { background: var(--primary-hover); color: var(--on-primary); }
+.tb.primary[aria-pressed="true"] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--on-primary) 45%, transparent); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); flex: none; }
+.cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 2 / 4; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+
+.center { grid-column: 2; grid-row: 2; overflow: auto; min-width: 0; position: relative; }
+.view { display: none; } .view.on { display: block; }
+
+/* Status bar */
+.status { grid-column: 2 / -1; grid-row: 3; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; }
+
+/* ---- View 1: the editor -------------------------------------------- */
+#v-editor.on { display: grid; grid-template-columns: 230px minmax(0, 1fr) 460px; height: 100%; }
+#v-editor.no-pdf.on { grid-template-columns: 230px minmax(0, 1fr) 0; }
+#v-editor.no-pdf .pdfpane { display: none; }
+.left { background: var(--surface); border-right: 1px solid var(--border); overflow: auto; min-width: 0; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px;
+  font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.ol { list-style: none; margin: 0; padding: 0 6px 12px; }
+.ol li { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; color: var(--muted); cursor: pointer; }
+.ol li:hover { background: var(--hover); color: var(--text); }
+.ol li.cur { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--text); }
+.ol li.sub { padding-left: 22px; }
+.ol li .id { font: 500 11px var(--mono); color: var(--primary); min-width: 20px; }
+.ol li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.edcol { overflow: auto; min-width: 0; }
+.doc { max-width: 780px; margin: 0 auto; padding: 28px 48px 120px; }
+.ed { font: 17px/26px var(--prose); }
+.ed .l { min-height: 26px; position: relative; cursor: text; }
+.ed .mk { display: none; } .ed .active .mk { display: inline; }
+.ed .active { background: color-mix(in srgb, var(--primary) 6%, transparent); box-shadow: -48px 0 0 color-mix(in srgb, var(--primary) 6%, transparent); }
+.mk { font-family: var(--mono); font-size: 13px; color: var(--faint); }
+.h2 { font: 700 24px/34px var(--display); letter-spacing: .02em; margin-top: 18px; }
+.h3 { font: 600 21px/30px var(--prose); margin-top: 14px; }
+.h3 .sid { font: 600 14px var(--mono); color: var(--primary); }
+.fl { font-weight: 600; color: var(--primary); }
+.li { padding-left: 22px; text-indent: -22px; }
+.task { display: inline-block; width: 13px; height: 13px; border: 1.5px solid var(--faint); border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.bq { border-left: 3px solid var(--border); padding-left: 12px; font-style: italic; color: var(--muted); margin: 6px 0; }
+.skip { color: var(--faint); font: italic 13px var(--font); padding: 6px 0; }
+.cursor { display: inline-block; width: 2px; height: 20px; background: var(--primary); vertical-align: -4px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+table.md { border-collapse: collapse; font: 15px/22px var(--prose); margin: 6px 0; width: 100%; }
+table.md td, table.md th { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+table.md th { font: 600 13px var(--font); color: var(--muted); background: var(--surface); }
+
+/* The PDF pane, in place of the inspector (pdf.css) */
+.pdfpane { background: #2b2f2d; border-left: 1px solid var(--border); overflow: auto; padding: 18px; min-width: 0; }
+.pdfpane .bar2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #cfd6d2; font-size: 12px; margin-bottom: 10px; }
+.pdfpane .bar2 .tb { color: #cfd6d2; }
+.pdfpane .bar2 .tb:hover { background: #3a403d; color: #fff; }
+.pdfpane .sheet { box-shadow: 0 6px 20px rgba(0,0,0,.4); cursor: text; }
+
+/* ---- View 2: the review (pdf.css) ---------------------------------- */
+#v-review.on { display: grid; grid-template-columns: 150px minmax(0, 1fr) 290px; height: 100%; background: #262a28; }
+.thumbs-col { background: var(--surface); border-right: 1px solid var(--border); overflow: auto; padding: 10px 14px; }
+.th { display: block; width: 100%; margin-bottom: 12px; text-align: center; font-size: 11px; color: var(--muted); }
+.th .mini { display: block; position: relative; margin-bottom: 4px; border-radius: 2px; outline: 2px solid transparent; outline-offset: 2px; }
+.th.cur .mini { outline-color: var(--primary); }
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12px 18px 10px; gap: 10px; }
+.tools { display: flex; gap: 8px; align-items: center; color: #cfd6d2; font-size: 12px; padding: 4px 8px; flex-wrap: wrap; }
+.tools button { padding: 3px 9px; border: 1px solid #4a514d; border-radius: 4px; color: #e3e8e5; }
+.tools button:disabled { opacity: .4; }
+.tools button.on { border-color: var(--primary); color: var(--primary); }
+.tools .zoom { min-width: 3.5em; text-align: center; }
+.room { flex: 1; min-height: 0; overflow: auto; }
+.spread { display: flex; justify-content: center; align-items: flex-start; gap: 16px; width: max-content; min-width: 100%; }
+.spread .sheet { flex: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); cursor: text; }
+.stage .hint { margin: 0; text-align: center; color: #9aa39e; font-size: 12px; }
+.side-col { background: var(--surface); border-left: 1px solid var(--border); overflow: auto; }
+.acc { border-bottom: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--faint); transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .cnt { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+.acc .body { padding: 0 12px 12px; }
+.side-col .hint { margin: 0; color: var(--faint); font-size: 13px; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; }
+.opt select, .opt input { accent-color: var(--primary); font: inherit; font-size: 12px; padding: 2px 6px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.opt select:disabled { opacity: .7; }
+.actions { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+.actions .tb { flex: 1; justify-content: center; border: 1px solid var(--border); }
+.savednote { margin: 0 12px 12px; font-size: 12.5px; color: var(--faint); }
+.savednote b { color: var(--primary); font-weight: 600; }
+.new { font: 600 10px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--note); border: 1px dashed var(--note); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+
+/* ---- View 3: settings and the template editor (templates.html) ------ */
+.pane { max-width: 1480px; margin: 0 auto; padding: 24px 28px 160px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; }
+.set { display: grid; grid-template-columns: 160px 1fr; gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+.field input:disabled, .field select:disabled { opacity: 1; }
+.chip { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.chip.def { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.chip.ver { font: 500 11px var(--mono); text-transform: none; letter-spacing: 0; }
+.te-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.te-head .back { color: var(--muted); }
+.banner { margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--info) 9%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border)); color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.banner b { color: var(--text); }
+.banner .tb { margin-left: auto; }
+.te-gen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.te-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 310px); gap: 16px; align-items: start; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.tabs button { padding: 7px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--primary); font-weight: 600; }
+.tabs .n { font-size: 11px; color: var(--faint); margin-left: 3px; }
+.rows { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.rh, .rr { display: grid; gap: 8px; align-items: center; padding: 6px 10px; }
+.rh { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--border); }
+.rr { border-bottom: 1px solid var(--border); }
+.rr:last-child { border-bottom: 0; }
+.rr.changed { box-shadow: inset 3px 0 0 var(--amber); }
+.rr input, .rr select { width: 100%; min-width: 0; padding: 4px 7px; font-size: 13.5px; }
+.rr input:disabled, .rr select:disabled { background: transparent; border-color: transparent; color: var(--text); opacity: 1; }
+.g-sec { grid-template-columns: 44px minmax(0, 1fr) 118px 112px 170px 30px; }
+.g-key { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 30px; }
+.mv { display: flex; flex-direction: column; }
+.mv button { color: var(--faint); font-size: 10px; line-height: 12px; padding: 0 6px; border-radius: 3px; }
+.role { font: 500 11.5px var(--font); color: var(--muted); display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.role .ic { width: 13px; height: 13px; }
+.role.custom { color: var(--faint); font-style: italic; }
+.pdf { display: flex; flex-wrap: wrap; gap: 3px; }
+.tg { font: 500 11.5px var(--font); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); white-space: nowrap; }
+.tg.on { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); background: color-mix(in srgb, var(--primary) 9%, transparent); }
+.tg.fixed { border-style: dashed; cursor: default; }
+.tg:disabled { opacity: .55; }
+.rr.ro .tg:disabled { opacity: 1; }
+.del { color: var(--faint); padding: 2px 6px; border-radius: 4px; }
+.sub { color: var(--faint); font-size: 12.5px; margin: 8px 2px 0; }
+.pv { position: sticky; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pv .ph { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.pv .ph .chip { margin-left: auto; }
+.pv .pb { max-height: calc(100vh - 290px); overflow: auto; padding: 10px 14px 14px; font: 14px/22px var(--prose); }
+.pv .l { min-height: 22px; overflow-wrap: anywhere; }
+.pv .fm { font: 12px/22px var(--mono); color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; }
+.pv .fm .k { color: var(--info); }
+.pv .h2 { font: 700 19px/28px var(--display); margin-top: 10px; }
+.pv .out { color: var(--faint); font: italic 12px var(--font); margin-left: 6px; }
+.pv .out.np { color: var(--primary); font-style: normal; }
+
+/* ---- Decisions panel (mockup only) ---------------------------------- */
+.anno { position: fixed; left: 62px; bottom: 36px; width: 440px; max-height: calc(100vh - 140px); overflow: auto; z-index: 50; background: var(--surface); border: 1px dashed var(--note); border-radius: 8px; font-size: 12.5px; color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.anno.closed { display: none; }
+.anno h5 { margin: 0; padding: 8px 12px 0; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--note); display: flex; }
+.anno h5 button { margin-left: auto; color: var(--faint); font-size: 12px; }
+.anno ol { margin: 6px 0 10px; padding: 0 12px 0 30px; }
+.anno li { margin: 3px 0; }
+.anno li b { color: var(--text); font-weight: 600; }
+.anno code { font: 11.5px var(--mono); }
+
+/* ---- The PDF page, as avventura.typ lays it out --------------------- */
+.sheet { container-type: inline-size; background: #fff; }
+.pg { --mm: calc(100cqw / 210); --pt: calc(100cqw / 595.28);
+  --ink: #1c1a17; --accent: #7b2d26; --paper-tint: #f1ede4; --grey: #4a463f; --rule: #8a857c; --tab-tint: #ebe6dc; --zebra: #f7f4ee;
+  --tint-border: none;
+  position: relative; width: 100%; aspect-ratio: 210 / 297; overflow: hidden; background: #fff; color: var(--ink);
+  padding: calc(12 * var(--mm)) calc(15 * var(--mm)) calc(14 * var(--mm)) calc(14 * var(--mm));
+  font: calc(9.5 * var(--pt)) / 1.36 'Spectral', Georgia, serif; text-align: left; }
+.ink .pg { --paper-tint: #fff; --tab-tint: #fff; --zebra: #fff; --tint-border: calc(.3 * var(--mm)) solid var(--rule); }
+.pg * { box-sizing: border-box; }
+.pg p { margin: 0 0 calc(2.6 * var(--mm)); }
+.pg b { font-weight: 600; }
+.pg .plex, .pg .lab, .pg .over, .pg .foot, .pg .tab, .pg th { font-family: 'IBM Plex Sans Condensed', 'IBM Plex Sans', sans-serif; }
+.pg .lab { font-weight: 600; font-size: calc(8.5 * var(--pt)); letter-spacing: .08em; color: var(--accent); text-transform: uppercase; }
+.pg .cover { border-bottom: calc(.6 * var(--mm)) solid var(--ink); padding-bottom: calc(2.5 * var(--mm)); margin-bottom: calc(2.5 * var(--mm)); }
+.pg .over { font-size: calc(8.5 * var(--pt)); letter-spacing: .08em; color: var(--grey); margin-bottom: calc(2 * var(--mm)); }
+.pg .over b { font-weight: 600; }
+.pg .title { font: calc(34 * var(--pt)) / 1 'IM Fell English', serif; margin-top: calc(1 * var(--mm)); }
+.pg .credits { font-size: calc(9 * var(--pt)); color: var(--grey); margin-bottom: calc(2 * var(--mm)); }
+.pg .toc { background: var(--paper-tint); border: var(--tint-border); padding: calc(3 * var(--mm)) calc(3.5 * var(--mm)); margin: 0 0 calc(3 * var(--mm)); font-size: calc(9 * var(--pt)); line-height: 1.3; }
+.pg .toc .lab { display: block; margin-bottom: calc(1.5 * var(--mm)); }
+.pg .toc ol { list-style: none; margin: 0; padding: 0; columns: 3; column-gap: calc(7 * var(--mm)); }
+.pg .toc li { display: flex; gap: calc(1.2 * var(--mm)); break-inside: avoid; }
+.pg .toc li::after { content: ''; order: 1; flex: 1; border-bottom: calc(.25 * var(--mm)) dotted var(--rule); margin-bottom: calc(1.1 * var(--mm)); }
+.pg .toc li span { order: 2; font: 600 calc(9 * var(--pt)) 'IBM Plex Sans Condensed', sans-serif; color: var(--accent); }
+.pg .toc li.np::before { content: '▸'; color: var(--accent); margin-right: calc(-.4 * var(--mm)); font-size: .8em; }
+.pg .sec { font: calc(18 * var(--pt)) / 1.15 'IM Fell English', serif; color: var(--accent); border-bottom: calc(.3 * var(--mm)) solid var(--rule); padding-bottom: calc(.9 * var(--mm)); margin: calc(5 * var(--mm)) 0 calc(2.5 * var(--mm)); }
+.pg .sec.first { margin-top: 0; }
+.pg .sh { display: grid; grid-template-columns: auto 1fr; column-gap: calc(4 * var(--mm)); align-items: end; border-bottom: calc(.6 * var(--mm)) solid var(--ink); padding-bottom: calc(2.5 * var(--mm)); margin: calc(6 * var(--mm)) 0 calc(3 * var(--mm)); }
+.pg .sh.first { margin-top: calc(1 * var(--mm)); }
+.pg .sh .id { font: calc(36 * var(--pt)) / .74 'IM Fell English', serif; color: var(--accent); }
+.pg .sh .nm { font: calc(22 * var(--pt)) / .9 'IM Fell English', serif; }
+.pg ul { list-style: none; margin: 0 0 calc(2.6 * var(--mm)); padding: 0; }
+.pg li { position: relative; padding-left: calc(3.8 * var(--mm)); margin-bottom: calc(.9 * var(--mm)); }
+.pg ul > li::before { content: '•'; position: absolute; left: 0; }
+.pg ul.tasks > li { padding-left: calc(5.2 * var(--mm)); margin-bottom: calc(2 * var(--mm)); }
+.pg ul.tasks > li::before { content: ''; top: calc(.75 * var(--mm)); width: calc(3 * var(--mm)); height: calc(3 * var(--mm)); border: calc(.35 * var(--mm)) solid var(--ink); }
+.pg .qt { background: var(--paper-tint); border: var(--tint-border); padding: calc(3.5 * var(--mm)) calc(4.5 * var(--mm)) calc(2.5 * var(--mm)); margin-bottom: calc(3.5 * var(--mm)); font-style: italic; font-size: calc(10.3 * var(--pt)); line-height: 1.42; }
+.pg table { width: 100%; border-collapse: collapse; font-size: calc(9 * var(--pt)); line-height: 1.32; margin: calc(2 * var(--mm)) 0 calc(3 * var(--mm)); }
+.pg table.small { font-size: calc(8.6 * var(--pt)); }
+.pg th { background: var(--ink); color: #fff; font-weight: 600; font-size: calc(8.5 * var(--pt)); letter-spacing: .05em; text-transform: uppercase; text-align: left; padding: calc(1.4 * var(--mm)) calc(2.5 * var(--mm)); vertical-align: top; }
+.ink .pg th { background: #fff; color: var(--ink); border-bottom: calc(.4 * var(--mm)) solid var(--ink); }
+.pg td { padding: calc(1.2 * var(--mm)) calc(2.2 * var(--mm)); border-bottom: calc(.25 * var(--mm)) solid var(--rule); vertical-align: top; }
+.pg tbody tr:nth-child(even) td { background: var(--zebra); }
+.pg .nw { white-space: nowrap; }
+.pg .tabs-r { position: absolute; right: 0; top: calc(20 * var(--mm)); display: flex; flex-direction: column; gap: calc(1 * var(--mm)); }
+.pg .tab { width: calc(10 * var(--mm)); height: calc(18 * var(--mm)); display: grid; place-items: center; background: var(--tab-tint); color: var(--grey); font-weight: 600; font-size: calc(8.5 * var(--pt)); border: var(--tint-border); }
+.pg .tab.s { height: calc(10 * var(--mm)); }
+.pg .tab.on { background: var(--accent); color: #fff; }
+.ink .pg .tab.on { background: #fff; color: var(--accent); border: calc(.21 * var(--mm)) solid var(--accent); }
+.pg .foot { position: absolute; left: calc(14 * var(--mm)); right: calc(15 * var(--mm)); bottom: calc(7 * var(--mm)); display: grid; grid-template-columns: 1fr auto auto; column-gap: calc(4 * var(--mm)); color: var(--grey); font-size: calc(8.5 * var(--pt)); line-height: 1.2; }
+.pg .foot .n { font-weight: 600; font-size: calc(9 * var(--pt)); }
+.pg .cut { position: absolute; left: calc(14 * var(--mm)); right: calc(15 * var(--mm)); bottom: calc(14 * var(--mm)); height: calc(16 * var(--mm)); background: linear-gradient(transparent, #fff 70%); display: flex; align-items: flex-end; justify-content: center; font: italic calc(8 * var(--pt)) 'Barlow', sans-serif; color: #8b9690; }
+#src { display: none; }
+
+/* ---- Narrow screens ---- */
+@media (max-width: 1180px) {
+  #v-editor.on { grid-template-columns: 0 minmax(0, 1fr) 380px; }
+  #v-editor.no-pdf.on { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  #v-editor .left { display: none; }
+  .te-body { grid-template-columns: 1fr; }
+  .pv { position: static; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: 0 1fr; }
+  .rail { display: none; }
+  .logo { width: 40px; }
+  .hide-narrow { display: none !important; }
+  #v-editor.on, #v-editor.no-pdf.on { display: block; height: auto; }
+  .doc { padding: 16px 16px 40px; }
+  .ed .active { box-shadow: none; }
+  .pdfpane { padding: 16px; }
+  #v-review.on { display: flex; flex-direction: column; height: auto; }
+  .thumbs-col { display: flex; gap: 10px; overflow-x: auto; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .th { width: 64px; flex: none; margin: 0; }
+  .stage { padding: 10px 16px; }
+  .room { overflow: visible; }
+  .side-col { border-left: 0; border-top: 1px solid var(--border); }
+  .pane { padding: 16px 16px 160px; }
+  .set { grid-template-columns: 1fr; gap: 12px; }
+  .set nav { flex-direction: row; flex-wrap: wrap; }
+  .set nav button { padding: 4px 8px; font-size: 13px; }
+  .te-gen { grid-template-columns: 1fr; }
+  .rows { overflow-x: auto; }
+  .rh, .rr { min-width: 640px; }
+  .anno { left: 16px; right: 16px; width: auto; bottom: 32px; max-height: 55vh; }
+}
+</style>
+</head>
+<body>
+<nav class="mock" aria-label="Mockup controls">
+  <span class="lab">Mockup #55</span>
+  <button data-view="editor" class="on">1 · Editor</button>
+  <button data-view="review">2 · PDF review</button>
+  <button data-view="template">3 · Campaign template</button>
+  <span class="sep only3"></span>
+  <button class="only3 on" data-ro="1">Built-in v2 (read-only)</button>
+  <button class="only3" data-ro="0">A copy (editable)</button>
+  <span class="sep"></span>
+  <button id="mDec">Decisions</button>
+  <button id="mTheme">Light / dark</button>
+</nav>
+
+<div class="app">
+  <header class="topbar" id="topbar"></header>
+  <nav class="rail" id="rail"></nav>
+  <main class="center">
+
+    <!-- View 1: the editor with the campaign open and the PDF pane -->
+    <section class="view on" id="v-editor">
+      <aside class="left" aria-label="Outline">
+        <div class="panel-h">Outline</div>
+        <ul class="ol" id="outline"></ul>
+      </aside>
+      <div class="edcol"><div class="doc"><div class="ed" id="ed">
+        <div class="skip" data-page="1">… front matter, Premessa, Verità del mondo …</div>
+        <div class="l li" data-page="1"><span class="mk">- </span>• <b>Swearengen tratta già.</b> Da settimane il Gem paga Yankton per avere voce su chi farà lo sceriffo, il sindaco e il commissario del campo.</div>
+        <div class="l li" data-page="1"><span class="mk">- </span>• <b>Il segreto di Wolcott.</b> Wolcott uccide le donne che paga. La Compagnia lo sa, pulisce dietro di lui e lo protegge finché serve.</div>
+        <div class="l h2" data-page="2" data-ol="Fronti"><span class="mk">## </span>Fronti</div>
+        <div class="l h3" data-page="2" data-ol="F1"><span class="mk">### </span><span class="sid">F1.</span> La Compagnia</div>
+        <div class="l" data-page="2"><span class="fl">Obiettivo:</span> possedere tutte le concessioni sul filone del Whitewood prima che il registro le fissi per legge.</div>
+        <div class="l" data-page="2"><span class="fl">Volto:</span> Francis Wolcott, geologo, colto, cortese, pagatore generoso; vuole consegnare a Hearst il filone senza che il suo nome compaia; dice: «Io non compro terra, signore. Compro il tempo che le resta.» Dietro di lui, George Hearst, che arriva solo quando il gioco è fatto.</div>
+        <div class="l" data-page="2"><span class="fl">Perché è difficile da fermare:</span> denaro senza fondo, il telegrafo, uomini armati che non sono del campo e non hanno amici qui; e ogni vendita è, sulla carta, volontaria.</div>
+        <div class="l active" data-page="2"><span class="mk">**</span><span class="fl">Orologio</span><span class="mk">**</span><span class="cursor"></span></div>
+        <div class="l li" data-page="2"><span class="mk">- [ ] </span><span class="task"></span><b>F1.1</b> Compra le concessioni facili. <i>Segni:</i> atti di vendita affissi all'emporio di Star e Bullock; cercatori che partono con soldi in tasca e senza bagagli.</div>
+        <div class="l li" data-page="2"><span class="mk">- [ ] </span><span class="task"></span><b>F1.2</b> Gli incidenti. Chi non vende muore. <i>Segni:</i> cadaveri con le mani pulite e gli stivali puliti; uomini nuovi, armati, che bevono poco.</div>
+        <div class="l li" data-page="2"><span class="mk">- [ ] </span><span class="task"></span><b>F1.3</b> Tolliver passa con la Compagnia. <i>Segni:</i> al Bella Union si beve gratis; i pistoleri della Compagnia dormono lì; una ragazza del Bella Union non torna.</div>
+        <div class="l li" data-page="2"><span class="mk">- [ ] </span><span class="task"></span><b>F1.4</b> Arriva Hearst. <i>Segni:</i> telegrammi, una carrozza, cuochi e guardie; il prezzo delle concessioni raddoppia in un giorno, poi nessuno vende più.</div>
+        <div class="l li" data-page="2"><span class="mk">- [ ] </span><span class="task"></span><b>Se vince.</b> Deadwood è la città della Compagnia: le paghe le mette Hearst, lo sceriffo lo nomina Hearst, e chi non lavora per lui se ne va o finisce nel torrente.</div>
+        <div class="skip" data-page="2">… F2. Il Gem …</div>
+        <div class="l h3" data-page="2" data-ol="F3"><span class="mk">### </span><span class="sid">F3.</span> Yankton</div>
+        <div class="l" data-page="2"><span class="fl">Obiettivo:</span> trasformare il registro in una fortuna personale, vendendolo a pezzi a chi paga di più.</div>
+        <div class="skip" data-page="3">… Volto, Orologio …</div>
+        <div class="l bq" data-page="3"><span class="mk">&gt; </span>Se tre fronti risultano troppi per 6-8 sessioni, F3 può scendere a fazione: Jarry diventa una pedina che Al e la Compagnia si contendono.</div>
+        <div class="l h2" data-page="3" data-ol="Fazioni"><span class="mk">## </span>Fazioni</div>
+        <div class="l" data-page="3"><table class="md"><tr><th>Fazione</th><th>Vuole</th><th>Teme</th><th>…</th></tr><tr><td>Il Bella Union di Cy Tolliver</td><td>spodestare Al</td><td>finire schiacciato fra Al e Hearst</td><td>…</td></tr></table></div>
+        <div class="l h2" data-page="4" data-ol="PNG ricorrenti"><span class="mk">## </span>PNG ricorrenti</div>
+        <div class="l li" data-page="4"><span class="mk">- </span>• <b>Al Swearengen.</b> Padrone del Gem. Parla tanto, ascolta di più. Tratta con tutti e non si fida di nessuno; protegge il campo come si protegge un investimento.</div>
+        <div class="skip" data-page="4">… PG e agganci, Archi, Finali possibili, Fili aperti …</div>
+        <div class="l h2" data-page="7" data-ol="Appendice"><span class="mk">## </span>Appendice: stile visivo e sonoro</div>
+        <div class="skip" data-page="7">… image and music prompts (never printed) …</div>
+      </div></div></div>
+      <aside class="pdfpane" aria-label="PDF preview">
+        <div class="bar2"><span id="paneCap"></span><span><button class="tb" id="toReview" title="Review the whole PDF (⌘⇧P)">⤢ Review</button><button class="tb" id="paneX" aria-label="Close the PDF preview" title="Close the PDF preview">✕</button></span></div>
+        <div id="paneSheet"></div>
+      </aside>
+    </section>
+
+    <!-- View 2: the full-screen review -->
+    <section class="view" id="v-review" aria-label="PDF review">
+      <div class="thumbs-col" id="thumbs" aria-label="Pages"></div>
+      <div class="stage">
+        <div class="tools">
+          <button id="back">← Editor <span class="kbd">Esc</span></button>
+          <span id="pagesLabel" style="margin-left:8px"></span>
+          <span class="spacer"></span>
+          <button id="zOut" aria-label="Zoom out">−</button><span class="zoom" id="zoom">100%</span><button id="zIn" aria-label="Zoom in">+</button>
+          <button data-mode="single" class="on">Single</button><button data-mode="spread">Spread</button><button data-mode="fit">Fit width</button>
+        </div>
+        <div class="room" id="room"><div class="spread" id="spread"></div></div>
+        <p class="hint">Double-click any text to jump to it in the editor.</p>
+      </div>
+      <aside class="side-col">
+        <details class="acc" open><summary>Layout checks <span class="cnt">none</span></summary><div class="body"><p class="hint">Nothing to look at.</p></div></details>
+        <details class="acc" open><summary>Options</summary><div class="body">
+          <label class="opt">Paper <select><option>A4</option><option>Letter</option></select></label>
+          <label class="opt">Ink saver (no tints) <input type="checkbox" id="inkSaver"></label>
+          <label class="opt">Template <select disabled><option>Campagna v2</option></select></label>
+          <p class="hint" style="margin-top:6px">No «Pregenerated sheets» option: campaigns have none.</p>
+        </div></details>
+        <div class="actions"><button class="tb" id="print">Print…</button><button class="tb primary" id="save">Save PDF</button></div>
+        <p class="savednote" id="savedNote">Saves <b>prima-che-arrivi-la-legge.pdf</b>.</p>
+      </aside>
+    </section>
+
+    <!-- View 3: the campaign template in Settings -->
+    <section class="view" id="v-template"><div class="pane">
+      <div class="head"><h1>Settings</h1></div>
+      <div class="set">
+        <nav aria-label="Settings">
+          <button>To-do templates</button><button class="on">Document templates</button><button>Game systems</button><button>Author and licence</button>
+          <button>Account</button><button>Connected apps</button><button>Sync and storage</button><button>Appearance</button>
+        </nav>
+        <section id="setBody"></section>
+      </div>
+    </div></section>
+  </main>
+  <footer class="status" id="status"></footer>
+</div>
+
+<aside class="anno" id="anno" aria-label="Decisions to agree">
+  <h5><span>Decisions to agree</span><button id="annoX" aria-label="Hide the decisions">✕</button></h5>
+  <ol>
+    <li><b>Own sections only.</b> The PDF prints the campaign's own <code>##</code> sections in document order; linked adventures are not included.</li>
+    <li><b>Campagna v2.</b> The built-in «Campagna» v2 follows the campagna-rpg model (the sections in view 3). v1 stays for projects that use it; new campaigns get v2.</li>
+    <li><b>Print and New page per section.</b> Each section has both in the template. «Appendice: stile visivo e sonoro» never prints. Sections the template does not list still print, flowing after the section before them.</li>
+    <li><b>ID marks.</b> A <code>### F1. Name</code> subheading (an ID like F1, A1) gets the big ID mark, as scenes do; any other <code>###</code> is a plain subheading.</li>
+    <li><b>Page 1 and tabs.</b> Page 1 carries the title block and a contents list with page numbers. Thumb tabs mark the sections that start a page (Fronti, PNG, Archi, Fili).</li>
+    <li><b>Review options.</b> Paper and ink saver; no pregenerated sheets.</li>
+  </ol>
+</aside>
+
+<!-- The campaign's PDF pages. The views clone these. -->
+<div id="src">
+
+<div class="sheet" data-label="Premessa"><div class="pg">
+  <div class="tabs-r"><span class="tab">Fronti</span><span class="tab s">PNG</span><span class="tab">Archi</span><span class="tab">Fili</span></div>
+  <div class="cover">
+    <div class="over"><b>Formato:</b> campagna</div>
+    <div class="title">Prima che arrivi la legge</div>
+  </div>
+  <p class="credits"><span class="lab">Autore:</span> Stefano Sibilia</p>
+  <div class="toc"><span class="lab">In questa campagna</span><ol>
+    <li>Premessa<span>1</span></li><li>Verità del mondo<span>1</span></li><li class="np">Fronti<span>2</span></li><li>Fazioni<span>3</span></li>
+    <li class="np">PNG ricorrenti<span>4</span></li><li>PG e agganci<span>4</span></li><li class="np">Archi<span>5</span></li><li>Finali possibili<span>6</span></li>
+    <li class="np">Fili aperti<span>7</span></li><li>Temi e motivi<span>7</span></li><li>Prima della campagna<span>7</span></li><li>Aggiornamenti<span>7</span></li>
+  </ol></div>
+  <div class="sec">Premessa</div>
+  <p><b>Sistema:</b> Not the End · <b>Tono:</b> crudo, sporco, parlato; la violenza arriva di colpo e lascia segni · <b>Tavolo:</b> 6 giocatori più il master</p>
+  <p><span class="lab">Sessioni:</span> 6-8</p>
+  <p><span class="lab">Arco corrente:</span> A1. Il morto nel torrente</p>
+  <p><span class="lab">Premessa:</span> Deadwood, inverno 1876-1877. Il campo sorge su terra che il trattato di Fort Laramie assegna ai Lakota: ogni concessione mineraria è, a rigore, carta straccia. In primavera il Territorio del Dakota annetterà le Black Hills, e le concessioni saranno registrate: chi avrà la carta giusta in mano diventerà proprietario per legge. Fino ad allora vale chi spara, chi paga e chi resta.</p>
+  <p><span class="lab">Domanda della campagna:</span> quando arriva la legge, di chi sarà Deadwood, e cosa resterà di chi l'ha costruita?</p>
+  <p><span class="lab">Temi:</span> la civiltà che nasce dal sangue; il prezzo dell'appartenenza; la parola come arma.</p>
+  <table><thead><tr><th>Fronte</th><th>Obiettivo</th><th>Volto</th><th>Orologio</th></tr></thead><tbody>
+    <tr><td class="nw">F1. La Compagnia</td><td>le concessioni sul filone prima del registro</td><td>Francis Wolcott, e dietro di lui George Hearst</td><td>0/4</td></tr>
+    <tr><td class="nw">F2. Il Gem</td><td>restare padrone del campo quando arriva la legge</td><td>Al Swearengen</td><td>0/3</td></tr>
+    <tr><td class="nw">F3. Yankton</td><td>vendere il registro al migliore offerente</td><td>il commissario Hugo Jarry</td><td>0/3</td></tr>
+  </tbody></table>
+  <div class="sec">Verità del mondo</div>
+  <ul>
+    <li><b>La pressione già in corso.</b> Da novembre tre cercatori del canalone del Whitewood sono morti in «incidenti»: una frana, un annegato, un pozzo crollato. Le loro concessioni sono passate, con atti di vendita in regola, a un certo signor Wolcott.</li>
+    <li><b>Il campo è illegale.</b> Finché il Congresso non ratifica la cessione delle Black Hills, nessun titolo vale niente. Tutti lo sanno; nessuno lo dice ad alta voce, perché chi lo dice mette in dubbio la proprietà di tutti.</li>
+    <li><b>Il registro.</b> Con l'annessione, un commissario di Yankton registrerà le concessioni su atti, testimoni e firme. Chi non è sul registro non possiede niente, e testimoni e firme si comprano.</li>
+    <li><b>Il filone.</b> Sotto un gruppo di concessioni piccole del canalone, date per esaurite o per truffe, corre un filone di quarzo aurifero. Solo la Compagnia lo ha saggiato. Una di quelle concessioni è di Alma Garret, che la crede una truffa ai danni del marito morto.</li>
+    <li><b>Hearst non è ancora qui.</b> Manda avanti Wolcott, geologo e gentiluomo, a capire quanto costa la città e chi va comprato.</li>
+    <li><b>Swearengen tratta già.</b> Da settimane il Gem paga Yankton per avere voce su chi farà lo sceriffo, il sindaco e il commissario del campo.</li>
+    <li><b>Il segreto di Wolcott.</b> Wolcott uccide le donne che paga. La Compagnia lo sa, pulisce dietro di lui e lo protegge finché serve.</li>
+  </ul>
+  <div class="foot"><span>Prima che arrivi la legge · Premessa</span><span>Stefano Sibilia</span><span class="n">1</span></div>
+</div></div>
+
+<div class="sheet" data-label="Fronti"><div class="pg">
+  <div class="tabs-r"><span class="tab on">Fronti</span><span class="tab s">PNG</span><span class="tab">Archi</span><span class="tab">Fili</span></div>
+  <div class="sec first">Fronti</div>
+  <div class="sh first"><span class="id">F1</span><span class="nm">La Compagnia</span></div>
+  <p><span class="lab">Obiettivo:</span> possedere tutte le concessioni sul filone del Whitewood prima che il registro le fissi per legge.</p>
+  <p><span class="lab">Volto:</span> Francis Wolcott, geologo, colto, cortese, pagatore generoso; vuole consegnare a Hearst il filone senza che il suo nome compaia; dice: «Io non compro terra, signore. Compro il tempo che le resta.» Dietro di lui, George Hearst, che arriva solo quando il gioco è fatto.</p>
+  <p><span class="lab">Perché è difficile da fermare:</span> denaro senza fondo, il telegrafo, uomini armati che non sono del campo e non hanno amici qui; e ogni vendita è, sulla carta, volontaria.</p>
+  <p><span class="lab">Orologio</span></p>
+  <ul class="tasks">
+    <li><b>F1.1</b> Compra le concessioni facili. <i>Segni:</i> atti di vendita affissi all'emporio di Star e Bullock; cercatori che partono con soldi in tasca e senza bagagli.</li>
+    <li><b>F1.2</b> Gli incidenti. Chi non vende muore. <i>Segni:</i> cadaveri con le mani pulite e gli stivali puliti; uomini nuovi, armati, che bevono poco.</li>
+    <li><b>F1.3</b> Tolliver passa con la Compagnia. <i>Segni:</i> al Bella Union si beve gratis; i pistoleri della Compagnia dormono lì; una ragazza del Bella Union non torna.</li>
+    <li><b>F1.4</b> Arriva Hearst. <i>Segni:</i> telegrammi, una carrozza, cuochi e guardie; il prezzo delle concessioni raddoppia in un giorno, poi nessuno vende più.</li>
+    <li><b>Se vince.</b> Deadwood è la città della Compagnia: le paghe le mette Hearst, lo sceriffo lo nomina Hearst, e chi non lavora per lui se ne va o finisce nel torrente.</li>
+  </ul>
+  <div class="sh"><span class="id">F2</span><span class="nm">Il Gem</span></div>
+  <p><span class="lab">Obiettivo:</span> restare il padrone del campo quando arriva la legge, a costo di vendere qualcuno del canalone.</p>
+  <p><span class="lab">Volto:</span> Al Swearengen; vuole che il campo resti suo e non di quelli dell'Est; dice: «La legge arriva comunque. Conviene che arrivi a casa mia e si sieda dove dico io.»</p>
+  <p><span class="lab">Perché è difficile da fermare:</span> è l'unico che capisce davvero il gioco, ha uomini, soldi e debitori ovunque; e spesso è l'alleato migliore che i PG abbiano contro la Compagnia.</p>
+  <p><span class="lab">Orologio</span></p>
+  <ul class="tasks">
+    <li><b>F2.1</b> Compra il commissario. <i>Segni:</i> Farnum va e viene da Yankton; una cassa del Gem parte con la diligenza, scortata da Dan Dority.</li>
+    <li><b>F2.2</b> Il governo del campo: Farnum sindaco, uno sceriffo che Al tollera. <i>Segni:</i> riunione dei notabili nella stanza di sopra del Gem; un proclama affisso, scritto male e firmato da tutti.</li>
+    <li><b>F2.3</b> Tratta con la Compagnia: lascia a Wolcott una parte del canalone in cambio del resto del campo. <i>Segni:</i> Al e Wolcott parlano a lungo sul balcone; un cercatore protetto dal Gem smette di esserlo.</li>
+    <li><b>Se vince.</b> Il campo resta libero ma suo: il registro lo scrive il Gem, e chi era di troppo è sparito.</li>
+  </ul>
+  <div class="sh"><span class="id">F3</span><span class="nm">Yankton</span></div>
+  <p><span class="lab">Obiettivo:</span> trasformare il registro in una fortuna personale, vendendolo a pezzi a chi paga di più.</p>
+  <p><span class="lab">Volto:</span> il commissario Hugo Jarry, untuoso, codardo, pieno di citazioni; vuole tornare a Yankton ricco e intero; dice: «La legge, signori, è una bilancia. E una bilancia si appoggia sempre da qualche parte.»</p>
+  <div class="foot"><span>Prima che arrivi la legge · Fronti</span><span>Stefano Sibilia</span><span class="n">2</span></div>
+</div></div>
+
+<div class="sheet"><div class="pg">
+  <div class="tabs-r"><span class="tab on">Fronti</span><span class="tab s">PNG</span><span class="tab">Archi</span><span class="tab">Fili</span></div>
+  <p><span class="lab">Perché è difficile da fermare:</span> è la legge, o lo sarà; toccarlo significa toccare il Territorio, e porta con sé due guardie federali.</p>
+  <p><span class="lab">Orologio</span></p>
+  <ul class="tasks">
+    <li><b>F3.1</b> Arriva Jarry. <i>Segni:</i> un uomo grasso con una valigia di carte prende la stanza migliore del Grand Central di Farnum; Al lo invita a cena la sera stessa.</li>
+    <li><b>F3.2</b> Apre le audizioni: chi ha un titolo lo presenti con due testimoni entro una data. <i>Segni:</i> il proclama sulla porta dell'albergo; un falsario lavora giorno e notte; il prezzo di un testimone sale a dieci dollari, poi a cinquanta.</li>
+    <li><b>F3.3</b> Vende i favori. <i>Segni:</i> atti che spariscono dalla valigia, testimoni che cambiano versione, un cercatore che trova la sua concessione registrata a un altro nome.</li>
+    <li><b>Se vince.</b> Il registro è falso e lo resterà per sempre: chi ha pagato possiede, chi non ha pagato no, e nessun tribunale lo rimetterà a posto.</li>
+  </ul>
+  <div class="qt">Se tre fronti risultano troppi per 6-8 sessioni, F3 può scendere a fazione: Jarry diventa una pedina che Al e la Compagnia si contendono.</div>
+  <div class="sec">Fazioni</div>
+  <table class="small"><thead><tr><th>Fazione</th><th>Vuole</th><th>Teme</th><th>Risorse</th><th>Conflitto interno</th><th>Rapporti</th></tr></thead><tbody>
+    <tr><td>Il Bella Union di Cy Tolliver</td><td>spodestare Al</td><td>finire schiacciato fra Al e Hearst</td><td>bische, ragazze, pistoleri</td><td>Joanie Stubbs non regge più quello che vede</td><td>odia il Gem; si offre alla Compagnia</td></tr>
+    <tr><td>La legge nascente (Bullock e Sol Star)</td><td>un ordine vero, uguale per tutti</td><td>diventare il braccio di Al o di Hearst</td><td>l'emporio, il rispetto del campo, la pistola di Bullock</td><td>Bullock vuole giustizia, Sol vuole affari puliti</td><td>diffida di Al; non sa ancora della Compagnia</td></tr>
+    <tr><td>I cercatori del canalone</td><td>tenere le concessioni</td><td>gli incidenti, la fame, l'inverno</td><td>braccia, picconi, conoscenza del terreno</td><td>metà vuole vendere e andarsene</td><td>Ellsworth li tiene insieme a fatica</td></tr>
+    <tr><td>Alma Garret</td><td>non essere più derubata</td><td>la dipendenza, chi la circonda</td><td>la concessione sul filone, il denaro del marito</td><td>si fida di chi non dovrebbe</td><td>Wolcott le fa la corte per comprarla</td></tr>
+    <tr><td>I cinesi di Mr. Wu</td><td>commerciare in pace</td><td>essere il capro espiatorio di ogni morto</td><td>traffici, merci, silenzio</td><td>i giovani vogliono reagire</td><td>patto d'affari col Gem</td></tr>
+    <tr><td>Il «Deadwood Pioneer»</td><td>lettori e verità</td><td>perdere le inserzioni o la tipografia</td><td>la stampa</td><td>Merrick è codardo ma onesto</td><td>stampa ciò che Al tollera</td></tr>
+  </tbody></table>
+  <div class="foot"><span>Prima che arrivi la legge · Fronti</span><span>Stefano Sibilia</span><span class="n">3</span></div>
+</div></div>
+
+<div class="sheet" data-label="PNG ricorrenti"><div class="pg">
+  <div class="tabs-r"><span class="tab">Fronti</span><span class="tab s on">PNG</span><span class="tab">Archi</span><span class="tab">Fili</span></div>
+  <div class="sec first">PNG ricorrenti</div>
+  <ul>
+    <li><b>Al Swearengen.</b> Padrone del Gem. Parla tanto, ascolta di più. Tratta con tutti e non si fida di nessuno; protegge il campo come si protegge un investimento.</li>
+    <li><b>Dan Dority e Johnny Burns.</b> Gli uomini di Al. Dan uccide quando glielo chiedono; Johnny è leale e lento.</li>
+    <li><b>Francis Wolcott.</b> Uomo della Compagnia. Gentile, colto, generoso; offre sempre di più del giusto. Uccide le ragazze che paga, e poi paga per il silenzio.</li>
+    <li><b>George Hearst.</b> Arriva tardi e solo quando conviene. Parla poco, ascolta la terra, considera gli uomini attrezzi.</li>
+    <li><b>Hugo Jarry.</b> Commissario di Yankton. Vende la legge a pezzi e la chiama prudenza.</li>
+    <li><b>E.B. Farnum.</b> Proprietario del Grand Central, servo di Al, sogna di essere sindaco e lo sarà, se Al lo permette.</li>
+    <li><b>Cy Tolliver.</b> Padrone del Bella Union. Elegante, sadico, impaziente; vuole il posto di Al e lo vuole adesso.</li>
+    <li><b>Seth Bullock.</b> Socio dell'emporio, ex sceriffo del Montana. Collera trattenuta a fatica e un senso di giustizia che lo mette nei guai.</li>
+    <li><b>Sol Star.</b> Socio di Bullock. Mente fredda, conti in ordine; vede la città che potrebbe essere.</li>
+    <li><b>Alma Garret.</b> Vedova, ricca, giovane; siede sul filone senza saperlo.</li>
+    <li><b>Whitney Ellsworth.</b> Cercatore del canalone, onesto fino all'ostinazione; il primo che non venderà.</li>
+    <li><b>Trixie.</b> Ragazza del Gem. Ha visto tutto, dice poco, e quando lo dice fa male.</li>
+    <li><b>Doc Cochran.</b> Il medico del campo. Visita i morti degli «incidenti» e nota cose che non vuole notare.</li>
+    <li><b>Calamity Jane.</b> Ubriaca, sboccata, leale; aiuta Doc e non tace mai.</li>
+    <li><b>Mr. Wu.</b> Capo dei cinesi; fa affari con Al, e i suoi maiali fanno sparire i problemi del Gem.</li>
+    <li><b>A.W. Merrick.</b> Editore del «Pioneer». Stamperebbe la verità, se qualcuno gli garantisse di sopravviverle.</li>
+    <li><b>Charlie Utter.</b> Corriere, amico di Bullock; porta la posta e i telegrammi, quindi sa chi scrive a chi.</li>
+  </ul>
+  <div class="sec">PG e agganci</div>
+  <p>Sei «posti» nel campo, ognuno toccato da un fronte diverso. I giocatori scelgono e riempiono; nomi e storie sono loro. Quando i PG esistono, ognuno avrà qui la sua scheda (desiderio, paura, segreto, legame, domanda aperta).</p>
+  <table><thead><tr><th>Posto</th><th>Cosa possiede che qualcuno vuole</th><th>Fronti che lo toccano</th><th>Archi che parlano a lui</th></tr></thead><tbody>
+    <tr><td>Cercatore del canalone</td><td>una concessione sul filone, senza saperlo</td><td>F1, F3</td><td>A1, A3</td></tr>
+    <tr><td>Ragazza di un saloon (Gem o Bella Union)</td><td>ciò che ha visto e sentito nelle stanze di sopra</td><td>F1, F2</td><td>A2</td></tr>
+    <tr><td>Chi gestisce un'attività (stalla, lavanderia, albergo, panetteria)</td><td>un posto in strada, debiti con Al, merci che servono a tutti</td><td>F2, F3</td><td>A1, A3</td></tr>
+    <tr><td>Ex soldato o esploratore che conosce i Lakota</td><td>sa cosa dice davvero il trattato, e cosa costò</td><td>F3</td><td>A2, A3</td></tr>
+    <tr><td>Uomo dell'Est arrivato con la Compagnia</td><td>i libri, i saggi, gli ordini di Wolcott</td><td>F1</td><td>A2, A3</td></tr>
+    <tr><td>Chi lavora con la parola (giornalista, avvocato, predicatore)</td><td>la voce che il campo ascolta, e una penna</td><td>F2, F3</td><td>A1, A3</td></tr>
+  </tbody></table>
+  <p><span class="lab">Domande per la creazione dei PG</span></p>
+  <ul>
+    <li>Perché non puoi lasciare il campo, anche se potresti?</li>
+    <li>Cosa possiedi che qualcuno, in città, vuole?</li>
+    <li>Chi, fra gli altri PG, ti ha già salvato la vita, e cosa gli devi?</li>
+    <li>Cosa hai fatto per arrivare fin qui che a Deadwood nessuno deve sapere?</li>
+  </ul>
+  <div class="foot"><span>Prima che arrivi la legge · PNG ricorrenti</span><span>Stefano Sibilia</span><span class="n">4</span></div>
+</div></div>
+
+<div class="sheet" data-label="Archi"><div class="pg">
+  <div class="tabs-r"><span class="tab">Fronti</span><span class="tab s">PNG</span><span class="tab on">Archi</span><span class="tab">Fili</span></div>
+  <div class="sec first">Archi</div>
+  <div class="sh first"><span class="id">A1</span><span class="nm">Il morto nel torrente</span></div>
+  <p><span class="lab">Stato:</span> da giocare</p>
+  <p><span class="lab">Sessioni:</span> 2-3</p>
+  <p><span class="lab">Funzione:</span> far scoprire che le morti del canalone non sono incidenti, che dietro c'è la Compagnia e che sotto le concessioni piccole corre un filone; far conoscere il campo e i suoi padroni.</p>
+  <p><span class="lab">Domanda dell'arco:</span> chi ha ucciso il cercatore trovato nel torrente, e perché proprio lui?</p>
+  <p><span class="lab">Fronti in gioco:</span> F1 (fino a F1.2), F2 (fino a F2.1)</p>
+  <p><span class="lab">Rivelazioni</span></p>
+  <ul>
+    <li><b>R1.</b> Le morti del canalone sono omicidi pagati dalla Compagnia.</li>
+    <li><b>R2.</b> Sotto le concessioni piccole del Whitewood corre un filone, e una di quelle concessioni è di Alma Garret.</li>
+  </ul>
+  <p><span class="lab">PG al centro:</span> cercatore del canalone, chi gestisce un'attività, chi lavora con la parola</p>
+  <p><span class="lab">Cambio di tono:</span> dalla vita sporca del campo al primo sangue con un nome.</p>
+  <p><span class="lab">Primo taglio:</span> la visita alla tipografia del «Pioneer»; Merrick può portare le sue informazioni in A2.</p>
+  <div class="sh"><span class="id">A2</span><span class="nm">La lettera da Yankton</span></div>
+  <p><span class="lab">Stato:</span> da giocare</p>
+  <p><span class="lab">Sessioni:</span> 2-3</p>
+  <p><span class="lab">Funzione:</span> mettere i PG fra il Gem, la Compagnia e il commissario; far capire che il registro decide tutto e che ogni alleanza ha un prezzo.</p>
+  <p><span class="lab">Domanda dell'arco:</span> chi scriverà il registro, e chi ci finirà dentro?</p>
+  <p><span class="lab">Fronti in gioco:</span> F1 (fino a F1.3), F2 (fino a F2.2), F3 (fino a F3.2)</p>
+  <p><span class="lab">Rivelazioni</span></p>
+  <ul>
+    <li><b>R3.</b> Al ha già comprato il commissario, e tratta anche con Wolcott.</li>
+    <li><b>R4.</b> Wolcott uccide le ragazze che paga, e la Compagnia lo copre.</li>
+    <li><b>R5.</b> Il trattato rende nullo ogni titolo: è un'arma che può distruggere chiunque, anche chi la usa.</li>
+  </ul>
+  <p><span class="lab">PG al centro:</span> ragazza di un saloon, uomo dell'Est, ex soldato o esploratore</p>
+  <p><span class="lab">Cambio di tono:</span> dall'indagine al ricatto; nessuno è più dalla parte giusta.</p>
+  <p><span class="lab">Primo taglio:</span> il viaggio a Yankton; la lettera arriva con la diligenza di Charlie Utter.</p>
+  <div class="sh"><span class="id">A3</span><span class="nm">Il giorno del registro</span></div>
+  <p><span class="lab">Stato:</span> da giocare</p>
+  <p><span class="lab">Sessioni:</span> 2</p>
+  <p><span class="lab">Funzione:</span> le audizioni, l'arrivo di Hearst, la notte in cui il campo decide di chi è.</p>
+  <p><span class="lab">Domanda dell'arco:</span> quando la legge apre il libro, chi parla, e chi paga?</p>
+  <p><span class="lab">Fronti in gioco:</span> F1, F2, F3</p>
+  <div class="foot"><span>Prima che arrivi la legge · Archi</span><span>Stefano Sibilia</span><span class="n">5</span></div>
+</div></div>
+
+<div class="sheet"><div class="pg">
+  <div class="tabs-r"><span class="tab">Fronti</span><span class="tab s">PNG</span><span class="tab on">Archi</span><span class="tab">Fili</span></div>
+  <p><span class="lab">Rivelazioni</span></p>
+  <ul><li><b>R6.</b> Hearst sa di Wolcott, e lo sacrificherà se diventa un problema.</li></ul>
+  <p><span class="lab">PG al centro:</span> cercatore del canalone, uomo dell'Est, chi lavora con la parola, ex soldato o esploratore</p>
+  <p><span class="lab">Cambio di tono:</span> climax: il campo intero nella stessa stanza, e fuori la notte.</p>
+  <p><span class="lab">Primo taglio:</span> nessuno; se mancano sessioni, A3 assorbe la fine di A2.</p>
+  <div class="sec">Finali possibili</div>
+  <ul>
+    <li><b>La città della Compagnia.</b> Hearst possiede il filone e, di fatto, il campo: paga le paghe, nomina lo sceriffo, scrive la legge. <i>Condizioni:</i> l'orologio di F1 si completa, o il registro di F3 viene venduto alla Compagnia. <i>Da seminare:</i> T2 in A1, T5 in A2</li>
+    <li><b>Il campo di Al.</b> Deadwood resta dei suoi, ma il registro lo scrive il Gem e il prezzo l'ha pagato qualcuno del canalone. <i>Condizioni:</i> F2 si completa prima di F1; Al ha in mano il commissario quando Hearst arriva. <i>Da seminare:</i> T4 in A1, T3 in A2</li>
+    <li><b>Una legge di tutti.</b> Il registro è onesto, almeno stavolta; la Compagnia ha il filone che ha comprato davvero, non quello che ha rubato. Qualcuno l'ha pagato caro. <i>Condizioni:</i> le audizioni di F3 si tengono davanti a testimoni che non si possono comprare o zittire, e i crimini della Compagnia sono resi pubblici. <i>Da seminare:</i> T2 in A1, T6 in A1, T3 in A2</li>
+    <li><b>Fuoco.</b> Il campo brucia (Deadwood bruciò davvero nel 1879); atti, registro e concessioni finiscono in cenere e la partita si riapre fra le macerie. <i>Condizioni:</i> due fronti arrivano al loro ultimo passo nella stessa notte, o il trattato viene sbandierato al registro e nessuno controlla più il campo. <i>Da seminare:</i> T7 in A2</li>
+  </ul>
+  <div class="foot"><span>Prima che arrivi la legge · Archi</span><span>Stefano Sibilia</span><span class="n">6</span></div>
+</div></div>
+
+<div class="sheet" data-label="Fili aperti"><div class="pg">
+  <div class="tabs-r"><span class="tab">Fronti</span><span class="tab s">PNG</span><span class="tab">Archi</span><span class="tab on">Fili</span></div>
+  <div class="sec first">Fili aperti</div>
+  <table><thead><tr><th>ID</th><th>Filo</th><th>Seminato in</th><th>Cosa lo ripaga</th><th>Stato</th></tr></thead><tbody>
+    <tr><td>T1</td><td>Un sasso di quarzo nella tasca del morto del torrente</td><td>A1</td><td>un saggio rivela l'oro, e dove corre il filone</td><td>aperto</td></tr>
+    <tr><td>T2</td><td>Gli atti di vendita dei morti portano tutti la firma dello stesso testimone</td><td>A1</td><td>il testimone è pagato dalla Compagnia, e può parlare al registro</td><td>aperto</td></tr>
+    <tr><td>T3</td><td>Una ragazza del Bella Union sparita dopo una notte con «il signore dell'Est»</td><td>A1</td><td>il segreto di Wolcott, e chi lo copre</td><td>aperto</td></tr>
+    <tr><td>T4</td><td>La cassa del Gem che parte con la diligenza per Yankton</td><td>A1</td><td>Al ha già comprato il commissario, e quanto ha pagato</td><td>aperto</td></tr>
+    <tr><td>T5</td><td>La mappa del saggiatore della Compagnia</td><td>A2</td><td>quali concessioni contano davvero, e di chi sono</td><td>aperto</td></tr>
+    <tr><td>T6</td><td>Il trattato di Fort Laramie: tutto il campo è illegale</td><td>A1</td><td>sbandierarlo al registro manda all'aria ogni titolo, compresi quelli rubati</td><td>aperto</td></tr>
+    <tr><td>T7</td><td>Un principio d'incendio domato a fatica in una via di legno</td><td>A2</td><td>il fuoco come ultima carta di chi sta perdendo</td><td>aperto</td></tr>
+  </tbody></table>
+  <div class="sec">Temi e motivi</div>
+  <p><span class="lab">Temi:</span> la civiltà che nasce dal sangue; il prezzo dell'appartenenza; la parola come arma.</p>
+  <p><span class="lab">Motivi ricorrenti</span></p>
+  <ul>
+    <li><b>Il torrente.</b> Ci finiscono i morti, ci si lava l'oro, ci si lavano le mani. Ogni arco comincia o finisce con qualcosa nell'acqua.</li>
+    <li><b>La carta.</b> Atti, proclami, telegrammi, il registro: a Deadwood la carta uccide più delle pistole.</li>
+    <li><b>I maiali di Wu.</b> Dove spariscono i corpi; quando qualcuno ne parla, qualcuno trema.</li>
+    <li><b>Il balcone del Gem.</b> Da lì Al guarda il campo; chi ci sale con lui sta trattando.</li>
+  </ul>
+  <div class="sec">Prima della campagna</div>
+  <p><span class="lab">Tono:</span> crudo come la serie: linguaggio sboccato, violenza improvvisa, nessuno è pulito. I PNG parlano tanto, e parlando mentono.</p>
+  <p><span class="lab">Linee e veli:</span> da decidere col tavolo. Da proporre almeno: velo sulle violenze di Wolcott sulle donne (si sa, si vede il dopo, non si gioca la scena); linea su violenza sessuale giocata in scena.</p>
+  <p><span class="lab">Strumenti di sicurezza:</span> carta X sul tavolo; pausa chiesta da chiunque, senza spiegazioni.</p>
+  <p><span class="lab">Aspettative:</span> 6-8 sessioni; più intrigo, ricatto e trattativa che sparatorie, ma quando si spara si muore.</p>
+  <div class="sec">Aggiornamenti</div>
+  <ul><li><b>7 novembre 2026.</b> Creata.</li></ul>
+  <div class="foot"><span>Prima che arrivi la legge · Fili aperti</span><span>Stefano Sibilia</span><span class="n">7</span></div>
+</div></div>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const PAGES = $$('#src .sheet');
+const COUNT = PAGES.length;
+const sheet = n => PAGES[n - 1].cloneNode(true);
+const IC = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  img: '<rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/>',
+  log: '<path d="M4 5h16v11H8l-4 4z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  hist: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  outl: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  insp: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+  pdf: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
+  focus: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
+let view = 'editor', pdfOpen = true, cur = 2, mode = 'single', zoom = 100;
+
+/* Chrome */
+function chrome() {
+  const proj = view !== 'template';
+  $('#rail').innerHTML = `<button title="Projects">${svg('grid')}</button>
+    <button${proj ? ' class="on"' : ''} title="Document">${svg('doc')}</button>
+    <button title="Inspiration">${svg('bulb')}</button><button title="Research">${svg('search')}</button>
+    <button title="Images and music">${svg('img')}</button><button title="Brainstorm log">${svg('log')}</button>
+    <button class="bottom last${proj ? '' : ' on'}" title="Settings and templates" id="railGear">${svg('gear')}</button>`;
+  $('#railGear').onclick = () => show('template');
+  if (!proj) {
+    $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div><div class="crumbs"><b>Settings</b></div>
+      <div class="spacer"></div><span class="sync"><i></i><span>Synced</span></span><span class="kbd hide-narrow">⌘K</span><span class="avatar" title="Signed in as Stefano">S</span>`;
+    $('#status').innerHTML = '';
+    return;
+  }
+  $('#topbar').innerHTML = `<div class="logo" title="Promptbook">P</div>
+    <div class="crumbs"><span class="hide-narrow">Projects ›</span> <b>Prima che arrivi la legge</b></div>
+    <div class="top-meta hide-narrow"><span class="cat">Campaign</span>
+      <select aria-label="Status"><option>Draft</option><option selected>In progress</option><option>Complete</option></select></div>
+    <div class="spacer"></div>
+    <span class="sync"><i></i><span>Synced</span></span>
+    <button class="tb hide-narrow" title="History and snapshots">${svg('hist')}</button>
+    <button class="tb hide-narrow" title="Outline (⌘1)">${svg('outl')}</button>
+    <button class="tb hide-narrow" title="Inspector (⌘2)">${svg('insp')}</button>
+    <button class="tb primary" id="tPdf" title="PDF preview" aria-pressed="${view === 'editor' && pdfOpen}">${svg('pdf')}PDF</button>
+    <button class="tb hide-narrow" title="Focus mode (⌘.)">${svg('focus')}</button>
+    <span class="kbd hide-narrow">⌘K</span>`;
+  $('#tPdf').onclick = () => { if (view !== 'editor') show('editor'); else { pdfOpen = !pdfOpen; paneOpen(); chrome(); } };
+  $('#status').innerHTML = `<span>Campaign · not checked</span><span class="hide-narrow">3 fronts · 3 arcs · 7 threads</span><span class="r">Campagna v2 · Saved on the server</span>`;
+}
+
+function show(v) {
+  view = v;
+  $$('.mock [data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  $$('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+  document.body.classList.toggle('v3', v === 'template');
+  chrome();
+  if (v === 'review') review();
+  if (v === 'template') renderTemplate();
+  if (v === 'editor') paneOpen();
+}
+
+/* View 1: the outline, the editor lines and the pane following the cursor */
+const OUT = [['Premessa', '', 1], ['Verità del mondo', '', 1], ['Fronti', '', 2], ['La Compagnia', 'F1', 2], ['Il Gem', 'F2', 2], ['Yankton', 'F3', 2],
+  ['Fazioni', '', 3], ['PNG ricorrenti', '', 4], ['PG e agganci', '', 4], ['Archi', '', 5], ['Il morto nel torrente', 'A1', 5], ['La lettera da Yankton', 'A2', 5],
+  ['Il giorno del registro', 'A3', 5], ['Finali possibili', '', 6], ['Fili aperti', '', 7], ['Temi e motivi', '', 7], ['Prima della campagna', '', 7],
+  ['Aggiornamenti', '', 7], ['Appendice: stile visivo e sonoro', '', 0]];
+$('#outline').innerHTML = OUT.map(([n, id, p], i) => `<li class="${id ? 'sub' : ''}${id === 'F1' ? ' cur' : ''}" data-i="${i}" data-page="${p}">${id ? `<span class="id">${id}</span>` : ''}<span class="nm">${n}</span></li>`).join('');
+$$('#outline li').forEach(li => li.onclick = () => {
+  $$('#outline li').forEach(x => x.classList.toggle('cur', x === li));
+  const p = +li.dataset.page;
+  paneShow(p || cur, !p);
+});
+$$('#ed .l').forEach(l => l.onclick = () => {
+  $$('#ed .l').forEach(x => x.classList.toggle('active', x === l));
+  $$('#ed .cursor').forEach(c => c.remove());
+  l.insertAdjacentHTML('beforeend', '<span class="cursor"></span>');
+  const p = +l.dataset.page;
+  paneShow(p, l.dataset.ol === 'Appendice');
+});
+function paneShow(n, appendix) {
+  cur = n;
+  $('#paneCap').textContent = appendix ? 'PDF preview · the appendix is not printed' : `PDF preview · page ${n} of ${COUNT} · follows the cursor`;
+  const box = $('#paneSheet');
+  box.replaceChildren(sheet(n));
+  if (appendix) box.firstChild.style.opacity = '.45';
+}
+function paneOpen() {
+  $('#v-editor').classList.toggle('no-pdf', !pdfOpen);
+  if (pdfOpen) paneShow(cur);
+}
+$('#paneX').onclick = () => { pdfOpen = false; paneOpen(); chrome(); };
+$('#toReview').onclick = () => show('review');
+
+/* View 2: the review */
+const thumbs = $('#thumbs');
+PAGES.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'th';
+  const label = p.dataset.label;
+  b.setAttribute('aria-label', `Page ${i + 1}${label ? ', ' + label : ''}`);
+  b.innerHTML = '<span class="mini"></span>' + (label ? `${i + 1} · ${label}` : i + 1);
+  b.firstChild.append(sheet(i + 1));
+  b.onclick = () => { cur = i + 1; review(); };
+  thumbs.append(b);
+});
+const shownPages = () => {
+  if (mode !== 'spread') return [cur];
+  if (cur === 1) return [1];
+  const left = cur % 2 === 0 ? cur : cur - 1;
+  return left + 1 <= COUNT ? [left, left + 1] : [left];
+};
+function review() {
+  const shown = shownPages();
+  $$('.th').forEach((t, i) => t.classList.toggle('cur', shown.includes(i + 1)));
+  $('#pagesLabel').textContent = shown.length > 1 ? `Pages ${shown[0]}–${shown[1]} of ${COUNT}` : `Page ${shown[0]} of ${COUNT}`;
+  $('#zoom').textContent = zoom + '%';
+  $$('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  const room = $('#room'), narrow = innerWidth <= 760;
+  const rw = room.clientWidth - 8, rh = narrow ? 1e9 : room.clientHeight - 8;
+  let w = mode === 'fit' ? rw : mode === 'spread' ? Math.min((rw - 16) / 2, rh * 210 / 297) : Math.min(rw, rh * 210 / 297);
+  w = Math.max(120, Math.round(w * zoom / 100));
+  const sp = $('#spread');
+  sp.replaceChildren(...shown.map(n => { const s = sheet(n); s.style.width = w + 'px'; return s; }));
+  const th = $$('.th')[cur - 1];
+  if (th && th.scrollIntoView && view === 'review') th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+$('#back').onclick = () => show('editor');
+$$('[data-mode]').forEach(b => b.onclick = () => { mode = b.dataset.mode; review(); });
+const ZOOMS = [50, 75, 100, 125, 150, 200];
+$('#zIn').onclick = () => { zoom = ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)]; review(); };
+$('#zOut').onclick = () => { zoom = ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)]; review(); };
+$('#inkSaver').onchange = e => document.body.classList.toggle('ink', e.target.checked);
+$('#save').onclick = () => { $('#savedNote').innerHTML = 'Saved <b>prima-che-arrivi-la-legge.pdf</b> to Downloads (mockup).'; };
+$('#print').onclick = () => { $('#savedNote').innerHTML = 'Opens the system print dialog (mockup).'; };
+document.addEventListener('keydown', e => {
+  if (view !== 'review' || e.target.closest('select, input')) return;
+  if (e.key === 'Escape') show('editor');
+  const step = e.key === 'ArrowRight' || e.key === 'PageDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 0;
+  if (step) { cur = Math.min(COUNT, Math.max(1, cur + step * (mode === 'spread' && cur > 1 ? 2 : 1))); review(); }
+});
+addEventListener('resize', () => { if (view === 'review') review(); });
+
+/* View 3: the built-in «Campagna» v2 */
+const LOCK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const SEED = () => [
+  ['Premessa', 0], ['Verità del mondo', 0], ['Fronti', 1], ['Fazioni', 0], ['PNG ricorrenti', 1], ['PG e agganci', 0], ['Archi', 1],
+  ['Finali possibili', 0], ['Fili aperti', 1], ['Temi e motivi', 0], ['Prima della campagna', 0], ['Aggiornamenti', 0],
+].map(([name, np]) => ({ name, print: true, newPage: !!np, req: 'optional' })).concat([{ name: 'Appendice: stile visivo e sonoro', role: 'appendix', req: 'optional' }]);
+const KEYS = [['titolo', 'text', 'required'], ['sistema', 'text', 'optional'], ['formato', 'text', 'optional'], ['autore', 'text', 'optional'], ['copyright', 'text', 'optional'], ['licenza', 'licence', 'optional']];
+let secs = SEED(), base = JSON.stringify(SEED()), ro = true, ttab = 'sections';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sel = (val, opts, attrs) => `<select ${attrs}>${opts.map(o => `<option${o === val ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+function renderTemplate() {
+  const dis = ro ? 'disabled' : '';
+  const was = JSON.parse(base);
+  let body;
+  if (ttab === 'sections') {
+    body = `<div class="rows"><div class="rh g-sec"><span></span><span>Heading</span><span>Needed</span><span>Used for</span><span>In the PDF <span class="new">new</span></span><span></span></div>
+    ${secs.map((s, i) => {
+      const app = s.role === 'appendix';
+      const changed = !app && (was[i].print !== s.print || was[i].newPage !== s.newPage);
+      const pdf = app
+        ? `<span class="pdf"><span class="tg fixed" title="The appendix holds image and music prompts">Never in the PDF</span></span>`
+        : `<span class="pdf"><button class="tg${s.print ? ' on' : ''}" data-tog="${i}:print" aria-pressed="${s.print}" ${dis}>${s.print ? 'Printed' : 'Left out'}</button>${s.print ? `<button class="tg${s.newPage ? ' on' : ''}" data-tog="${i}:newPage" aria-pressed="${s.newPage}" ${dis}>New page</button>` : ''}</span>`;
+      const mv = ro ? '<span></span>' : `<span class="mv"><button aria-label="Move up" ${i ? '' : 'disabled'}>▲</button><button aria-label="Move down" ${i < secs.length - 1 ? '' : 'disabled'}>▼</button></span>`;
+      return `<div class="rr g-sec${ro ? ' ro' : ''}${changed ? ' changed' : ''}">${mv}
+        <input value="${esc(s.name)}" aria-label="Heading, row ${i + 1}" ${dis}>
+        ${sel(s.req, ['required', 'recommended', 'optional'], `aria-label="Needed" ${dis}`)}
+        <span class="role${app ? '' : ' custom'}" title="${app ? 'The checks and the PDF find this section by its role, whatever its heading says' : 'Your own section: checked for presence only'}">${app ? LOCK + 'Appendix' : 'Your own'}</span>
+        ${pdf}
+        ${ro ? '<span></span>' : `<button class="del" aria-label="Remove" ${app ? 'disabled' : ''}>✕</button>`}</div>`;
+    }).join('')}</div>
+    <p class="sub">Sections the template does not list still print, flowing after the section before them.</p>`;
+  } else {
+    body = `<div class="rows"><div class="rh g-key"><span></span><span>Key</span><span>Type</span><span>Needed</span><span></span></div>
+      ${KEYS.map(([k, t, r]) => `<div class="rr g-key"><span></span><input value="${k}" aria-label="Key" ${dis}>${sel(t, ['text', 'list', 'licence'], `aria-label="Type" ${dis}`)}${sel(r, ['required', 'recommended', 'optional'], `aria-label="Needed" ${dis}`)}<span></span></div>`).join('')}</div>
+      <p class="sub"><code>sistema</code> and <code>formato</code> print on the line above the title; <code>autore</code>, <code>copyright</code> and <code>licenza</code> on the credits line and in the footer.</p>`;
+  }
+  const pv = secs.map(s => `<div class="l h2">${esc(s.name)}<span class="out">optional</span>${s.role === 'appendix' || !s.print ? '<span class="out">not in the PDF</span>' : s.newPage ? '<span class="out np">new page</span>' : ''}</div>`).join('');
+  $('#setBody').innerHTML = `
+    <div class="te-head"><button class="tb back">← Document templates</button><h2>${ro ? 'Campagna' : 'Copia di Campagna'}</h2><span class="chip ver">v${ro ? 2 : 1}</span>${ro ? '<span class="chip">Built-in</span><span class="chip def">Default</span>' : ''}</div>
+    ${ro ? `<div class="banner"><span><b>Built-in template.</b> It can't be changed; duplicate it to make your own. v1 stays available for the projects that use it.</span><button class="tb primary" id="dup">Duplicate</button></div>` : ''}
+    <div class="card"><div class="te-gen">
+      <div class="field"><label>Name</label><input value="${ro ? 'Campagna' : 'Copia di Campagna'}" ${dis}></div>
+      <div class="field"><label>For</label><select disabled><option>Campaigns</option></select></div>
+      <div class="field"><label>Game system</label>${sel('None', ['None', 'Not the End', 'Kulthos'], dis)}<span class="hint">Grades and wounds come from Settings → Game systems.</span></div>
+    </div></div>
+    <div class="te-body">
+      <div style="min-width:0">
+        <div class="tabs" role="tablist"><button role="tab" class="${ttab === 'sections' ? 'on' : ''}" data-ttab="sections">Sections<span class="n">${secs.length}</span></button><button role="tab" class="${ttab === 'keys' ? 'on' : ''}" data-ttab="keys">Front matter<span class="n">${KEYS.length}</span></button></div>
+        ${body}
+      </div>
+      <aside class="pv" aria-label="Starting document"><div class="ph">Starting document<span class="chip">${ro ? 'v2' : 'live'}</span></div>
+        <div class="pb"><div class="l fm">---</div>${KEYS.map(([k]) => `<div class="l fm"><span class="k">${k}:</span> ${{ titolo: 'Nuova campagna', formato: 'campagna', autore: 'Stefano Sibilia' }[k] || ''}</div>`).join('')}<div class="l fm">---</div>${pv}</div></aside>
+    </div>`;
+  $$('[data-tog]').forEach(b => b.onclick = () => { const [i, k] = b.dataset.tog.split(':'); secs[i][k] = !secs[i][k]; renderTemplate(); });
+  $$('[data-ttab]').forEach(b => b.onclick = () => { ttab = b.dataset.ttab; renderTemplate(); });
+  const d = $('#dup'); if (d) d.onclick = () => setRo(false);
+}
+function setRo(v) {
+  ro = v; secs = SEED();
+  $$('.mock [data-ro]').forEach(b => b.classList.toggle('on', b.dataset.ro === (v ? '1' : '0')));
+  renderTemplate();
+}
+$$('.mock [data-ro]').forEach(b => b.onclick = () => setRo(b.dataset.ro === '1'));
+
+/* Mockup controls */
+$$('.mock [data-view]').forEach(b => b.onclick = () => show(b.dataset.view));
+$('#mDec').onclick = () => $('#anno').classList.toggle('closed');
+$('#annoX').onclick = () => $('#anno').classList.add('closed');
+$('#mTheme').onclick = () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+};
+if (innerWidth <= 760) $('#anno').classList.add('closed');
+show('editor');
+</script>
+</body>
+</html>
