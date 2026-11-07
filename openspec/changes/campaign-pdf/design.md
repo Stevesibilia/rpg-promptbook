@@ -434,6 +434,21 @@ tables, task lists and quotes).
   heading `### X. Name` as the item's id badge and `Name` as its name, as
   the mockup's outline does (line 749). _(Drafter's addition: the mockup shows
   it, the brief did not list it.)_
+- _As built (brief B, accepted in review):_ the worker's input step lives in
+  `web/src/editor/pdf/prepare.ts` (`prepare(source)` answers the layout input
+  and its checks), so it is tested without the engine; the adventure branch
+  is the old `inputOf` plus `layoutChecks`. The pane's caption comes from
+  `outline.ts` `currentSection(state)` and `PdfPane.tsx`
+  `unprintedSection(template, heading)`. `pdfAction` takes a required kind,
+  like `withPdf`. A campaign's palette lists «PDF preview» and «Review PDF»
+  right after the statuses; adventures keep their order. The built-in banner
+  is `builtinBanner(template)` in `templates/list.ts`.
+- _Added in review of brief B:_ the outline and the caption strip Markdown
+  marks from campaign headings through the syntax tree, as `parseCampaign`
+  does («## _Aggiornamenti_» matches «Aggiornamenti»). A campaign whose own
+  template is not on the device builds with `campagna@2` and says so: the
+  status bar reads «Campaign · not checked · template not found» and the
+  review's Template option ends «· template not found».
 
 ### D11. Layout checks for campaigns
 
