@@ -17,21 +17,21 @@ never written into the repository (D15).
 
 ## 0. Baseline (brief A)
 
-- [ ] 0.1 On `main`, build Sabaoth's PDF with the four option sets of `layout/test/own-sections.test.ts` and record each SHA-256 and size here; they must equal the values in that test
-  - `defaultLayoutOptions`:
-  - `inkSaver`:
-  - `pregenerated: false`:
-  - `paper: 'us-letter'`:
+- [x] 0.1 On `main`, build Sabaoth's PDF with the four option sets of `layout/test/own-sections.test.ts` and record each SHA-256 and size here; they must equal the values in that test
+  - `defaultLayoutOptions`: 302113 bytes, `42adc6e28813cb30fb2e983c7a5d31bfc46e69a602437bf4d154b06014357318`
+  - `inkSaver`: 298454 bytes, `e785911a3083f997691b678fbde6e81f96b5427d550a4b1afbffc715d71fd52a`
+  - `pregenerated: false`: 288029 bytes, `842e47e98588059b2c6d404139e8d8219010ac93dbd2c7a92c57edb5a34be7a2`
+  - `paper: 'us-letter'`: 303189 bytes, `f92bb33ea0e6debcff49775beb60f6e551d03219678fd0b699ef5d9f40ad97d8`
 
 ## 1. Format: campaign templates with PDF options (brief A)
 
-- [ ] 1.1 `template/schema.ts`: the campaign refusals and acceptances of D3
-- [ ] 1.2 `template/pdf.ts`: `sectionPdf(section, kind)` and `withPdf(section, patch, kind)` with the campaign defaults (D3); every caller in `packages/format` passes the kind (`checks/callouts.ts`, `template/changes.ts` with the campaign wording)
-- [ ] 1.3 `template/campagna.ts`: `campagnaV2` (D2); `registry.ts`: `builtinTemplates`, `defaultTemplateRef('campaign')` at v2, `latestBuiltin`, `builtinVersions`, `implicitTemplateRef` (D4); `index.ts` exports and `templates.campagnaV2`
-- [ ] 1.4 `packages/project`: `readTemplateRef` falls back to `implicitTemplateRef`; the `skeleton.ts` comment (D4)
-- [ ] 1.5 `packages/layout/src/input.ts`: pass `'adventure'` to `sectionPdf` (`:573`, `:603`); nothing else changes there
-- [ ] 1.6 Tests: each D3 rule with its path and message; adventure defaults unchanged; campaign defaults and `withPdf` dropping them; v2 validates with the sections and options of D2; v1 unchanged; `resolveTemplate` exact for both versions; `latestBuiltin('campagna')` is v2; a project meta without a template reads as `campagna@1`; a new campaign's skeleton has v2's thirteen headings; the `pdf` change wording for a campaign
-- [ ] 1.7 Commit `feat(format): campaign templates with PDF options`
+- [x] 1.1 `template/schema.ts`: the campaign refusals and acceptances of D3
+- [x] 1.2 `template/pdf.ts`: `sectionPdf(section, kind)` and `withPdf(section, patch, kind)` with the campaign defaults (D3); every caller in `packages/format` passes the kind (`checks/callouts.ts`, `template/changes.ts` with the campaign wording)
+- [x] 1.3 `template/campagna.ts`: `campagnaV2` (D2); `registry.ts`: `builtinTemplates`, `defaultTemplateRef('campaign')` at v2, `latestBuiltin`, `builtinVersions`, `implicitTemplateRef` (D4); `index.ts` exports and `templates.campagnaV2`
+- [x] 1.4 `packages/project`: `readTemplateRef` falls back to `implicitTemplateRef`; the `skeleton.ts` comment (D4)
+- [x] 1.5 `packages/layout/src/input.ts`: pass `'adventure'` to `sectionPdf` (`:573`, `:603`); nothing else changes there
+- [x] 1.6 Tests: each D3 rule with its path and message; adventure defaults unchanged; campaign defaults and `withPdf` dropping them; v2 validates with the sections and options of D2; v1 unchanged; `resolveTemplate` exact for both versions; `latestBuiltin('campagna')` is v2; a project meta without a template reads as `campagna@1`; a new campaign's skeleton has v2's thirteen headings; the `pdf` change wording for a campaign
+- [x] 1.7 Commit `feat(format): campaign templates with PDF options`
 
 ## 2. Format: reading a campaign (brief A)
 
@@ -60,6 +60,7 @@ never written into the repository (D15).
 ## 5. Built-ins in two versions: web, server, connector (brief B)
 
 - [ ] 5.1 `web/src/templates/list.ts:91` one entry per built-in id at its latest; `TemplateEditor.tsx:35` opens `latestBuiltin`, with the banner sentence of D4
+  - list.ts:91 done in group 1 (brief A); TemplateEditor.tsx:35 and banner remain
 - [ ] 5.2 `server/src/mcp/templates.ts`: `latestVersion` (`:62`), `list_templates` (`:201`), `get_template` (`:239`) as D4; the `save_template_version` text of D13 (`:290`)
 - [ ] 5.3 `server/src/templates.ts`: `templateUsage` with `implicitTemplateRef` (`:158-161`), the comment at `:147`
 - [ ] 5.4 Tests: one «Campagna» v2 in the web list and in `list_templates` with versions 1 and 2; `get_template` with and without a version; `duplicate_template` and `create_project` without a version give v2; usage counts a project without a template as `campagna@1`; a project on `campagna@1` resolves to v1 in web, server and desktop (`desktop/src/main/templates.ts`, read only)

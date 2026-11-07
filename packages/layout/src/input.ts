@@ -570,7 +570,7 @@ function ownSections(template: AdventureTemplate, model: Model): Record<OwnSlot,
     if (!section.known) continue;
     const definition = template.sections.find((s) => s.name === section.name);
     if (!definition) continue;
-    const pdf = sectionPdf(definition);
+    const pdf = sectionPdf(definition, 'adventure');
     if (!pdf.print) continue;
     const side = pdf.sideColumn ? section.blocks.filter((b) => boxOf(template, b)?.side) : [];
     own[slot].push({
@@ -600,7 +600,7 @@ export function toLayoutInput(
   // A role section the template leaves out reads as missing.
   const printed = (name: SectionRole) => {
     const definition = template.sections.find((s) => s.role === name);
-    return !definition || sectionPdf(definition).print;
+    return !definition || sectionPdf(definition, 'adventure').print;
   };
   const role = (name: SectionRole) => (printed(name) ? model.sections.find((s) => s.role === name) : undefined);
   const sheetsPrint = printed('sheets');

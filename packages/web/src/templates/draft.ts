@@ -31,7 +31,7 @@ export { isLocked, READ_KEYS };
 // 1): the options that differ from their defaults, no `pdf` when none does,
 // so turning an option back leaves the row as it was saved.
 export function pdfAction(index: number, section: SectionDefinition, change: SectionPdfPatch): DraftAction {
-  return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change).pdf } };
+  return { type: 'patch', list: 'sections', index, patch: { pdf: withPdf(section, change, 'adventure').pdf } };
 }
 
 // A locked key keeps its name: the code reads it by that name.

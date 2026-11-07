@@ -76,7 +76,7 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
   const sections = marked('sections', (s) => s.heading ?? s.name);
   const optional = new Set(draft.sections.filter((s) => s.requirement === 'optional').map((s) => s.heading ?? s.name));
   const out = new Set(
-    draft.kind === 'adventure' ? draft.sections.filter((s) => !sectionPdf(s).print).map((s) => s.heading ?? s.name) : [],
+    draft.kind === 'adventure' ? draft.sections.filter((s) => !sectionPdf(s, 'adventure').print).map((s) => s.heading ?? s.name) : [],
   );
   const fields = marked('sceneFields', (f) => f.label);
   const boxes = marked('callouts', (c) => (c.meta ? `${c.type}|${c.meta}` : c.type));

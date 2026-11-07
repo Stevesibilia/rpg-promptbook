@@ -13,7 +13,7 @@ const own = defineTemplate({
 describe('templateOf', () => {
   it('answers the built-in a project records', () => {
     expect(templateOf(readMeta(project()))).toBe(templates.avventura);
-    expect(templateOf(readMeta(project({ category: 'campaign' })))).toBe(templates.campagna);
+    expect(templateOf(readMeta(project({ category: 'campaign' })))).toBe(templates.campagnaV2);
   });
 
   it('answers an extra template by id and version', () => {
@@ -26,11 +26,12 @@ describe('templateOf', () => {
     const meta = readMeta(project({ template: { id: 'mia', version: 3 } }));
     expect(templateOf(meta, [own])).toBe(templates.avventura);
     const campaign = readMeta(project({ category: 'campaign', template: { id: 'mia', version: 3 } }));
-    expect(templateOf(campaign, [own])).toBe(templates.campagna);
+    expect(templateOf(campaign, [own])).toBe(templates.campagnaV2);
   });
 
   it('answers the category\'s built-in for a template of the wrong kind', () => {
-    expect(templateOf({ category: 'campaign', template: { id: 'avventura', version: 1 } })).toBe(templates.campagna);
+    expect(templateOf({ category: 'campaign', template: { id: 'avventura', version: 1 } })).toBe(templates.campagnaV2);
+    expect(templateOf({ category: 'campaign', template: { id: 'campagna', version: 1 } })).toBe(templates.campagna);
     expect(templateOf({ category: 'one-shot', template: { id: 'campagna', version: 1 } })).toBe(templates.avventura);
     expect(templateOf({ category: 'adventure', template: { id: 'mia', version: 2 } }, [own])).toBe(own);
   });

@@ -117,13 +117,13 @@ function changed(
 const sectionText = (s: SectionDefinition) => s.heading ?? s.name;
 
 // The section's PDF options as text, as in "printed, new page".
-function pdfText(s: SectionDefinition): string {
-  const { print, newPage, sideColumn } = sectionPdf(s);
+function pdfText(s: SectionDefinition, kind: Template['kind']): string {
+  const { print, newPage, sideColumn } = sectionPdf(s, kind);
   if (!print) return 'left out';
   return ['printed', ...(newPage ? ['new page'] : []), ...(sideColumn ? ['side column'] : [])].join(', ');
 }
 
-function sections(from: readonly SectionDefinition[], to: readonly SectionDefinition[]): TemplateChange[] {
+function sections(from: readonly SectionDefinition[], to: readonly SectionDefinition[], kind: Template['kind']): TemplateChange[] {
   return diffList(from, to, {
     what: 'section',
     name: (s) => s.name,
@@ -137,7 +137,9 @@ function sections(from: readonly SectionDefinition[], to: readonly SectionDefini
         out.push({ kind: 'changed', what: 'section', label: sectionText(b), before: sectionText(a), detail: 'renamed' });
       }
       if (a.requirement !== b.requirement) out.push(changed('section', b.name, 'requirement', a.requirement, b.requirement));
-      if (JSON.stringify(sectionPdf(a)) !== JSON.stringify(sectionPdf(b))) out.push(changed('section', b.name, 'pdf', pdfText(a), pdfText(b)));
+      if (JSON.stringify(sectionPdf(a, kind)) !== JSON.stringify(sectionPdf(b, kind))) {
+        out.push(changed('section', b.name, 'pdf', pdfText(a, kind), pdfText(b, kind)));
+      }
       return out;
     },
   });
@@ -241,7 +243,7 @@ export function templateChanges(from: Template, to: Template): TemplateChange[] 
   const fromSystem = fromAdventure?.system ?? '';
   const toSystem = toAdventure?.system ?? '';
   if (fromSystem !== toSystem) out.push({ kind: 'changed', what: 'system', label: toSystem, before: fromSystem, after: toSystem });
-  out.push(...sections(from.sections, to.sections));
+  out.push(...sections(from.sections, to.sections, to.kind));
   out.push(...fields(fromAdventure?.sceneFields ?? [], toAdventure?.sceneFields ?? []));
   out.push(...boxes(fromAdventure?.callouts ?? [], toAdventure?.callouts ?? []));
   out.push(...keys(from.meta, to.meta));

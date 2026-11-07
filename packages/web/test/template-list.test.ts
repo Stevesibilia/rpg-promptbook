@@ -22,7 +22,7 @@ describe('the template list', () => {
     const entries = templateEntries(stored, usage, defaultSettings());
     expect(entries.map((e) => [e.id, e.name, e.version, e.builtin, e.projects, e.isDefault])).toEqual([
       ['avventura', 'Avventura', 1, true, 4, true],
-      ['campagna', 'Campagna', 1, true, 1, true],
+      ['campagna', 'Campagna', 2, true, 1, true],
       ['t-kulthos0001', 'Avventura Kulthos', 2, false, 3, false],
       ['t-dnd0000001', 'One-shot D&D 5e', 1, false, 0, false],
     ]);

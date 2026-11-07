@@ -1,5 +1,5 @@
 import { avventura } from './template/avventura.js';
-import { campagna } from './template/campagna.js';
+import { campagna, campagnaV2 } from './template/campagna.js';
 
 export { parseAdventure, type ParseOptions } from './parse/index.js';
 export {
@@ -16,7 +16,10 @@ export type * from './model.js';
 export { defineTemplate, templateName, TemplateError } from './template/schema.js';
 export {
   builtinTemplates,
+  builtinVersions,
   defaultTemplateRef,
+  implicitTemplateRef,
+  latestBuiltin,
   resolveTemplate,
   type TemplateRef,
 } from './template/registry.js';
@@ -64,4 +67,4 @@ export type {
 
 // The built-ins by id, for tests and fixtures; product code resolves a
 // project's template instead.
-export const templates = { avventura, campagna } as const;
+export const templates = { avventura, campagna, campagnaV2 } as const;

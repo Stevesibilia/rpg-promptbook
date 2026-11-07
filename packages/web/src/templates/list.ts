@@ -1,4 +1,4 @@
-import { builtinTemplates, defaultTemplateRef, type Template } from 'promptbook-format';
+import { builtinTemplates, defaultTemplateRef, latestBuiltin, type Template } from 'promptbook-format';
 import type { Settings } from 'promptbook-project';
 import type { StoredTemplate } from '../api.js';
 
@@ -88,7 +88,10 @@ export function templateEntries(
   const own = [...latest.values()]
     .sort((a, b) => (firstMade.get(a.id) ?? a.createdAt).localeCompare(firstMade.get(b.id) ?? b.createdAt))
     .map((t) => entry(t.body, false));
-  return [...builtinTemplates.map((t) => entry(t, true)), ...own];
+  // One entry per built-in id, at its latest version: older versions stay for
+  // the projects that record them.
+  const builtins = [...new Set(builtinTemplates.map((t) => t.id))].map((id) => latestBuiltin(id)!);
+  return [...builtins.map((t) => entry(t, true)), ...own];
 }
 
 // The name a copy starts with, numbered when the account already has it.

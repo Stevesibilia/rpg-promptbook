@@ -1,5 +1,6 @@
 import {
   defaultTemplateRef,
+  implicitTemplateRef,
   resolveTemplate,
   type AdventureTemplate,
   type Template,
@@ -40,10 +41,11 @@ export function isTemplateRef(value: unknown): value is TemplateRef {
   );
 }
 
-// The meta value as another client wrote it, else the category's built-in.
+// The meta value as another client wrote it, else what a project that records
+// no template reads as: avventura@1 or campagna@1, never a later version.
 export function readTemplateRef(value: unknown, category: Category): TemplateRef {
   if (isTemplateRef(value)) return { id: value.id, version: value.version };
-  return defaultTemplateRef(templateKindOf(category));
+  return implicitTemplateRef(templateKindOf(category));
 }
 
 // The template the project records, among `extra` (the account's own) and

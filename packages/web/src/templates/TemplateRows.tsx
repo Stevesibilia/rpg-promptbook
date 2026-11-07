@@ -264,7 +264,7 @@ function PdfOptions({
   dispatch: Dispatch<DraftAction>;
   readOnly: boolean;
 }) {
-  const pdf = sectionPdf(section);
+  const pdf = sectionPdf(section, 'adventure');
   const name = section.heading ?? section.name;
   const toggle = (change: Parameters<typeof pdfAction>[2]) => () => dispatch(pdfAction(index, section, change));
   const printed = (

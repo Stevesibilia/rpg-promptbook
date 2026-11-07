@@ -308,7 +308,7 @@ describe('templates', () => {
       id: 't-kulthos0001',
       version: 1,
     });
-    expect(readMeta(await made({ ...NEW, category: 'campaign' })).template).toEqual({ id: 'campagna', version: 1 });
+    expect(readMeta(await made({ ...NEW, category: 'campaign' })).template).toEqual({ id: 'campagna', version: 2 });
     for (const template of [{ id: 't-kulthos0001', version: 3 }, { id: 'campagna', version: 1 }]) {
       expect((await w.request('POST', '/api/projects', { ...NEW, template })).json.error).toBe('template_unknown');
     }
