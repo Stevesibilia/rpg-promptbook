@@ -96,10 +96,10 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 10. e2e (brief B)
 
-- [ ] 10.1 New `e2e/generate.spec.ts` against the fake: Settings saves `sk-or-v1-good` and shows the credit; Generate's panel defaults and «What is sent» on a Midjourney prompt; 2 images arrive with badges, toast and header total, a second page sees the progress and the images by sync; the viewer's rows; the thumbnail is filled; `sk-or-v1-broke` gives the 402 line with Try again; Remove the key and the no-key panel; `sk-or-v1-nolimit` gives «No spending limit»
-- [ ] 10.2 `e2e/desktop.spec.ts`: Generate disabled offline with its title, and the Settings offline card
-- [ ] 10.3 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`; literal results
-- [ ] 10.4 Commit `test(e2e): generate images against a fake OpenRouter`
+- [x] 10.1 New `e2e/generate.spec.ts` against the fake: Settings saves `sk-or-v1-good` and shows the credit; Generate's panel defaults and «What is sent» on a Midjourney prompt; 2 images arrive with badges, toast and header total, a second page sees the progress and the images by sync; the viewer's rows; the thumbnail is filled; `sk-or-v1-broke` gives the 402 line with Try again; Remove the key and the no-key panel; `sk-or-v1-nolimit` gives «No spending limit»
+- [x] 10.2 `e2e/desktop.spec.ts`: Generate disabled offline with its title, and the Settings offline card
+- [x] 10.3 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`; literal results
+- [x] 10.4 Commit `test(e2e): generate images against a fake OpenRouter`
 
 ## 11. Screenshots and the owner's preview (brief B)
 
