@@ -73,8 +73,10 @@ function toJob(id: string, value: unknown): GenerationJob | null {
 
 const running = (job: GenerationJob) => job.finishedAt === null;
 
+// A start this far in the future is stale too: no server wrote it, and it
+// would hold its prompt for good.
 const isStale = (job: GenerationJob, now: Date) =>
-  running(job) && now.getTime() - Date.parse(job.startedAt) > STALE_GENERATION_MS;
+  running(job) && Math.abs(now.getTime() - Date.parse(job.startedAt)) > STALE_GENERATION_MS;
 
 function allJobs(doc: Y.Doc): GenerationJob[] {
   const jobs: GenerationJob[] = [];

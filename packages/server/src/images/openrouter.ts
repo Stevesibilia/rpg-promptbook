@@ -14,6 +14,25 @@ const finite = (value: unknown): number | null => (typeof value === 'number' && 
 
 const bearer = (key: string) => ({ authorization: `Bearer ${key}` });
 
+// The answer's body as text, or null past `max` bytes: counted as it streams,
+// so an answer without a Content-Length cannot fill the memory.
+async function readCapped(response: Response, max: number): Promise<string | null> {
+  if (!response.body) return '';
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of response.body) {
+    size += chunk.byteLength;
+    if (size > max) {
+      await response.body.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+const MAX_KEY_ANSWER_BYTES = 1024 * 1024;
+
 // GET {base}/key: 200 answers the credit left on the key (null without a
 // limit); 401 or 403 is a rejected key; anything else, no answer or a
 // timeout, an unreachable OpenRouter.
@@ -38,7 +57,9 @@ export async function checkKey(baseUrl: string, key: string, timeoutMs = CHECK_T
   }
   let body: unknown;
   try {
-    body = await response.json();
+    const text = await readCapped(response, MAX_KEY_ANSWER_BYTES);
+    if (text === null) return { ok: false, reason: 'openrouter_unreachable' };
+    body = JSON.parse(text);
   } catch {
     return { ok: false, reason: 'openrouter_unreachable' };
   }
@@ -58,7 +79,7 @@ export type ImageResult = { ok: true; bytes: Buffer; cost: number | null } | { o
 
 const GENERATE_TIMEOUT_MS = 180_000;
 // Far above any image of FILE_LIMITS in base64; a larger answer is refused
-// before it is read.
+// as soon as it passes this.
 const MAX_ANSWER_BYTES = 64 * 1024 * 1024;
 
 // D10's plain words.
@@ -71,6 +92,8 @@ export const IMAGE_ERRORS = {
   noImage: 'OpenRouter sent no image. Try again.',
   quota: 'Your files have reached their quota.',
   boardFull: 'The board has no room for more files.',
+  keyRemoved: 'Stopped: the OpenRouter key was removed.',
+  restarted: 'The server restarted before the image arrived. Try again.',
   refused: (status: number) => `OpenRouter refused the request (HTTP ${status}).`,
 } as const;
 
@@ -91,9 +114,12 @@ export async function generateImage(
   key: string,
   request: ImageRequest,
   timeoutMs = GENERATE_TIMEOUT_MS,
+  // Stops the call early; a string reason is the image's sentence.
+  stop?: AbortSignal,
 ): Promise<ImageResult> {
   let response: Response;
-  let text: string;
+  let text: string | null;
+  const timeout = AbortSignal.timeout(timeoutMs);
   try {
     response = await fetch(`${baseUrl}/images`, {
       method: 'POST',
@@ -105,16 +131,14 @@ export async function generateImage(
         resolution: '1K',
       }),
       redirect: 'error',
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: stop ? AbortSignal.any([timeout, stop]) : timeout,
     });
-    if (Number(response.headers.get('content-length') ?? 0) > MAX_ANSWER_BYTES) {
-      await response.body?.cancel();
-      return { ok: false, error: IMAGE_ERRORS.noImage };
-    }
-    text = await response.text();
+    text = await readCapped(response, MAX_ANSWER_BYTES);
   } catch {
+    if (stop?.aborted && typeof stop.reason === 'string') return { ok: false, error: stop.reason };
     return { ok: false, error: IMAGE_ERRORS.noAnswer };
   }
+  if (text === null) return { ok: false, error: IMAGE_ERRORS.noImage };
   if (response.status !== 200) return { ok: false, error: errorFor(response.status, text) };
   let body: unknown;
   try {

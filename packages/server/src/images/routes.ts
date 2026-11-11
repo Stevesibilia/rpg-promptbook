@@ -24,7 +24,7 @@ import { NOT_FOUND } from '../routes/projects.js';
 import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 import { runGenerationJob } from './jobs.js';
-import { checkKey } from './openrouter.js';
+import { checkKey, IMAGE_ERRORS } from './openrouter.js';
 import { markOpenRouterKeyChecked, readOpenRouterKey, removeOpenRouterKey, saveOpenRouterKey } from './secrets.js';
 
 // Image generation's routes (board-image-generation design decisions 2, 7
@@ -120,6 +120,14 @@ function labelOf(prompt: ImagePromptEntry, prompts: readonly ImagePromptEntry[])
 
 const busy = () => new AppError(409, 'busy', 'Images are already being generated for this prompt.');
 
+// A job running in this process: its end, whose account it spends for, and
+// how to stop it.
+export interface GenerationHandle {
+  done: Promise<void>;
+  userId: string;
+  stop(reason: string): void;
+}
+
 export const notConfigured = () =>
   new AppError(503, 'not_configured', 'This server is not set up for image generation.');
 
@@ -133,7 +141,7 @@ export interface ImageRoutesOptions {
   sync: Sync;
   blobs: BlobStore;
   // The jobs running in this process, by job id (app.ts).
-  runs: Map<string, Promise<void>>;
+  runs: Map<string, GenerationHandle>;
   // Only for the tests: each OpenRouter image call's timeout.
   timeoutMs?: number | undefined;
 }
@@ -189,6 +197,8 @@ export async function imageRoutes(
     const { user } = requireSession(req);
     serverKey();
     await removeOpenRouterKey(db, user.id);
+    // The key is gone: the user's running jobs stop asking OpenRouter.
+    for (const run of runs.values()) if (run.userId === user.id) run.stop(IMAGE_ERRORS.keyRemoved);
     return reply.code(204).send();
   });
 
@@ -248,7 +258,8 @@ export async function imageRoutes(
       await live.close();
     }
 
-    const job = runGenerationJob(
+    const controller = new AbortController();
+    const done = runGenerationJob(
       { db, sync, blobs, baseUrl: config.openRouterBaseUrl, quotaBytes, log: app.log, timeoutMs },
       {
         jobId,
@@ -261,11 +272,12 @@ export async function imageRoutes(
         count: body.count,
         shape: body.shape,
         key: stored.key,
+        stop: controller.signal,
       },
     )
       .catch((error: unknown) => app.log.error({ jobId, err: error }, 'A generation job failed'))
       .finally(() => runs.delete(jobId));
-    runs.set(jobId, job);
+    runs.set(jobId, { done, userId: user.id, stop: (reason) => controller.abort(reason) });
     return reply.code(202).send({ jobId });
   });
 

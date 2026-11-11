@@ -121,6 +121,14 @@ describe('generation jobs (D8)', () => {
     expect(readGenerationJobs(doc, late).map((j) => j.id)).toEqual(['job-3']);
   });
 
+  it('takes a start far in the future for stale, so it cannot hold its prompt', () => {
+    const doc = project();
+    startGenerationJob(doc, start({ startedAt: at(STALE_GENERATION_MS * 10).toISOString() }), at(STALE_GENERATION_MS * 10));
+    expect(readGenerationJobs(doc, SOON)).toEqual([]);
+    startGenerationJob(doc, start({ id: 'job-2', startedAt: SOON.toISOString() }), SOON);
+    expect(readGenerationJobs(doc, SOON).map((j) => j.id)).toEqual(['job-2']);
+  });
+
   it('each writer removes stale jobs first', () => {
     for (const write of [
       (doc: ReturnType<typeof project>) => recordGenerationProgress(doc, 'other', 'done', at(STALE_GENERATION_MS + 1)),

@@ -106,7 +106,7 @@ async function generated(s: Setup, promptId: string, body?: unknown): Promise<st
   const response = await generate(s, promptId, body);
   expect(response.statusCode).toBe(202);
   const { jobId } = response.json() as { jobId: string };
-  await s.app.generationRuns.get(jobId);
+  await s.app.generationRuns.get(jobId)?.done;
   return jobId;
 }
 
@@ -203,7 +203,7 @@ describe('the generate route’s checks, in order (D7)', () => {
     await db.query(`insert into project_files (project_id, sha256) values ($1, $2)`, [s.id, 'f'.repeat(64)]);
     expect(refused(await generate(s, s.second))).toEqual([507, 'quota']);
     expect((await generate(s, s.second, { model: 'nb', count: 1, shape: '16:9' })).statusCode).toBe(202);
-    await Promise.all(s.app.generationRuns.values());
+    await Promise.all([...s.app.generationRuns.values()].map((r) => r.done));
   });
 
   it('starts one job of two concurrent generates on one prompt', async () => {
@@ -212,7 +212,7 @@ describe('the generate route’s checks, in order (D7)', () => {
     const answers = await Promise.all([generate(s, s.scene), generate(s, s.scene)]);
     expect(answers.map((a) => a.statusCode).sort()).toEqual([202, 409]);
     expect(answers.find((a) => a.statusCode === 409)!.json().error).toBe('busy');
-    await Promise.all(s.app.generationRuns.values());
+    await Promise.all([...s.app.generationRuns.values()].map((r) => r.done));
     expect(readFiles(await stored(s.id))).toHaveLength(2);
   });
 
@@ -388,7 +388,7 @@ describe('errors in plain words (D10)', () => {
       s.user.id,
     ]);
     await db.query(`insert into project_files (project_id, sha256) values ($1, $2)`, [s.id, 'e'.repeat(64)]);
-    await s.app.generationRuns.get(response.json().jobId);
+    await s.app.generationRuns.get(response.json().jobId)?.done;
     const doc = await stored(s.id);
     expect(readFiles(doc)).toEqual([]);
     expect(readGenerationJobs(doc)[0]!.error).toBe('Your files have reached their quota.');
@@ -401,7 +401,7 @@ describe('the board changing during a job', () => {
     fake.setDelay(300);
     const response = await generate(s, s.scene);
     await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => removeImagePrompt(doc, s.scene));
-    await s.app.generationRuns.get(response.json().jobId);
+    await s.app.generationRuns.get(response.json().jobId)?.done;
     const board = readDocumentBoard(await stored(s.id));
     expect(board.unmatched.map((u) => [u.file.generatedModel, u.reason])).toEqual([
       ['gpt', 'Its prompt was removed.'],
@@ -416,7 +416,7 @@ describe('the board changing during a job', () => {
     const before = await stored(s.id);
     expect(readGenerationJobs(before)).toHaveLength(1);
     expect((await s.app.inject({ method: 'DELETE', url: `/api/projects/${s.id}`, headers: s.headers })).statusCode).toBe(204);
-    await s.app.generationRuns.get(response.json().jobId);
+    await s.app.generationRuns.get(response.json().jobId)?.done;
     const after = await stored(s.id);
     expect(readFiles(after)).toEqual([]);
     // The job is as it was; it goes stale.
@@ -425,6 +425,8 @@ describe('the board changing during a job', () => {
       [false, 'The project was moved to the bin.'],
       [false, 'The project was moved to the bin.'],
     ]);
+    // Nothing was linked to it either.
+    expect(await db.query('select * from project_files where project_id = $1', [s.id])).toEqual([]);
   });
 });
 
@@ -504,6 +506,33 @@ describe('closing the app', () => {
     const doc = await stored(s.id);
     expect(readFiles(doc)).toHaveLength(2);
     expect(readGenerationJobs(doc)).toEqual([]);
+  });
+
+  it('stops a job still running after the wait, which ends with a sentence', async () => {
+    const s = await setup({ options: { generationCloseWaitMs: 100 } });
+    fake.setDelay(5000);
+    expect((await generate(s, s.scene)).statusCode).toBe(202);
+    const started = Date.now();
+    await s.app.close();
+    expect(Date.now() - started).toBeLessThan(3000);
+    const doc = await stored(s.id);
+    expect(readFiles(doc)).toEqual([]);
+    expect(readGenerationJobs(doc)).toEqual([
+      expect.objectContaining({ failed: 2, error: 'The server restarted before the image arrived. Try again.' }),
+    ]);
+  });
+});
+
+describe('removing the key', () => {
+  it('stops the user’s running jobs', async () => {
+    const s = await setup();
+    fake.setDelay(5000);
+    const response = await generate(s, s.scene);
+    expect((await s.app.inject({ method: 'DELETE', url: '/api/image-generation/key', headers: s.headers })).statusCode).toBe(204);
+    await s.app.generationRuns.get(response.json().jobId)?.done;
+    const doc = await stored(s.id);
+    expect(readFiles(doc)).toEqual([]);
+    expect(readGenerationJobs(doc)[0]!.error).toBe('Stopped: the OpenRouter key was removed.');
   });
 });
 

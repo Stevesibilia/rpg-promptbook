@@ -69,7 +69,7 @@ export function capturedLog(): { logger: AppOptions['logger']; text(): string } 
 
 export async function startApp(
   overrides: Partial<Config> = {},
-  options: Pick<AppOptions, 'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs'> = {},
+  options: Pick<AppOptions, 'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs'> = {},
 ): Promise<FastifyInstance> {
   const app = await buildApp({ config: testConfig(overrides), db, ...options });
   open.push(app);

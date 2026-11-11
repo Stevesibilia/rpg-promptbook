@@ -55,6 +55,9 @@ export interface GenerationRun {
   count: number;
   shape: ImageShape;
   key: string;
+  // Aborted when the key is removed or the server stops; its reason, a
+  // string, is the sentence of the images it stops.
+  stop: AbortSignal;
 }
 
 const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
@@ -63,6 +66,8 @@ type Outcome = { ok: true } | { ok: false; error: string };
 
 // A failed image's sentence, raised inside the steps below.
 class ImageFailed extends Error {}
+
+const BINNED = 'The project was moved to the bin.';
 
 export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promise<void> {
   const { db, sync, log } = deps;
@@ -101,12 +106,14 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
 
   async function one(): Promise<Outcome> {
     let cost: number | null = null;
+    let sha256 = '';
     try {
       const answer = await generateImage(
         deps.baseUrl,
         run.key,
         { model: IMAGE_MODELS[run.model].id, prompt: text, aspectRatio: run.shape },
         deps.timeoutMs,
+        run.stop,
       );
       if (!answer.ok) throw new ImageFailed(answer.error);
       cost = answer.cost;
@@ -114,7 +121,9 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       const type = sniff(bytes.subarray(0, 12));
       if (!type || type.kind !== 'image' || !EXTENSIONS[type.mime]) throw new ImageFailed(IMAGE_ERRORS.noImage);
       if (bytes.length > FILE_LIMITS.image) throw new ImageFailed(IMAGE_ERRORS.noImage);
-      const sha256 = createHash('sha256').update(bytes).digest('hex');
+      sha256 = createHash('sha256').update(bytes).digest('hex');
+      // Nothing is linked to a project moved to the bin meanwhile.
+      if (!(await writable())) throw new ImageFailed(BINNED);
       await store(bytes, type.mime, sha256);
       const size = imageDimensions(bytes, type.mime);
       const added = await write((doc) => {
@@ -137,18 +146,22 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
           generatedModel: run.model,
           cost,
         };
+        let skipped: number;
         try {
-          addFiles(doc, [entry]);
-        } catch {
+          skipped = addFiles(doc, [entry]).skipped.length;
+        } catch (error) {
           // The project's cap on files.
-          throw new ImageFailed(IMAGE_ERRORS.boardFull);
+          if (error instanceof Error && error.message.startsWith('files: at most')) {
+            throw new ImageFailed(IMAGE_ERRORS.boardFull);
+          }
+          throw error;
         }
         recordGenerationProgress(doc, run.jobId, 'done');
-        return true;
+        return { skipped };
       });
-      if (added === null) throw new ImageFailed('The project was moved to the bin.');
-      await row(true, { cost, sha256 });
-      return { ok: true };
+      if (added === null) throw new ImageFailed(BINNED);
+      // The same bytes are on the board already: billed, and nothing new.
+      if (added.skipped > 0) log.warn({ jobId: run.jobId, cost }, 'A generated image was already on the board');
     } catch (error) {
       const sentence = error instanceof ImageFailed ? error.message : IMAGE_ERRORS.noAnswer;
       if (!(error instanceof ImageFailed)) log.error({ jobId: run.jobId, err: error }, 'An image of a generation job failed');
@@ -160,6 +173,11 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       );
       return { ok: false, error: sentence };
     }
+    // Its own step: a failed insert here must not count the image twice.
+    await row(true, { cost, sha256 }).catch((e: unknown) =>
+      log.error({ jobId: run.jobId, err: e, cost }, 'Could not record a generated image'),
+    );
+    return { ok: true };
   }
 
   // The first image to fail gives the sentence.
