@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { defaultSettings, type Settings } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import type { ImageGenerationStatus } from '../src/api.js';
-import { DefaultsCard, KeyCard, SpendingCard } from '../src/settings/ImageGeneration.js';
+import { DefaultsCard, KeyCard, OfflineCard, SpendingCard } from '../src/settings/ImageGeneration.js';
 import { keyStatusLine, monthName, savedToast, saveError, UNREADABLE } from '../src/settings/imageGenerationTexts.js';
 
 // Settings → Image generation (board-image-generation «The approved
@@ -126,5 +126,13 @@ describe('the spending', () => {
   it('names the month in UTC', () => {
     expect(monthName(new Date('2026-11-30T23:30:00.000Z'), 'en')).toBe('November');
     expect(monthName(new Date('2026-12-01T00:30:00.000Z'), 'en')).toBe('December');
+  });
+});
+
+describe('offline on the desktop', () => {
+  it('keeps the section on the server', () => {
+    expect(text(renderToStaticMarkup(createElement(OfflineCard)))).toBe(
+      'Image generation is kept on the server. Connect this computer to change it.',
+    );
   });
 });

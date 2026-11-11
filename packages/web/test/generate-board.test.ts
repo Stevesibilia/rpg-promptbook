@@ -8,6 +8,7 @@ import type { ImageGenerationStatus } from '../src/api.js';
 import { BoardContext, type BoardContextValue, type Generation } from '../src/board/context.js';
 import { GeneratedBadge, GeneratedHere } from '../src/board/GeneratePanel.js';
 import { PromptBody } from '../src/board/ImagePrompt.js';
+import { OfflineNotice } from '../src/board/parts.js';
 import type { ShownPrompt } from '../src/board/summary.js';
 import type { PendingStart, StatusState } from '../src/board/useGeneration.js';
 
@@ -207,5 +208,33 @@ describe('«Generated here»', () => {
     expect(here({ images: 0, cost: 0 })).toBe('');
     // Offline, or the request failed.
     expect(here(null)).toBe('');
+  });
+});
+
+describe('offline on the desktop', () => {
+  it('turns Generate off with the reason', () => {
+    const html = render(shown(), { offline: true });
+    expect(html).toMatch(
+      /<button class="tb sm gen" disabled="" title="Generating needs the server\. It comes back when this computer is online\." aria-expanded="false"/,
+    );
+  });
+
+  it('turns Try again off on an error line', () => {
+    const failed = job({ done: 0, error: 'OpenRouter did not answer. Try again. Nothing was charged.', finishedAt: new Date().toISOString() });
+    const html = render(shown(), { offline: true, jobs: new Map([['p1', failed]]) });
+    expect(html).toMatch(/<button class="tb sm line" disabled="" title="Generating needs the server\.[^"]*">Try again<\/button>/);
+  });
+
+  it('says on the board that Generate comes back online, unless files wait to upload', () => {
+    const line = (offline: boolean, waiting: number) =>
+      text(renderToStaticMarkup(createElement(OfflineNotice, { offline, waiting })));
+    expect(line(true, 0)).toBe(
+      'Offline. Choosing, editing and dropping files still work. Generate comes back when this computer is online.',
+    );
+    expect(line(true, 2)).toBe(
+      '2 files on this computer, uploaded when you are back online. Choosing and editing prompts work offline; they sync too.',
+    );
+    expect(line(false, 0)).toBe('');
+    expect(line(false, 2)).toBe('');
   });
 });

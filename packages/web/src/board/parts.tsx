@@ -4,7 +4,8 @@ import type { Author, FileEntry, HalfStatus } from 'promptbook-project';
 import { relativeTime } from '../dates.js';
 import { projectPath } from '../project/top.js';
 import { platform } from '../platform/index.js';
-import { useDownloadsVersion } from './device.js';
+import { LaptopIcon, OfflineIcon } from '../ui/icons.js';
+import { localLine, useDownloadsVersion } from './device.js';
 import { filterLabels, filters, statusLabels, type Filter, type HalfCounts } from './summary.js';
 
 // Small parts the halves, the tray and the viewer share.
@@ -136,6 +137,32 @@ export function SummaryLine({
         </div>
       </div>
       {end}
+    </div>
+  );
+}
+
+// The board's line while the desktop is offline: the files added here that
+// wait to upload (screen 8), or, with none, that Generate comes back online
+// (image generation's screen 9).
+export function OfflineNotice({ offline, waiting }: { offline: boolean; waiting: number }) {
+  if (!offline) return null;
+  if (waiting === 0) {
+    return (
+      <div className="info local" role="status">
+        <OfflineIcon className="ic" />
+        <span>
+          <b>Offline.</b> Choosing, editing and dropping files still work. Generate comes back when this computer is
+          online.
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="info local" role="status">
+      <LaptopIcon className="ic" />
+      <span>
+        <b>{localLine(waiting)}</b> Choosing and editing prompts work offline; they sync too.
+      </span>
     </div>
   );
 }

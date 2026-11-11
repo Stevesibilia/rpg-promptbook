@@ -5,7 +5,8 @@ import { useAuth } from '../auth/context.js';
 import { generateDefaults, imageCounts, modelLine, money2 } from '../board/generate.js';
 import { setGenerationStatus } from '../board/useGeneration.js';
 import { clockTime } from '../dates.js';
-import { CheckIcon, WarningIcon } from '../ui/icons.js';
+import { useOffline } from '../desktop/useDevice.js';
+import { CheckIcon, OfflineIcon, WarningIcon } from '../ui/icons.js';
 import { useToast } from '../ui/Toast.js';
 import { keyStatusLine, monthName, savedToast, saveError, UNREADABLE } from './imageGenerationTexts.js';
 
@@ -25,6 +26,7 @@ export function ImageGenerationSection({
   onSave(next: Settings): void;
 }) {
   const { user } = useAuth();
+  const offline = useOffline();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [toast, showToast] = useToast();
   // Answers to a request older than the latest are dropped.
@@ -37,6 +39,8 @@ export function ImageGenerationSection({
   };
 
   useEffect(() => {
+    if (offline) return;
+    setLoaded({ state: 'loading' });
     const ask = ++asked.current;
     api.imageGeneration(true).then(
       (status) => {
@@ -51,10 +55,12 @@ export function ImageGenerationSection({
     return () => {
       asked.current += 1;
     };
-  }, [user.id]);
+  }, [user.id, offline]);
 
   let body;
-  if (loaded.state === 'loading') {
+  if (offline) {
+    body = <OfflineCard />;
+  } else if (loaded.state === 'loading') {
     body = <p className="loading">Loading…</p>;
   } else if (loaded.state === 'failed') {
     body = <p className="err-inline">{loaded.message}</p>;
@@ -84,6 +90,18 @@ export function ImageGenerationSection({
       {body}
       {toast}
     </section>
+  );
+}
+
+// Screen 10c: offline on the desktop, the section waits for the server.
+export function OfflineCard() {
+  return (
+    <div className="card wide-card">
+      <div className="needs-card">
+        <OfflineIcon className="ic" />
+        <span>Image generation is kept on the server. Connect this computer to change it.</span>
+      </div>
+    </div>
   );
 }
 

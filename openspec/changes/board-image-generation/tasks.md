@@ -90,9 +90,9 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 9. Desktop: offline (brief B)
 
-- [ ] 9.1 Generate disabled offline with D15's title; the board's offline line of screen 9; «Generated here» hidden offline; the Settings section's offline card (D15)
-- [ ] 9.2 Tests: the offline states through `useOffline`, as the existing offline tests do
-- [ ] 9.3 Commit `feat(desktop): generating needs the server`
+- [x] 9.1 Generate disabled offline with D15's title; the board's offline line of screen 9; «Generated here» hidden offline; the Settings section's offline card (D15)
+- [x] 9.2 Tests: the offline states through `useOffline`, as the existing offline tests do
+- [x] 9.3 Commit `feat(desktop): generating needs the server`
 
 ## 10. e2e (brief B)
 
