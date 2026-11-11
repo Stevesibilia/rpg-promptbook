@@ -232,10 +232,10 @@ open, change, export and delete only their own projects.
 
 ### Requirement: Link to a gdrarchive campaign
 
-Any project MAY hold one link to a campaign in gdrarchive: an address and an
-optional label. The link SHALL be stored in the project's metadata, so it
-syncs like the title, and SHALL be set or removed as a whole. Promptbook
-SHALL NOT call gdrarchive.
+A project SHALL hold at most one link to a campaign in gdrarchive: an
+address and an optional label. The link SHALL be stored in the project's
+metadata, so it syncs like the title, and SHALL be set or removed as a whole.
+Promptbook SHALL NOT call gdrarchive.
 
 #### Scenario: Link on every device
 
@@ -271,10 +271,11 @@ these rules SHALL read as no link.
 
 ### Requirement: Inherited gdrarchive link
 
-An adventure or a one-shot with no link of its own, inside a campaign of the
-user that is not in the bin, SHALL show its campaign's link, marked as coming
-from that campaign. A link of its own SHALL win. A campaign SHALL NOT
-inherit, and nothing SHALL inherit from a stand-alone project.
+An adventure or a one-shot with no link of its own SHALL show its
+campaign's link when it is inside a campaign of the user that is not in the
+bin, marked as coming from that campaign. A link of its own SHALL win. A
+campaign SHALL NOT inherit, and nothing SHALL inherit from a stand-alone
+project.
 
 #### Scenario: Adventure inherits
 
