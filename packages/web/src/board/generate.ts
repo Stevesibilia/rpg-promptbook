@@ -191,8 +191,9 @@ export function endedJobs(
   return ended;
 }
 
+// As the project's rule: a start too far in the past, or in the future.
 export const isStale = (job: Pick<GenerationJob, 'startedAt' | 'finishedAt'>, now: number): boolean =>
-  job.finishedAt === null && now - Date.parse(job.startedAt) > STALE_GENERATION_MS;
+  job.finishedAt === null && Math.abs(now - Date.parse(job.startedAt)) > STALE_GENERATION_MS;
 
 // The job a prompt shows: its running one, else its newest error.
 export function jobsByPrompt(jobs: readonly GenerationJob[]): Map<string, GenerationJob> {

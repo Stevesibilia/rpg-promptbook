@@ -196,6 +196,8 @@ describe('the end of a job', () => {
     const dismissed = job({ error: 'x', finishedAt: '2026-11-11T10:01:00.000Z' });
     expect(endedJobs([dismissed], [], now)).toEqual([]);
     expect(endedJobs([job()], [], at('2026-11-11T10:16:00.000Z'))).toEqual([]);
+    // Started more than 15 minutes in the future: stale too.
+    expect(endedJobs([job({ startedAt: '2026-11-11T10:30:00.000Z' })], [], now)).toEqual([]);
   });
 
   it("toasts the images it added to its prompt and their cost", () => {
