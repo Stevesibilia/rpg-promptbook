@@ -740,8 +740,7 @@ describe('generated images (board-image-generation D9, D12)', () => {
       ['gpt', 0.041, 'generated'],
       ['nb', null, 'generated'],
     ]);
-    const order = byId(doc);
-    const files = readFiles(doc).sort((a, b) => order(a.sha256, b.sha256));
+    const files = readFiles(doc).sort((a, b) => (a.sha256 < b.sha256 ? -1 : 1));
     expect(files.map((f) => [f.generatedModel, f.cost, f.matchedBy, f.sceneId, f.promptId])).toEqual([
       ['gpt', 0.041, 'generated', null, p.id],
       ['nb', null, 'generated', null, p.id],

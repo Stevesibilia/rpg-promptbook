@@ -45,3 +45,87 @@ export async function checkKey(baseUrl: string, key: string, timeoutMs = CHECK_T
   const data = (body as { data?: { limit_remaining?: unknown } } | null)?.data;
   return { ok: true, limitRemaining: finite(data?.limit_remaining) };
 }
+
+// One image (D9): POST {base}/images, one image per call, always at 1K.
+export interface ImageRequest {
+  // OpenRouter's model id.
+  model: string;
+  prompt: string;
+  aspectRatio: string;
+}
+
+export type ImageResult = { ok: true; bytes: Buffer; cost: number | null } | { ok: false; error: string };
+
+const GENERATE_TIMEOUT_MS = 180_000;
+// Far above any image of FILE_LIMITS in base64; a larger answer is refused
+// before it is read.
+const MAX_ANSWER_BYTES = 64 * 1024 * 1024;
+
+// D10's plain words.
+export const IMAGE_ERRORS = {
+  rejected: 'OpenRouter rejected your key. Check it in Settings → Image generation.',
+  noCredit: 'OpenRouter refused: your key has no credit left. Add credit on openrouter.ai, then try again.',
+  busy: 'OpenRouter is busy (rate limit). Try again in a minute.',
+  content: 'OpenRouter refused this prompt (content policy).',
+  noAnswer: 'OpenRouter did not answer. Try again.',
+  noImage: 'OpenRouter sent no image. Try again.',
+  quota: 'Your files have reached their quota.',
+  boardFull: 'The board has no room for more files.',
+  refused: (status: number) => `OpenRouter refused the request (HTTP ${status}).`,
+} as const;
+
+// The sentence for an answer that is not a 200.
+export function errorFor(status: number, body: string): string {
+  if (status === 401) return IMAGE_ERRORS.rejected;
+  if (status === 402) return IMAGE_ERRORS.noCredit;
+  if (status === 429) return IMAGE_ERRORS.busy;
+  if (status === 400 && /moderation|content/i.test(body)) return IMAGE_ERRORS.content;
+  if (status >= 500) return IMAGE_ERRORS.noAnswer;
+  return IMAGE_ERRORS.refused(status);
+}
+
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+export async function generateImage(
+  baseUrl: string,
+  key: string,
+  request: ImageRequest,
+  timeoutMs = GENERATE_TIMEOUT_MS,
+): Promise<ImageResult> {
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch(`${baseUrl}/images`, {
+      method: 'POST',
+      headers: { ...bearer(key), 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: request.model,
+        prompt: request.prompt,
+        aspect_ratio: request.aspectRatio,
+        resolution: '1K',
+      }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (Number(response.headers.get('content-length') ?? 0) > MAX_ANSWER_BYTES) {
+      await response.body?.cancel();
+      return { ok: false, error: IMAGE_ERRORS.noImage };
+    }
+    text = await response.text();
+  } catch {
+    return { ok: false, error: IMAGE_ERRORS.noAnswer };
+  }
+  if (response.status !== 200) return { ok: false, error: errorFor(response.status, text) };
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return { ok: false, error: IMAGE_ERRORS.noImage };
+  }
+  const answer = body as { data?: unknown; usage?: { cost?: unknown } } | null;
+  const first = Array.isArray(answer?.data) ? (answer.data[0] as { b64_json?: unknown } | undefined) : undefined;
+  const b64 = typeof first?.b64_json === 'string' ? first.b64_json.replace(/\s+/g, '') : '';
+  if (b64 === '' || !BASE64.test(b64)) return { ok: false, error: IMAGE_ERRORS.noImage };
+  const cost = finite(answer?.usage?.cost);
+  return { ok: true, bytes: Buffer.from(b64, 'base64'), cost: cost !== null && cost >= 0 ? cost : null };
+}

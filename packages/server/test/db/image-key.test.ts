@@ -206,7 +206,7 @@ describe('the OpenRouter key', () => {
 
   it('is off without a server key: 503 not_configured to every write', async () => {
     const { app, headers } = await signedInApp({ secretsKey: null });
-    expect((await status(app, headers, true)).json()).toEqual({ configured: false, key: null });
+    expect((await status(app, headers, true)).json()).toMatchObject({ configured: false, key: null });
     for (const response of [await save(app, headers, GOOD), await remove(app, headers)]) {
       expect(response.statusCode).toBe(503);
       expect(response.json().error).toBe('not_configured');

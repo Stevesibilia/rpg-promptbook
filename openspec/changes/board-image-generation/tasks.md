@@ -42,14 +42,14 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 3. Server: generating images (brief A)
 
-- [ ] 3.1 `src/files/dimensions.ts`: `imageDimensions` for PNG, JPEG and WebP (D9)
-- [ ] 3.2 `src/files/store.ts`: `hasRoom` (D7)
-- [ ] 3.3 `src/images/openrouter.ts`: `generateImage` with the 180 s timeout, and the plain-words mapping of D10
-- [ ] 3.4 `src/images/jobs.ts`: `runGenerationJob` as D9: calls in parallel, each image stored, linked, measured and added in its own `withLiveDocument` transaction with its progress, its `image_generations` row, the job finished with D10's error or deleted
-- [ ] 3.5 `src/images/routes.ts`: `POST /api/projects/:id/image-prompts/:promptId/generate` with D7's checks in order; `GET /api/projects/:id/image-spending` and the GET's `spending` (D11)
-- [ ] 3.6 `test/db/fake-openrouter.ts`: `/images` with distinct bytes per call, `failNext`, `setDelay` (D17)
-- [ ] 3.7 Tests: `imageDimensions` (a PNG, a JPEG with an APP1 segment before SOF0, a progressive SOF2, WebP VP8, VP8L and VP8X, truncated bytes give null); each of D7's refusals in order, two concurrent generates give one 202 and one 409 `busy`; a whole job with each model: the files on the prompt with name, `matchedBy` `generated`, model, cost, width and height, `sceneId` null, the blobs linked, the rows, the job gone; the body OpenRouter received (model id, the D5 text, `aspect_ratio`, `resolution` `1K`); 401, 402, 429, 400 with `moderation`, 500, a timeout (short test timeout), a 200 with `data: []`; a partial failure's sentence; the quota; a prompt removed during the job (its images wait in Unmatched); the project binned during the job (no write to its document); spending per project and per month, a failed row not counted, a removed file keeping its cost, a project removed for good under null; the key in no log line of a whole job
-- [ ] 3.8 Commit `feat(server): generate board images through OpenRouter`
+- [x] 3.1 `src/files/dimensions.ts`: `imageDimensions` for PNG, JPEG and WebP (D9)
+- [x] 3.2 `src/files/store.ts`: `hasRoom` (D7)
+- [x] 3.3 `src/images/openrouter.ts`: `generateImage` with the 180 s timeout, and the plain-words mapping of D10
+- [x] 3.4 `src/images/jobs.ts`: `runGenerationJob` as D9: calls in parallel, each image stored, linked, measured and added in its own `withLiveDocument` transaction with its progress, its `image_generations` row, the job finished with D10's error or deleted
+- [x] 3.5 `src/images/routes.ts`: `POST /api/projects/:id/image-prompts/:promptId/generate` with D7's checks in order; `GET /api/projects/:id/image-spending` and the GET's `spending` (D11)
+- [x] 3.6 `test/db/fake-openrouter.ts`: `/images` with distinct bytes per call, `failNext`, `setDelay` (D17)
+- [x] 3.7 Tests: `imageDimensions` (a PNG, a JPEG with an APP1 segment before SOF0, a progressive SOF2, WebP VP8, VP8L and VP8X, truncated bytes give null); each of D7's refusals in order, two concurrent generates give one 202 and one 409 `busy`; a whole job with each model: the files on the prompt with name, `matchedBy` `generated`, model, cost, width and height, `sceneId` null, the blobs linked, the rows, the job gone; the body OpenRouter received (model id, the D5 text, `aspect_ratio`, `resolution` `1K`); 401, 402, 429, 400 with `moderation`, 500, a timeout (short test timeout), a 200 with `data: []`; a partial failure's sentence; the quota; a prompt removed during the job (its images wait in Unmatched); the project binned during the job (no write to its document); spending per project and per month, a failed row not counted, a removed file keeping its cost, a project removed for good under null; the key in no log line of a whole job
+- [x] 3.8 Commit `feat(server): generate board images through OpenRouter`
 
 ## 4. Chart, compose, e2e stack, docs (brief A)
 
