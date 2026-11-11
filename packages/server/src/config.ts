@@ -38,6 +38,22 @@ const integer = (fallback: number, min: number) =>
       return number;
     });
 
+// The server key that seals each account's OpenRouter key
+// (board-image-generation design decision 1): the base64 of exactly 32
+// bytes, or nothing, which turns image generation off. The message never
+// repeats the value.
+const secretsKey = optional.transform((value, ctx) => {
+  if (value === undefined) return null;
+  const bytes = Buffer.from(value, 'base64');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value) || bytes.length !== 32 || bytes.toString('base64') !== value) {
+    ctx.addIssue({ code: 'custom', message: 'must be the base64 of 32 bytes (openssl rand -base64 32)' });
+    return z.NEVER;
+  }
+  return bytes;
+});
+
+export const OPENROUTER_DEFAULT_URL = 'https://openrouter.ai/api/v1';
+
 const databaseSchema = z.object({
   DATABASE_URL: url(['postgres:', 'postgresql:']),
 });
@@ -59,6 +75,8 @@ const schema = databaseSchema.extend({
   PROMPTBOOK_DATA_DIR: optional,
   PROMPTBOOK_FILES_QUOTA_GB: integer(20, 1),
   PROMPTBOOK_FILES_GRACE_DAYS: integer(30, 1),
+  PROMPTBOOK_SECRETS_KEY: secretsKey,
+  OPENROUTER_BASE_URL: optionalUrl(['http:', 'https:']),
 });
 
 // The three variables that turn single sign-on on.
@@ -87,6 +105,11 @@ export interface Config {
   filesQuotaGb: number;
   // How long a project keeps a file its document no longer lists.
   filesGraceDays: number;
+  // The key that seals each account's OpenRouter key; null: image
+  // generation is not configured (board-image-generation design decision 1).
+  secretsKey: Buffer | null;
+  // OpenRouter's API, without a trailing slash; tests point it at a fake.
+  openRouterBaseUrl: string;
 }
 
 export interface OidcConfig {
@@ -138,6 +161,8 @@ export function loadConfig(env: Env = process.env): Config {
     dataDir: values.PROMPTBOOK_DATA_DIR ?? './data',
     filesQuotaGb: values.PROMPTBOOK_FILES_QUOTA_GB,
     filesGraceDays: values.PROMPTBOOK_FILES_GRACE_DAYS,
+    secretsKey: values.PROMPTBOOK_SECRETS_KEY,
+    openRouterBaseUrl: (values.OPENROUTER_BASE_URL ?? OPENROUTER_DEFAULT_URL).replace(/\/+$/, ''),
   };
 }
 

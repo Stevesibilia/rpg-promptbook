@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig, loadDatabaseUrl } from '../../src/config.js';
 
+const KEY = Buffer.alloc(32, 9).toString('base64');
 const base = { DATABASE_URL: 'postgres://pb:pb@localhost:5432/promptbook', PUBLIC_URL: 'http://localhost:8090/' };
 
 describe('configuration', () => {
@@ -18,6 +19,8 @@ describe('configuration', () => {
       dataDir: './data',
       filesQuotaGb: 20,
       filesGraceDays: 30,
+      secretsKey: null,
+      openRouterBaseUrl: 'https://openrouter.ai/api/v1',
     });
   });
 
@@ -36,6 +39,8 @@ describe('configuration', () => {
         PROMPTBOOK_DATA_DIR: '/data',
         PROMPTBOOK_FILES_QUOTA_GB: '5',
         PROMPTBOOK_FILES_GRACE_DAYS: '7',
+        PROMPTBOOK_SECRETS_KEY: KEY,
+        OPENROUTER_BASE_URL: 'http://openrouter:8099/api/v1/',
       }),
     ).toEqual({
       databaseUrl: base.DATABASE_URL,
@@ -50,6 +55,8 @@ describe('configuration', () => {
       dataDir: '/data',
       filesQuotaGb: 5,
       filesGraceDays: 7,
+      secretsKey: Buffer.alloc(32, 9),
+      openRouterBaseUrl: 'http://openrouter:8099/api/v1',
     });
   });
 
@@ -71,6 +78,53 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, PROMPTBOOK_ADMIN_USERNAME: 'steve' })).toThrow(
       /PROMPTBOOK_ADMIN_USERNAME and PROMPTBOOK_ADMIN_PASSWORD must be set together/,
     );
+  });
+
+  describe('image generation (board-image-generation D16)', () => {
+    it('turns off without PROMPTBOOK_SECRETS_KEY, or with a blank one', () => {
+      expect(loadConfig(base).secretsKey).toBeNull();
+      expect(loadConfig({ ...base, PROMPTBOOK_SECRETS_KEY: '  ' }).secretsKey).toBeNull();
+    });
+
+    it('reads the base64 of 32 bytes, trimmed', () => {
+      expect(loadConfig({ ...base, PROMPTBOOK_SECRETS_KEY: ` ${KEY}\n` }).secretsKey).toEqual(Buffer.alloc(32, 9));
+    });
+
+    it('refuses any other key, naming the variable and never its value', () => {
+      for (const value of [
+        Buffer.alloc(16, 1).toString('base64'),
+        Buffer.alloc(48, 1).toString('base64'),
+        Buffer.alloc(31, 1).toString('base64'),
+        'not base64 at all, not even close!!!!!!!!!!!',
+        `${KEY.slice(0, -1)}*`,
+        KEY.replace(/=$/, ''),
+      ]) {
+        let message = '';
+        try {
+          loadConfig({ ...base, PROMPTBOOK_SECRETS_KEY: value });
+        } catch (error) {
+          message = (error as Error).message;
+        }
+        expect(message).toMatch(/PROMPTBOOK_SECRETS_KEY must be the base64 of 32 bytes/);
+        expect(message).not.toContain(value);
+      }
+    });
+
+    it('reads OPENROUTER_BASE_URL, its default, and drops a trailing slash', () => {
+      expect(loadConfig(base).openRouterBaseUrl).toBe('https://openrouter.ai/api/v1');
+      expect(loadConfig({ ...base, OPENROUTER_BASE_URL: '' }).openRouterBaseUrl).toBe('https://openrouter.ai/api/v1');
+      expect(loadConfig({ ...base, OPENROUTER_BASE_URL: 'https://openrouter.ai/api/v1/' }).openRouterBaseUrl).toBe(
+        'https://openrouter.ai/api/v1',
+      );
+      expect(loadConfig({ ...base, OPENROUTER_BASE_URL: 'http://127.0.0.1:8099/api/v1' }).openRouterBaseUrl).toBe(
+        'http://127.0.0.1:8099/api/v1',
+      );
+      for (const value of ['openrouter.ai/api/v1', 'ftp://openrouter.ai/api/v1', 'not a url']) {
+        expect(() => loadConfig({ ...base, OPENROUTER_BASE_URL: value })).toThrow(
+          /OPENROUTER_BASE_URL must be a http: or https: URL/,
+        );
+      }
+    });
   });
 
   describe('single sign-on', () => {

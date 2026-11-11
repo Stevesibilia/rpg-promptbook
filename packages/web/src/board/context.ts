@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry, ImageCategory } from 'promptbook-project';
+import type { BoardRow, FileEntry, GenerationJob, ImageCategory, ImageShape } from 'promptbook-project';
+import type { GenerateBody, SpendingTotal } from '../api.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
+import type { GenerateChoice } from './generate.js';
 import type { Named, ShownPrompt } from './summary.js';
+import type { PendingStart, Refused, StatusState } from './useGeneration.js';
 
 // Where the one new prompt is being written: a scene's stack, or the PCs,
 // NPCs or Handouts grid.
@@ -26,20 +29,44 @@ export interface BoardContextValue {
   // A file assigned by hand from the tray is marked new.
   mark(fileId: string): void;
   // The prompts (by id) and music halves (`<sceneId>/music`) with an editor
-  // open, and the prompts (`<id>/remove`) and tracks (`<sceneId>/track`)
-  // with a confirm open, kept on the board whatever the filter, so a draft
-  // or a question is never unmounted by a change of state.
+  // open, the prompts (`<id>/remove`) and tracks (`<sceneId>/track`) with a
+  // confirm open, and the prompt (`<id>/generate`) with its Generate panel,
+  // kept on the board whatever the filter, so a draft, a question or a panel
+  // is never unmounted by a change of state.
   editing: ReadonlySet<string>;
   setEditing(key: string, on: boolean): void;
   // One new prompt at a time: Add elsewhere drops an unsaved one.
   adding: Adding | null;
   setAdding(adding: Adding | null): void;
+  generation: Generation;
 }
 
-// A prompt held on the board whatever the filter: its editor or its remove
-// confirm is open.
+// Image generation on the board (board-image-generation design decision 13).
+export interface Generation {
+  // The signed-in user's id: a job's `by`.
+  user: string;
+  // Offline on the desktop: Generate is off.
+  offline: boolean;
+  status: StatusState;
+  retryStatus(): void;
+  defaults: GenerateChoice;
+  // The job each prompt shows: its running one, else its newest error.
+  jobs: ReadonlyMap<string, GenerationJob>;
+  // Starts the server took whose job has not shown yet, by prompt.
+  pending: ReadonlyMap<string, PendingStart>;
+  shapes: ReadonlyMap<string, ImageShape>;
+  start(promptId: string, body: GenerateBody): Promise<Refused | null>;
+  // «Generated here»; null to hide it.
+  spending: SpendingTotal | null;
+  // The prompt whose Generate panel is open: one at a time.
+  open: string | null;
+  setOpen(promptId: string | null): void;
+}
+
+// A prompt held on the board whatever the filter: its editor, its remove
+// confirm or its Generate panel is open.
 export const held = (editing: ReadonlySet<string>, promptId: string) =>
-  editing.has(promptId) || editing.has(`${promptId}/remove`);
+  editing.has(promptId) || editing.has(`${promptId}/remove`) || editing.has(`${promptId}/generate`);
 
 export const BoardContext = createContext<BoardContextValue | null>(null);
 

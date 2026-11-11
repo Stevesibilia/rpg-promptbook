@@ -1,10 +1,13 @@
 import { defaultTemplateRef } from 'promptbook-format';
+import type { ImageModelKey } from './images.js';
 import type { Category } from './model.js';
 
 // A user's settings: the to-do list each new project of a category starts
 // from, the document template each kind starts from (a template id, used at
-// its latest version), and the defaults written into a new document's front
-// matter.
+// its latest version), the defaults written into a new document's front
+// matter, and the defaults the Generate panel starts from
+// (board-image-generation design decision 3). Nothing secret: the desktop
+// keeps a copy on disk.
 export interface Settings {
   todoTemplates: Record<Category, string[]>;
   defaultTemplates: { adventure: string; campaign: string };
@@ -12,6 +15,7 @@ export interface Settings {
   copyright: string;
   licence: string;
   system: string;
+  imageGeneration: { model: ImageModelKey; count: 1 | 2 | 3 | 4 };
 }
 
 const adventureTodo = [
@@ -51,5 +55,6 @@ export function defaultSettings(): Settings {
     copyright: '',
     licence: '',
     system: '',
+    imageGeneration: { model: 'gpt', count: 2 },
   };
 }

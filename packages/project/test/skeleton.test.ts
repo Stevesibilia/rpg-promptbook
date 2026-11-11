@@ -231,6 +231,7 @@ describe('default settings', () => {
       licence: '',
       system: '',
       defaultTemplates: { adventure: 'avventura', campaign: 'campagna' },
+      imageGeneration: { model: 'gpt', count: 2 },
     });
   });
 

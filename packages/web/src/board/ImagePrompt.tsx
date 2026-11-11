@@ -7,6 +7,16 @@ import { promptQuestion, removePrompt, toggleImage } from './actions.js';
 import { useBoardContext } from './context.js';
 import { CopyButton } from './CopyButton.js';
 import { localTitle, useLocalFiles } from './device.js';
+import {
+  GeneratedBadge,
+  GenerateButton,
+  GeneratePanel,
+  GenerationError,
+  GenerationLine,
+  isTall,
+  ratioOf,
+} from './GeneratePanel.js';
+import { panelShape } from './generate.js';
 import { FileImage, Provenance, StatusChip } from './parts.js';
 import { ImagePromptEditor } from './PromptEditor.js';
 import { promptLabel, shapeOf, type ShownPrompt } from './summary.js';
@@ -75,18 +85,38 @@ export function RemovePrompt({ prompt }: { prompt: ShownPrompt }) {
 // A prompt's text (or its editor) and its images, in a scene's block or on a
 // PC's, an NPC's or a handout's card.
 export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
-  const { doc, toast, setEditing: hold } = useBoardContext();
+  const { doc, toast, setEditing: hold, generation: gen } = useBoardContext();
   const id = prompt.row.prompt.id;
   // The board keeps the prompt shown while its editor is open.
   const [editing, setEditingHere] = useState(false);
   const setEditing = (on: boolean) => {
     setEditingHere(on);
     hold(id, on);
+    if (on && gen.open === id) gen.setOpen(null);
   };
   useEffect(() => () => hold(id, false), [hold, id]);
   const text = useRef<HTMLDivElement>(null);
+  const generateButton = useRef<HTMLButtonElement>(null);
   const entry = prompt.row.prompt;
   const { images } = prompt.row;
+
+  // The Generate panel, held on the board like an editor.
+  const panel = gen.open === id && !editing && entry.prompt !== '';
+  useEffect(() => {
+    hold(`${id}/generate`, panel);
+  }, [hold, id, panel]);
+  useEffect(() => () => hold(`${id}/generate`, false), [hold, id]);
+
+  // A running job from the document, else a start the server just took.
+  const job = gen.jobs.get(id) ?? null;
+  const pending = gen.pending.get(id) ?? null;
+  const running =
+    job && job.finishedAt === null
+      ? job
+      : pending
+        ? { id: pending.jobId, count: pending.count, done: 0, failed: 0, model: pending.model, startedAt: pending.since }
+        : null;
+  const failed = !running && job?.error ? job : null;
 
   let box;
   if (editing) {
@@ -114,6 +144,7 @@ export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
             <EditIcon />
             Edit
           </button>
+          <GenerateButton prompt={prompt} busy={running !== null} button={generateButton} />
         </div>
       </div>
     );
@@ -131,23 +162,38 @@ export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
   }
 
   const shapes = images.map(shapeOf);
+  // The placeholders take the shape chosen here, else the prompt's own.
+  const slotShape = running ? (gen.shapes.get(running.id) ?? panelShape(entry.category, entry.prompt).shape) : null;
+  const slots = running ? Math.max(0, running.count - running.done - running.failed) : 0;
   // Portraits keep four per line on a phone.
-  const tall = shapes.length > 0 && shapes.every((s) => s.tall);
+  const tall =
+    (shapes.length > 0 || slots > 0) && shapes.every((s) => s.tall) && (slotShape === null || isTall(slotShape));
   return (
     <>
       {box}
-      {images.length > 0 ? (
+      {panel && (
+        <div className="gpop-at">
+          <GeneratePanel prompt={prompt} button={generateButton} />
+        </div>
+      )}
+      {images.length > 0 || slots > 0 ? (
         <div className={`thumbs${tall ? ' tall' : ''}`}>
           {images.map((file, i) => (
             <Thumb key={file.id} prompt={prompt} file={file} n={i + 1} ratio={shapes[i]!.ratio} />
           ))}
+          {slotShape &&
+            Array.from({ length: slots }, (_, k) => (
+              <div key={`slot-${k}`} className="slot-g" style={{ aspectRatio: ratioOf(slotShape) }} aria-hidden="true" />
+            ))}
         </div>
-      ) : entry.prompt ? (
+      ) : entry.prompt && !failed ? (
         <div className="empty-drop">
           <DropIcon className="ic" />
-          <span>No images yet. Drop Midjourney's four files anywhere on the board.</span>
+          <span>No images yet. Generate them, or drop downloaded files here.</span>
         </div>
       ) : null}
+      {running && <GenerationLine job={running} />}
+      {failed && <GenerationError job={failed} onRetry={() => gen.setOpen(id)} />}
     </>
   );
 }
@@ -189,6 +235,7 @@ function Thumb({ prompt, file, n, ratio }: { prompt: ShownPrompt; file: FileEntr
         {chosen ? '✓' : ''}
       </button>
       {marks.has(file.id) && <span className="badge new">new</span>}
+      <GeneratedBadge file={file} />
       {local.has(file.sha256) ? (
         <span className="badge dev" title={localTitle(local.get(file.sha256)!)}>
           <LaptopIcon className="ic" />

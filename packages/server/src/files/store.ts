@@ -46,6 +46,22 @@ export async function fitsQuota(
   length: number,
   quotaBytes: number,
 ): Promise<boolean> {
+  const { used, has } = await usage(db, userId, sha256);
+  if (has) return true;
+  return used + length <= quotaBytes;
+}
+
+// Whether `length` more bytes of new contents fit in the user's quota: the
+// room a generation asks for before it starts (board-image-generation design
+// decision 7), counted as fitsQuota counts.
+export async function hasRoom(db: Queryable, userId: string, length: number, quotaBytes: number): Promise<boolean> {
+  const { used } = await usage(db, userId, null);
+  return used + length <= quotaBytes;
+}
+
+// The bytes the user's projects store, each content once, and whether one of
+// them is `sha256`.
+async function usage(db: Queryable, userId: string, sha256: string | null): Promise<{ used: number; has: boolean }> {
   const row = await db.queryOne<{ used: string; has: boolean | null }>(
     `select coalesce(sum(f.size), 0) as used, bool_or(f.sha256 = $2) as has
      from files f
@@ -54,8 +70,7 @@ export async function fitsQuota(
      )`,
     [userId, sha256],
   );
-  if (row?.has) return true;
-  return Number(row?.used ?? 0) + length <= quotaBytes;
+  return { used: Number(row?.used ?? 0), has: row?.has === true };
 }
 
 export const quotaReached = () => new AppError(507, 'quota', 'Your files have reached their quota.');

@@ -39,6 +39,10 @@ services:
       PROMPTBOOK_ADMIN_PASSWORD: ${PROMPTBOOK_ADMIN_PASSWORD:-}
       # The release the rail shows; "dev" shows none.
       APP_VERSION: ${APP_VERSION:-dev}
+      # Image generation through OpenRouter: off while unset (.env.example).
+      PROMPTBOOK_SECRETS_KEY: ${PROMPTBOOK_SECRETS_KEY:-}
+      # OpenRouter's API; the end-to-end stack points it at a fake.
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
     volumes:
       # The board's images and tracks, kept across restarts and rebuilds.
       - app-data:/data

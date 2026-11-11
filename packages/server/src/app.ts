@@ -1,11 +1,13 @@
 import cors, { type FastifyCorsOptions } from '@fastify/cors';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import type { DiscoveryRequestOptions } from 'openid-client';
 import { authPlugin, isPermissiveCorsPath } from './accounts/auth.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { openBlobStore, type BlobStore } from './files/blobs.js';
+import { IMAGE_ERRORS } from './images/openrouter.js';
+import { imageRoutes, type GenerationHandle } from './images/routes.js';
 import { authRoutes } from './routes/auth.js';
 import { cuebardRoutes } from './routes/cuebard.js';
 import { filesRoutes } from './routes/files.js';
@@ -26,20 +28,39 @@ declare module 'fastify' {
     // Every route as `METHOD path`, for the test that checks each one is
     // protected or deliberately public.
     routeList: Set<string>;
+    // The image generation jobs running in this process, by job id
+    // (board-image-generation design decision 9): a test waits for one, and
+    // closing the app waits for them all, before the sync server closes.
+    generationRuns: Map<string, GenerationHandle>;
   }
 }
 
 export interface AppOptions {
   config: Config;
   db: Db;
-  logger?: boolean;
+  // true in the server; logger options with a destination stream let a test
+  // read what is logged (board-image-generation design decision 2).
+  logger?: FastifyServerOptions['logger'];
   // The file store; opened at config.dataDir when not given.
   blobs?: BlobStore;
   // Only for the tests' plain-http issuer; the server never sets it.
   oidcDiscoveryOptions?: DiscoveryRequestOptions;
+  // Only for the tests: each OpenRouter image call's timeout, 180 s otherwise.
+  generationTimeoutMs?: number;
+  // Only for the tests: how long closing waits for running jobs before it
+  // stops them, 20 s otherwise.
+  generationCloseWaitMs?: number;
 }
 
-export async function buildApp({ config, db, logger = false, blobs, oidcDiscoveryOptions }: AppOptions): Promise<FastifyInstance> {
+export async function buildApp({
+  config,
+  db,
+  logger = false,
+  blobs,
+  oidcDiscoveryOptions,
+  generationTimeoutMs,
+  generationCloseWaitMs = 20_000,
+}: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
     // Trust X-Forwarded-* from that many proxies in front, none by default.
@@ -74,6 +95,22 @@ export async function buildApp({ config, db, logger = false, blobs, oidcDiscover
       done(null, isPermissiveCorsPath(req.url.split('?')[0]!) ? anonymous : { origin: false }),
   });
   await app.register(authPlugin, { config, db });
+  // Before the sync plugin's own preClose, which closes the documents the
+  // jobs still write to.
+  // Running jobs get a while to land their images, within Kubernetes' 30 s
+  // grace period; then their calls stop and each job ends with a sentence,
+  // so none is left running for 15 minutes.
+  app.decorate('generationRuns', new Map<string, GenerationHandle>());
+  app.addHook('preClose', async () => {
+    const runs = () => [...app.generationRuns.values()];
+    if (runs().length === 0) return;
+    let timer: NodeJS.Timeout | undefined;
+    const waited = new Promise<void>((resolve) => (timer = setTimeout(resolve, generationCloseWaitMs)));
+    await Promise.race([Promise.allSettled(runs().map((r) => r.done)), waited]);
+    clearTimeout(timer);
+    for (const run of runs()) run.stop(IMAGE_ERRORS.restarted);
+    await Promise.allSettled(runs().map((r) => r.done));
+  });
   await app.register(syncPlugin, { config, db });
   await app.register(healthRoutes, { db, config });
   await app.register(authRoutes, { config, db, sync: app.sync });
@@ -88,6 +125,14 @@ export async function buildApp({ config, db, logger = false, blobs, oidcDiscover
   await app.register(cuebardRoutes, { db, sync: app.sync, blobs: store });
   await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(filesRoutes, { config, db, blobs: store });
+  await app.register(imageRoutes, {
+    config,
+    db,
+    sync: app.sync,
+    blobs: store,
+    runs: app.generationRuns,
+    timeoutMs: generationTimeoutMs,
+  });
   await app.register(oauthRoutes, { config, db, sync: app.sync });
   await app.register(mcpRoutes, { config, db, sync: app.sync });
   await app.register(webPlugin, { config });

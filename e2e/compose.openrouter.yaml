@@ -1,0 +1,32 @@
+# Added to compose.yaml by the end-to-end tests (e2e/stack.ts) and the
+# owner's preview: a fake OpenRouter the app generates images with, so no test
+# calls the real one. It runs the app's image; the fake's files are mounted,
+# not built in. The app needs PROMPTBOOK_SECRETS_KEY and
+# OPENROUTER_BASE_URL=http://openrouter:${FAKE_OPENROUTER_PORT}/api/v1.
+# Paths are relative to compose.yaml's folder.
+
+services:
+  openrouter:
+    build: .
+    command: ["node", "/app/openrouter/serve.mjs"]
+    environment:
+      FAKE_OPENROUTER_PORT: ${FAKE_OPENROUTER_PORT:-8099}
+      FAKE_OPENROUTER_DELAY_MS: ${FAKE_OPENROUTER_DELAY_MS:-0}
+    volumes:
+      - ./e2e/openrouter/serve.mjs:/app/openrouter/serve.mjs:ro
+      - ./packages/server/test/db/fake-openrouter.ts:/app/openrouter/fake-openrouter.ts:ro
+    healthcheck:
+      # No key: the fake answers 401, which is enough to know it is up.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:${FAKE_OPENROUTER_PORT:-8099}/api/v1/key').then((r) => process.exit(r.status === 401 ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    depends_on:
+      openrouter:
+        condition: service_healthy

@@ -33,6 +33,10 @@ export function tempDataDir(): string {
   return dir;
 }
 
+// A fixed server key for the tests' sealed OpenRouter keys. The base URL
+// points nowhere until a test starts the fake (fake-openrouter.ts).
+export const TEST_SECRETS_KEY = Buffer.alloc(32, 7);
+
 export function testConfig(overrides: Partial<Config> = {}): Config {
   return {
     databaseUrl: testDatabaseUrl(),
@@ -47,15 +51,25 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     dataDir: overrides.dataDir ?? tempDataDir(),
     filesQuotaGb: 20,
     filesGraceDays: 30,
+    secretsKey: TEST_SECRETS_KEY,
+    openRouterBaseUrl: 'http://127.0.0.1:9/api/v1',
     ...overrides,
   };
 }
 
 const open: FastifyInstance[] = [];
 
+// Every line an app logs, at every level, for the tests that check what the
+// log never holds (board-image-generation design decision 2).
+export function capturedLog(): { logger: AppOptions['logger']; text(): string } {
+  const lines: string[] = [];
+  const stream = { write: (line: string) => void lines.push(line) };
+  return { logger: { level: 'trace', stream }, text: () => lines.join('') };
+}
+
 export async function startApp(
   overrides: Partial<Config> = {},
-  options: Pick<AppOptions, 'oidcDiscoveryOptions'> = {},
+  options: Pick<AppOptions, 'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs'> = {},
 ): Promise<FastifyInstance> {
   const app = await buildApp({ config: testConfig(overrides), db, ...options });
   open.push(app);

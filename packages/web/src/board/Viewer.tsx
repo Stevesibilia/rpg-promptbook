@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FileEntry, MatchedBy } from 'promptbook-project';
 import { snapshotTime } from '../dates.js';
@@ -8,6 +8,7 @@ import { ActionSelect } from './ActionSelect.js';
 import { imageQuestion, moveImage, REMOVE_NOTE, removeFromBoard, toggleImage } from './actions.js';
 import { useBoardContext } from './context.js';
 import { useLocalFiles } from './device.js';
+import { generatedRows } from './generate.js';
 import { FileImage } from './parts.js';
 import { fileSize, promptGroups, promptLabel, sceneLabel, shapeOf, tabLabel } from './summary.js';
 
@@ -15,6 +16,7 @@ const matchedLabels: Record<MatchedBy, string> = {
   prompt: "the prompt's first words",
   title: 'the track title',
   hand: 'you, by hand',
+  generated: 'Generated',
 };
 
 // «PNG», «JPEG», «WEBP».
@@ -87,6 +89,8 @@ export function Viewer({
   );
   const question = imageQuestion(prompt, file);
   const shape = shapeOf(file);
+  // A generated file: Source, Model and Cost in place of «Matched by».
+  const generated = generatedRows(file);
   // «S3 · L'ordine di Donato», «NPCs · Dottor Salvi».
   const header = prompt.scene ? sceneLabel(prompt.scene) : tabLabel(prompt);
 
@@ -137,8 +141,19 @@ export function Viewer({
                 </dd>
               </>
             ) : null}
-            <dt>Matched by</dt>
-            <dd>{file.matchedBy ? matchedLabels[file.matchedBy] : '—'}</dd>
+            {generated ? (
+              generated.map((row) => (
+                <Fragment key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </Fragment>
+              ))
+            ) : (
+              <>
+                <dt>Matched by</dt>
+                <dd>{file.matchedBy ? matchedLabels[file.matchedBy] : '—'}</dd>
+              </>
+            )}
             <dt>Added</dt>
             <dd>
               {snapshotTime(file.addedAt)}

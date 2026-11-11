@@ -24,6 +24,7 @@ export {
   removeFile,
   removeImagePrompt,
   setFirstScenePrompt,
+  setFileThumb,
   setMusicPrompt,
   unmatchedFiles,
   updateImagePrompt,
@@ -45,6 +46,30 @@ export {
   type PromptRow,
   type UnmatchedFile,
 } from './board.js';
+export {
+  dismissGenerationError,
+  finishGenerationJob,
+  GenerationBusy,
+  readGenerationJobs,
+  recordGenerationProgress,
+  STALE_GENERATION_MS,
+  startGenerationJob,
+  type GenerationJob,
+  type GenerationStart,
+} from './generation.js';
+export {
+  defaultShape,
+  IMAGE_MODELS,
+  IMAGE_SHAPES,
+  imageModelKeys,
+  isImageModelKey,
+  isImageShape,
+  sentPrompt,
+  type ImageModelKey,
+  type ImageShape,
+  type SentPrompt,
+  type ShapeSource,
+} from './images.js';
 export { migratedView, migrateImagePrompts, needsImageMigration } from './board-migration.js';
 export {
   CUEBARD_FOLDERS,

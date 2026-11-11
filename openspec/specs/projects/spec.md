@@ -156,13 +156,17 @@ unknown or of the wrong kind SHALL be refused at creation with
 
 ### Requirement: Settings
 
-Each user SHALL have settings holding one to-do template per category and the
-defaults for author, copyright, licence and system. A new user's settings
-SHALL start from built-in defaults: for adventures and one-shots «Scrivere le
-scene», «Schede dei PNG», «Prompt Midjourney», «Immagini scelte», «Prompt
-Suno», «Brani scelti», «PDF per il tavolo», «Export CueBard», «Rilettura»; for
-campaigns «Fronti e minacce», «PNG ricorrenti», «Mappa», «Fili aperti dopo
-ogni sessione», «Rileggere le note prima di giocare».
+Each user SHALL have settings holding one to-do template per category, the
+defaults for author, copyright, licence and system, and the defaults for
+Generate: a model (GPT Image 2.6 or Nano Banana 2.1) and a number of images
+from 1 to 4. A new user's settings SHALL start from built-in defaults: for
+adventures and one-shots «Scrivere le scene», «Schede dei PNG», «Prompt
+Midjourney», «Immagini scelte», «Prompt Suno», «Brani scelti», «PDF per il
+tavolo», «Export CueBard», «Rilettura»; for campaigns «Fronti e minacce»,
+«PNG ricorrenti», «Mappa», «Fili aperti dopo ogni sessione», «Rileggere le
+note prima di giocare»; for Generate GPT Image 2.6 and 2 images. Settings
+saved by a client that does not know the defaults for Generate SHALL keep the
+stored ones. The settings SHALL hold no secret.
 
 #### Scenario: Defaults copied into front matter
 
@@ -170,6 +174,17 @@ ogni sessione», «Rileggere le note prima di giocare».
   `CC-BY-NC-SA-4.0` and a one-shot is created
 - **THEN** its front matter has `autore: Stefano Sibilia` and
   `licenza: CC-BY-NC-SA-4.0`
+
+#### Scenario: Defaults for Generate
+
+- **WHEN** a new user opens Generate for the first time
+- **THEN** the panel shows GPT Image 2.6 and 2 images
+
+#### Scenario: Older client saves
+
+- **WHEN** the user's defaults for Generate are Nano Banana 2.1 and 4 images
+  and a desktop app from before this change saves the settings
+- **THEN** the defaults for Generate stay Nano Banana 2.1 and 4 images
 
 ### Requirement: Project summary for the list
 
@@ -232,10 +247,10 @@ open, change, export and delete only their own projects.
 
 ### Requirement: Link to a gdrarchive campaign
 
-Any project MAY hold one link to a campaign in gdrarchive: an address and an
-optional label. The link SHALL be stored in the project's metadata, so it
-syncs like the title, and SHALL be set or removed as a whole. Promptbook
-SHALL NOT call gdrarchive.
+A project SHALL hold at most one link to a campaign in gdrarchive: an
+address and an optional label. The link SHALL be stored in the project's
+metadata, so it syncs like the title, and SHALL be set or removed as a whole.
+Promptbook SHALL NOT call gdrarchive.
 
 #### Scenario: Link on every device
 
@@ -271,10 +286,11 @@ these rules SHALL read as no link.
 
 ### Requirement: Inherited gdrarchive link
 
-An adventure or a one-shot with no link of its own, inside a campaign of the
-user that is not in the bin, SHALL show its campaign's link, marked as coming
-from that campaign. A link of its own SHALL win. A campaign SHALL NOT
-inherit, and nothing SHALL inherit from a stand-alone project.
+An adventure or a one-shot with no link of its own SHALL show its
+campaign's link when it is inside a campaign of the user that is not in the
+bin, marked as coming from that campaign. A link of its own SHALL win. A
+campaign SHALL NOT inherit, and nothing SHALL inherit from a stand-alone
+project.
 
 #### Scenario: Adventure inherits
 

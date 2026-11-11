@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { categories, defaultSettings, type Settings } from 'promptbook-project';
+import { categories, defaultSettings, imageModelKeys, type Settings } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db, Queryable } from '../db.js';
@@ -27,6 +27,15 @@ export const settingsSchema = z
     copyright: text,
     licence: text,
     system: text,
+    // The defaults the Generate panel starts from (board-image-generation
+    // design decision 3); optional, as defaultTemplates, for older clients.
+    imageGeneration: z
+      .object({
+        model: z.enum(imageModelKeys),
+        count: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+      })
+      .strict()
+      .default(() => defaultSettings().imageGeneration),
   })
   .strict() satisfies z.ZodType<Settings>;
 
@@ -51,6 +60,10 @@ export async function settingsRoutes(app: FastifyInstance, { db }: { db: Db }) {
     // stored ones stay rather than going back to the built-ins.
     if ((req.body as { defaultTemplates?: unknown } | null)?.defaultTemplates === undefined) {
       settings.defaultTemplates = (await getSettings(db, user.id)).defaultTemplates;
+    }
+    // Likewise a client from before image generation sends no defaults for it.
+    if ((req.body as { imageGeneration?: unknown } | null)?.imageGeneration === undefined) {
+      settings.imageGeneration = (await getSettings(db, user.id)).imageGeneration;
     }
     await db.query(
       `insert into user_settings (user_id, settings) values ($1, $2)

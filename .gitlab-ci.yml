@@ -61,7 +61,7 @@ prepare-secrets:
   script:
     - |
       missing=""
-      for var in PB_REGISTRY_USER PB_REGISTRY_PASSWORD; do
+      for var in PB_REGISTRY_USER PB_REGISTRY_PASSWORD PB_SECRETS_KEY; do
         eval "value=\${$var:-}"
         [ -n "$value" ] || missing="$missing $var"
       done
@@ -87,6 +87,23 @@ prepare-secrets:
         --docker-server=registry.siberio.eu \
         --docker-username="$PB_REGISTRY_USER" \
         --docker-password="$PB_REGISTRY_PASSWORD" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    # The key that seals each account's OpenRouter key (openspec change
+    # board-image-generation, D1 and D16): the base64 of exactly 32 bytes. The
+    # server refuses to start with any other value, so check it here, where
+    # the message is easier to find. Changing the variable rotates the key:
+    # every saved OpenRouter key then has to be saved again.
+    - |
+      length=$(printf '%s' "$PB_SECRETS_KEY" | base64 -d 2>/dev/null | wc -c | tr -d ' ')
+      if [ "$length" != "32" ]; then
+        echo "PB_SECRETS_KEY must be the base64 of 32 bytes (openssl rand -base64 32)."
+        exit 1
+      fi
+    - |
+      kubectl create secret generic rpg-promptbook-secrets \
+        --namespace "$KUBE_NAMESPACE" \
+        --from-literal=secrets-key="$PB_SECRETS_KEY" \
         --dry-run=client -o yaml | kubectl apply -f -
 
 # `helm-deploy` comes from the helmdeploy component included above. It runs on

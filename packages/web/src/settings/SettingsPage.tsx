@@ -5,6 +5,7 @@ import { api, ApiError, exportAllName, exportAllUrl } from '../api.js';
 import { providerName, useAuthConfig } from '../auth/config.js';
 import { useAuth } from '../auth/context.js';
 import { ConnectedApps } from '../connect/ConnectedApps.js';
+import { noteSettings } from '../board/useGeneration.js';
 import { NeedsServer, NeedsServerGroup } from '../desktop/NeedsServer.js';
 import { ThisDevice } from '../desktop/ThisDevice.js';
 import { useOffline } from '../desktop/useDevice.js';
@@ -20,6 +21,7 @@ const TemplateEditor = lazy(() =>
 );
 import { saveTheme, storedTheme, type Theme } from '../theme.js';
 import { DownloadLink } from '../ui/DownloadLink.js';
+import { ImageGenerationSection } from './ImageGeneration.js';
 import { createSettingsSaver, type SaverState, type SettingsSaver } from './saver.js';
 import './settings.css';
 
@@ -29,6 +31,7 @@ const webSections = [
   { key: 'author', label: 'Author and licence' },
   { key: 'account', label: 'Account' },
   { key: 'apps', label: 'Connected apps' },
+  { key: 'image-generation', label: 'Image generation' },
   { key: 'sync', label: 'Sync and storage' },
   { key: 'appearance', label: 'Appearance' },
 ] as const;
@@ -38,7 +41,7 @@ type Section = (typeof webSections)[number]['key'] | 'device';
 // design decision 13); the browser's sections are unchanged.
 const sections: readonly { key: Section; label: string; tag?: string }[] =
   platform.kind === 'desktop'
-    ? [...webSections.slice(0, 6), { key: 'device', label: 'This device', tag: 'desktop' }, ...webSections.slice(6)]
+    ? [...webSections.slice(0, 7), { key: 'device', label: 'This device', tag: 'desktop' }, ...webSections.slice(7)]
     : webSections;
 
 export function SettingsPage() {
@@ -65,6 +68,11 @@ export function SettingsPage() {
 
   const settings = state?.settings ?? null;
   const save = (next: Settings) => saver.current?.save(next);
+  // The board's Generate panel starts from the defaults as saved here.
+  const { user } = useAuth();
+  useEffect(() => {
+    if (settings) noteSettings(user.id, settings);
+  }, [user.id, settings]);
 
   const saveNote = state?.error ? (
     <span className="err-inline">{state.error}</span>
@@ -110,6 +118,7 @@ export function SettingsPage() {
             )}
             {section === 'account' && <Account />}
             {section === 'apps' && <ConnectedApps />}
+            {section === 'image-generation' && <ImageGenerationSection settings={settings} onSave={save} />}
             {section === 'sync' && <SyncStorage />}
             {section === 'device' && <ThisDevice />}
             {section === 'appearance' && <Appearance />}

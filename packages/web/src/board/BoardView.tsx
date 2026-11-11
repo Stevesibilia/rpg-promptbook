@@ -1,24 +1,36 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { adventureTemplateOf, appendixEdit, namedCategories, readMeta, type BoardRow, type ProjectMeta } from 'promptbook-project';
+import {
+  adventureTemplateOf,
+  appendixEdit,
+  namedCategories,
+  readFiles,
+  readMeta,
+  type BoardRow,
+  type ProjectMeta,
+} from 'promptbook-project';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import { ProjectShell } from '../project/ProjectShell.js';
 import { projectPath } from '../project/top.js';
 import { CuebardDialog } from '../export/CuebardDialog.js';
-import { BoardIcon, CheckIcon, ExportIcon, HelpIcon, ImportIcon, LaptopIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
+import { BoardIcon, CheckIcon, ExportIcon, HelpIcon, ImportIcon, PlusIcon, UpIcon, WarningIcon } from '../ui/icons.js';
 import { useToast } from '../ui/Toast.js';
+import { useAuth } from '../auth/context.js';
 import { useOffline } from '../desktop/useDevice.js';
 import { useTemplates } from '../templates/TemplatesContext.js';
 import { ClaudeCard } from './ClaudeCard.js';
-import { localLine, useLocalFiles } from './device.js';
+import { useLocalFiles } from './device.js';
 import { CategoryTabs } from './CategoryTabs.js';
+import { useThumbBackfill } from './backfill.js';
 import { BoardContext, held, usePlayer, type Adding, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
+import { doneToast, jobFiles, jobsByPrompt, toastLabel } from './generate.js';
+import { GeneratedHere } from './GeneratePanel.js';
 import { progressLine, resultLine, type IntakeState, type ResultPlace } from './intake.js';
 import { MatchHelp } from './MatchHelp.js';
 import { NamedGrid, NamedSummary } from './NamedGrid.js';
-import { Counts, SummaryLine } from './parts.js';
+import { Counts, OfflineNotice, SummaryLine } from './parts.js';
 import { SceneRow } from './SceneRow.js';
 import {
   categoryOf,
@@ -33,6 +45,16 @@ import {
 } from './summary.js';
 import { Tray } from './Tray.js';
 import { useBoard } from './useBoard.js';
+import {
+  loadDefaults,
+  useArrivals,
+  useGenerate,
+  useGenerateDefaults,
+  useGenerationJobs,
+  useGenerationStatus,
+  useJobEndings,
+  useProjectSpending,
+} from './useGeneration.js';
 import { useIntake } from './useIntake.js';
 import { Viewer } from './Viewer.js';
 import './board.css';
@@ -59,6 +81,47 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const picker = useRef<HTMLInputElement>(null);
   // The row a result line's link scrolls to once its tab shows.
   const scrollTo = useRef<string | null>(null);
+
+  // Image generation (board-image-generation design decision 13).
+  const user = useAuth().user.id;
+  const offline = useOffline();
+  const { status: generationStatus, retry: retryStatus } = useGenerationStatus(user, offline);
+  const defaults = useGenerateDefaults(user);
+  const jobList = useGenerationJobs(doc);
+  const jobs = useMemo(() => jobsByPrompt(jobList), [jobList]);
+  const { pending, shapes, start } = useGenerate(id, jobList);
+  const [spendVersion, setSpendVersion] = useState(0);
+  const spending = useProjectSpending(id, spendVersion, offline);
+  const [generateOpen, setGenerateOpen] = useState<string | null>(null);
+  // Offline, the panel goes with Generate (D15); so it does when its prompt
+  // goes or loses its text elsewhere, and does not come back by itself.
+  useEffect(() => {
+    if (generateOpen === null) return;
+    const prompt = shown.get(generateOpen);
+    if (offline || !prompt || prompt.row.prompt.prompt === '') setGenerateOpen(null);
+  }, [offline, generateOpen, shown]);
+  // The panel asks again what could not be read.
+  const retryGeneration = useCallback(() => {
+    retryStatus();
+    loadDefaults(user);
+  }, [retryStatus, user]);
+  // A job that ended: the total again; for one of this user's that ended
+  // without an error, a toast with its images and their cost.
+  useJobEndings(jobList, (ended) => {
+    setSpendVersion((v) => v + 1);
+    const files = readFiles(doc);
+    for (const { job, error } of ended) {
+      if (error !== null || job.by !== user) continue;
+      // Every image there: a job seen gone that in fact failed in part (its
+      // error missed while away, then dismissed elsewhere) is no success.
+      const arrived = jobFiles(files, job);
+      const prompt = shown.get(job.promptId);
+      const said = prompt && arrived.length >= job.count && doneToast(toastLabel(prompt), arrived);
+      if (said) showToast(said);
+    }
+  });
+  useArrivals(board.files, (fileId) => intake.mark(fileId));
+  useThumbBackfill(id, doc, board.files);
 
   const loaded = parsed !== null;
   const hasRows = loaded && rows.length > 0;
@@ -136,6 +199,20 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     setEditing,
     adding,
     setAdding,
+    generation: {
+      user,
+      offline,
+      status: generationStatus,
+      retryStatus: retryGeneration,
+      defaults,
+      jobs,
+      pending,
+      shapes,
+      start,
+      spending,
+      open: generateOpen,
+      setOpen: setGenerateOpen,
+    },
   };
 
   const prompts = shown.size;
@@ -272,7 +349,13 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
 function ScenesSummary({ rows, filter, setFilter }: { rows: BoardRow[]; filter: Filter; setFilter(f: Filter): void }) {
   const sum = summarizeScenes(rows);
   return (
-    <SummaryLine counts={rowFilterCounts(rows)} filter={filter} setFilter={setFilter} label="Filter the rows">
+    <SummaryLine
+      counts={rowFilterCounts(rows)}
+      filter={filter}
+      setFilter={setFilter}
+      label="Filter the rows"
+      end={<GeneratedHere />}
+    >
       <b>{sum.scenes}</b> {sum.scenes === 1 ? 'scene' : 'scenes'}
       <span className="sep">·</span>
       {sum.prompts} {sum.prompts === 1 ? 'image prompt' : 'image prompts'}: <Counts counts={sum.images} />
@@ -281,20 +364,14 @@ function ScenesSummary({ rows, filter, setFilter }: { rows: BoardRow[]; filter: 
   );
 }
 
-// Screen 8: offline on the desktop, the files added here wait to upload.
+// Offline on the desktop: screen 8 of the board, the files added here wait
+// to upload; with none waiting, screen 9 of image generation, Generate comes
+// back online.
 function OfflineLine({ projectId }: { projectId: string }) {
   const offline = useOffline();
   const local = useLocalFiles(projectId);
   const waiting = [...local.values()].filter((refused) => refused === null).length;
-  if (!offline || waiting === 0) return null;
-  return (
-    <div className="info local" role="status">
-      <LaptopIcon className="ic" />
-      <span>
-        <b>{localLine(waiting)}</b> Choosing and editing prompts work offline; they sync too.
-      </span>
-    </div>
-  );
+  return <OfflineNotice offline={offline} waiting={waiting} />;
 }
 
 // The progress of a batch, then its result; the files that could not be

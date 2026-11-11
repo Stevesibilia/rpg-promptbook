@@ -93,6 +93,18 @@ import { isTemplateRef, readTemplateRef, templateKindOf } from './template.js';
 //          document template the project was made with. Missing or malformed
 //          reads as its category's built-in, avventura@1 or campagna@1.
 //
+// and, from the board-image-generation change (its design decisions 8 and 9),
+// read and written by generation.ts and board.ts:
+//   files  two more fields, on a generated image only: generatedModel
+//          (gpt|nb) and cost (dollars, as OpenRouter reported them); absent
+//          on every other file. matchedBy gains "generated".
+//   generationJobs  Y.Map, key the job id, plain JSON values set whole:
+//            { id, promptId, model, count, done, failed, startedAt, by,
+//              error, finishedAt }
+//          Written by the server while it generates; a job with an error
+//          stays until dismissed. A job not finished 15 minutes after it
+//          started is stale: readers leave it out, the next writer removes it.
+//
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
 // moved item. Changing one key merges like any other field.

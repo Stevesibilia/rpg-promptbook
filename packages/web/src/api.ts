@@ -1,4 +1,12 @@
-import { exportFolderName, type Category, type ProjectRow, type Settings, type Status } from 'promptbook-project';
+import {
+  exportFolderName,
+  type Category,
+  type ImageModelKey,
+  type ImageShape,
+  type ProjectRow,
+  type Settings,
+  type Status,
+} from 'promptbook-project';
 import type { ConvertReport, Template, TemplateRef } from 'promptbook-format';
 import { platform } from './platform/index.js';
 
@@ -119,6 +127,41 @@ export interface Grant {
   last_used_at: string | null;
 }
 
+// Image generation through OpenRouter (board-image-generation design
+// decisions 2, 7 and 11). The key itself never comes back from the server:
+// only its last four characters.
+export interface ImageGenerationStatus {
+  configured: boolean;
+  key: {
+    hint: string;
+    checkedAt: string;
+    // Fresh from OpenRouter with ?check=1; null otherwise, or with no limit.
+    limitRemaining: number | null;
+  } | null;
+  // Why the key is missing or not working, when that is known.
+  error?: 'key_unreadable' | 'key_rejected' | 'openrouter_unreachable';
+  spending: Spending;
+}
+
+export interface SpendingTotal {
+  images: number;
+  cost: number;
+}
+
+export interface Spending {
+  month: SpendingTotal;
+  all: SpendingTotal;
+  // This calendar month (UTC), one entry per project with a row this month;
+  // projectId and title null for the projects removed for good.
+  projects: { projectId: string | null; title: string | null; images: number; cost: number }[];
+}
+
+export interface GenerateBody {
+  model: ImageModelKey;
+  count: 1 | 2 | 3 | 4;
+  shape: ImageShape;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -220,6 +263,23 @@ export const api = {
     request<{ redirect_to: string }>('POST', '/api/oauth/authorize/deny', params),
   grants: () => request<{ grants: Grant[] }>('GET', '/api/auth/grants'),
   revokeGrant: (id: string) => request<void>('DELETE', `/api/auth/grants/${encodeURIComponent(id)}`),
+  // Plain, the server makes no call to OpenRouter; `check` asks it to check
+  // the saved key and answer the credit left (design decision 2).
+  imageGeneration: (check = false) =>
+    request<ImageGenerationStatus>('GET', check ? '/api/image-generation?check=1' : '/api/image-generation'),
+  // 400 key_rejected, 502 openrouter_unreachable: nothing was stored.
+  saveOpenRouterKey: (key: string) => request<ImageGenerationStatus>('PUT', '/api/image-generation/key', { key }),
+  removeOpenRouterKey: () => request<void>('DELETE', '/api/image-generation/key'),
+  // 202 with the job's id; the job itself shows in the project document.
+  generate: (projectId: string, promptId: string, body: GenerateBody) =>
+    request<{ jobId: string }>(
+      'POST',
+      `/api/projects/${encodeURIComponent(projectId)}/image-prompts/${encodeURIComponent(promptId)}/generate`,
+      body,
+    ),
+  imageSpending: (projectId: string) =>
+    request<SpendingTotal>('GET', `/api/projects/${encodeURIComponent(projectId)}/image-spending`),
+
   // The connector's address, as the server names it from PUBLIC_URL.
   mcpResource: () => request<{ resource: string }>('GET', '/.well-known/oauth-protected-resource'),
 };

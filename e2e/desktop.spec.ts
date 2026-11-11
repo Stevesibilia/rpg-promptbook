@@ -23,6 +23,8 @@ import { baseURL, compose, password, username } from './stack.js';
 // and saved where the stubbed save dialog says (cuebard-export design
 // decision 19); on Linux with no keyring, signed out too, which
 // PROMPTBOOK_E2E_NO_KEYRING=1 brings about on any system.
+// Offline, Generate and Settings → Image generation wait for the server
+// (board-image-generation design decision 15).
 // Runs the unpackaged app from packages/desktop/dist; in CI under xvfb-run.
 
 const desktop = fileURLToPath(new URL('../packages/desktop/', import.meta.url));
@@ -216,6 +218,16 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await page.getByLabel('Midjourney prompt for S1 · prompt 1').fill(PROMPT);
   await s1.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.locator('.toast')).toHaveText('Added S1 · prompt 1. Copy it into Midjourney.');
+  // Generate needs the server (board-image-generation design decision 15).
+  const generate = s1.getByRole('button', { name: 'Generate', exact: true });
+  await expect(generate).toBeDisabled();
+  await expect(generate).toHaveAttribute(
+    'title',
+    'Generating needs the server. It comes back when this computer is online.',
+  );
+  await expect(page.locator('.info.local')).toHaveText(
+    'Offline. Choosing, editing and dropping files still work. Generate comes back when this computer is online.',
+  );
   await page.locator('.board input[type=file]').setInputFiles(offlineImages);
   await expect(page.locator('.info.good')).toContainText('2 files added: 2 matched, 0 to assign.', { timeout: 30_000 });
   await expect(s1.locator('.th-i .badge.dev')).toHaveCount(2);
@@ -233,6 +245,11 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.locator('.toast')).toHaveText('Added NPC · Zu Peppe. Copy it into Midjourney.');
   await expect(page.locator('[role=tabpanel]:not([hidden]) .ent .enm')).toHaveText(['Zu Peppe']);
+  // Settings → Image generation waits for the server.
+  await page.goto('promptbook://app/settings/image-generation');
+  await expect(page.locator('.imggen .needs-card')).toHaveText(
+    'Image generation is kept on the server. Connect this computer to change it.',
+  );
 
   // Quit and start again, still offline.
   await app.close();
