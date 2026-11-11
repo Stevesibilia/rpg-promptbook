@@ -71,7 +71,7 @@ OpenRouter: every test and preview of the implementer runs against the fake
 - [x] 6.1 `api.ts`: `imageGeneration()`, `saveOpenRouterKey(key)`, `removeOpenRouterKey()`, `generate(projectId, promptId, body)`, `imageSpending(projectId)`; their types
 - [x] 6.2 Hooks: the generation status (fetched once per page, refreshed after a key change); the project's spending (refreshed when a job ends); the prompt's jobs from `readGenerationJobs` on the document; the toast rule of «The approved screens» (a job of this user gone without an error)
 - [x] 6.3 Thumbnail backfill (D12): one file at a time, once per file per page, through `probe`, `platform.putFile` and `setFileThumb`
-- [x] 6.4 Tests (pure logic): the panel's state from the defaults and the session's last choice; the shape hint for each source; the price line («About $0.08 · 1K»); the badge and viewer texts (two and three decimals, cost unknown); the progress line; the toast text and cost sum; the error line with and without «Nothing was charged.»; the backfill's choice of files
+- [x] 6.4 Tests (pure logic): the panel's state from the defaults and the session's last choice; the shape hint for each source; the price line («About $0.08 · 1K»); the badge and viewer texts (two and three decimals, cost unknown); the progress line; the toast text and cost sum; the error line shows `job.error` verbatim; the backfill's choice of files
 - [x] 6.5 Commit `feat(web): image generation data for the board`
 
 ## 7. Web: Generate on the board (brief B)

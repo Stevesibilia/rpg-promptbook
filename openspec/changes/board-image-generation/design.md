@@ -834,3 +834,45 @@ Each is a situation to recognise; report it, do not work around it.
 - **Q5.** This change sets `app.secretsKey.secret: rpg-promptbook-secrets` in
   `values-homelab.yaml`; the architect creates the Secret before the merge
   (D16).
+
+## Departures accepted at review (brief B)
+
+- The Generate panel waits for the 202 before it closes: busy and
+  too_many_jobs keep it open with the message under its footer, and progress
+  shows from the 202 until the job is in the document (at most 20 s).
+- Every refusal shows under the panel's footer; no_key and not_configured
+  also read the status again, so the panel turns into the no-key or the
+  not-configured panel.
+- The panel hangs under the prompt box in scene rows, but takes its place in
+  the flow in PC, NPC and handout cards and under 760 px: a card's overflow
+  is hidden and would clip it.
+- Placeholders take the shape chosen on the device that started the job;
+  other devices use the prompt's default shape, as `GenerationJob` holds no
+  shape.
+- The success toast is skipped when its prompt is no longer on the board,
+  and needs every image of the job, so a partial failure missed while away
+  is never toasted as a success.
+- The thumbnail backfill fills every image with a null thumbnail, not only
+  generated ones; bytes not on the desktop yet are tried again after the next
+  download, an unreadable image never again on that page, and a file in hand
+  when the board goes is tried by the next board shown.
+- Words for the refusals D7 names none for: busy «Images are already being
+  generated for this prompt.», prompt_not_found «This prompt is no longer on
+  the board.», prompt_empty «This prompt has no text to send.», quota «Your
+  files have reached their quota.»; offline on the desktop D15's title;
+  anything else the server's message.
+- The key card has Cancel next to «Save and check» while replacing, and
+  «Checking…» on the button while saving; the key input is not in a form and
+  asks password managers to leave it alone, so none offers to keep the key.
+- The spending table is hidden when no project has a row this month.
+- While the status loads the panel says «Loading…»; when it could not be
+  read, the full panel shows and the server's refusal says what is missing.
+- Esc closes the panel; it opens with the focus on its Generate and gives it
+  back to the prompt's Generate when it closes.
+- «Generated here» sits at the summary line's right end, after the filters,
+  on Scenes and on the PC, NPC and handout tabs.
+- Offline on the desktop, «Try again» is disabled too and an open panel
+  closes.
+- Group 9's tests render the offline states with the offline flag the board
+  takes from `useOffline`: `useSyncExternalStore` has no server snapshot
+  under `renderToStaticMarkup`.
