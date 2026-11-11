@@ -50,6 +50,9 @@ Done once, before the first tag.
    `read_registry`. The cluster uses it to pull the image.
 4. **CI/CD variables.** Add these as masked and protected variables:
    - `PB_REGISTRY_USER` and `PB_REGISTRY_PASSWORD`: the deploy token.
+   - `PB_SECRETS_KEY`: the key that seals each account's OpenRouter key,
+     made with `openssl rand -base64 32`; masked and hidden (see Image
+     generation).
 
    Since `v0.2.0` the pipeline no longer reads `PB_ADMIN_USERNAME` and
    `PB_ADMIN_PASSWORD`, nor writes the Secret `rpg-promptbook-credentials`:
@@ -86,8 +89,9 @@ workflows fail: nothing reaches GitLab and no installer is built.
 The GitLab pipeline for the tag runs four stages:
 
 - **build** pushes `registry.siberio.eu/utilities/rpg-promptbook:vX.Y.Z`.
-- **secrets** creates the pull secret `rpg-promptbook-registry` from the
-  CI/CD variables and checks that the Secret `rpg-promptbook-oidc` exists.
+- **secrets** creates the pull secret `rpg-promptbook-registry` and the
+  Secret `rpg-promptbook-secrets` from the CI/CD variables, and checks that
+  the Secret `rpg-promptbook-oidc` exists.
 - **deploy** runs `helm upgrade --install` with `values-homelab.yaml`.
 - **verify** retries for two minutes until `/api/health` reports
   `"ok": true` and `"version": "vX.Y.Z"`, then checks that the database
@@ -210,18 +214,17 @@ together.
 The server seals each account's OpenRouter key with a key of its own, read
 from `PROMPTBOOK_SECRETS_KEY`. On the homelab it comes from the Secret
 `rpg-promptbook-secrets` (`app.secretsKey.secret` in `values-homelab.yaml`),
-key `secrets-key`. It is created by hand, once, and never committed:
+key `secrets-key`. The pipeline's `secrets` job writes it on every release
+from the CI/CD variable `PB_SECRETS_KEY` (the base64 of 32 bytes, made with
+`openssl rand -base64 32`, masked and hidden), and stops with a message when
+the variable is missing or not 32 bytes.
 
-```sh
-kubectl -n rpg-promptbook create secret generic rpg-promptbook-secrets \
-  --from-literal=secrets-key="$(openssl rand -base64 32)"
-```
-
-The pod does not start without it while the chart names it. With
+The pod does not start without the Secret while the chart names it. With
 `app.secretsKey.secret` empty, image generation is off and Settings says the
 server is not set up for it.
 
-Keep the key. Rotating it (a new value in the Secret, then
+Keep the key. Rotating it (a new value in `PB_SECRETS_KEY`, a re-run of the
+release pipeline, then
 `kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook`) makes
 every saved OpenRouter key unreadable: Settings asks each account to save its
 key again, and nothing else is lost. The chart's `checksum/config` does not

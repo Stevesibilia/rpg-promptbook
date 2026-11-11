@@ -575,7 +575,7 @@ tells 503 `offline` from 503 `not_configured` by the error code.
   explains both, with `openssl rand -base64 32` to make a key.
 - `values-homelab.yaml` sets `app.secretsKey.secret: rpg-promptbook-secrets`.
   The Secret itself (key `secrets-key`) is created in the namespace by the
-  architect before the merge, never committed. _(Architect, Q5.)_
+  architect before the merge, never committed. _(Architect, Q5.)_ Amended at release (owner, 2026-11-11, no manual step wanted): the pipeline's `prepare-secrets` job writes the Secret from the protected, masked and hidden CI/CD variable `PB_SECRETS_KEY`, after checking it decodes to 32 bytes; `docs/deploy-homelab.md` says how to rotate it.
 
 ### D17. Fake OpenRouter
 
