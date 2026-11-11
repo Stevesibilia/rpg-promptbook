@@ -15,6 +15,7 @@ const matchedLabels: Record<MatchedBy, string> = {
   prompt: "the prompt's first words",
   title: 'the track title',
   hand: 'you, by hand',
+  generated: 'Generated',
 };
 
 // «PNG», «JPEG», «WEBP».

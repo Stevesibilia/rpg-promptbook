@@ -255,6 +255,19 @@ describe('the board in the export', () => {
     ]);
   });
 
+  it('exports a generated image like any other, with no thumbnail (board-image-generation)', () => {
+    const doc = project({ document: DOCUMENT });
+    const s1 = scenePrompt(doc, 'S1', 'first');
+    add(doc, [
+      { ...image(1, 'S1-p1-gpt-1.png', s1), thumbSha256: null, matchedBy: 'generated', generatedModel: 'gpt', cost: 0.04 },
+      { ...image(2, 'S1-p1-nb-2.jpg', s1), mime: 'image/jpeg', matchedBy: 'generated', generatedModel: 'nb', cost: null },
+    ]);
+    expect(exportBoard(doc).files).toEqual([
+      { path: 'files/scenes/S1/1/S1-p1-gpt-1.png', sha256: hash(1) },
+      { path: 'files/scenes/S1/1/S1-p1-nb-2.jpg', sha256: hash(2) },
+    ]);
+  });
+
   it('gives two NPCs with one name, in any case, their own folders, and an empty name «Untitled»', () => {
     const doc = project({ document: DOCUMENT });
     const a = named(doc, 'npc', 'Turi', 'a');

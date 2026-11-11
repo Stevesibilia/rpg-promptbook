@@ -22,12 +22,12 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 1. Project: models, what is sent, generated files, jobs (brief A)
 
-- [ ] 1.1 `packages/project/src/images.ts`: `IMAGE_MODELS`, `ImageModelKey`, `imageModelKeys` (D4); `sentPrompt` and `SentPrompt` (D5); `IMAGE_SHAPES`, `defaultShape` (D6); exports in `index.ts`
-- [ ] 1.2 `board.ts`: `matchedBy` gains `'generated'`; `FileEntry` gains `generatedModel` and `cost`, `NewFile` takes them optionally, `toFile`, `checkNewFile` and `addFiles` handle them (D9); `setFileThumb` (D12)
-- [ ] 1.3 Generation jobs: `GenerationJob`, `startGenerationJob`, `recordGenerationProgress`, `finishGenerationJob`, `dismissGenerationError`, `readGenerationJobs`, `STALE_GENERATION_MS`, `GenerationBusy` (D8); `doc.ts` layout comment with `generationJobs` and the two file fields
-- [ ] 1.4 `settings.ts`: `Settings.imageGeneration` and its default `{ model: 'gpt', count: 2 }` (D3)
-- [ ] 1.5 Tests: D5's table with the mockup's three Midjourney prompts and the prose prompt, a single `--no` item, `--no` at the end and before another flag; `defaultShape` for each of `prompt`, `nearest` (21:9, 4:5) and `category`; a generated file read back with its model and cost, an older file with both null, a malformed cost dropped to null; `generated` survives `toFile`; each job writer, a second start refused while running, a stale job ignored and removed by the next writer, an errored job cleared by the next start on its prompt; `setFileThumb` sets once and refuses when set; `exportBoard` and the CueBard file list with a generated file
-- [ ] 1.6 Commit `feat(project): generated images and generation jobs on the board`
+- [x] 1.1 `packages/project/src/images.ts`: `IMAGE_MODELS`, `ImageModelKey`, `imageModelKeys` (D4); `sentPrompt` and `SentPrompt` (D5); `IMAGE_SHAPES`, `defaultShape` (D6); exports in `index.ts`
+- [x] 1.2 `board.ts`: `matchedBy` gains `'generated'`; `FileEntry` gains `generatedModel` and `cost`, `NewFile` takes them optionally, `toFile`, `checkNewFile` and `addFiles` handle them (D9); `setFileThumb` (D12)
+- [x] 1.3 Generation jobs: `GenerationJob`, `startGenerationJob`, `recordGenerationProgress`, `finishGenerationJob`, `dismissGenerationError`, `readGenerationJobs`, `STALE_GENERATION_MS`, `GenerationBusy` (D8); `doc.ts` layout comment with `generationJobs` and the two file fields
+- [x] 1.4 `settings.ts`: `Settings.imageGeneration` and its default `{ model: 'gpt', count: 2 }` (D3)
+- [x] 1.5 Tests: D5's table with the mockup's three Midjourney prompts and the prose prompt, a single `--no` item, `--no` at the end and before another flag; `defaultShape` for each of `prompt`, `nearest` (21:9, 4:5) and `category`; a generated file read back with its model and cost, an older file with both null, a malformed cost dropped to null; `generated` survives `toFile`; each job writer, a second start refused while running, a stale job ignored and removed by the next writer, an errored job cleared by the next start on its prompt; `setFileThumb` sets once and refuses when set; `exportBoard` and the CueBard file list with a generated file
+- [x] 1.6 Commit `feat(project): generated images and generation jobs on the board`
 
 ## 2. Server: the OpenRouter key (brief A)
 
@@ -35,7 +35,7 @@ OpenRouter: every test and preview of the implementer runs against the fake
 - [ ] 2.2 `migrations/008_image_generation.sql` as D1; `test/db/migrations.test.ts` lists it
 - [ ] 2.3 `src/images/secrets.ts`: `sealSecret`, `openSecret`, `saveOpenRouterKey`, `readOpenRouterKey`, `removeOpenRouterKey` (D1)
 - [ ] 2.4 `src/images/openrouter.ts`: `checkKey` (D2); `src/images/routes.ts`: `GET /api/image-generation` (OpenRouter called only with `?check=1`; without spending until group 3), `PUT` and `DELETE /api/image-generation/key` (D2); registered in `app.ts`; `AppOptions.logger` takes logger options with a stream (D2)
-- [ ] 2.5 `routes/settings.ts`: `imageGeneration` optional with its default, kept on a PUT without it (D3)
+- [x] 2.5 `routes/settings.ts`: `imageGeneration` optional with its default, kept on a PUT without it (D3)
 - [ ] 2.6 `test/db/fake-openrouter.ts` (D17), the `/key` part first
 - [ ] 2.7 Tests: `loadConfig` for both variables (absent, blank, 16 and 48 bytes, not base64, a malformed URL, the default URL, a trailing `/` removed); seal and open round trip, a wrong server key, another account's row; the key routes against the fake: good, `nolimit`, rejected (400, nothing stored), unreachable (502, the old key kept), removed (204, also with none), unreadable after a server key change (`key_unreadable`), not configured (503 and `configured: false`); the GET's live check with each `error`; the key in no response body and no captured log line; the new routes in `accounts.test.ts`'s session test; settings with and without `imageGeneration`
 - [ ] 2.8 Commit `feat(server): an OpenRouter key per account, stored encrypted`

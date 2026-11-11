@@ -1,6 +1,7 @@
 import { parseAdventure, type AppendixRow, type Template } from 'promptbook-format';
 import type * as Y from 'yjs';
 import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, readDocument, readMeta, record, str } from './doc.js';
+import { isImageModelKey, type ImageModelKey } from './images.js';
 import { matchKey } from './match.js';
 import { authors, CAPS, isIsoDateTime, LIMITS, type Author } from './model.js';
 import { adventureTemplateOf } from './template.js';
@@ -20,7 +21,9 @@ const filesOf = (doc: Y.Doc) => doc.getArray<Item>('files');
 export const fileKinds = ['image', 'audio'] as const;
 export type FileKind = (typeof fileKinds)[number];
 
-export const matchedBy = ['prompt', 'title', 'hand'] as const;
+// 'generated': made on the server through OpenRouter (board-image-generation
+// design decision 9). An older client reads it as null.
+export const matchedBy = ['prompt', 'title', 'hand', 'generated'] as const;
 export type MatchedBy = (typeof matchedBy)[number];
 
 export const imageCategories = ['scene', 'pc', 'npc', 'handout'] as const;
@@ -88,9 +91,19 @@ export interface FileEntry {
   // ISO date-time.
   addedAt: string;
   addedBy: Author;
+  // A generated image's model and the dollars OpenRouter reported for it
+  // (board-image-generation design decision 9); null for every other file,
+  // and the cost null when OpenRouter reported none.
+  generatedModel: ImageModelKey | null;
+  cost: number | null;
 }
 
-export type NewFile = Omit<FileEntry, 'id' | 'addedAt'> & { addedAt?: string };
+// The two generated fields are optional: the map holds them only when set.
+export type NewFile = Omit<FileEntry, 'id' | 'addedAt' | 'generatedModel' | 'cost'> & {
+  addedAt?: string;
+  generatedModel?: ImageModelKey | null;
+  cost?: number | null;
+};
 
 const SHA256 = /^[0-9a-f]{64}$/;
 
@@ -173,6 +186,8 @@ function toFile(item: Item): FileEntry {
     matchedBy: typeof matched === 'string' && (matchedBy as readonly string[]).includes(matched) ? (matched as MatchedBy) : null,
     addedAt: str(item.get('addedAt')),
     addedBy: oneOf(authors, item.get('addedBy'), 'user'),
+    generatedModel: image && isImageModelKey(item.get('generatedModel')) ? (item.get('generatedModel') as ImageModelKey) : null,
+    cost: image ? num(item.get('cost')) : null,
   };
 }
 
@@ -500,6 +515,15 @@ function checkNewFile(file: NewFile, i: number): void {
     if (file.promptId !== null) throw new Error(`${field}.promptId: a track belongs to a scene, not a prompt`);
     if (file.sceneId !== null) checkScene(file.sceneId);
   }
+  const model = file.generatedModel ?? null;
+  const cost = file.cost ?? null;
+  if (model !== null && !isImageModelKey(model)) throw new Error(`${field}.generatedModel: unknown model "${String(model)}"`);
+  if (cost !== null && (typeof cost !== 'number' || !Number.isFinite(cost) || cost < 0)) {
+    throw new Error(`${field}.cost: must be a number of dollars, 0 or more, or null`);
+  }
+  if ((model !== null || cost !== null) && file.kind !== 'image') {
+    throw new Error(`${field}: only an image is generated`);
+  }
   if (file.addedAt !== undefined) checkAt(file.addedAt);
 }
 
@@ -542,13 +566,39 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         matchedBy: target === null ? null : file.matchedBy,
         addedAt: file.addedAt ?? now,
         addedBy: oneOf(authors, file.addedBy, 'user'),
+        generatedModel: file.generatedModel ?? null,
+        cost: file.cost ?? null,
       };
       added.push(entry);
-      return mapOf({ ...entry });
+      // The generated fields go in the map only when set, so every other
+      // file's map stays as it was.
+      const { generatedModel, cost, ...stored } = entry;
+      return mapOf({
+        ...stored,
+        ...(generatedModel !== null ? { generatedModel } : {}),
+        ...(cost !== null ? { cost } : {}),
+      });
     });
     if (items.length > 0) filesOf(doc).push(items);
   });
   return { added, skipped };
+}
+
+// Sets an image's thumbnail while it has none (board-image-generation design
+// decision 12): a generated image arrives without one, and whichever device
+// builds it first wins. False when the file is not an image of the project,
+// or already has a thumbnail.
+export function setFileThumb(doc: Y.Doc, fileId: string, thumbSha256: string): boolean {
+  if (!isSha256(thumbSha256)) throw new Error('thumbSha256: must be 64 lower-case hex digits');
+  let set = false;
+  doc.transact(() => {
+    const found = findFile(doc, fileId);
+    if (!found || !isFile(found.item) || found.item.get('kind') !== 'image') return;
+    if (isSha256(found.item.get('thumbSha256'))) return;
+    found.item.set('thumbSha256', thumbSha256);
+    set = true;
+  });
+  return set;
 }
 
 function findFile(doc: Y.Doc, fileId: string): { item: Item; index: number } | null {

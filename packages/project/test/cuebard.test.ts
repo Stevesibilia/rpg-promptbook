@@ -491,6 +491,20 @@ describe('cuebardFiles and needsDuration', () => {
   });
 });
 
+describe('a generated image (board-image-generation)', () => {
+  it('is listed and packed like a dropped one', () => {
+    const doc = project({ document: DOCUMENT });
+    const p = scenePrompt(doc, 'S3');
+    add(doc, [
+      { ...image(40, 'S3-p1-gpt-1.png', p), thumbSha256: null, matchedBy: 'generated', generatedModel: 'gpt', cost: 0.041 },
+    ]);
+    expect(cuebardFiles(doc).map((f) => [f.name, f.generatedModel, f.cost])).toEqual([['S3-p1-gpt-1.png', 'gpt', 0.041]]);
+    const { pack } = parse(doc);
+    expect(pack.summary.images.scene).toBe(1);
+    expect(pack.entries.map((e) => e.sha256)).toContain(hash(40));
+  });
+});
+
 describe('cuebardUuid', () => {
   it('is a lower-case version 4 layout, stable, and unique over the board', () => {
     const uuid = cuebardUuid(ID, 'track', 'f1');

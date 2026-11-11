@@ -20,6 +20,7 @@ import {
   readImagePrompts,
   removeFile,
   removeImagePrompt,
+  setFileThumb,
   setFirstScenePrompt,
   setMusicPrompt,
   unmatchedFiles,
@@ -711,5 +712,119 @@ describe('rows', () => {
       [h2.id, 2],
     ]);
     expect(board.unmatched).toEqual([]);
+  });
+});
+
+describe('generated images (board-image-generation D9, D12)', () => {
+  const generated = (n: number, promptId: string, overrides: Partial<NewFile> = {}) =>
+    image(n, {
+      name: `S1-p1-gpt-${n}.png`,
+      thumbSha256: null,
+      promptId,
+      matchedBy: 'generated',
+      generatedModel: 'gpt',
+      cost: 0.041,
+      ...overrides,
+    });
+  const mapOfFile = (doc: Y.Doc, sha256: string) =>
+    doc
+      .getArray<Y.Map<unknown>>('files')
+      .toArray()
+      .find((item) => item.get('sha256') === sha256)!;
+
+  it('reads a generated file back with its model, cost and matchedBy', () => {
+    const doc = project({ document: APPENDIX });
+    const p = scene(doc, 'S1', 'a library');
+    const { added } = addFiles(doc, [generated(1, p.id), generated(2, p.id, { generatedModel: 'nb', cost: null, mime: 'image/jpeg' })]);
+    expect(added.map((f) => [f.generatedModel, f.cost, f.matchedBy])).toEqual([
+      ['gpt', 0.041, 'generated'],
+      ['nb', null, 'generated'],
+    ]);
+    const order = byId(doc);
+    const files = readFiles(doc).sort((a, b) => order(a.sha256, b.sha256));
+    expect(files.map((f) => [f.generatedModel, f.cost, f.matchedBy, f.sceneId, f.promptId])).toEqual([
+      ['gpt', 0.041, 'generated', null, p.id],
+      ['nb', null, 'generated', null, p.id],
+    ]);
+    // The cost goes in the map only when set.
+    expect(mapOfFile(doc, hash(2)).has('cost')).toBe(false);
+    expect(mapOfFile(doc, hash(2)).get('generatedModel')).toBe('nb');
+    expect(readDocumentBoard(doc).rows[0]!.prompts[0]!.images).toHaveLength(2);
+  });
+
+  it('reads an older file with both fields null, and writes neither into its map', () => {
+    const doc = project();
+    v06File(doc, { id: 'old', sha256: hash(3), kind: 'image', sceneId: 'S1' });
+    addFiles(doc, [image(4), track(5)]);
+    for (const file of readFiles(doc)) {
+      expect(file.generatedModel).toBeNull();
+      expect(file.cost).toBeNull();
+    }
+    for (const n of [4, 5]) {
+      expect(mapOfFile(doc, hash(n)).has('generatedModel')).toBe(false);
+      expect(mapOfFile(doc, hash(n)).has('cost')).toBe(false);
+    }
+  });
+
+  it('drops a malformed model or cost to null, and reads none on a track', () => {
+    const doc = project();
+    addFiles(doc, [image(6), track(7)]);
+    mapOfFile(doc, hash(6)).set('generatedModel', 'midjourney');
+    mapOfFile(doc, hash(6)).set('cost', -1);
+    mapOfFile(doc, hash(7)).set('generatedModel', 'gpt');
+    mapOfFile(doc, hash(7)).set('cost', 0.04);
+    for (const file of readFiles(doc)) expect([file.generatedModel, file.cost]).toEqual([null, null]);
+    mapOfFile(doc, hash(6)).set('cost', '0.04');
+    expect(readFiles(doc).find((f) => f.sha256 === hash(6))!.cost).toBeNull();
+    mapOfFile(doc, hash(6)).set('cost', Number.NaN);
+    expect(readFiles(doc).find((f) => f.sha256 === hash(6))!.cost).toBeNull();
+  });
+
+  it('refuses a generated field that is not one', () => {
+    const doc = project();
+    expect(() => addFiles(doc, [image(8, { generatedModel: 'flux' as 'gpt' })])).toThrow(/generatedModel/);
+    expect(() => addFiles(doc, [image(8, { cost: -0.01 })])).toThrow(/cost/);
+    expect(() => addFiles(doc, [image(8, { cost: Number.POSITIVE_INFINITY })])).toThrow(/cost/);
+    expect(() => addFiles(doc, [track(8, { generatedModel: 'gpt' })])).toThrow(/only an image/);
+    expect(readFiles(doc)).toEqual([]);
+  });
+
+  it('keeps matchedBy generated through a move and back', () => {
+    const doc = project({ document: APPENDIX });
+    const p = scene(doc, 'S1', 'a library');
+    const q = scene(doc, 'S1', 'another');
+    const [file] = addFiles(doc, [generated(9, p.id)]).added;
+    expect(readFiles(doc)[0]!.matchedBy).toBe('generated');
+    assignImage(doc, file!.id, q.id);
+    expect(readFiles(doc)[0]).toMatchObject({ promptId: q.id, matchedBy: 'hand', generatedModel: 'gpt', cost: 0.041 });
+    // A file whose prompt is removed waits in Unmatched, its model and cost kept.
+    removeImagePrompt(doc, q.id);
+    const tray = readDocumentBoard(doc).unmatched;
+    expect(tray.map((u) => [u.file.generatedModel, u.reason])).toEqual([['gpt', 'Its prompt was removed.']]);
+  });
+
+  it('sets a thumbnail once, only while it is null', () => {
+    const doc = project({ document: APPENDIX });
+    const p = scene(doc, 'S1', 'a library');
+    const [file] = addFiles(doc, [generated(10, p.id)]).added;
+    const other = replica(doc);
+    expect(readFiles(doc)[0]!.thumbSha256).toBeNull();
+    expect(setFileThumb(doc, file!.id, hash(2000))).toBe(true);
+    expect(readFiles(doc)[0]!.thumbSha256).toBe(hash(2000));
+    expect(setFileThumb(doc, file!.id, hash(2001))).toBe(false);
+    expect(readFiles(doc)[0]!.thumbSha256).toBe(hash(2000));
+    // Another device that has seen it set refuses too.
+    sync(doc, other);
+    expect(setFileThumb(other, file!.id, hash(2002))).toBe(false);
+  });
+
+  it('sets no thumbnail on a track, a missing file, or with a bad hash', () => {
+    const doc = project();
+    const [audio] = addFiles(doc, [track(11)]).added;
+    expect(setFileThumb(doc, audio!.id, hash(2003))).toBe(false);
+    expect(setFileThumb(doc, 'nope', hash(2003))).toBe(false);
+    const [img] = addFiles(doc, [image(12, { thumbSha256: null })]).added;
+    expect(() => setFileThumb(doc, img!.id, 'ABC')).toThrow(/thumbSha256/);
+    expect(readFiles(doc).every((f) => f.thumbSha256 === null)).toBe(true);
   });
 });

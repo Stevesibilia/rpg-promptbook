@@ -39,6 +39,37 @@ describe('settings', () => {
     expect((await app.inject({ url: '/api/settings', headers: annaHeaders })).json().author).toBe('');
   });
 
+  it('keeps the defaults for Generate, also when an older client leaves them out', async () => {
+    await steve();
+    const app = await startApp();
+    const headers = { cookie: `pb_session=${await signedIn(app)}`, origin: ORIGIN };
+    const put = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/settings', headers, payload: payload as object });
+    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'gpt', count: 2 });
+
+    const saved = await put({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 4 } });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().imageGeneration).toEqual({ model: 'nb', count: 4 });
+
+    const { imageGeneration: _left, ...older } = defaultSettings();
+    const kept = await put({ ...older, author: 'Stefano Sibilia' });
+    expect(kept.statusCode).toBe(200);
+    expect(kept.json()).toMatchObject({ author: 'Stefano Sibilia', imageGeneration: { model: 'nb', count: 4 } });
+    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'nb', count: 4 });
+
+    // A row saved before image generation reads with the default.
+    await db.query(`update user_settings set settings = settings - 'imageGeneration'`);
+    expect((await app.inject({ url: '/api/settings', headers })).json()).toMatchObject({
+      author: 'Stefano Sibilia',
+      imageGeneration: { model: 'gpt', count: 2 },
+    });
+
+    for (const imageGeneration of [{ model: 'midjourney', count: 2 }, { model: 'gpt', count: 5 }, { model: 'gpt', count: 0 }, { model: 'gpt' }]) {
+      const response = await put({ ...defaultSettings(), imageGeneration });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe('validation_error');
+    }
+  });
+
   it('refuses a body that is not a whole settings object', async () => {
     await steve();
     const app = await startApp();
