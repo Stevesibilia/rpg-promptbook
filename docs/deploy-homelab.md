@@ -205,6 +205,28 @@ migration, the older image may not start against the newer schema. In that
 case restore the database to a time before the release (below) and roll back
 together.
 
+## Image generation
+
+The server seals each account's OpenRouter key with a key of its own, read
+from `PROMPTBOOK_SECRETS_KEY`. On the homelab it comes from the Secret
+`rpg-promptbook-secrets` (`app.secretsKey.secret` in `values-homelab.yaml`),
+key `secrets-key`. It is created by hand, once, and never committed:
+
+```sh
+kubectl -n rpg-promptbook create secret generic rpg-promptbook-secrets \
+  --from-literal=secrets-key="$(openssl rand -base64 32)"
+```
+
+The pod does not start without it while the chart names it. With
+`app.secretsKey.secret` empty, image generation is off and Settings says the
+server is not set up for it.
+
+Keep the key. Rotating it (a new value in the Secret, then
+`kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook`) makes
+every saved OpenRouter key unreadable: Settings asks each account to save its
+key again, and nothing else is lost. The chart's `checksum/config` does not
+cover the Secret, so a new value needs that restart.
+
 ## Changing credentials
 
 A change to `PB_REGISTRY_*` takes effect when the `secrets` job runs again, so

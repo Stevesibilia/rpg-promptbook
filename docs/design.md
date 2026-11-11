@@ -403,7 +403,9 @@ protocol; the web client reaches the network and the browser only through
 - **Offline:** edit any project and create new ones; a project made offline
   is uploaded with its id and Yjs state on reconnect. Local snapshots every
   hour (or 15 minutes, or off), kept on the device and listed in History
-  beside the server's.
+  beside the server's. Generating images and Settings → Image generation need
+  the server: offline they are shown disabled with the reason, and nothing is
+  queued (#57).
 - **Releases:** a `v*` tag on `main` builds unsigned installers (Mac dmg and
   zip for arm64 and x64 with an ad-hoc signature, Windows NSIS x64, Linux
   AppImage and deb x64) and creates the GitHub Release. Windows and the
@@ -434,6 +436,15 @@ the prep document:
 - Files are stored once per content, reachable only by their owner, and
   removed 30 days after no document lists them. The desktop app keeps every
   file of every project and works with the board offline.
+- **Generate** (#57, the OpenSpec change `board-image-generation`): every
+  image prompt can generate 1 to 4 images with GPT Image 2.6 Sunburst (the
+  default) or Nano Banana 2.1 through OpenRouter. The server sends the text
+  before a Midjourney prompt's flags, `--no` turned into a sentence and the
+  shape from `--ar`. It runs the job itself and adds each image to the board
+  through the live document as it arrives, so progress and images reach every
+  device by sync, also after the page is left. Generated images land as
+  received images with their model and cost; the board header totals the
+  project's cost, and Settings shows the month's spending by project.
 
 ### Intake by filename
 
@@ -585,6 +596,16 @@ Design: the generator is a choice per asset row. Manual (copy the prompt, drop
 the files) is the default; Ace Data or Gemini can be added later without
 changing anything else. Their keys would be stored encrypted in the database
 and managed from the UI, not in environment variables.
+
+**Built for images through OpenRouter** (#57, 2026-11-11). A two-round
+bake-off through OpenRouter's image API picked GPT Image 2.6 Sunburst
+(about $0.040 and 53 s per image, best detail and text) and Nano Banana 2.1
+as the fast draft (about $0.037 and 17 s). Each account saves its own
+OpenRouter key in Settings → Image generation: the server checks it with
+OpenRouter, seals it with AES-256-GCM under `PROMPTBOOK_SECRETS_KEY` and
+never sends it to a browser or the desktop app; images are billed to that
+OpenRouter account. Without `PROMPTBOOK_SECRETS_KEY` the feature is off.
+Midjourney prompts and the manual route keep working; music stays manual.
 
 ## Phases
 

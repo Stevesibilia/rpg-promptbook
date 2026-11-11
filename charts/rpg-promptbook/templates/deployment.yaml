@@ -180,6 +180,16 @@ spec:
                   key: client-secret
                   optional: false
             {{- end }}
+            {{- with .Values.app.secretsKey.secret }}
+            # Turns image generation on: the key that seals each account's
+            # OpenRouter key (board-image-generation design decision 16).
+            - name: PROMPTBOOK_SECRETS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: secrets-key
+                  optional: false
+            {{- end }}
           # Starting includes the migrations, which can take a while on a
           # release that changes the schema.
           startupProbe:

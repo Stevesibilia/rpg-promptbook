@@ -53,12 +53,12 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 4. Chart, compose, e2e stack, docs (brief A)
 
-- [ ] 4.1 `charts/rpg-promptbook/values.yaml` `app.secretsKey.secret: ""` with its comment; `values-homelab.yaml` `app.secretsKey.secret: rpg-promptbook-secrets` (D16); `templates/deployment.yaml` the `secretKeyRef` only when set; `checksum/config` unchanged (D16)
-- [ ] 4.2 `compose.yaml` passes `PROMPTBOOK_SECRETS_KEY` and `OPENROUTER_BASE_URL`; `.env.example` explains both
-- [ ] 4.3 `e2e/openrouter/serve.mjs`, `e2e/compose.openrouter.yaml`, `e2e/stack.ts` (the file, both variables) (D17); the stack starts and `GET /api/image-generation` answers `configured: true`
-- [ ] 4.4 Docs: `docs/design.md` («Midjourney and Suno», «Asset board», «Desktop app»: generation through OpenRouter, the key per account, offline); `docs/deploy-homelab.md` (the Secret with `secrets-key`, made with `openssl rand -base64 32`, what rotating it does)
-- [ ] 4.5 `helm lint charts/rpg-promptbook` and `helm template` with and without `app.secretsKey.secret`, in a container
-- [ ] 4.6 Commit `feat(deploy): image generation in the chart, compose and the e2e stack`
+- [x] 4.1 `charts/rpg-promptbook/values.yaml` `app.secretsKey.secret: ""` with its comment; `values-homelab.yaml` `app.secretsKey.secret: rpg-promptbook-secrets` (D16); `templates/deployment.yaml` the `secretKeyRef` only when set; `checksum/config` unchanged (D16)
+- [x] 4.2 `compose.yaml` passes `PROMPTBOOK_SECRETS_KEY` and `OPENROUTER_BASE_URL`; `.env.example` explains both
+- [x] 4.3 `e2e/openrouter/serve.mjs`, `e2e/compose.openrouter.yaml`, `e2e/stack.ts` (the file, both variables) (D17); the stack starts and `GET /api/image-generation` answers `configured: true`
+- [x] 4.4 Docs: `docs/design.md` («Midjourney and Suno», «Asset board», «Desktop app»: generation through OpenRouter, the key per account, offline); `docs/deploy-homelab.md` (the Secret with `secrets-key`, made with `openssl rand -base64 32`, what rotating it does)
+- [x] 4.5 `helm lint charts/rpg-promptbook` and `helm template` with and without `app.secretsKey.secret`, in a container
+- [x] 4.6 Commit `feat(deploy): image generation in the chart, compose and the e2e stack`
 
 ## 5. Proof and hand-back of brief A
 

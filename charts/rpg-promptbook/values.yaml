@@ -57,6 +57,16 @@ app:
     # outside this chart (on the homelab, by the cluster's Terraform).
     secret: rpg-promptbook-oidc
 
+  # Image generation through OpenRouter (docs/deploy-homelab.md). Each account
+  # saves its own OpenRouter key in Settings; the server seals it with this
+  # key, so it is never stored in the clear.
+  secretsKey:
+    # -- A Secret with the key `secrets-key`: the base64 of 32 random bytes
+    # (`openssl rand -base64 32`), written outside this chart. Empty: image
+    # generation is off. Changing the key makes every saved OpenRouter key
+    # unreadable, so each account saves its key again.
+    secret: ""
+
 waitForDatabase:
   # -- Hold the server back until the database accepts connections, so the
   # migrations at start do not crash-loop while it comes up.

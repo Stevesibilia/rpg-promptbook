@@ -31,6 +31,11 @@ app:
   # No password account: the server would refuse one beside single sign-on.
   admin:
     enabled: false
+  # Image generation is on. The Secret rpg-promptbook-secrets, key
+  # secrets-key, is created by hand in the namespace and never committed
+  # (docs/deploy-homelab.md).
+  secretsKey:
+    secret: rpg-promptbook-secrets
 
 ingress:
   enabled: true
