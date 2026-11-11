@@ -62,8 +62,8 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 5. Proof and hand-back of brief A
 
-- [ ] 5.1 `npm run typecheck`, `npm test` with `TEST_DATABASE_URL`: literal results
-- [ ] 5.2 The local stack with the fake: a key saved, 2 images generated with each model on a seeded prompt through `curl` with a session, the files in the document and the rows; the output in the hand-back
+- [x] 5.1 `npm run typecheck`, `npm test` with `TEST_DATABASE_URL`: literal results
+- [x] 5.2 The local stack with the fake: a key saved, 2 images generated with each model on a seeded prompt through `curl` with a session, the files in the document and the rows; the output in the hand-back
 - [ ] 5.3 Hand back: results, the `helm template` diffs, every departure from the design, anything from Risks seen
 
 ## 6. Web: data (brief B)

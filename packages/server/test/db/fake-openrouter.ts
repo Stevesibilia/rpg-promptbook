@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { crc32, deflateSync } from 'node:zlib';
@@ -67,6 +68,10 @@ const JPEGS: Record<string, string> = {
   '2:3': '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCACWAGQDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAIDBv/EABUQAQEAAAAAAAAAAAAAAAAAAAAR/8QAGAEBAQEBAQAAAAAAAAAAAAAAAAIDAQT/xAAVEQEBAAAAAAAAAAAAAAAAAAAAEf/aAAwDAQACEQMRAD8A56EXCPTWURCLhCkRCLhCkRCLhCkRCLhCkRCLhCkRBcCkaQi4RFVEQi4QpEQi4QpEQi4QpEQi4QpEQi4QpEQXApFwi4RFVEQi4QpEQi4QpEQi4QpEQi4QpEQi4QpEQXApFwi4RnVREIuEKREIuEKREIuEKREIuEKREIuEKREFwKRcI0hEVUZwjSEKRnCNIQpGcI0hCkZwjSEKRnCNIQpGcGkCkXCLhEVURCLhCkRCLhCkRCLhCkRCLhCkRCLhCkRBcCkXCLhEVcRCLhCkRCLhCkRCLhCkRCLhCkRCLhCkRBcCkXCNIRnVRnCNIQpGcI0hCkZwjSEKRnCNIQpGcI0hCkZwaQKRcIuERVREIuEKREIuEKREIuEKREIuEKREIuEKREFwKRcICXSEACEACEACEACEACAA/9k=',
 };
 
+// Different in every process, so a restarted fake never sends the bytes it
+// sent before: the board would skip them as already listed.
+const RUN = randomUUID();
+
 function pngChunk(type: string, data: Buffer): Buffer {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(data.length);
@@ -99,6 +104,7 @@ export function png(width: number, height: number, call: number): Buffer {
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     pngChunk('IHDR', header),
+    pngChunk('tEXt', Buffer.from(`Comment\0fake openrouter ${RUN} call ${call}`, 'latin1')),
     pngChunk('IDAT', deflateSync(Buffer.concat(rows))),
     pngChunk('IEND', Buffer.alloc(0)),
   ]);
@@ -107,7 +113,7 @@ export function png(width: number, height: number, call: number): Buffer {
 // The shape's JPEG with a comment segment naming the call, right after SOI.
 export function jpeg(shape: string, call: number): Buffer {
   const base = Buffer.from(JPEGS[shape]!, 'base64');
-  const text = Buffer.from(`fake openrouter call ${call}`, 'ascii');
+  const text = Buffer.from(`fake openrouter ${RUN} call ${call}`, 'ascii');
   const head = Buffer.alloc(4);
   head[0] = 0xff;
   head[1] = 0xfe;
