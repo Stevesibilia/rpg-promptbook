@@ -346,10 +346,12 @@ export function GeneratedBadge({ file }: { file: FileEntry }) {
 }
 
 // «Generated here: 3 images · $0.12», at the right end of the summary line.
+// Shown while the count or the cost is above 0: the cost may hold images
+// OpenRouter billed that then failed here.
 export function GeneratedHere() {
   const { generation: gen } = useBoardContext();
   const total = gen.spending;
-  if (!total || total.images === 0) return null;
+  if (!total || (total.images === 0 && total.cost <= 0)) return null;
   return (
     <span className="spend" title="Generated in this project, as billed by OpenRouter">
       <CoinIcon className="ic" />

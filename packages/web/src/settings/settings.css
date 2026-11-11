@@ -125,3 +125,129 @@
   border-radius: 50%;
   background: var(--primary);
 }
+
+/* Image generation (board-image-generation, docs/mockups/image-generation.html) */
+.imggen .card {
+  margin-bottom: 12px;
+}
+.imggen .card h3 {
+  margin: 0 0 10px;
+  font: 600 15px var(--font);
+}
+.imggen .models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  max-width: 460px;
+}
+.imggen .model {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: none;
+  color: var(--text);
+}
+.imggen .model b {
+  font-weight: 600;
+}
+.imggen .model small {
+  color: var(--faint);
+  font-size: 12px;
+}
+.imggen .model.on {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.imggen .model .mm {
+  font: 11.5px var(--mono);
+  color: var(--muted);
+}
+.imggen .with-btn {
+  flex-wrap: wrap;
+}
+.imggen .with-btn input {
+  min-width: 200px;
+}
+.imggen .keyv {
+  font: 13px var(--mono);
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  flex: 1;
+  min-width: 200px;
+}
+.imggen .keyline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--primary);
+  margin: 0;
+}
+.imggen .keyline .ic {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.imggen .keyline.bad {
+  color: var(--danger);
+}
+.imggen .bigsum {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.imggen .bigsum div {
+  display: flex;
+  flex-direction: column;
+}
+.imggen .bigsum b {
+  font: 700 22px var(--display);
+}
+.imggen .bigsum span {
+  font-size: 12px;
+  color: var(--faint);
+}
+.imggen .spt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.imggen .spt th {
+  text-align: left;
+  font: 600 11px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.imggen .spt td {
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.imggen .spt tr:last-child td {
+  border-bottom: 0;
+}
+.imggen .spt .n {
+  text-align: right;
+}
+.imggen .needs-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--amber);
+  font-size: 13px;
+}
+.imggen .needs-card .ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}

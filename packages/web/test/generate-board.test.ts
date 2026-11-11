@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import type { ImageGenerationStatus } from '../src/api.js';
 import { BoardContext, type BoardContextValue, type Generation } from '../src/board/context.js';
-import { GeneratedBadge } from '../src/board/GeneratePanel.js';
+import { GeneratedBadge, GeneratedHere } from '../src/board/GeneratePanel.js';
 import { PromptBody } from '../src/board/ImagePrompt.js';
 import type { ShownPrompt } from '../src/board/summary.js';
 import type { PendingStart, StatusState } from '../src/board/useGeneration.js';
@@ -59,10 +59,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   ...patch,
 });
 
-function render(
-  prompt: ShownPrompt,
-  gen: Partial<Generation> = {},
-): string {
+function render(prompt: ShownPrompt, gen: Partial<Generation> = {}, part?: ReactElement): string {
   const generation: Generation = {
     user: 'u1',
     offline: false,
@@ -97,7 +94,7 @@ function render(
   const tree: ReactElement = createElement(
     MemoryRouter,
     null,
-    createElement(BoardContext.Provider, { value }, createElement(PromptBody, { prompt })),
+    createElement(BoardContext.Provider, { value }, part ?? createElement(PromptBody, { prompt })),
   );
   return renderToStaticMarkup(tree);
 }
@@ -194,5 +191,21 @@ describe('Generate on a prompt', () => {
     expect(text(html)).not.toMatch(/No images yet/);
     // Generate is free again.
     expect(html).toMatch(/<button class="tb sm gen" aria-expanded="false"/);
+  });
+});
+
+describe('«Generated here»', () => {
+  const here = (spending: Generation['spending']) => text(render(shown(), { spending }, createElement(GeneratedHere)));
+
+  it("totals the project's images and their cost", () => {
+    expect(here({ images: 3, cost: 0.12 })).toBe('Generated here: 3 images · $0.12');
+    expect(here({ images: 1, cost: 0.041 })).toBe('Generated here: 1 image · $0.04');
+  });
+
+  it('shows a cost billed for images that then failed, hides nothing spent', () => {
+    expect(here({ images: 0, cost: 0.04 })).toBe('Generated here: 0 images · $0.04');
+    expect(here({ images: 0, cost: 0 })).toBe('');
+    // Offline, or the request failed.
+    expect(here(null)).toBe('');
   });
 });

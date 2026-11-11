@@ -84,9 +84,9 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 8. Web: Settings → Image generation (brief B)
 
-- [ ] 8.1 `SettingsPage.tsx`: the section after Connected apps at `/settings/image-generation`; the desktop's `slice(0, 7)` (D14)
-- [ ] 8.2 The section loads its status with `?check=1` each time it opens (D2); the key card (saved, not saved, each status line and error, Replace, Remove, toasts), the defaults card through the settings saver, the spending card, the storage line, the not-configured card
-- [ ] 8.3 Commit `feat(web): image generation settings`
+- [x] 8.1 `SettingsPage.tsx`: the section after Connected apps at `/settings/image-generation`; the desktop's `slice(0, 7)` (D14)
+- [x] 8.2 The section loads its status with `?check=1` each time it opens (D2); the key card (saved, not saved, each status line and error, Replace, Remove, toasts), the defaults card through the settings saver, the spending card, the storage line, the not-configured card
+- [x] 8.3 Commit `feat(web): image generation settings`
 
 ## 9. Desktop: offline (brief B)
 
