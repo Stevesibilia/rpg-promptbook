@@ -96,17 +96,23 @@ export function noteSettings(user: string, settings: Partial<Settings>): void {
   defaultsStore.set({ user, value: choice });
 }
 
-function loadDefaults(user: string): void {
+// A failure stores nothing: the built-in defaults show until a later try
+// (the panel opening) reads the saved ones.
+export function loadDefaults(user: string): void {
   if (defaultsLoading === user) return;
+  const held = defaultsStore.get();
+  if (held?.user === user) return;
   defaultsLoading = user;
   const version = defaultsVersion;
-  const settle = (choice: GenerateChoice) => {
+  const done = () => {
     if (defaultsLoading === user) defaultsLoading = null;
-    if (version === defaultsVersion) defaultsStore.set({ user, value: choice });
   };
   api.settings().then(
-    (settings) => settle(generateDefaults(settings)),
-    () => settle(generateDefaults(null)),
+    (settings) => {
+      done();
+      if (version === defaultsVersion) defaultsStore.set({ user, value: generateDefaults(settings) });
+    },
+    done,
   );
 }
 
@@ -169,7 +175,7 @@ export function useGenerationJobs(doc: Y.Doc): GenerationJob[] {
       const waits = next
         .filter((j) => j.finishedAt === null)
         .map((j) => Date.parse(j.startedAt) + STALE_GENERATION_MS + 1000 - now);
-      if (waits.length > 0) timer = setTimeout(update, Math.min(STALE_GENERATION_MS, Math.max(1000, ...waits)));
+      if (waits.length > 0) timer = setTimeout(update, Math.min(STALE_GENERATION_MS, Math.max(1000, Math.min(...waits))));
     };
     update();
     map.observe(update);

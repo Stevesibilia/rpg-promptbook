@@ -46,6 +46,7 @@ import {
 import { Tray } from './Tray.js';
 import { useBoard } from './useBoard.js';
 import {
+  loadDefaults,
   useArrivals,
   useGenerate,
   useGenerateDefaults,
@@ -92,10 +93,18 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const [spendVersion, setSpendVersion] = useState(0);
   const spending = useProjectSpending(id, spendVersion, offline);
   const [generateOpen, setGenerateOpen] = useState<string | null>(null);
-  // Offline, the panel goes with Generate (D15).
+  // Offline, the panel goes with Generate (D15); so it does when its prompt
+  // goes or loses its text elsewhere, and does not come back by itself.
   useEffect(() => {
-    if (offline) setGenerateOpen(null);
-  }, [offline]);
+    if (generateOpen === null) return;
+    const prompt = shown.get(generateOpen);
+    if (offline || !prompt || prompt.row.prompt.prompt === '') setGenerateOpen(null);
+  }, [offline, generateOpen, shown]);
+  // The panel asks again what could not be read.
+  const retryGeneration = useCallback(() => {
+    retryStatus();
+    loadDefaults(user);
+  }, [retryStatus, user]);
   // A job that ended: the total again; for one of this user's that ended
   // without an error, a toast with its images and their cost.
   useJobEndings(jobList, (ended) => {
@@ -103,8 +112,11 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     const files = readFiles(doc);
     for (const { job, error } of ended) {
       if (error !== null || job.by !== user) continue;
+      // Every image there: a job seen gone that in fact failed in part (its
+      // error missed while away, then dismissed elsewhere) is no success.
+      const arrived = jobFiles(files, job);
       const prompt = shown.get(job.promptId);
-      const said = prompt && doneToast(toastLabel(prompt), jobFiles(files, job));
+      const said = prompt && arrived.length >= job.count && doneToast(toastLabel(prompt), arrived);
       if (said) showToast(said);
     }
   });
@@ -191,7 +203,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       user,
       offline,
       status: generationStatus,
-      retryStatus,
+      retryStatus: retryGeneration,
       defaults,
       jobs,
       pending,

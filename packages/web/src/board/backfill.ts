@@ -82,6 +82,11 @@ export class ThumbBackfill {
     this.waiting.clear();
   }
 
+  // The board went mid-file: the next board shown tries it again.
+  private letGo(fileId: string): void {
+    this.tried.delete(fileId);
+  }
+
   private stillThumbless(fileId: string): boolean {
     return readFiles(this.doc).some((f) => f.id === fileId && f.thumbSha256 === null);
   }
@@ -94,12 +99,14 @@ export class ThumbBackfill {
         else this.waiting.add(file.id);
         return;
       }
-      if (this.disposed || !this.stillThumbless(file.id)) return;
+      if (this.disposed) return this.letGo(file.id);
+      if (!this.stillThumbless(file.id)) return;
       const probed = await this.deps.probe(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: file.mime }), 'image');
-      if (!probed.thumb || this.disposed || !this.stillThumbless(file.id)) return;
+      if (this.disposed) return this.letGo(file.id);
+      if (!probed.thumb || !this.stillThumbless(file.id)) return;
       const sha = await this.deps.hash(probed.thumb.bytes);
       await this.deps.putFile(this.projectId, sha, probed.thumb.bytes, probed.thumb.mime);
-      if (this.disposed) return;
+      if (this.disposed) return this.letGo(file.id);
       setFileThumb(this.doc, file.id, sha);
     } catch {
       // Unreadable, refused or gone: the original keeps showing.

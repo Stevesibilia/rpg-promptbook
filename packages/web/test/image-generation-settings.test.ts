@@ -68,7 +68,10 @@ describe('the key', () => {
 
   it('not saved: a password input with no autocomplete, Save and check, the hint', () => {
     const html = key(status({ key: null }));
-    expect(html).toMatch(/<input id="or-key" type="password" placeholder="sk-or-v1-…" autoComplete="off" spellCheck="false" value=""\/>/);
+    expect(html).toMatch(/<input id="or-key" type="password" placeholder="sk-or-v1-…" autoComplete="off" spellCheck="false"/);
+    // Password managers are told to leave it alone, and no form submits it.
+    expect(html).toMatch(/data-1p-ignore="" data-lpignore="true" data-bwignore="true" value=""\/>/);
+    expect(html).not.toMatch(/<form/);
     expect(text(html)).toMatch(
       /^OpenRouter key Key Save and check Create one at openrouter\.ai\/settings\/keys\. A spending limit on the key caps what Promptbook can spend\. Stored encrypted/,
     );

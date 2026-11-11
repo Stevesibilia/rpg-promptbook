@@ -349,6 +349,24 @@ describe('the thumbnail backfill', () => {
     expect(thumbs(doc)).toEqual([sha(101), sha(101), sha(50)]);
   });
 
+  it('lets a file go when the board goes mid-file, for the next board to try', async () => {
+    const { doc, deps } = setup();
+    const tried = new Set<string>();
+    let first!: ThumbBackfill;
+    first = new ThumbBackfill('proj', doc, {
+      ...deps,
+      putFile: async (...args) => {
+        first.dispose();
+        return deps.putFile(...args);
+      },
+    }, tried);
+    await first.poke();
+    expect(thumbs(doc)).toEqual([null, null, sha(50)]);
+    const second = new ThumbBackfill('proj', doc, deps, tried);
+    await second.poke();
+    expect(thumbs(doc)).toEqual([sha(103), sha(103), sha(50)]);
+  });
+
   it('writes nothing once the board is gone', async () => {
     const { doc, backfill } = setup();
     backfill.dispose();

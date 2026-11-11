@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IMAGE_MODELS, imageModelKeys, type Settings } from 'promptbook-project';
 import { api, ApiError, type ImageGenerationStatus, type Spending } from '../api.js';
 import { useAuth } from '../auth/context.js';
@@ -121,8 +121,7 @@ export function KeyCard({
   const key = status.key;
   const asking = !key || replacing;
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const value = typed.trim();
     if (!value || busy) return;
     setBusy(true);
@@ -161,7 +160,9 @@ export function KeyCard({
     <div className="card wide-card">
       <h3>OpenRouter key</h3>
       {asking ? (
-        <form className="field" onSubmit={(e) => void save(e)}>
+        // No <form>: a submitted password field invites the browser's
+        // password manager to keep the key.
+        <div className="field">
           {!key && status.error === 'key_unreadable' && <p className="keyline bad">{UNREADABLE}</p>}
           <label htmlFor="or-key">Key</label>
           <div className="with-btn">
@@ -171,13 +172,19 @@ export function KeyCard({
               placeholder="sk-or-v1-…"
               autoComplete="off"
               spellCheck={false}
+              data-1p-ignore=""
+              data-lpignore="true"
+              data-bwignore="true"
               value={typed}
               onChange={(e) => {
                 setTyped(e.target.value);
                 setError('');
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void save();
+              }}
             />
-            <button className="tb primary" type="submit" disabled={busy || typed.trim() === ''}>
+            <button className="tb primary" type="button" disabled={busy || typed.trim() === ''} onClick={() => void save()}>
               {busy ? 'Checking…' : 'Save and check'}
             </button>
             {replacing && (
@@ -201,7 +208,7 @@ export function KeyCard({
               Create one at openrouter.ai/settings/keys. A spending limit on the key caps what Promptbook can spend.
             </span>
           )}
-        </form>
+        </div>
       ) : (
         <div className="field">
           <span className="label">Key</span>
