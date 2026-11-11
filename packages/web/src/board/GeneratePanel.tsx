@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { Fragment, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import {
   dismissGenerationError,
@@ -223,7 +223,7 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
         </div>
         <div>
           <div className="gl">
-            Shape <span>{start.hint}</span>
+            Shape <span>{withFlag(start.hint)}</span>
           </div>
           <div className="seg" role="group" aria-label="Shape">
             {IMAGE_SHAPES.map((s) => (
@@ -279,6 +279,17 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
       )}
     </>
   );
+}
+
+// «--ar» in the mono font, so its two hyphens are not joined into a dash.
+function withFlag(text: string) {
+  const parts = text.split('--ar');
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 && <code className="flag">--ar</code>}
+      {part}
+    </Fragment>
+  ));
 }
 
 // Whole seconds tick while a job runs.
@@ -339,8 +350,12 @@ export function GeneratedBadge({ file }: { file: FileEntry }) {
   const b = badge(file);
   if (!b) return null;
   return (
-    <span className="badge gen" title={b.title}>
-      {b.text}
+    // One line always: the cost alone where the tile is too narrow.
+    <span className="gen-at">
+      <span className={`badge gen ${b.model}`} title={b.title}>
+        <span className="gen-full">{b.text}</span>
+        <span className="gen-short">{b.short}</span>
+      </span>
     </span>
   );
 }

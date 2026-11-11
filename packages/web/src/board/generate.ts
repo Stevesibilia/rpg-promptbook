@@ -101,13 +101,18 @@ export function sentView(text: string): SentView {
 }
 
 // A generated thumbnail's badge: «GPT · $0.04», its title «GPT Image 2.6
-// Sunburst, $0.041». Null for every other file.
-export function badge(file: Pick<FileEntry, 'generatedModel' | 'cost'>): { text: string; title: string } | null {
+// Sunburst, $0.041»; `short`, the cost alone, for a tile too narrow for the
+// text. Null for every other file.
+export function badge(
+  file: Pick<FileEntry, 'generatedModel' | 'cost'>,
+): { model: ImageModelKey; text: string; short: string; title: string } | null {
   const model = file.generatedModel;
   if (model === null) return null;
   const known = file.cost !== null;
   return {
+    model,
     text: `${shortModel[model]} · ${known ? money2(file.cost!) : 'cost unknown'}`,
+    short: known ? money2(file.cost!) : '$?',
     title: `${IMAGE_MODELS[model].full}, ${known ? money3(file.cost!) : 'cost unknown'}`,
   };
 }

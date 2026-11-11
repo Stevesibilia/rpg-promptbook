@@ -1531,6 +1531,12 @@
   letter-spacing: 0;
   font-weight: 400;
 }
+.board .gpop .gl code.flag {
+  font: 10.5px var(--mono);
+  background: none;
+  padding: 0;
+  color: inherit;
+}
 .board .gpop .grow {
   display: flex;
   gap: 18px;
@@ -1578,7 +1584,8 @@
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 6px 8px;
-  max-height: 92px;
+  /* About nine lines: a prompt with its flags fits before it scrolls. */
+  max-height: 176px;
   overflow: auto;
   margin-top: 6px;
   overflow-wrap: anywhere;
@@ -1670,17 +1677,53 @@
     background-position: -120% 0;
   }
 }
+/* The badge's row along the tile's bottom edge: as wide as the tile and
+   sized by it alone, so it can be queried without touching the tile. */
+.board .gen-at {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  z-index: 2;
+  pointer-events: none;
+  container-type: inline-size;
+}
+/* One line, clear of the index at the bottom right: the full text where it
+   fits, the cost alone where the tile is narrower (2:3 tiles, phones). */
 .board .badge.gen {
   position: absolute;
   left: 5px;
   bottom: 5px;
-  z-index: 2;
+  pointer-events: auto;
+  max-width: calc(100% - 30px);
+  overflow: hidden;
+  white-space: nowrap;
   font: 600 10.5px var(--font);
   padding: 0 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.66);
   color: #d6efe4;
   font-variant-numeric: tabular-nums;
+}
+.board .badge.gen .gen-short {
+  display: none;
+}
+@container (max-width: 100px) {
+  .board .badge.gen.gpt .gen-full {
+    display: none;
+  }
+  .board .badge.gen.gpt .gen-short {
+    display: inline;
+  }
+}
+@container (max-width: 145px) {
+  .board .badge.gen.nb .gen-full {
+    display: none;
+  }
+  .board .badge.gen.nb .gen-short {
+    display: inline;
+  }
 }
 .board .info.err {
   border-color: color-mix(in srgb, var(--danger) 50%, transparent);

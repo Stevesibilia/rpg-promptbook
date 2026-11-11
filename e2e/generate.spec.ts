@@ -119,7 +119,8 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   await expect(block(second, 'S2').locator('.genline')).toContainText(/Generating [12] of 2 with GPT Image 2\.6 · \d+s\./);
   await expect(toast(page)).toHaveText('2 images for S2 · prompt 1 · $0.08', { timeout: 30_000 });
   const badges = block(page, 'S2').locator('.th-i .badge.gen');
-  await expect(badges).toHaveText(['GPT · $0.04', 'GPT · $0.04']);
+  // The text shown: the full badge where the tile is wide enough.
+  await expect(badges).toHaveText(['GPT · $0.04', 'GPT · $0.04'], { useInnerText: true });
   await expect(badges.first()).toHaveAttribute('title', 'GPT Image 2.6 Sunburst, $0.040');
   await expect(block(page, 'S2').locator('.th-i .badge.new')).toHaveCount(2);
   await expect(block(page, 'S2').locator('.genline')).toHaveCount(0);
@@ -155,7 +156,11 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   await expect(panel(page).locator('.gerr')).toHaveText('Three generations are already running. Wait for one to finish.');
   await expect(panel(page)).toBeVisible();
   await panel(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(block(page, 'S4').locator('.th-i .badge.gen')).toHaveText(['Nano Banana · $0.04'], { timeout: 30_000 });
+  // A scene tile is too narrow for «Nano Banana · $0.04»: the cost alone, the
+  // rest in the title.
+  const nb = block(page, 'S4').locator('.th-i .badge.gen');
+  await expect(nb).toHaveText(['$0.04'], { timeout: 30_000, useInnerText: true });
+  await expect(nb).toHaveAttribute('title', 'Nano Banana 2.1, $0.037');
   await expect(block(page, 'S3').locator('.th-i .badge.gen')).toHaveCount(1);
   await expect(block(page, 'S2').locator('.th-i .badge.gen')).toHaveCount(3);
   await expect(page.locator('.genline')).toHaveCount(0);

@@ -128,6 +128,7 @@ describe('Generate on a prompt', () => {
     const t = text(html);
     expect(t).toMatch(/Generate images ✕ Model GPT Image 2\.6 Best detail and text ≈ \$0\.04 · 53 s per image Nano Banana 2\.1 Fast draft ≈ \$0\.04 · 17 s per image/);
     expect(t).toMatch(/Images 1 2 3 4 Shape from the prompt's --ar 16:9 3:2 1:1 2:3/);
+    expect(html).toMatch(/from the prompt&#x27;s <code class="flag">--ar<\/code>/);
     expect(html).toMatch(/<button class="on" aria-pressed="true">3:2<\/button>/);
     expect(html).toMatch(/<button class="on" aria-pressed="true">2<\/button>/);
     expect(html).toMatch(/<details open="">/);
@@ -166,7 +167,7 @@ describe('Generate on a prompt', () => {
   it('puts the model and cost on a generated thumbnail', () => {
     const file = { generatedModel: 'gpt', cost: 0.041 } as FileEntry;
     expect(renderToStaticMarkup(createElement(GeneratedBadge, { file }))).toBe(
-      '<span class="badge gen" title="GPT Image 2.6 Sunburst, $0.041">GPT · $0.04</span>',
+      '<span class="gen-at"><span class="badge gen gpt" title="GPT Image 2.6 Sunburst, $0.041"><span class="gen-full">GPT · $0.04</span><span class="gen-short">$0.04</span></span></span>',
     );
     expect(renderToStaticMarkup(createElement(GeneratedBadge, { file: { generatedModel: null, cost: null } as FileEntry }))).toBe('');
   });

@@ -129,12 +129,19 @@ describe('the Generate panel', () => {
 
 describe('generated images', () => {
   it('carry a badge with the model and the cost, two decimals, three in the title', () => {
-    expect(badge(file())).toEqual({ text: 'GPT · $0.04', title: 'GPT Image 2.6 Sunburst, $0.041' });
+    expect(badge(file())).toEqual({ model: 'gpt', text: 'GPT · $0.04', short: '$0.04', title: 'GPT Image 2.6 Sunburst, $0.041' });
     expect(badge(file({ generatedModel: 'nb', cost: 0.037 }))).toEqual({
+      model: 'nb',
       text: 'Nano Banana · $0.04',
+      short: '$0.04',
       title: 'Nano Banana 2.1, $0.037',
     });
-    expect(badge(file({ cost: null }))).toEqual({ text: 'GPT · cost unknown', title: 'GPT Image 2.6 Sunburst, cost unknown' });
+    expect(badge(file({ cost: null }))).toEqual({
+      model: 'gpt',
+      text: 'GPT · cost unknown',
+      short: '$?',
+      title: 'GPT Image 2.6 Sunburst, cost unknown',
+    });
     expect(badge(file({ generatedModel: null, cost: null, matchedBy: 'prompt' }))).toBeNull();
   });
 
