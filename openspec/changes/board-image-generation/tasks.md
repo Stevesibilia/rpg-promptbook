@@ -31,14 +31,14 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 2. Server: the OpenRouter key (brief A)
 
-- [ ] 2.1 `config.ts`: `PROMPTBOOK_SECRETS_KEY` (`Config.secretsKey: Buffer | null`) and `OPENROUTER_BASE_URL` (`Config.openRouterBaseUrl`) (D16); `testConfig` in `test/db/helpers.ts` with both
-- [ ] 2.2 `migrations/008_image_generation.sql` as D1; `test/db/migrations.test.ts` lists it
-- [ ] 2.3 `src/images/secrets.ts`: `sealSecret`, `openSecret`, `saveOpenRouterKey`, `readOpenRouterKey`, `removeOpenRouterKey` (D1)
-- [ ] 2.4 `src/images/openrouter.ts`: `checkKey` (D2); `src/images/routes.ts`: `GET /api/image-generation` (OpenRouter called only with `?check=1`; without spending until group 3), `PUT` and `DELETE /api/image-generation/key` (D2); registered in `app.ts`; `AppOptions.logger` takes logger options with a stream (D2)
+- [x] 2.1 `config.ts`: `PROMPTBOOK_SECRETS_KEY` (`Config.secretsKey: Buffer | null`) and `OPENROUTER_BASE_URL` (`Config.openRouterBaseUrl`) (D16); `testConfig` in `test/db/helpers.ts` with both
+- [x] 2.2 `migrations/008_image_generation.sql` as D1; `test/db/migrations.test.ts` lists it
+- [x] 2.3 `src/images/secrets.ts`: `sealSecret`, `openSecret`, `saveOpenRouterKey`, `readOpenRouterKey`, `removeOpenRouterKey` (D1)
+- [x] 2.4 `src/images/openrouter.ts`: `checkKey` (D2); `src/images/routes.ts`: `GET /api/image-generation` (OpenRouter called only with `?check=1`; without spending until group 3), `PUT` and `DELETE /api/image-generation/key` (D2); registered in `app.ts`; `AppOptions.logger` takes logger options with a stream (D2)
 - [x] 2.5 `routes/settings.ts`: `imageGeneration` optional with its default, kept on a PUT without it (D3)
-- [ ] 2.6 `test/db/fake-openrouter.ts` (D17), the `/key` part first
-- [ ] 2.7 Tests: `loadConfig` for both variables (absent, blank, 16 and 48 bytes, not base64, a malformed URL, the default URL, a trailing `/` removed); seal and open round trip, a wrong server key, another account's row; the key routes against the fake: good, `nolimit`, rejected (400, nothing stored), unreachable (502, the old key kept), removed (204, also with none), unreadable after a server key change (`key_unreadable`), not configured (503 and `configured: false`); the GET's live check with each `error`; the key in no response body and no captured log line; the new routes in `accounts.test.ts`'s session test; settings with and without `imageGeneration`
-- [ ] 2.8 Commit `feat(server): an OpenRouter key per account, stored encrypted`
+- [x] 2.6 `test/db/fake-openrouter.ts` (D17), the `/key` part first
+- [x] 2.7 Tests: `loadConfig` for both variables (absent, blank, 16 and 48 bytes, not base64, a malformed URL, the default URL, a trailing `/` removed); seal and open round trip, a wrong server key, another account's row; the key routes against the fake: good, `nolimit`, rejected (400, nothing stored), unreachable (502, the old key kept), removed (204, also with none), unreadable after a server key change (`key_unreadable`), not configured (503 and `configured: false`); the GET's live check with each `error`; the key in no response body and no captured log line; the new routes in `accounts.test.ts`'s session test; settings with and without `imageGeneration`
+- [x] 2.8 Commit `feat(server): an OpenRouter key per account, stored encrypted`
 
 ## 3. Server: generating images (brief A)
 

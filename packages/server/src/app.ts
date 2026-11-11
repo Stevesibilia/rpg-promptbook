@@ -1,11 +1,12 @@
 import cors, { type FastifyCorsOptions } from '@fastify/cors';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import type { DiscoveryRequestOptions } from 'openid-client';
 import { authPlugin, isPermissiveCorsPath } from './accounts/auth.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { openBlobStore, type BlobStore } from './files/blobs.js';
+import { imageRoutes } from './images/routes.js';
 import { authRoutes } from './routes/auth.js';
 import { cuebardRoutes } from './routes/cuebard.js';
 import { filesRoutes } from './routes/files.js';
@@ -32,7 +33,9 @@ declare module 'fastify' {
 export interface AppOptions {
   config: Config;
   db: Db;
-  logger?: boolean;
+  // true in the server; logger options with a destination stream let a test
+  // read what is logged (board-image-generation design decision 2).
+  logger?: FastifyServerOptions['logger'];
   // The file store; opened at config.dataDir when not given.
   blobs?: BlobStore;
   // Only for the tests' plain-http issuer; the server never sets it.
@@ -88,6 +91,7 @@ export async function buildApp({ config, db, logger = false, blobs, oidcDiscover
   await app.register(cuebardRoutes, { db, sync: app.sync, blobs: store });
   await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(filesRoutes, { config, db, blobs: store });
+  await app.register(imageRoutes, { config, db, sync: app.sync, blobs: store });
   await app.register(oauthRoutes, { config, db, sync: app.sync });
   await app.register(mcpRoutes, { config, db, sync: app.sync });
   await app.register(webPlugin, { config });

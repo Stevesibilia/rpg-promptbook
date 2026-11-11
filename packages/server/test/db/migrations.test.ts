@@ -59,6 +59,7 @@ describe('migrations', () => {
       '005_files.sql',
       '006_gdrarchive.sql',
       '007_document_templates.sql',
+      '008_image_generation.sql',
     ]);
 
     const user = await findUserByUsername(old, 'steve');

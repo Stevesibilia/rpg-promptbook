@@ -180,6 +180,9 @@ describe('requests are protected by default', () => {
     expect(sessionOnly).toContain('GET /api/auth/grants');
     expect(sessionOnly).toContain('PUT /api/projects/:id/files/:sha256');
     expect(sessionOnly).toContain('GET /api/projects/:id/files/:sha256');
+    expect(sessionOnly).toContain('GET /api/image-generation');
+    expect(sessionOnly).toContain('PUT /api/image-generation/key');
+    expect(sessionOnly).toContain('DELETE /api/image-generation/key');
     expect([...PUBLIC_ROUTES].sort()).toEqual([
       'GET /api/auth/config',
       'GET /api/auth/me',
