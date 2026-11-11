@@ -103,11 +103,11 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 11. Screenshots and the owner's preview (brief B)
 
-- [ ] 11.1 Screenshots (1440 x 900) of every mockup screen, 1 to 10c, from the real app against the fake, light and dark for the panel and Settings, under the scratchpad
-- [ ] 11.2 Start the local stack with the fake (`e2e/compose.openrouter.yaml`) for the owner's LAN preview, give the URLs, and **stop and wait** for the owner's verdict
+- [x] 11.1 Screenshots (1440 x 900) of every mockup screen, 1 to 10c, from the real app against the fake, light and dark for the panel and Settings, under the scratchpad
+- [x] 11.2 Start the local stack with the fake (`e2e/compose.openrouter.yaml`) for the owner's LAN preview, give the URLs, and **stop and wait** for the owner's verdict
 - [ ] 11.3 After the owner, leave the stack up for the architect, who switches it to the real OpenRouter for the real generations (within about $0.50)
 
 ## 12. Proof and hand-back of brief B
 
-- [ ] 12.1 `npm run typecheck`, `npm test`, `npm run e2e` (normal and throttled): literal results
-- [ ] 12.2 Hand back: results, screenshot paths, the owner's verdict, every departure from the design, anything from Risks seen
+- [x] 12.1 `npm run typecheck`, `npm test`, `npm run e2e` (normal and throttled): literal results
+- [x] 12.2 Hand back: results, screenshot paths, the owner's verdict, every departure from the design, anything from Risks seen
