@@ -1,6 +1,7 @@
 import type { NamedCategory } from 'promptbook-project';
 import { HandoutIcon, PeopleIcon, PersonIcon, PlusIcon } from '../ui/icons.js';
 import { held, useBoardContext } from './context.js';
+import { GeneratedHere } from './GeneratePanel.js';
 import { PromptBody, RemovePrompt } from './ImagePrompt.js';
 import { Counts, StatusChip, SummaryLine } from './parts.js';
 import { AddPromptEditor } from './PromptEditor.js';
@@ -31,7 +32,13 @@ export function NamedSummary({
   const items = named[category];
   if (items.length === 0 && adding?.category !== category) return null;
   return (
-    <SummaryLine counts={cardFilterCounts(items)} filter={filter} setFilter={setFilter} label="Filter the cards">
+    <SummaryLine
+      counts={cardFilterCounts(items)}
+      filter={filter}
+      setFilter={setFilter}
+      label="Filter the cards"
+      end={<GeneratedHere />}
+    >
       <b>{items.length}</b> {categoryText[category].tab}
       <span className="sep">·</span>
       <Counts counts={tally(items.map((p) => p.status))} />

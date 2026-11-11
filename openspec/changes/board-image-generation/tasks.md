@@ -76,11 +76,11 @@ OpenRouter: every test and preview of the implementer runs against the fake
 
 ## 7. Web: Generate on the board (brief B)
 
-- [ ] 7.1 `ImagePrompt.tsx`: Generate in `.pfoot` after Edit; the panel (model cards, Images, Shape with hint, What is sent, footer); the no-key and not-configured panels; progress with placeholders; the error line with Try again and dismiss; the new empty-drop text (D13, «The approved screens»)
-- [ ] 7.2 `Thumb`: the model and cost badge; generated images marked new as they arrive
-- [ ] 7.3 `Viewer.tsx`: Source, Model and Cost for a generated file; `matchedLabels.generated`
-- [ ] 7.4 `BoardView.tsx`: «Generated here» on the summary line; the toast; `board.css` for all of it, light and dark
-- [ ] 7.5 Commit `feat(web): generate images from the board`
+- [x] 7.1 `ImagePrompt.tsx`: Generate in `.pfoot` after Edit; the panel (model cards, Images, Shape with hint, What is sent, footer); the no-key and not-configured panels; progress with placeholders; the error line with Try again and dismiss; the new empty-drop text (D13, «The approved screens»)
+- [x] 7.2 `Thumb`: the model and cost badge; generated images marked new as they arrive
+- [x] 7.3 `Viewer.tsx`: Source, Model and Cost for a generated file; `matchedLabels.generated`
+- [x] 7.4 `BoardView.tsx`: «Generated here» on the summary line; the toast; `board.css` for all of it, light and dark
+- [x] 7.5 Commit `feat(web): generate images from the board`
 
 ## 8. Web: Settings → Image generation (brief B)
 

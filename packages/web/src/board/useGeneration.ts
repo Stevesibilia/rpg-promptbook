@@ -4,6 +4,7 @@ import {
   STALE_GENERATION_MS,
   type FileEntry,
   type GenerationJob,
+  type ImageShape,
   type Settings,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
@@ -242,9 +243,13 @@ export function useGenerate(
   jobs: readonly GenerationJob[],
 ): {
   pending: ReadonlyMap<string, PendingStart>;
+  // The shape chosen here for each job started here, for its placeholders;
+  // another device's jobs take their prompt's shape.
+  shapes: ReadonlyMap<string, ImageShape>;
   start(promptId: string, body: GenerateBody): Promise<Refused | null>;
 } {
   const [pending, setPending] = useState<ReadonlyMap<string, PendingStart>>(new Map());
+  const [shapes, setShapes] = useState<ReadonlyMap<string, ImageShape>>(new Map());
   const drop = useCallback((promptId: string, jobId: string) => {
     setPending((now) => {
       if (now.get(promptId)?.jobId !== jobId) return now;
@@ -265,6 +270,7 @@ export function useGenerate(
       const since = new Date().toISOString();
       try {
         const { jobId } = await api.generate(projectId, promptId, body);
+        setShapes((now) => new Map(now).set(jobId, body.shape));
         setPending((now) => new Map(now).set(promptId, { model: body.model, count: body.count, since, jobId }));
         setTimeout(() => drop(promptId, jobId), PENDING_MS);
         return null;
@@ -277,5 +283,5 @@ export function useGenerate(
     [projectId, drop],
   );
 
-  return { pending, start };
+  return { pending, shapes, start };
 }

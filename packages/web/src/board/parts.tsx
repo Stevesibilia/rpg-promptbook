@@ -111,12 +111,15 @@ export function SummaryLine({
   filter,
   setFilter,
   label,
+  end,
 }: {
   children: ReactNode;
   counts: Record<Filter, number>;
   filter: Filter;
   setFilter(filter: Filter): void;
   label: string;
+  // At the line's right end, after the filters: «Generated here».
+  end?: ReactNode;
 }) {
   return (
     <div className="sumline">
@@ -132,6 +135,7 @@ export function SummaryLine({
           ))}
         </div>
       </div>
+      {end}
     </div>
   );
 }

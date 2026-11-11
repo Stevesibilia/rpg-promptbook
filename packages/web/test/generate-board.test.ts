@@ -1,0 +1,198 @@
+import { createElement, type ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
+import type { FileEntry, GenerationJob, ImagePromptEntry, PromptRow } from 'promptbook-project';
+import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
+import type { ImageGenerationStatus } from '../src/api.js';
+import { BoardContext, type BoardContextValue, type Generation } from '../src/board/context.js';
+import { GeneratedBadge } from '../src/board/GeneratePanel.js';
+import { PromptBody } from '../src/board/ImagePrompt.js';
+import type { ShownPrompt } from '../src/board/summary.js';
+import type { PendingStart, StatusState } from '../src/board/useGeneration.js';
+
+// Generate on the board as it is drawn (board-image-generation «The approved
+// screens», screens 2, 3, 6, 7, 8 and 9): the button, the panel and its
+// no-key and not-configured states, the progress and the error line.
+
+const MJ = 'Low-angle view of a flooded crypt, sepia and ash palette --ar 3:2 --v 8.1 --no text, letters, modern buildings';
+
+const entry = (patch: Partial<ImagePromptEntry> = {}): ImagePromptEntry => ({
+  id: 'p1',
+  category: 'scene',
+  sceneId: 'S2',
+  name: null,
+  prompt: MJ,
+  by: 'claude',
+  at: '',
+  order: 0,
+  chosenFileId: null,
+  ...patch,
+});
+
+const shown = (patch: Partial<ImagePromptEntry> = {}, images: FileEntry[] = []): ShownPrompt => ({
+  row: { prompt: entry(patch), number: 1, images, chosen: null, status: images.length ? 'received' : 'wanted' } as PromptRow,
+  scene: { sceneId: 'S2', title: 'La cripta' },
+});
+
+const ready = (patch: Partial<ImageGenerationStatus> = {}): StatusState => ({
+  state: 'ready',
+  status: {
+    configured: true,
+    key: { hint: 'a41f', checkedAt: '2026-11-11T21:40:00.000Z', limitRemaining: null },
+    spending: { month: { images: 0, cost: 0 }, all: { images: 0, cost: 0 }, projects: [] },
+    ...patch,
+  },
+});
+
+const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
+  id: 'j1',
+  promptId: 'p1',
+  model: 'gpt',
+  count: 4,
+  done: 1,
+  failed: 0,
+  startedAt: new Date(Date.now() - 47_000).toISOString(),
+  by: 'u1',
+  error: null,
+  finishedAt: null,
+  ...patch,
+});
+
+function render(
+  prompt: ShownPrompt,
+  gen: Partial<Generation> = {},
+): string {
+  const generation: Generation = {
+    user: 'u1',
+    offline: false,
+    status: ready(),
+    retryStatus: () => {},
+    defaults: { model: 'gpt', count: 2 },
+    jobs: new Map(),
+    pending: new Map(),
+    shapes: new Map(),
+    start: async () => null,
+    spending: null,
+    open: null,
+    setOpen: () => {},
+    ...gen,
+  };
+  const value = {
+    doc: new Y.Doc(),
+    projectId: 'proj',
+    rows: [],
+    named: { pc: [], npc: [], handout: [] },
+    shown: new Map([[prompt.row.prompt.id, prompt]]),
+    marks: new Set<string>(),
+    toast: () => {},
+    openViewer: () => {},
+    mark: () => {},
+    editing: new Set<string>(),
+    setEditing: () => {},
+    adding: null,
+    setAdding: () => {},
+    generation,
+  } as unknown as BoardContextValue;
+  const tree: ReactElement = createElement(
+    MemoryRouter,
+    null,
+    createElement(BoardContext.Provider, { value }, createElement(PromptBody, { prompt })),
+  );
+  return renderToStaticMarkup(tree);
+}
+
+// The markup as text, tags dropped.
+const text = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+describe('Generate on a prompt', () => {
+  it('sits after Copy and Edit, the panel closed', () => {
+    const html = render(shown());
+    expect(text(html)).toMatch(/Copy Edit Generate No images yet\. Generate them, or drop downloaded files here\./);
+    expect(html).toMatch(/<button class="tb sm gen" aria-expanded="false" aria-haspopup="dialog">/);
+  });
+
+  it('is not offered on a prompt with no text', () => {
+    expect(text(render(shown({ prompt: '' })))).not.toMatch(/Generate/);
+  });
+
+  it('opens the panel: models, images, shape from the --ar, what is sent, the price', () => {
+    const html = render(shown(), { open: 'p1' });
+    expect(html).toMatch(/role="dialog" aria-label="Generate images"/);
+    expect(html).toMatch(/aria-expanded="true"/);
+    const t = text(html);
+    expect(t).toMatch(/Generate images ✕ Model GPT Image 2\.6 Best detail and text ≈ \$0\.04 · 53 s per image Nano Banana 2\.1 Fast draft ≈ \$0\.04 · 17 s per image/);
+    expect(t).toMatch(/Images 1 2 3 4 Shape from the prompt's --ar 16:9 3:2 1:1 2:3/);
+    expect(html).toMatch(/<button class="on" aria-pressed="true">3:2<\/button>/);
+    expect(html).toMatch(/<button class="on" aria-pressed="true">2<\/button>/);
+    expect(html).toMatch(/<details open="">/);
+    expect(t).toMatch(/What is sent: Midjourney flags left out Low-angle view of a flooded crypt, sepia and ash palette No text, letters or modern buildings\. --ar 3:2/);
+    expect(html).toMatch(/<ins>No text, letters or modern buildings\.<\/ins>/);
+    expect(html).toMatch(/<s>--ar 3:2 --v 8\.1 --no text, letters, modern buildings<\/s>/);
+    expect(t).toMatch(/About \$0\.08 · 1K Cancel Generate 2 No images yet/);
+  });
+
+  it('starts from the defaults for a card, with its category shape', () => {
+    const named: ShownPrompt = { ...shown({ category: 'npc', sceneId: null, name: 'Padre Anselmo', prompt: 'an old priest' }), scene: null };
+    const t = text(render(named, { open: 'p1', defaults: { model: 'nb', count: 3 } }));
+    expect(t).toMatch(/Shape default for NPCs/);
+    expect(t).toMatch(/What is sent an old priest About \$0\.11 · 1K Cancel Generate 3 No images yet/);
+  });
+
+  it('asks for a key first, or says the server is not set up', () => {
+    const nokey = render(shown(), { open: 'p1', status: ready({ key: null }) });
+    expect(text(nokey)).toMatch(
+      /Generate images ✕ Add your OpenRouter key first\. Images are billed to your OpenRouter account\. Open Settings → Image generation No images yet/,
+    );
+    expect(nokey).toMatch(/href="\/settings\/image-generation"/);
+    const off = text(render(shown(), { open: 'p1', status: ready({ configured: false, key: null }) }));
+    expect(off).toMatch(/Generate images ✕ This server is not set up for image generation\. No images yet/);
+  });
+
+  it('shows a running job: a slot per image to come, the line, Generate disabled', () => {
+    const html = render(shown(), { jobs: new Map([['p1', job()]]) });
+    expect(html.match(/class="slot-g"/g)).toHaveLength(3);
+    expect(html).toMatch(/aspect-ratio:3 \/ 2/);
+    expect(text(html)).toMatch(/Generating 2 of 4 with GPT Image 2\.6 · 4[78]s\. It keeps going if you leave this page\./);
+    expect(html).toMatch(/<button class="tb sm gen" disabled="" title="Generating…"/);
+    expect(text(html)).not.toMatch(/No images yet/);
+  });
+
+  it('puts the model and cost on a generated thumbnail', () => {
+    const file = { generatedModel: 'gpt', cost: 0.041 } as FileEntry;
+    expect(renderToStaticMarkup(createElement(GeneratedBadge, { file }))).toBe(
+      '<span class="badge gen" title="GPT Image 2.6 Sunburst, $0.041">GPT · $0.04</span>',
+    );
+    expect(renderToStaticMarkup(createElement(GeneratedBadge, { file: { generatedModel: null, cost: null } as FileEntry }))).toBe('');
+  });
+
+  it('shows a start the server took at once, in the shape chosen here', () => {
+    const pending: PendingStart = { model: 'nb', count: 2, since: new Date().toISOString(), jobId: 'j9' };
+    const html = render(shown(), { pending: new Map([['p1', pending]]), shapes: new Map([['j9', '1:1']]) });
+    expect(html.match(/class="slot-g" style="aspect-ratio:1 \/ 1"/g)).toHaveLength(2);
+    expect(text(html)).toMatch(/Generating 1 of 2 with Nano Banana 2\.1 · 0s\./);
+  });
+
+  it('shows an error in place of the empty line, with Try again and dismiss', () => {
+    const failed = job({
+      done: 0,
+      failed: 2,
+      error: 'OpenRouter refused: your key has no credit left. Add credit on openrouter.ai, then try again. Nothing was charged.',
+      finishedAt: new Date().toISOString(),
+    });
+    const html = render(shown(), { jobs: new Map([['p1', failed]]) });
+    expect(html).toMatch(/class="info err" role="alert"/);
+    expect(html).toMatch(/<b>OpenRouter refused: your key has no credit left\.<\/b>/);
+    expect(text(html)).toMatch(/Add credit on openrouter\.ai, then try again\. Nothing was charged\. Try again ✕$/);
+    expect(text(html)).not.toMatch(/No images yet/);
+    // Generate is free again.
+    expect(html).toMatch(/<button class="tb sm gen" aria-expanded="false"/);
+  });
+});

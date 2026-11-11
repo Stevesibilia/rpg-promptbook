@@ -159,3 +159,15 @@ export const HandoutIcon = icon(
     <path d="M14 3v5h5M9 12h6M9 16h4" />
   </>,
 );
+export const SparkIcon = icon(
+  <>
+    <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />
+    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+  </>,
+);
+export const CoinIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5" />
+  </>,
+);
