@@ -65,15 +65,15 @@ const MONTH = `(date_trunc('month', now() at time zone 'UTC') at time zone 'UTC'
 async function spendingOf(db: Queryable, userId: string): Promise<Spending> {
   const totals = await db.queryOne<{ month_images: number; month_cost: string; all_images: number; all_cost: string }>(
     `select count(*) filter (where ok and created_at >= ${MONTH})::int as month_images,
-            coalesce(sum(cost) filter (where ok and created_at >= ${MONTH}), 0) as month_cost,
+            coalesce(sum(cost) filter (where created_at >= ${MONTH}), 0) as month_cost,
             count(*) filter (where ok)::int as all_images,
-            coalesce(sum(cost) filter (where ok), 0) as all_cost
+            coalesce(sum(cost), 0) as all_cost
      from image_generations where user_id = $1`,
     [userId],
   );
   const projects = await db.query<{ project_id: string | null; title: string | null; images: number; cost: string }>(
     `select g.project_id, p.title, count(*) filter (where g.ok)::int as images,
-            coalesce(sum(g.cost) filter (where g.ok), 0) as cost
+            coalesce(sum(g.cost), 0) as cost
      from image_generations g left join projects p on p.id = g.project_id
      where g.user_id = $1 and g.created_at >= ${MONTH}
      group by g.project_id, p.title
@@ -117,6 +117,12 @@ function labelOf(prompt: ImagePromptEntry, prompts: readonly ImagePromptEntry[])
     .replace(/-+$/, '');
   return slug || prompt.category;
 }
+
+// At most this many jobs of one account run at once in this process (D7, 6b).
+const MAX_RUNNING_JOBS = 3;
+
+const tooManyJobs = () =>
+  new AppError(429, 'too_many_jobs', 'Three generations are already running. Wait for one to finish.');
 
 const busy = () => new AppError(409, 'busy', 'Images are already being generated for this prompt.');
 
@@ -202,6 +208,9 @@ export async function imageRoutes(
     return reply.code(204).send();
   });
 
+  // Generate requests past check 6b and not yet in `runs`, by account.
+  const starting = new Map<string, number>();
+
   // The user's project, not in the bin.
   async function ownProject(userId: string, id: string) {
     const project = await getProject(db, userId, id);
@@ -224,6 +233,7 @@ export async function imageRoutes(
     const jobId = randomUUID();
     const live = await openLiveDocument(sync, id, user.id);
     let run: { prompt: string; label: string };
+    let reserved = false;
     try {
       const found = await live.transact((doc) => {
         migrateImagePrompts(doc);
@@ -235,6 +245,12 @@ export async function imageRoutes(
       });
       const running = () => readGenerationJobs(live.doc).some((j) => j.promptId === promptId && j.finishedAt === null);
       if (running()) throw busy();
+      // 6b. Counted with the requests between this check and their start,
+      // reserved here without an await in between.
+      const own = [...runs.values()].filter((r) => r.userId === user.id).length + (starting.get(user.id) ?? 0);
+      if (own >= MAX_RUNNING_JOBS) throw tooManyJobs();
+      starting.set(user.id, (starting.get(user.id) ?? 0) + 1);
+      reserved = true;
       if (!(await hasRoom(db, user.id, body.count * ROOM_PER_IMAGE, quotaBytes))) throw quotaReached();
       // Check 6 again, in the same transaction as the start: two clicks start
       // one job.
@@ -256,6 +272,11 @@ export async function imageRoutes(
       run = found;
     } finally {
       await live.close();
+      if (reserved) {
+        const left = (starting.get(user.id) ?? 1) - 1;
+        if (left > 0) starting.set(user.id, left);
+        else starting.delete(user.id);
+      }
     }
 
     const controller = new AbortController();
@@ -281,14 +302,15 @@ export async function imageRoutes(
     return reply.code(202).send({ jobId });
   });
 
-  // D11: the images generated in this project and their cost, all time.
+  // D11: the images generated in this project and what OpenRouter billed for
+  // them, all time.
   app.get('/api/projects/:id/image-spending', async (req) => {
     const { user } = requireSession(req);
     const { id } = req.params as { id: string };
     await ownProject(user.id, id);
     const row = await db.queryOne<{ images: number; cost: string }>(
-      `select count(*)::int as images, coalesce(sum(cost), 0) as cost
-       from image_generations where project_id = $1 and user_id = $2 and ok`,
+      `select count(*) filter (where ok)::int as images, coalesce(sum(cost), 0) as cost
+       from image_generations where project_id = $1 and user_id = $2`,
       [id, user.id],
     );
     return { images: row?.images ?? 0, cost: dollars(row?.cost ?? 0) };

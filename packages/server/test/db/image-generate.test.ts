@@ -216,6 +216,40 @@ describe('the generate route’s checks, in order (D7)', () => {
     expect(readFiles(await stored(s.id))).toHaveLength(2);
   });
 
+  it('answers 429 too_many_jobs to a fourth running job of the account, and 202 once one ends', async () => {
+    const s = await setup();
+    const fourth = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => [
+      addImagePrompt(doc, { category: 'npc', name: 'Za’ Nina', prompt: 'an old fisherwoman' }, 'user').id,
+      addImagePrompt(doc, { category: 'handout', name: 'Lettera', prompt: 'a burnt letter' }, 'user').id,
+    ]);
+    fake.setDelay(1500);
+    const started = await Promise.all([s.scene, s.second, s.npc].map((p) => generate(s, p, { model: 'nb', count: 1, shape: '1:1' })));
+    expect(started.map((r) => r.statusCode)).toEqual([202, 202, 202]);
+    const refusedFourth = await generate(s, fourth[0]!, { model: 'nb', count: 1, shape: '1:1' });
+    expect(refusedFourth.statusCode).toBe(429);
+    expect(refusedFourth.json()).toEqual({
+      error: 'too_many_jobs',
+      message: 'Three generations are already running. Wait for one to finish.',
+    });
+    fake.setDelay(0);
+    await s.app.generationRuns.get(started[0]!.json().jobId)?.done;
+    expect((await generate(s, fourth[1]!, { model: 'nb', count: 1, shape: '1:1' })).statusCode).toBe(202);
+    await Promise.all([...s.app.generationRuns.values()].map((r) => r.done));
+  });
+
+  it('counts concurrent starts against the limit too', async () => {
+    const s = await setup();
+    const more = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
+      ['a', 'b'].map((n) => addImagePrompt(doc, { category: 'pc', name: `PC ${n}`, prompt: `a portrait ${n}` }, 'user').id),
+    );
+    fake.setDelay(500);
+    const answers = await Promise.all(
+      [s.scene, s.second, s.npc, ...more].map((p) => generate(s, p, { model: 'nb', count: 1, shape: '1:1' })),
+    );
+    expect(answers.map((a) => a.statusCode).sort()).toEqual([202, 202, 202, 429, 429]);
+    await Promise.all([...s.app.generationRuns.values()].map((r) => r.done));
+  });
+
   it('treats a stale job as no job', async () => {
     const s = await setup();
     await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
@@ -318,24 +352,29 @@ describe('a whole job (D9)', () => {
 });
 
 describe('errors in plain words (D10)', () => {
-  const cases: [string, (f: FakeOpenRouter) => void, string][] = [
-    ['401', (f) => f.failNext(401), 'OpenRouter rejected your key. Check it in Settings → Image generation.'],
-    ['429', (f) => f.failNext(429), 'OpenRouter is busy (rate limit). Try again in a minute.'],
+  // The image's sentence, and the cost OpenRouter reported for it: none for
+  // a refusal, so the job's error ends with «Nothing was charged.».
+  const cases: [string, (f: FakeOpenRouter) => void, string, string | null][] = [
+    ['401', (f) => f.failNext(401), 'OpenRouter rejected your key. Check it in Settings → Image generation.', null],
+    ['429', (f) => f.failNext(429), 'OpenRouter is busy (rate limit). Try again in a minute.', null],
     [
       '400 moderation',
       (f) => f.failNext(400, { error: { code: 400, message: 'Request blocked by moderation' } }),
       'OpenRouter refused this prompt (content policy).',
+      null,
     ],
-    ['400 other', (f) => f.failNext(400, { error: { message: 'bad' } }), 'OpenRouter refused the request (HTTP 400).'],
-    ['500', (f) => f.failNext(500), 'OpenRouter did not answer. Try again.'],
-    ['a 200 with data: []', (f) => f.failNext(200, { data: [], usage: { cost: 0 } }), 'OpenRouter sent no image. Try again.'],
+    ['400 other', (f) => f.failNext(400, { error: { message: 'bad' } }), 'OpenRouter refused the request (HTTP 400).', null],
+    ['500', (f) => f.failNext(500), 'OpenRouter did not answer. Try again.', null],
+    ['a 200 with data: []', (f) => f.failNext(200, { data: [], usage: { cost: 0 } }), 'OpenRouter sent no image. Try again.', null],
     [
       'a 200 with bytes that are no image',
       (f) => f.failNext(200, { data: [{ b64_json: Buffer.from('hello world, not an image').toString('base64') }], usage: { cost: 0.04 } }),
       'OpenRouter sent no image. Try again.',
+      // Billed, then refused here: its cost stays and nothing says it was free.
+      '0.040000',
     ],
   ];
-  for (const [name, arrange, sentence] of cases) {
+  for (const [name, arrange, sentence, cost] of cases) {
     it(`keeps the job with its sentence: ${name}`, async () => {
       const s = await setup();
       arrange(fake);
@@ -343,9 +382,16 @@ describe('errors in plain words (D10)', () => {
       const doc = await stored(s.id);
       expect(readFiles(doc)).toEqual([]);
       expect(readGenerationJobs(doc)).toEqual([
-        expect.objectContaining({ id: jobId, promptId: s.scene, done: 0, failed: 1, error: sentence, finishedAt: expect.any(String) }),
+        expect.objectContaining({
+          id: jobId,
+          promptId: s.scene,
+          done: 0,
+          failed: 1,
+          error: cost === null ? `${sentence} Nothing was charged.` : sentence,
+          finishedAt: expect.any(String),
+        }),
       ]);
-      expect(await rows(s.id)).toEqual([{ prompt_id: s.scene, model: 'gpt', cost: null, sha256: null, ok: false, error: sentence }]);
+      expect(await rows(s.id)).toEqual([{ prompt_id: s.scene, model: 'gpt', cost, sha256: null, ok: false, error: sentence }]);
     });
   }
 
@@ -353,7 +399,7 @@ describe('errors in plain words (D10)', () => {
     const s = await setup({ key: BROKE });
     await generated(s, s.scene, { model: 'nb', count: 2, shape: '3:2' });
     expect(readGenerationJobs(await stored(s.id))[0]!.error).toBe(
-      'OpenRouter refused: your key has no credit left. Add credit on openrouter.ai, then try again.',
+      'OpenRouter refused: your key has no credit left. Add credit on openrouter.ai, then try again. Nothing was charged.',
     );
   });
 
@@ -361,7 +407,7 @@ describe('errors in plain words (D10)', () => {
     const s = await setup({ options: { generationTimeoutMs: 200 } });
     fake.setDelay(1000);
     await generated(s, s.scene, { model: 'gpt', count: 1, shape: '3:2' });
-    expect(readGenerationJobs(await stored(s.id))[0]!.error).toBe('OpenRouter did not answer. Try again.');
+    expect(readGenerationJobs(await stored(s.id))[0]!.error).toBe('OpenRouter did not answer. Try again. Nothing was charged.');
   });
 
   it('keeps the images that arrived and counts the rest', async () => {
@@ -391,7 +437,14 @@ describe('errors in plain words (D10)', () => {
     await s.app.generationRuns.get(response.json().jobId)?.done;
     const doc = await stored(s.id);
     expect(readFiles(doc)).toEqual([]);
+    // Billed, then refused here: no «Nothing was charged.», and the cost
+    // counts in spending though the image does not.
     expect(readGenerationJobs(doc)[0]!.error).toBe('Your files have reached their quota.');
+    expect(await rows(s.id)).toEqual([
+      { prompt_id: s.scene, model: 'gpt', cost: '0.040000', sha256: null, ok: false, error: 'Your files have reached their quota.' },
+    ]);
+    const spending = await s.app.inject({ url: `/api/projects/${s.id}/image-spending`, headers: s.headers });
+    expect(spending.json()).toEqual({ images: 0, cost: 0.04 });
   });
 });
 
@@ -421,10 +474,14 @@ describe('the board changing during a job', () => {
     expect(readFiles(after)).toEqual([]);
     // The job is as it was; it goes stale.
     expect(readGenerationJobs(after)).toEqual(readGenerationJobs(before));
-    expect((await rows(s.id)).map((r) => [r.ok, r.error])).toEqual([
-      [false, 'The project was moved to the bin.'],
-      [false, 'The project was moved to the bin.'],
+    expect((await rows(s.id)).map((r) => [r.ok, r.cost, r.error])).toEqual([
+      [false, '0.040000', 'The project was moved to the bin.'],
+      [false, '0.040000', 'The project was moved to the bin.'],
     ]);
+    // Billed: the cost counts in the month's spending, the images do not.
+    const status = (await s.app.inject({ url: '/api/image-generation', headers: s.headers })).json();
+    expect(status.spending.month).toEqual({ images: 0, cost: 0.08 });
+    expect(status.spending.projects).toEqual([{ projectId: s.id, title: "L'Ancora di Sabaoth", images: 0, cost: 0.08 }]);
     // Nothing was linked to it either.
     expect(await db.query('select * from project_files where project_id = $1', [s.id])).toEqual([]);
   });
@@ -518,7 +575,7 @@ describe('closing the app', () => {
     const doc = await stored(s.id);
     expect(readFiles(doc)).toEqual([]);
     expect(readGenerationJobs(doc)).toEqual([
-      expect.objectContaining({ failed: 2, error: 'The server restarted before the image arrived. Try again.' }),
+      expect.objectContaining({ failed: 2, error: 'The server restarted before the image arrived. Try again. Nothing was charged.' }),
     ]);
   });
 });
@@ -532,7 +589,7 @@ describe('removing the key', () => {
     await s.app.generationRuns.get(response.json().jobId)?.done;
     const doc = await stored(s.id);
     expect(readFiles(doc)).toEqual([]);
-    expect(readGenerationJobs(doc)[0]!.error).toBe('Stopped: the OpenRouter key was removed.');
+    expect(readGenerationJobs(doc)[0]!.error).toBe('Stopped: the OpenRouter key was removed. Nothing was charged.');
   });
 });
 

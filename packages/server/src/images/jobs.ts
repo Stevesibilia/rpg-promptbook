@@ -62,7 +62,8 @@ export interface GenerationRun {
 
 const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
 
-type Outcome = { ok: true } | { ok: false; error: string };
+// A failed image is `billed` when OpenRouter reported a cost for it.
+type Outcome = { ok: true } | { ok: false; error: string; billed: boolean };
 
 // A failed image's sentence, raised inside the steps below.
 class ImageFailed extends Error {}
@@ -165,13 +166,14 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     } catch (error) {
       const sentence = error instanceof ImageFailed ? error.message : IMAGE_ERRORS.noAnswer;
       if (!(error instanceof ImageFailed)) log.error({ jobId: run.jobId, err: error }, 'An image of a generation job failed');
-      // A failed image records no cost (D10), even one OpenRouter billed.
+      // A failed image keeps the cost OpenRouter reported for it (D10): it
+      // was billed, then refused on our side.
       if (cost !== null) log.warn({ jobId: run.jobId, cost }, 'An image OpenRouter billed did not land on the board');
-      await row(false, { error: sentence }).catch((e: unknown) => log.error({ jobId: run.jobId, err: e }, 'Could not record a failed image'));
+      await row(false, { cost, error: sentence }).catch((e: unknown) => log.error({ jobId: run.jobId, err: e }, 'Could not record a failed image'));
       await write((doc) => recordGenerationProgress(doc, run.jobId, 'failed')).catch((e: unknown) =>
         log.error({ jobId: run.jobId, err: e }, 'Could not record a failed image on the board'),
       );
-      return { ok: false, error: sentence };
+      return { ok: false, error: sentence, billed: cost !== null };
     }
     // Its own step: a failed insert here must not count the image twice.
     await row(true, { cost, sha256 }).catch((e: unknown) =>
@@ -192,7 +194,16 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
   );
   const failed = outcomes.filter((o) => !o.ok).length;
   const done = run.count - failed;
-  const error = failed === 0 ? null : done === 0 ? first! : `${failed} of ${run.count} images failed: ${first!}`;
+  // No image landed and OpenRouter billed none of them (D10).
+  const charged = outcomes.some((o) => !o.ok && o.billed);
+  const error =
+    failed === 0
+      ? null
+      : done > 0
+        ? `${failed} of ${run.count} images failed: ${first!}`
+        : charged
+          ? first!
+          : `${first!} Nothing was charged.`;
   await write((doc) => finishGenerationJob(doc, run.jobId, error)).catch((e: unknown) =>
     log.error({ jobId: run.jobId, err: e }, 'Could not finish a generation job'),
   );

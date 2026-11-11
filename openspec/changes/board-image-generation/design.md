@@ -335,6 +335,13 @@ in this order:
    removed, else 404 `prompt_not_found`; it has text, else 400
    `prompt_empty` _(error codes: drafter's choice)_;
 6. no running job on this prompt (D8), else 409 `{ error: 'busy' }`;
+   6b. fewer than 3 jobs of this account running in this process
+   (`app.generationRuns`), else 429 `{ error: 'too_many_jobs' }` «Three
+   generations are already running. Wait for one to finish.» _(Architect,
+   review of brief A: one click per prompt would otherwise start any number
+   of parallel OpenRouter calls on the user's money and the server's memory.
+   Counted on the in-process runs map, the source of truth for running calls
+   with a single server replica.)_
 7. quota room for `count × 20 MB`, else 507 `{ error: 'quota' }`, through a
    new `hasRoom(db, userId, length, quotaBytes)` in `files/store.ts` sharing
    `fitsQuota`'s sum. _(Architect, Q3: 507, as the upload route.)_
@@ -465,16 +472,22 @@ but `checkNewFile` (`board.ts:497`) refuses an image with a scene and
 
 When some images of the job arrived, they stay and the error reads «2 of 4
 images failed: <sentence>»; when none arrived, the sentence alone. A failed
-image records no cost.
+image records the cost OpenRouter reported for it, if any: OpenRouter's
+refusals report none, but an image billed and then refused on our side
+(quota, board full, bin) was paid for.
+
+When no image of the job landed and OpenRouter billed none of them, the
+sentence ends with « Nothing was charged.»; the board shows `job.error`
+unchanged.
 
 ### D11. Spending
 
 `image_generations` (D1) gets one row per image asked, ok or failed:
-`project_id`, `prompt_id`, `model` (the key), `cost` (null when failed or
-unreported), `sha256` (null when failed), `ok`, `error`.
+`project_id`, `prompt_id`, `model` (the key), `cost` (null when OpenRouter
+reported none), `sha256` (null when failed), `ok`, `error`.
 
-- `GET /api/projects/:id/image-spending` → `{ images, cost }`: the ok rows
-  of this project, all time. 404 for a project that is not the user's or is
+- `GET /api/projects/:id/image-spending` → `{ images, cost }`: this
+  project's rows, all time, counted as below. 404 for a project that is not the user's or is
   in the bin. It answers whether or not the server is configured.
 - `Spending` in `GET /api/image-generation`:
 
@@ -494,7 +507,8 @@ unreported), `sha256` (null when failed), `ok`, `error`.
   }
   ```
 
-Images count ok rows; cost sums their `cost` (null as 0), as JSON numbers.
+Images count ok rows; cost sums every row's cost (null as 0), so spending
+matches what OpenRouter billed; both as JSON numbers.
 Months start at `date_trunc('month', now() at time zone 'UTC')`. Removing an
 image from the board keeps its row: the mockup says «Removing an image does
 not remove its cost.» _(Drafter's choices: projects listed when they have any
@@ -671,9 +685,9 @@ without an error; it sums the files with `matchedBy` `generated` on that
 prompt added since `startedAt`. Drafter's choice.)_
 
 **Error** (screen 8): under the prompt, an `.info.err` line with a warning
-icon, the job's error (the first sentence bold, as the mockup), «Nothing was
-charged.» when no image of the job arrived _(from the mockup; D10 does not
-list it)_, «Try again» (opens the panel) and a dismiss button
+icon, the job's error as it is (the first sentence bold, as the mockup;
+the server ends it with «Nothing was charged.» when that is true, D10),
+«Try again» (opens the panel) and a dismiss button
 (`dismissGenerationError`). The line replaces the empty-drop text.
 
 **Badges** (screens 1, 5): on a generated thumbnail, a small badge «GPT ·
