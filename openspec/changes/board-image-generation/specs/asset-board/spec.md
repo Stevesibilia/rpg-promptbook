@@ -173,7 +173,7 @@ the user started ends without an error, the board SHALL toast «<n> images for
 
 ### Requirement: Generation errors
 
-A failed image SHALL record no cost. When images of a job fail, the prompt
+A failed image SHALL record the cost OpenRouter reported for it, if any, so that spending matches what OpenRouter billed. When images of a job fail, the prompt
 SHALL show OpenRouter's reason in plain words with «Try again», which opens
 the panel, and a dismiss button, on every device, until dismissed or until
 the next Generate on that prompt: «OpenRouter rejected your key. Check it in
@@ -183,15 +183,14 @@ credit left. Add credit on openrouter.ai, then try again.» for 402;
 «OpenRouter refused this prompt (content policy).» for a moderation refusal;
 «OpenRouter did not answer. Try again.» for a timeout, a server error or no
 answer. Images of the job that arrived SHALL stay, and the reason SHALL then
-read «<f> of <n> images failed: <reason>». When no image arrived the line
-SHALL add «Nothing was charged.».
+read «<f> of <n> images failed: <reason>». When no image of the job arrived and OpenRouter billed none of them, the server SHALL end the reason with «Nothing was charged.»; the board SHALL show the reason as the server wrote it.
 
 #### Scenario: No credit left
 
 - **WHEN** OpenRouter answers 402 to every image of a job
 - **THEN** the prompt shows «OpenRouter refused: your key has no credit left.
   Add credit on openrouter.ai, then try again. Nothing was charged.» with Try
-  again, and no cost is recorded
+  again, and the spending does not change
 
 #### Scenario: Some images fail
 
@@ -203,6 +202,11 @@ SHALL add «Nothing was charged.».
 
 - **WHEN** OpenRouter answers 200 with no image in `data`
 - **THEN** that image counts as failed and the others of the job still land
+
+#### Scenario: Billed, then refused here
+
+- **WHEN** OpenRouter bills an image and the user's quota is full when the server stores it
+- **THEN** the image does not land, the reason does not end with «Nothing was charged.», and the spending's cost includes the image while its image count does not
 
 ### Requirement: Generate without a key
 
@@ -227,7 +231,7 @@ run the job in the background. It SHALL check, in this order: a
 session (401); the project is the user's and not in the bin (404); the server
 is configured (503 `not_configured`); the user has a key that can be read
 (409 `no_key`); the prompt exists and is not removed (404), and has text
-(400); no job runs on it (409 `busy`); the user's quota has room for 20 MB
+(400); no job runs on it (409 `busy`); fewer than three jobs of the user are running (429 `too_many_jobs`); the user's quota has room for 20 MB
 per image (507 `quota`). It SHALL send OpenRouter the model's id, the text of
 «What is sent», the shape and the resolution `1K`.
 
@@ -241,6 +245,11 @@ per image (507 `quota`). It SHALL send OpenRouter the model's id, the text of
 - **WHEN** the prompt was removed before the request
 - **THEN** the server answers 404 and starts no job
 
+#### Scenario: Three already running
+
+- **WHEN** a user with three running jobs posts to the generate route for a fourth prompt
+- **THEN** the server answers 429 `too_many_jobs` with «Three generations are already running. Wait for one to finish.» and calls nothing
+
 #### Scenario: What OpenRouter receives
 
 - **WHEN** the user generates 2 images with Nano Banana 2.1 in 3:2
@@ -252,9 +261,8 @@ per image (507 `quota`). It SHALL send OpenRouter the model's id, the text of
 
 Each image asked of OpenRouter SHALL be recorded with its project, prompt,
 model, cost and whether it arrived. `GET /api/projects/:id/image-spending`
-SHALL answer the number and total cost of the project's images that arrived,
-all time, to its owner only. The board's header SHALL show «Generated here: N
-images · $x.xx» from it, hidden when N is 0 and while offline. Removing an
+SHALL answer, all time and to its owner only, the number of the project's images that arrived and the total cost OpenRouter billed for the project, arrived or not. The board's header SHALL show «Generated here: N
+images · $x.xx» from it, hidden when both the number and the cost are 0, and while offline. Removing an
 image SHALL NOT remove its cost.
 
 #### Scenario: Header total
