@@ -89,10 +89,10 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 6. Docs, checks, hand-back
 
-- [ ] 6.1 `README.md` (Claude connector, :213-243): the two tools, that
+- [x] 6.1 `README.md` (Claude connector, :213-243): the two tools, that
       `generate_image` spends money, that attaching needs the Atelier token;
       `docs/design.md` :429-431 names them
-- [ ] 6.2 Commit `docs: the connector's image tools`
+- [x] 6.2 Commit `docs: the connector's image tools`
 - [ ] 6.3 `openspec validate connector-board-images --strict` passes
 - [ ] 6.4 `npm run typecheck`, `npm test` with the database, `npm run e2e`:
       results quoted as printed

@@ -221,6 +221,17 @@ category; `set_scene_prompts` for a scene's music and first image prompt, one
 scene at a time). A new chat about a project starts by reading its
 brainstorm log.
 
+Claude can also put images on the board. `generate_image` generates 1 to 4
+images on an image prompt through the provider you chose in **Settings →
+Image generation**, exactly as the board's Generate button does, and spends
+your money the same way; it uses your saved model and count unless Claude
+names others, and waits up to 50 seconds for the images. `get_board` says
+which prompts are still generating and why the last generation failed.
+`attach_atelier_image` puts an image already in your Atelier on an image
+prompt by its id: Promptbook downloads the original with the Atelier token
+saved in Settings, so it needs that token and costs nothing. The viewer shows
+such an image as **From · Atelier**, with a link to it in Atelier.
+
 To connect Claude:
 
 1. In claude.ai open **Settings → Connectors → Add custom connector**.
@@ -235,8 +246,8 @@ The page asks which access to give:
 - **Read your projects:** Claude reads everything and changes nothing.
 - **Read and edit your projects:** Claude also creates projects, edits the
   prep document and adds to-do items, inspiration items, research notes and
-  log entries, writes the board's prompts, and changes your document
-  templates. It never ticks a to-do item, never rewrites the seed, and
+  log entries, writes the board's prompts, generates or attaches board
+  images, and changes your document templates. It never ticks a to-do item, never rewrites the seed, and
   deletes nothing except an image prompt with `remove_image_prompt`, whose
   images move to the Unmatched tray, and a template no project uses with
   `delete_template`.
