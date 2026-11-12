@@ -3,20 +3,6 @@
   grid-template-columns: 190px minmax(0, 1fr);
   gap: 24px;
 }
-/* On a phone the sections stack under their nav, which scrolls sideways
-   (the image-generation and atelier-provider mockups). */
-@media (max-width: 760px) {
-  .set {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .set nav {
-    flex-direction: row;
-    overflow-x: auto;
-  }
-  .set nav button {
-    flex: none;
-  }
-}
 .set nav {
   display: flex;
   flex-direction: column;
@@ -31,6 +17,21 @@
 .set nav button.on {
   background: var(--hover);
   color: var(--text);
+}
+/* On a phone the sections stack under their nav, which scrolls sideways
+   (the image-generation and atelier-provider mockups). After the rules it
+   changes, so it wins. */
+@media (max-width: 760px) {
+  .set {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .set nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .set nav button {
+    flex: none;
+  }
 }
 .set h2 {
   font: 700 21px var(--display);
