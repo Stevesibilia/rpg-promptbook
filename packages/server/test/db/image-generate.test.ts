@@ -481,7 +481,9 @@ describe('the board changing during a job', () => {
     // Billed: the cost counts in the month's spending, the images do not.
     const status = (await s.app.inject({ url: '/api/image-generation', headers: s.headers })).json();
     expect(status.spending.month).toEqual({ images: 0, cost: 0.08 });
-    expect(status.spending.projects).toEqual([{ projectId: s.id, title: "L'Ancora di Sabaoth", images: 0, cost: 0.08 }]);
+    expect(status.spending.projects).toEqual([
+      { projectId: s.id, title: "L'Ancora di Sabaoth", images: 0, cost: 0.08, atelier: 0, openrouter: 0.08 },
+    ]);
     // Nothing was linked to it either.
     expect(await db.query('select * from project_files where project_id = $1', [s.id])).toEqual([]);
   });
@@ -523,8 +525,8 @@ describe('spending (D11)', () => {
       month: { images: 3, cost: 0.117 },
       all: { images: 4, cost: 0.167 },
       projects: [
-        { projectId: otherId, title: 'Il Faro di Capo Peloro', images: 0, cost: 0 },
-        { projectId: s.id, title: "L'Ancora di Sabaoth", images: 3, cost: 0.117 },
+        { projectId: otherId, title: 'Il Faro di Capo Peloro', images: 0, cost: 0, atelier: 0, openrouter: 0 },
+        { projectId: s.id, title: "L'Ancora di Sabaoth", images: 3, cost: 0.117, atelier: 0, openrouter: 0.117 },
       ],
     });
     expect((await s.app.inject({ url: `/api/projects/${otherId}/image-spending`, headers: s.headers })).json()).toEqual({
@@ -536,8 +538,8 @@ describe('spending (D11)', () => {
     await db.query('delete from projects where id = $1', [s.id]);
     const after = (await s.app.inject({ url: '/api/image-generation', headers: s.headers })).json();
     expect(after.spending.projects).toEqual([
-      { projectId: otherId, title: 'Il Faro di Capo Peloro', images: 0, cost: 0 },
-      { projectId: null, title: null, images: 3, cost: 0.117 },
+      { projectId: otherId, title: 'Il Faro di Capo Peloro', images: 0, cost: 0, atelier: 0, openrouter: 0 },
+      { projectId: null, title: null, images: 3, cost: 0.117, atelier: 0, openrouter: 0.117 },
     ]);
     expect(after.spending.month).toEqual({ images: 3, cost: 0.117 });
   });
@@ -550,7 +552,13 @@ describe('spending (D11)', () => {
     await s.app.inject({ method: 'DELETE', url: `/api/projects/${s.id}`, headers: s.headers });
     expect((await s.app.inject({ url: url(s.id), headers: s.headers })).statusCode).toBe(404);
     const status = (await s.app.inject({ url: '/api/image-generation', headers: s.headers })).json();
-    expect(status).toEqual({ configured: false, key: null, spending: { month: { images: 0, cost: 0 }, all: { images: 0, cost: 0 }, projects: [] } });
+    expect(status).toEqual({
+      configured: false,
+      key: null,
+      spending: { month: { images: 0, cost: 0 }, all: { images: 0, cost: 0 }, projects: [] },
+      provider: 'openrouter',
+      atelier: { available: false, url: null, token: null },
+    });
   });
 });
 

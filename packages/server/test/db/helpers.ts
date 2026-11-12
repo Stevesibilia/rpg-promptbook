@@ -53,6 +53,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     filesGraceDays: 30,
     secretsKey: TEST_SECRETS_KEY,
     openRouterBaseUrl: 'http://127.0.0.1:9/api/v1',
+    atelierUrl: null,
     ...overrides,
   };
 }
@@ -69,7 +70,10 @@ export function capturedLog(): { logger: AppOptions['logger']; text(): string } 
 
 export async function startApp(
   overrides: Partial<Config> = {},
-  options: Pick<AppOptions, 'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs'> = {},
+  options: Pick<
+    AppOptions,
+    'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs' | 'atelierPollMs' | 'atelierWatchMs'
+  > = {},
 ): Promise<FastifyInstance> {
   const app = await buildApp({ config: testConfig(overrides), db, ...options });
   open.push(app);

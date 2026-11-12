@@ -50,6 +50,10 @@ export interface AppOptions {
   // Only for the tests: how long closing waits for running jobs before it
   // stops them, 20 s otherwise.
   generationCloseWaitMs?: number;
+  // Only for the tests: how often an Atelier generation is asked about, 2 s
+  // otherwise, and how long it is watched, 10 minutes otherwise.
+  atelierPollMs?: number;
+  atelierWatchMs?: number;
 }
 
 export async function buildApp({
@@ -60,6 +64,8 @@ export async function buildApp({
   oidcDiscoveryOptions,
   generationTimeoutMs,
   generationCloseWaitMs = 20_000,
+  atelierPollMs,
+  atelierWatchMs,
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
@@ -132,6 +138,8 @@ export async function buildApp({
     blobs: store,
     runs: app.generationRuns,
     timeoutMs: generationTimeoutMs,
+    atelierPollMs,
+    atelierWatchMs,
   });
   await app.register(oauthRoutes, { config, db, sync: app.sync });
   await app.register(mcpRoutes, { config, db, sync: app.sync });

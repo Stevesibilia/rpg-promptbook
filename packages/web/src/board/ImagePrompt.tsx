@@ -114,7 +114,15 @@ export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
     job && job.finishedAt === null
       ? job
       : pending
-        ? { id: pending.jobId, count: pending.count, done: 0, failed: 0, model: pending.model, startedAt: pending.since }
+        ? {
+            id: pending.jobId,
+            count: pending.count,
+            done: 0,
+            failed: 0,
+            model: pending.model,
+            provider: pending.provider,
+            startedAt: pending.since,
+          }
         : null;
   const failed = !running && job?.error ? job : null;
 

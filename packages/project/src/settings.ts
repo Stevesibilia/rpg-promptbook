@@ -1,13 +1,15 @@
 import { defaultTemplateRef } from 'promptbook-format';
 import type { ImageModelKey } from './images.js';
 import type { Category } from './model.js';
+import { isImageProvider, type ImageProvider } from './providers.js';
 
 // A user's settings: the to-do list each new project of a category starts
 // from, the document template each kind starts from (a template id, used at
 // its latest version), the defaults written into a new document's front
 // matter, and the defaults the Generate panel starts from
-// (board-image-generation design decision 3). Nothing secret: the desktop
-// keeps a copy on disk.
+// (board-image-generation design decision 3), with the service Generate goes
+// through (atelier-image-provider design decision 5). Nothing secret: the
+// desktop keeps a copy on disk.
 export interface Settings {
   todoTemplates: Record<Category, string[]>;
   defaultTemplates: { adventure: string; campaign: string };
@@ -15,7 +17,17 @@ export interface Settings {
   copyright: string;
   licence: string;
   system: string;
-  imageGeneration: { model: ImageModelKey; count: 1 | 2 | 3 | 4 };
+  imageGeneration: { model: ImageModelKey; count: 1 | 2 | 3 | 4; provider: ImageProvider };
+}
+
+// The provider of settings as another client or an older version saved them:
+// OpenRouter unless they name a known one.
+export function imageProviderOf(settings: unknown): ImageProvider {
+  const generation =
+    typeof settings === 'object' && settings !== null ? (settings as { imageGeneration?: unknown }).imageGeneration : null;
+  const provider =
+    typeof generation === 'object' && generation !== null ? (generation as { provider?: unknown }).provider : null;
+  return isImageProvider(provider) ? provider : 'openrouter';
 }
 
 const adventureTodo = [
@@ -55,6 +67,6 @@ export function defaultSettings(): Settings {
     copyright: '',
     licence: '',
     system: '',
-    imageGeneration: { model: 'gpt', count: 2 },
+    imageGeneration: { model: 'gpt', count: 2, provider: 'openrouter' },
   };
 }

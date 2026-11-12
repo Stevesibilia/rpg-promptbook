@@ -60,6 +60,7 @@ describe('migrations', () => {
       '006_gdrarchive.sql',
       '007_document_templates.sql',
       '008_image_generation.sql',
+      '009_atelier.sql',
     ]);
 
     const user = await findUserByUsername(old, 'steve');
@@ -144,5 +145,43 @@ describe('migrations', () => {
     await version(1);
     await expect(version(1)).rejects.toMatchObject({ code: '23505' });
     await expect(version(0)).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('009 takes an Atelier secret, reads older generations as OpenRouter, and keeps one collection per account and project', async () => {
+    const user = await findUserByUsername(old, 'steve');
+    const secret = (kind: string) =>
+      old.query(
+        `insert into user_secrets (user_id, kind, ciphertext, iv, tag, hint, checked_at)
+         values ($1, $2, '\\x00', '\\x00', '\\x00', 'abcd', now())`,
+        [user!.id, kind],
+      );
+    await secret('openrouter');
+    await secret('atelier');
+    await expect(secret('midjourney')).rejects.toMatchObject({ code: '23514' });
+
+    const generation = (provider?: string) =>
+      old.query<{ provider: string }>(
+        `insert into image_generations (user_id, prompt_id, model, ok${provider ? ', provider' : ''})
+         values ($1, 'p', 'gpt', true${provider ? ', $2' : ''}) returning provider`,
+        provider ? [user!.id, provider] : [user!.id],
+      );
+    expect(await generation()).toEqual([{ provider: 'openrouter' }]);
+    expect(await generation('atelier')).toEqual([{ provider: 'atelier' }]);
+    await expect(generation('flux')).rejects.toMatchObject({ code: '23514' });
+
+    const [project] = await old.query<{ id: string }>(
+      `insert into projects (id, owner_id, category, title, status)
+       values (gen_random_uuid(), $1, 'one-shot', 'Collezione', 'draft') returning id`,
+      [user!.id],
+    );
+    const collection = () =>
+      old.query('insert into atelier_collections (user_id, project_id, collection_id) values ($1, $2, gen_random_uuid())', [
+        user!.id,
+        project!.id,
+      ]);
+    await collection();
+    await expect(collection()).rejects.toMatchObject({ code: '23505' });
+    await old.query('delete from projects where id = $1', [project!.id]);
+    expect(await old.query('select 1 from atelier_collections')).toEqual([]);
   });
 });

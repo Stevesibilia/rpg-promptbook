@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addFiles, readFiles, setFileThumb, type FileEntry, type GenerationJob, type NewFile, type PromptRow } from 'promptbook-project';
 import * as Y from 'yjs';
-import { api, ApiError } from '../src/api.js';
+import { api, ApiError, type ImageGenerationStatus } from '../src/api.js';
 import { ThumbBackfill, type BackfillDeps } from '../src/board/backfill.js';
 import {
   badge,
+  collectionTitle,
   doneToast,
   endedJobs,
   errorLine,
+  estimateOf,
   generateDefaults,
+  generatedHereTitle,
   generatedRows,
   jobFiles,
   jobsByPrompt,
@@ -18,10 +21,12 @@ import {
   panelShape,
   priceLine,
   progressLine,
+  providerEstimates,
   refusal,
   sentView,
   slotsLeft,
   startChoice,
+  throughLine,
   toastLabel,
 } from '../src/board/generate.js';
 import type { ShownPrompt } from '../src/board/summary.js';
@@ -51,6 +56,8 @@ const file = (patch: Partial<FileEntry> = {}): FileEntry => ({
   addedBy: 'user',
   generatedModel: 'gpt',
   cost: 0.041,
+  generatedVia: 'openrouter',
+  atelierImageId: null,
   ...patch,
 });
 
@@ -58,6 +65,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   id: 'j1',
   promptId: 'p1',
   model: 'gpt',
+  provider: 'openrouter',
   count: 4,
   done: 1,
   failed: 0,
@@ -72,7 +80,7 @@ const at = (iso: string) => Date.parse(iso);
 
 describe('the Generate panel', () => {
   it('starts from the Settings defaults, then from the last choice of the session', () => {
-    const defaults = generateDefaults({ imageGeneration: { model: 'nb', count: 3 } });
+    const defaults = generateDefaults({ imageGeneration: { model: 'nb', count: 3, provider: 'openrouter' } });
     expect(startChoice(defaults, null)).toEqual({ model: 'nb', count: 3 });
     expect(startChoice(defaults, { model: 'gpt', count: 1 })).toEqual({ model: 'gpt', count: 1 });
   });
@@ -129,30 +137,103 @@ describe('the Generate panel', () => {
 
 describe('generated images', () => {
   it('carry a badge with the model and the cost, two decimals, three in the title', () => {
-    expect(badge(file())).toEqual({ model: 'gpt', text: 'GPT · $0.04', short: '$0.04', title: 'GPT Image 2.6 Sunburst, $0.041' });
-    expect(badge(file({ generatedModel: 'nb', cost: 0.037 }))).toEqual({
+    expect(badge(file())).toEqual({
+      model: 'gpt',
+      text: 'GPT · $0.04',
+      short: '$0.04',
+      title: 'GPT Image 2.6 Sunburst through OpenRouter, $0.041',
+    });
+    expect(badge(file({ generatedModel: 'nb', generatedVia: 'atelier', cost: 0.037 }))).toEqual({
       model: 'nb',
       text: 'Nano Banana · $0.04',
       short: '$0.04',
-      title: 'Nano Banana 2.1, $0.037',
+      title: 'Nano Banana 2.1 through Atelier, $0.037',
     });
     expect(badge(file({ cost: null }))).toEqual({
       model: 'gpt',
       text: 'GPT · cost unknown',
       short: '$?',
-      title: 'GPT Image 2.6 Sunburst, cost unknown',
+      title: 'GPT Image 2.6 Sunburst through OpenRouter, cost unknown',
     });
     expect(badge(file({ generatedModel: null, cost: null, matchedBy: 'prompt' }))).toBeNull();
   });
 
-  it("give the viewer Source, Model and Cost in place of «Matched by»", () => {
+  it('read as OpenRouter’s when generated before Atelier came', () => {
+    expect(badge(file({ generatedVia: null }))!.title).toBe('GPT Image 2.6 Sunburst through OpenRouter, $0.041');
+    expect(generatedRows(file({ generatedVia: null }))![1]).toEqual({ label: 'Through', value: 'OpenRouter' });
+  });
+
+  it("give the viewer Source, Through, Model and Cost in place of «Matched by»", () => {
     expect(generatedRows(file())).toEqual([
       { label: 'Source', value: 'Generated' },
+      { label: 'Through', value: 'OpenRouter' },
       { label: 'Model', value: 'GPT Image 2.6 Sunburst' },
       { label: 'Cost', value: '$0.041' },
     ]);
-    expect(generatedRows(file({ cost: null }))![2]).toEqual({ label: 'Cost', value: 'unknown' });
+    expect(generatedRows(file({ cost: null }))![3]).toEqual({ label: 'Cost', value: 'unknown' });
     expect(generatedRows(file({ generatedModel: null }))).toBeNull();
+  });
+
+  it('link an Atelier image to Atelier only when the status has the address', () => {
+    const id = '3f9c2a1e-0b4d-4c8e-9a71-5d2e8f6b1c04';
+    const atelier = file({ generatedVia: 'atelier', atelierImageId: id, cost: 0.081 });
+    expect(generatedRows(atelier, 'https://atelier.siberio.eu')![1]).toEqual({
+      label: 'Through',
+      value: 'Atelier',
+      link: { href: `https://atelier.siberio.eu/images/${id}`, text: 'No. 3f9c2a1e in Atelier ↗' },
+    });
+    expect(generatedRows(atelier, null)![1]).toEqual({ label: 'Through', value: 'Atelier' });
+    // No image id kept: plain Atelier.
+    expect(generatedRows(file({ generatedVia: 'atelier' }), 'https://a')![1]).toEqual({ label: 'Through', value: 'Atelier' });
+    // An OpenRouter image never links.
+    expect(generatedRows(file({ atelierImageId: id }), 'https://a')![1]).toEqual({ label: 'Through', value: 'OpenRouter' });
+  });
+
+  it('name the providers that billed them in «Generated here»', () => {
+    const atelier = file({ generatedVia: 'atelier' });
+    const old = file({ generatedVia: null });
+    const dropped = file({ generatedModel: null, generatedVia: null, matchedBy: 'prompt' });
+    expect(generatedHereTitle([old, atelier, atelier])).toBe('Generated in this project, as billed by OpenRouter and Atelier');
+    expect(generatedHereTitle([atelier, dropped])).toBe('Generated in this project, as billed by Atelier');
+    expect(generatedHereTitle([old])).toBe('Generated in this project, as billed by OpenRouter');
+    expect(generatedHereTitle([dropped])).toBe('Generated in this project');
+  });
+});
+
+describe('the provider on the panel', () => {
+  const token = {
+    hint: 'x',
+    checkedAt: '',
+    name: null,
+    expiresAt: null,
+    month: { spent: 4.125, cap: 20.5 },
+    estimates: { gpt: 0.083 },
+  };
+  const status = (provider: 'atelier' | 'openrouter') =>
+    ({ provider, atelier: { available: true, url: 'u', token } }) as Pick<ImageGenerationStatus, 'provider' | 'atelier'>;
+
+  it('uses the chosen provider’s estimates, the built-in ones where it gave none', () => {
+    expect(providerEstimates(status('atelier'))).toEqual({ gpt: 0.083 });
+    expect(providerEstimates(status('openrouter'))).toBeNull();
+    expect(providerEstimates(null)).toBeNull();
+    expect(estimateOf('gpt', { gpt: 0.083 })).toBe(0.083);
+    expect(estimateOf('nb', { gpt: 0.083 })).toBe(0.037);
+    expect(modelLine('gpt', { gpt: 0.083 })).toBe('≈ $0.08 · 53 s per image');
+    expect(priceLine({ model: 'gpt', count: 3 }, { gpt: 0.083 }).text).toBe('About $0.25 · 1K');
+  });
+
+  it('says which provider it goes through', () => {
+    expect(throughLine(status('openrouter'), 'X')).toEqual({ provider: 'openrouter', rest: ' · billed to your OpenRouter key' });
+    expect(throughLine(status('atelier'), " L'Ancora di Sabaoth ")).toEqual({
+      provider: 'atelier',
+      rest: " · into the collection «L'Ancora di Sabaoth» · $4.13 of $20.50 used this month",
+    });
+  });
+
+  it('cuts the collection name as the server does', () => {
+    expect(collectionTitle('a'.repeat(70))).toBe('a'.repeat(60));
+    expect(collectionTitle(`${'a'.repeat(59)}😀`)).toBe('a'.repeat(59));
+    expect(collectionTitle('   ')).toBe('Promptbook project');
   });
 });
 
@@ -160,9 +241,11 @@ describe('a running job', () => {
   it('says which image is on its way, with which model, since when', () => {
     const now = at('2026-11-11T10:00:47.400Z');
     expect(progressLine(job(), now)).toBe(
-      'Generating 2 of 4 with GPT Image 2.6 · 47s. It keeps going if you leave this page.',
+      'Generating 2 of 4 with GPT Image 2.6 through OpenRouter · 47s. It keeps going if you leave this page.',
     );
-    expect(progressLine(job({ model: 'nb', count: 2, done: 0 }), now)).toMatch(/^Generating 1 of 2 with Nano Banana 2\.1 · 47s\./);
+    expect(progressLine(job({ model: 'nb', count: 2, done: 0, provider: 'atelier' }), now)).toMatch(
+      /^Generating 1 of 2 with Nano Banana 2\.1 through Atelier · 47s\./,
+    );
     // The last one, a failure counted: never «5 of 4».
     expect(progressLine(job({ done: 3, failed: 1 }), now)).toMatch(/^Generating 4 of 4 /);
     // A device whose clock is behind the server's.
@@ -262,6 +345,12 @@ describe('an error on a prompt', () => {
     expect(refusal('too_many_jobs', '', false)).toBe('Three generations are already running. Wait for one to finish.');
     expect(refusal('quota', '', false)).toBe('Your files have reached their quota.');
     expect(refusal('no_key', '', false)).toMatch(/^Add your OpenRouter key first\./);
+    expect(refusal('no_key', 'Add your Atelier API token first.', false, 'atelier')).toBe(
+      'Add your Atelier API token first. Images are billed against your Atelier monthly cap.',
+    );
+    expect(refusal('atelier_unavailable', 'This server has no Atelier address.', false, 'atelier')).toBe(
+      'This server has no Atelier address.',
+    );
     expect(refusal('not_configured', '', false)).toBe('This server is not set up for image generation.');
     expect(refusal('offline', 'Offline.', true)).toBe(OFFLINE_TITLE);
     expect(refusal('network', 'The server cannot be reached.', false)).toBe('The server cannot be reached.');

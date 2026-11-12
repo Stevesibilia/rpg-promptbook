@@ -445,6 +445,15 @@ the prep document:
   device by sync, also after the page is left. Generated images land as
   received images with their model and cost; the board header totals the
   project's cost, and Settings shows the month's spending by project.
+- **Through Atelier or OpenRouter** (#59, the OpenSpec change
+  `atelier-image-provider`): each account chooses in Settings → Image
+  generation whether Generate goes through the owner's Atelier or straight
+  through OpenRouter, with the same models, shapes and counts. Through
+  Atelier, one Atelier generation makes the images, Atelier's monthly cap
+  applies, and the images also go into an Atelier collection named after the
+  project, made on the first Generate. The panel, the badges and the viewer
+  say which provider made an image; the viewer links an Atelier image to
+  Atelier, and the spending splits each project's cost by provider.
 
 ### Intake by filename
 
@@ -606,6 +615,14 @@ OpenRouter, seals it with AES-256-GCM under `PROMPTBOOK_SECRETS_KEY` and
 never sends it to a browser or the desktop app; images are billed to that
 OpenRouter account. Without `PROMPTBOOK_SECRETS_KEY` the feature is off.
 Midjourney prompts and the manual route keep working; music stays manual.
+
+**Atelier as a second provider** (#59, 2026-11-12). Atelier, the owner's
+image studio, generates through OpenRouter under its own monthly cap and keeps
+a gallery. An account can generate through it instead of its own OpenRouter
+key: it saves a write API token made in Atelier, checked and sealed like the
+OpenRouter key. The server's Atelier address comes from `ATELIER_URL`, never
+from an account, so Promptbook only calls the address its operator set.
+OpenRouter stays, so Promptbook works without Atelier.
 
 ## Phases
 

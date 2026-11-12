@@ -4,6 +4,7 @@ import {
   STALE_GENERATION_MS,
   type FileEntry,
   type GenerationJob,
+  type ImageProvider,
   type ImageShape,
   type Settings,
 } from 'promptbook-project';
@@ -39,13 +40,16 @@ const statusStore = createStore<Owned<StatusState> | null>(null);
 let statusVersion = 0;
 let statusLoading: string | null = null;
 
-export function loadGenerationStatus(user: string): void {
+// `check` asks the server to check the credentials too: the panel does when
+// it opens with Atelier chosen, for Atelier's month and estimates
+// (atelier-image-provider D13).
+export function loadGenerationStatus(user: string, check = false): void {
   if (statusLoading === user) return;
   statusLoading = user;
   const version = statusVersion;
   const held = statusStore.get();
   if (!held || held.user !== user || held.value.state !== 'ready') statusStore.set({ user, value: { state: 'loading' } });
-  api.imageGeneration().then(
+  api.imageGeneration(check).then(
     (status) => {
       if (statusLoading === user) statusLoading = null;
       if (version === statusVersion) statusStore.set({ user, value: { state: 'ready', status } });
@@ -68,7 +72,10 @@ export function setGenerationStatus(user: string, status: ImageGenerationStatus)
 
 // The status for this account: fetched once per page, again after a
 // failure when `retry` is called. Offline on the desktop nothing is asked.
-export function useGenerationStatus(user: string, offline: boolean): { status: StatusState; retry(): void } {
+export function useGenerationStatus(
+  user: string,
+  offline: boolean,
+): { status: StatusState; retry(): void; check(): void } {
   const held = useStore(statusStore);
   const mine = held?.user === user ? held.value : null;
   useEffect(() => {
@@ -78,7 +85,10 @@ export function useGenerationStatus(user: string, offline: boolean): { status: S
     const now = statusStore.get();
     if (!offline && !(now?.user === user && now.value.state === 'ready')) loadGenerationStatus(user);
   }, [user, offline]);
-  return { status: mine ?? { state: 'loading' }, retry };
+  const check = useCallback(() => {
+    if (!offline) loadGenerationStatus(user, true);
+  }, [user, offline]);
+  return { status: mine ?? { state: 'loading' }, retry, check };
 }
 
 // --- The account's defaults and the session's last choice --------------------
@@ -230,6 +240,7 @@ export function useArrivals(files: readonly FileEntry[], mark: (fileId: string) 
 // ever sees it).
 export interface PendingStart {
   model: GenerateChoice['model'];
+  provider: ImageProvider;
   count: number;
   since: string;
   jobId: string;
@@ -252,7 +263,8 @@ export function useGenerate(
   // The shape chosen here for each job started here, for its placeholders;
   // another device's jobs take their prompt's shape.
   shapes: ReadonlyMap<string, ImageShape>;
-  start(promptId: string, body: GenerateBody): Promise<Refused | null>;
+  // `provider`: the account's, as the status said when Generate was pressed.
+  start(promptId: string, body: GenerateBody, provider: ImageProvider): Promise<Refused | null>;
 } {
   const [pending, setPending] = useState<ReadonlyMap<string, PendingStart>>(new Map());
   const [shapes, setShapes] = useState<ReadonlyMap<string, ImageShape>>(new Map());
@@ -272,18 +284,20 @@ export function useGenerate(
   }, [jobs, pending, drop]);
 
   const start = useCallback(
-    async (promptId: string, body: GenerateBody): Promise<Refused | null> => {
+    async (promptId: string, body: GenerateBody, provider: ImageProvider): Promise<Refused | null> => {
       const since = new Date().toISOString();
       try {
         const { jobId } = await api.generate(projectId, promptId, body);
         setShapes((now) => new Map(now).set(jobId, body.shape));
-        setPending((now) => new Map(now).set(promptId, { model: body.model, count: body.count, since, jobId }));
+        setPending((now) =>
+          new Map(now).set(promptId, { model: body.model, provider, count: body.count, since, jobId }),
+        );
         setTimeout(() => drop(promptId, jobId), PENDING_MS);
         return null;
       } catch (error) {
         const code = error instanceof ApiError ? error.code : 'error';
         const message = error instanceof ApiError ? error.message : 'Generating failed.';
-        return { code, message: refusal(code, message, platform.kind === 'desktop') };
+        return { code, message: refusal(code, message, platform.kind === 'desktop', provider) };
       }
     },
     [projectId, drop],

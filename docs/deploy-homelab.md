@@ -226,9 +226,22 @@ server is not set up for it.
 Keep the key. Rotating it (a new value in `PB_SECRETS_KEY`, a re-run of the
 release pipeline, then
 `kubectl -n rpg-promptbook rollout restart deploy/rpg-promptbook`) makes
-every saved OpenRouter key unreadable: Settings asks each account to save its
-key again, and nothing else is lost. The chart's `checksum/config` does not
-cover the Secret, so a new value needs that restart.
+every saved OpenRouter key and Atelier token unreadable: Settings asks each
+account to save it again, and nothing else is lost. The chart's
+`checksum/config` does not cover the Secret, so a new value needs that
+restart.
+
+### Through Atelier
+
+Accounts can also generate through the homelab's Atelier. The chart sets
+`ATELIER_URL` from `app.atelier.url`; `values-homelab.yaml` sets
+`https://atelier.siberio.eu`. It needs the secrets key above too, and Atelier
+v0.8.0 or later. Each account makes a write API token in Atelier → Settings →
+API tokens and saves it in Settings → Image generation, then chooses Atelier
+under "Generate through". With `app.atelier.url` empty, Settings shows Atelier
+as not available on this server and Generate goes through OpenRouter only. A
+value that is not an `http` or `https` address stops the server at start,
+naming `ATELIER_URL`.
 
 ## Changing credentials
 

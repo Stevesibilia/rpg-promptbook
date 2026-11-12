@@ -2,6 +2,7 @@ import type * as Y from 'yjs';
 import { isImageModelKey, type ImageModelKey } from './images.js';
 import { isIsoDateTime } from './model.js';
 import { record } from './doc.js';
+import { isImageProvider, type ImageProvider } from './providers.js';
 
 // Generation jobs (board-image-generation design decision 8): the server's
 // runs of OpenRouter calls for one image prompt, in the project document so
@@ -12,6 +13,9 @@ export interface GenerationJob {
   id: string;
   promptId: string;
   model: ImageModelKey;
+  // The service it goes through (atelier-image-provider design decision
+  // 11); a job written before Atelier reads 'openrouter'.
+  provider: ImageProvider;
   // 1 to 4.
   count: number;
   // Images added.
@@ -61,6 +65,7 @@ function toJob(id: string, value: unknown): GenerationJob | null {
     id,
     promptId,
     model: r.model,
+    provider: isImageProvider(r.provider) ? r.provider : 'openrouter',
     count: total,
     done,
     failed,
@@ -113,6 +118,8 @@ export interface GenerationStart {
   id: string;
   promptId: string;
   model: ImageModelKey;
+  // OpenRouter when not given.
+  provider?: ImageProvider;
   count: number;
   by: string;
   startedAt: string;
@@ -126,7 +133,9 @@ export function startGenerationJob(doc: Y.Doc, start: GenerationStart, now: Date
   if (!isImageModelKey(start.model)) throw new Error(`model: unknown model "${String(start.model)}"`);
   if (!Number.isSafeInteger(start.count) || start.count < 1 || start.count > 4) throw new Error('count: 1 to 4');
   if (!isIsoDateTime(start.startedAt)) throw new Error('startedAt: must be an ISO date-time');
-  const job: GenerationJob = { ...start, done: 0, failed: 0, error: null, finishedAt: null };
+  const provider = start.provider ?? 'openrouter';
+  if (!isImageProvider(provider)) throw new Error(`provider: unknown provider "${String(provider)}"`);
+  const job: GenerationJob = { ...start, provider, done: 0, failed: 0, error: null, finishedAt: null };
   doc.transact(() => {
     sweep(doc, now);
     const map = jobsOf(doc);

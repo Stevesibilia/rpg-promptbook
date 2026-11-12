@@ -190,6 +190,12 @@ spec:
                   key: secrets-key
                   optional: false
             {{- end }}
+            {{- with .Values.app.atelier.url }}
+            # Generating through Atelier (atelier-image-provider design
+            # decision 2).
+            - name: ATELIER_URL
+              value: {{ . | quote }}
+            {{- end }}
           # Starting includes the migrations, which can take a while on a
           # release that changes the schema.
           startupProbe:

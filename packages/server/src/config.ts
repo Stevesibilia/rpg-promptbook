@@ -77,6 +77,7 @@ const schema = databaseSchema.extend({
   PROMPTBOOK_FILES_GRACE_DAYS: integer(30, 1),
   PROMPTBOOK_SECRETS_KEY: secretsKey,
   OPENROUTER_BASE_URL: optionalUrl(['http:', 'https:']),
+  ATELIER_URL: optionalUrl(['http:', 'https:']),
 });
 
 // The three variables that turn single sign-on on.
@@ -110,6 +111,10 @@ export interface Config {
   secretsKey: Buffer | null;
   // OpenRouter's API, without a trailing slash; tests point it at a fake.
   openRouterBaseUrl: string;
+  // The Atelier this server generates through, without a trailing slash;
+  // null: Atelier is not available here (atelier-image-provider design
+  // decision 2). Its API is under /api/v1.
+  atelierUrl: string | null;
 }
 
 export interface OidcConfig {
@@ -163,6 +168,7 @@ export function loadConfig(env: Env = process.env): Config {
     filesGraceDays: values.PROMPTBOOK_FILES_GRACE_DAYS,
     secretsKey: values.PROMPTBOOK_SECRETS_KEY,
     openRouterBaseUrl: (values.OPENROUTER_BASE_URL ?? OPENROUTER_DEFAULT_URL).replace(/\/+$/, ''),
+    atelierUrl: values.ATELIER_URL === undefined ? null : values.ATELIER_URL.replace(/\/+$/, ''),
   };
 }
 

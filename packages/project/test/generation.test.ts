@@ -31,10 +31,27 @@ describe('generation jobs (D8)', () => {
   it('starts a job and reads it while it runs', () => {
     const doc = project();
     const job = startGenerationJob(doc, start(), SOON);
-    expect(job).toEqual({ ...start(), done: 0, failed: 0, error: null, finishedAt: null });
+    expect(job).toEqual({ ...start(), provider: 'openrouter', done: 0, failed: 0, error: null, finishedAt: null });
     expect(readGenerationJobs(doc, SOON)).toEqual([job]);
     // A plain JSON value set whole under its id.
     expect(jobsMap(doc).get('job-1')).toEqual(job);
+  });
+
+  it('records the provider a job goes through, OpenRouter when none is given (atelier-image-provider D11)', () => {
+    const doc = project();
+    expect(startGenerationJob(doc, start({ provider: 'atelier' }), SOON).provider).toBe('atelier');
+    expect(readGenerationJobs(doc, SOON)[0]!.provider).toBe('atelier');
+    expect(startGenerationJob(doc, start({ id: 'job-2', promptId: 'p2' }), SOON).provider).toBe('openrouter');
+    expect(() => startGenerationJob(doc, start({ id: 'job-3', promptId: 'p3', provider: 'flux' as 'atelier' }), SOON)).toThrow(/provider/);
+  });
+
+  it('reads a job written without a provider, or with an unknown one, as OpenRouter', () => {
+    const doc = project();
+    const { provider: _none, ...older } = startGenerationJob(doc, start(), SOON);
+    jobsMap(doc).set('job-1', older);
+    expect(readGenerationJobs(doc, SOON)[0]!.provider).toBe('openrouter');
+    jobsMap(doc).set('job-1', { ...older, provider: 'flux' });
+    expect(readGenerationJobs(doc, SOON)[0]!.provider).toBe('openrouter');
   });
 
   it('counts each image, added or failed, and does nothing for a job that is gone', () => {
@@ -64,6 +81,7 @@ describe('generation jobs (D8)', () => {
     expect(readGenerationJobs(doc, at(120_000))).toEqual([
       {
         ...start(),
+        provider: 'openrouter',
         done: 0,
         failed: 1,
         error: 'OpenRouter did not answer. Try again.',

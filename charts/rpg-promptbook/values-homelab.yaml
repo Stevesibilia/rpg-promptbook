@@ -36,6 +36,9 @@ app:
   # (docs/deploy-homelab.md).
   secretsKey:
     secret: rpg-promptbook-secrets
+  # The homelab's Atelier: accounts can generate through it.
+  atelier:
+    url: https://atelier.siberio.eu
 
 ingress:
   enabled: true

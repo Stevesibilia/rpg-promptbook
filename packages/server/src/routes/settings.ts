@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { categories, defaultSettings, imageModelKeys, type Settings } from 'promptbook-project';
+import { categories, defaultSettings, IMAGE_PROVIDERS, imageModelKeys, type Settings } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db, Queryable } from '../db.js';
@@ -33,6 +33,9 @@ export const settingsSchema = z
       .object({
         model: z.enum(imageModelKeys),
         count: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+        // The service Generate goes through (atelier-image-provider design
+        // decision 5); settings saved before it read OpenRouter.
+        provider: z.enum(IMAGE_PROVIDERS).default('openrouter'),
       })
       .strict()
       .default(() => defaultSettings().imageGeneration),
@@ -62,8 +65,13 @@ export async function settingsRoutes(app: FastifyInstance, { db }: { db: Db }) {
       settings.defaultTemplates = (await getSettings(db, user.id)).defaultTemplates;
     }
     // Likewise a client from before image generation sends no defaults for it.
-    if ((req.body as { imageGeneration?: unknown } | null)?.imageGeneration === undefined) {
+    const sent = (req.body as { imageGeneration?: { provider?: unknown } } | null)?.imageGeneration;
+    if (sent === undefined) {
       settings.imageGeneration = (await getSettings(db, user.id)).imageGeneration;
+    } else if (sent.provider === undefined) {
+      // And a client from before Atelier sends no provider: the chosen one
+      // stays (atelier-image-provider design decision 5).
+      settings.imageGeneration.provider = (await getSettings(db, user.id)).imageGeneration.provider;
     }
     await db.query(
       `insert into user_settings (user_id, settings) values ($1, $2)

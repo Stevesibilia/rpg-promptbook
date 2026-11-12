@@ -45,7 +45,7 @@ async function typeDocument(page: Page, id: string, text: string): Promise<void>
 
 async function saveKey(page: Page, key: string, saved: string): Promise<void> {
   await page.goto(SETTINGS);
-  const card = page.locator('.card', { hasText: 'OpenRouter key' });
+  const card = page.locator('.card', { has: page.getByRole('heading', { name: 'OpenRouter key' }) });
   const replace = card.getByRole('button', { name: 'Replace' });
   // The section checks the key it has first; a key saved before is replaced.
   await expect(card.getByRole('button', { name: /Replace|Save and check/ }).first()).toBeVisible();
@@ -116,12 +116,12 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   // Two images arrive here and on the other device.
   await panel(page).getByRole('button', { name: 'Generate 2' }).click();
   await expect(panel(page)).toHaveCount(0);
-  await expect(block(second, 'S2').locator('.genline')).toContainText(/Generating [12] of 2 with GPT Image 2\.6 · \d+s\./);
+  await expect(block(second, 'S2').locator('.genline')).toContainText(/Generating [12] of 2 with GPT Image 2\.6 through OpenRouter · \d+s\./);
   await expect(toast(page)).toHaveText('2 images for S2 · prompt 1 · $0.08', { timeout: 30_000 });
   const badges = block(page, 'S2').locator('.th-i .badge.gen');
   // The text shown: the full badge where the tile is wide enough.
   await expect(badges).toHaveText(['GPT · $0.04', 'GPT · $0.04'], { useInnerText: true });
-  await expect(badges.first()).toHaveAttribute('title', 'GPT Image 2.6 Sunburst, $0.040');
+  await expect(badges.first()).toHaveAttribute('title', 'GPT Image 2.6 Sunburst through OpenRouter, $0.040');
   await expect(block(page, 'S2').locator('.th-i .badge.new')).toHaveCount(2);
   await expect(block(page, 'S2').locator('.genline')).toHaveCount(0);
   await expect(page.locator('.spend')).toHaveText('Generated here: 2 images · $0.08');
@@ -134,7 +134,7 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   await block(page, 'S2').locator('.th-i').first().click();
   const viewer = page.getByRole('dialog', { name: 'Image viewer' });
   await expect(viewer.locator('.fn')).toHaveText(/^S2-p1-gpt-[12]\.png$/);
-  await expect(viewer.locator('dl.kv')).toContainText('SourceGeneratedModelGPT Image 2.6 SunburstCost$0.040');
+  await expect(viewer.locator('dl.kv')).toContainText('SourceGeneratedThroughOpenRouterModelGPT Image 2.6 SunburstCost$0.040');
   await expect(viewer.locator('dl.kv')).not.toContainText('Matched by');
   const original = await viewer.locator('img.big').getAttribute('src');
   await viewer.getByRole('button', { name: 'Close' }).click();
@@ -160,7 +160,7 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   // rest in the title.
   const nb = block(page, 'S4').locator('.th-i .badge.gen');
   await expect(nb).toHaveText(['$0.04'], { timeout: 30_000, useInnerText: true });
-  await expect(nb).toHaveAttribute('title', 'Nano Banana 2.1, $0.037');
+  await expect(nb).toHaveAttribute('title', 'Nano Banana 2.1 through OpenRouter, $0.037');
   await expect(block(page, 'S3').locator('.th-i .badge.gen')).toHaveCount(1);
   await expect(block(page, 'S2').locator('.th-i .badge.gen')).toHaveCount(3);
   await expect(page.locator('.genline')).toHaveCount(0);
@@ -207,5 +207,5 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   // The month's spending: the five images that landed and their cost; the
   // refused ones cost nothing.
   await expect(page.locator('.bigsum > div').first()).toHaveText(/^\$0\.19\p{L}+, 5 images$/u);
-  await expect(page.locator('.spt tbody tr', { hasText: 'Sabaoth generata' }).locator('td.n')).toHaveText(['5', '$0.19']);
+  await expect(page.locator('.spt tbody tr', { hasText: 'Sabaoth generata' }).locator('td.n')).toHaveText(['5', '$0.00', '$0.19', '$0.19']);
 });

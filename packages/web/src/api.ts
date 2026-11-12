@@ -2,6 +2,7 @@ import {
   exportFolderName,
   type Category,
   type ImageModelKey,
+  type ImageProvider,
   type ImageShape,
   type ProjectRow,
   type Settings,
@@ -127,9 +128,10 @@ export interface Grant {
   last_used_at: string | null;
 }
 
-// Image generation through OpenRouter (board-image-generation design
-// decisions 2, 7 and 11). The key itself never comes back from the server:
-// only its last four characters.
+// Image generation through OpenRouter or Atelier (board-image-generation
+// design decisions 2, 7 and 11; atelier-image-provider design decision 8).
+// Neither credential ever comes back from the server: only its last four
+// characters.
 export interface ImageGenerationStatus {
   configured: boolean;
   key: {
@@ -141,6 +143,28 @@ export interface ImageGenerationStatus {
   // Why the key is missing or not working, when that is known.
   error?: 'key_unreadable' | 'key_rejected' | 'openrouter_unreachable';
   spending: Spending;
+  // The account's choice (atelier-image-provider D5).
+  provider: ImageProvider;
+  atelier: AtelierStatus;
+}
+
+export interface AtelierStatus {
+  // The server has an Atelier address (ATELIER_URL).
+  available: boolean;
+  url: string | null;
+  token: AtelierToken | null;
+  // Why the token is missing or not working, when that is known.
+  error?: 'token_unreadable' | 'token_rejected' | 'token_read_only' | 'atelier_unreachable';
+}
+
+export interface AtelierToken {
+  hint: string;
+  checkedAt: string;
+  // Filled only by ?check=1 or a save; null otherwise.
+  name: string | null;
+  expiresAt: string | null;
+  month: { spent: number; cap: number } | null;
+  estimates: Partial<Record<ImageModelKey, number>> | null;
 }
 
 export interface SpendingTotal {
@@ -153,7 +177,15 @@ export interface Spending {
   all: SpendingTotal;
   // This calendar month (UTC), one entry per project with a row this month;
   // projectId and title null for the projects removed for good.
-  projects: { projectId: string | null; title: string | null; images: number; cost: number }[];
+  // `atelier` and `openrouter` split the month's cost by provider.
+  projects: {
+    projectId: string | null;
+    title: string | null;
+    images: number;
+    cost: number;
+    atelier: number;
+    openrouter: number;
+  }[];
 }
 
 export interface GenerateBody {
@@ -270,6 +302,14 @@ export const api = {
   // 400 key_rejected, 502 openrouter_unreachable: nothing was stored.
   saveOpenRouterKey: (key: string) => request<ImageGenerationStatus>('PUT', '/api/image-generation/key', { key }),
   removeOpenRouterKey: () => request<void>('DELETE', '/api/image-generation/key'),
+  // 400 invalid, token_rejected or token_read_only, 502 atelier_unreachable,
+  // 503 atelier_unavailable: nothing was stored. Answers the status with the
+  // token's details checked.
+  saveAtelierToken: (token: string) =>
+    request<ImageGenerationStatus>('PUT', '/api/image-generation/atelier-token', { token }),
+  // Stops the account's Atelier jobs; with Atelier chosen and an OpenRouter
+  // key saved, the choice becomes OpenRouter (D5).
+  removeAtelierToken: () => request<void>('DELETE', '/api/image-generation/atelier-token'),
   // 202 with the job's id; the job itself shows in the project document.
   generate: (projectId: string, promptId: string, body: GenerateBody) =>
     request<{ jobId: string }>(

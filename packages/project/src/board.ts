@@ -4,6 +4,7 @@ import { checkAt, checkText, isItem, mapOf, nowIso, oneOf, randomId, readDocumen
 import { isImageModelKey, type ImageModelKey } from './images.js';
 import { matchKey } from './match.js';
 import { authors, CAPS, isIsoDateTime, LIMITS, type Author } from './model.js';
+import { isImageProvider, type ImageProvider } from './providers.js';
 import { adventureTemplateOf } from './template.js';
 
 // The images and music board (asset-board design decisions 1 and 2): the
@@ -96,14 +97,26 @@ export interface FileEntry {
   // and the cost null when OpenRouter reported none.
   generatedModel: ImageModelKey | null;
   cost: number | null;
+  // The service that generated it (atelier-image-provider design decision
+  // 11): a generated image saved before Atelier reads 'openrouter'; null for
+  // every file not generated. The Atelier image's id, a uuid, only when it
+  // came through Atelier.
+  generatedVia: ImageProvider | null;
+  atelierImageId: string | null;
 }
 
-// The two generated fields are optional: the map holds them only when set.
-export type NewFile = Omit<FileEntry, 'id' | 'addedAt' | 'generatedModel' | 'cost'> & {
+// The generated fields are optional: the map holds them only when set.
+export type NewFile = Omit<FileEntry, 'id' | 'addedAt' | 'generatedModel' | 'cost' | 'generatedVia' | 'atelierImageId'> & {
   addedAt?: string;
   generatedModel?: ImageModelKey | null;
   cost?: number | null;
+  generatedVia?: ImageProvider | null;
+  atelierImageId?: string | null;
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
 
 const SHA256 = /^[0-9a-f]{64}$/;
 
@@ -170,6 +183,11 @@ function toFile(item: Item): FileEntry {
   const kind = item.get('kind') as FileKind;
   const image = kind === 'image';
   const matched = item.get('matchedBy');
+  const generatedModel =
+    image && isImageModelKey(item.get('generatedModel')) ? (item.get('generatedModel') as ImageModelKey) : null;
+  const via = item.get('generatedVia');
+  const generatedVia = generatedModel === null ? null : isImageProvider(via) ? via : 'openrouter';
+  const atelierImageId = generatedVia === 'atelier' && isUuid(item.get('atelierImageId')) ? (item.get('atelierImageId') as string) : null;
   return {
     id: item.get('id') as string,
     sha256: item.get('sha256') as string,
@@ -186,8 +204,10 @@ function toFile(item: Item): FileEntry {
     matchedBy: typeof matched === 'string' && (matchedBy as readonly string[]).includes(matched) ? (matched as MatchedBy) : null,
     addedAt: str(item.get('addedAt')),
     addedBy: oneOf(authors, item.get('addedBy'), 'user'),
-    generatedModel: image && isImageModelKey(item.get('generatedModel')) ? (item.get('generatedModel') as ImageModelKey) : null,
+    generatedModel,
     cost: image ? num(item.get('cost')) : null,
+    generatedVia,
+    atelierImageId,
   };
 }
 
@@ -521,6 +541,13 @@ function checkNewFile(file: NewFile, i: number): void {
   if (cost !== null && (typeof cost !== 'number' || !Number.isFinite(cost) || cost < 0)) {
     throw new Error(`${field}.cost: must be a number of dollars, 0 or more, or null`);
   }
+  const via = file.generatedVia ?? null;
+  const atelierImageId = file.atelierImageId ?? null;
+  if (via !== null && !isImageProvider(via)) throw new Error(`${field}.generatedVia: unknown provider "${String(via)}"`);
+  if (via !== null && model === null) throw new Error(`${field}.generatedVia: only a generated image has one`);
+  if (atelierImageId !== null && (via !== 'atelier' || !isUuid(atelierImageId))) {
+    throw new Error(`${field}.atelierImageId: a uuid, only on an image generated through Atelier`);
+  }
   if ((model !== null || cost !== null) && file.kind !== 'image') {
     throw new Error(`${field}: only an image is generated`);
   }
@@ -568,15 +595,23 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         addedBy: oneOf(authors, file.addedBy, 'user'),
         generatedModel: file.generatedModel ?? null,
         cost: file.cost ?? null,
+        // A generated image names its provider; one added without reads as
+        // OpenRouter, as one saved before Atelier does.
+        generatedVia: (file.generatedModel ?? null) === null ? null : (file.generatedVia ?? 'openrouter'),
+        atelierImageId: file.atelierImageId ?? null,
       };
       added.push(entry);
       // The generated fields go in the map only when set, so every other
-      // file's map stays as it was.
-      const { generatedModel, cost, ...stored } = entry;
+      // file's map stays as it was. generatedVia is written only when given,
+      // so an OpenRouter image's map is the one it was before Atelier.
+      const { generatedModel, cost, generatedVia: _via, atelierImageId, ...stored } = entry;
+      const via = file.generatedVia ?? null;
       return mapOf({
         ...stored,
         ...(generatedModel !== null ? { generatedModel } : {}),
         ...(cost !== null ? { cost } : {}),
+        ...(via !== null ? { generatedVia: via } : {}),
+        ...(atelierImageId !== null ? { atelierImageId } : {}),
       });
     });
     if (items.length > 0) filesOf(doc).push(items);

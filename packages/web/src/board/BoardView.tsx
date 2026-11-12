@@ -25,7 +25,7 @@ import { CategoryTabs } from './CategoryTabs.js';
 import { useThumbBackfill } from './backfill.js';
 import { BoardContext, held, usePlayer, type Adding, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
-import { doneToast, jobFiles, jobsByPrompt, toastLabel } from './generate.js';
+import { doneToast, generatedHereTitle, jobFiles, jobsByPrompt, toastLabel } from './generate.js';
 import { GeneratedHere } from './GeneratePanel.js';
 import { progressLine, resultLine, type IntakeState, type ResultPlace } from './intake.js';
 import { MatchHelp } from './MatchHelp.js';
@@ -85,7 +85,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   // Image generation (board-image-generation design decision 13).
   const user = useAuth().user.id;
   const offline = useOffline();
-  const { status: generationStatus, retry: retryStatus } = useGenerationStatus(user, offline);
+  const { status: generationStatus, retry: retryStatus, check: checkStatus } = useGenerationStatus(user, offline);
   const defaults = useGenerateDefaults(user);
   const jobList = useGenerationJobs(doc);
   const jobs = useMemo(() => jobsByPrompt(jobList), [jobList]);
@@ -120,6 +120,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       if (said) showToast(said);
     }
   });
+  const spendingTitle = useMemo(() => generatedHereTitle(board.files), [board.files]);
   useArrivals(board.files, (fileId) => intake.mark(fileId));
   useThumbBackfill(id, doc, board.files);
 
@@ -204,12 +205,15 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       offline,
       status: generationStatus,
       retryStatus: retryGeneration,
+      checkStatus,
+      projectTitle: meta.title,
       defaults,
       jobs,
       pending,
       shapes,
       start,
       spending,
+      spendingTitle,
       open: generateOpen,
       setOpen: setGenerateOpen,
     },

@@ -1,6 +1,6 @@
 .set {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 190px minmax(0, 1fr);
   gap: 24px;
 }
 .set nav {
@@ -17,6 +17,21 @@
 .set nav button.on {
   background: var(--hover);
   color: var(--text);
+}
+/* On a phone the sections stack under their nav, which scrolls sideways
+   (the image-generation and atelier-provider mockups). After the rules it
+   changes, so it wins. */
+@media (max-width: 760px) {
+  .set {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .set nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .set nav button {
+    flex: none;
+  }
 }
 .set h2 {
   font: 700 21px var(--display);
@@ -165,6 +180,40 @@
 .imggen .model .mm {
   font: 11.5px var(--mono);
   color: var(--muted);
+}
+/* Generate through and the Atelier card (atelier-image-provider, docs/mockups/atelier-provider.html) */
+.imggen .models.through {
+  max-width: 520px;
+  margin-bottom: 6px;
+}
+/* Hints outside a field (a card's footnote, the hint under Generate through),
+   as the mockup draws them. */
+.imggen .hint {
+  display: block;
+  font-size: 12px;
+  color: var(--faint);
+}
+.imggen .model:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.imggen .model .ok {
+  color: var(--primary);
+  font-size: 12px;
+}
+.imggen .model .no {
+  color: var(--amber);
+  font-size: 12px;
+}
+.imggen .srv {
+  font: 12.5px var(--mono);
+  color: var(--muted);
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  width: max-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .imggen .with-btn {
   flex-wrap: wrap;
