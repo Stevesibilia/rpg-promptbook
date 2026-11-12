@@ -5,10 +5,12 @@ import {
   IMAGE_MODELS,
   IMAGE_SHAPES,
   imageModelKeys,
+  PROVIDER_NAMES,
   type FileEntry,
   type GenerationJob,
   type ImageShape,
 } from 'promptbook-project';
+import type { ImageGenerationStatus } from '../api.js';
 import { CoinIcon, SparkIcon, WarningIcon } from '../ui/icons.js';
 import { useBoardContext } from './context.js';
 import {
@@ -17,12 +19,15 @@ import {
   imageCounts,
   modelLine,
   money2,
+  noCredential,
   OFFLINE_TITLE,
   panelShape,
   priceLine,
   progressLine,
+  providerEstimates,
   sentView,
   startChoice,
+  throughLine,
   type GenerateChoice,
 } from './generate.js';
 import type { ShownPrompt } from './summary.js';
@@ -94,6 +99,16 @@ export function GeneratePanel({
   // A failed status is asked again when the panel opens.
   const retry = gen.retryStatus;
   useEffect(() => retry(), [retry]);
+  // With Atelier chosen, once per opening: Atelier's month and estimates
+  // (atelier-image-provider D13).
+  const provider = status.state === 'ready' ? status.status.provider : null;
+  const checked = useRef(false);
+  const check = gen.checkStatus;
+  useEffect(() => {
+    if (provider !== 'atelier' || checked.current) return;
+    checked.current = true;
+    check();
+  }, [provider, check]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') latestClose.current();
@@ -120,10 +135,10 @@ export function GeneratePanel({
         <span>This server is not set up for image generation.</span>
       </div>
     );
-  } else if (status.state === 'ready' && !status.status.key) {
+  } else if (status.state === 'ready' && missingCredential(status.status)) {
     body = (
       <div className="nokey">
-        <span>Add your OpenRouter key first. Images are billed to your OpenRouter account.</span>
+        <span>{missingCredential(status.status)}</span>
         <span>
           <Link className="tb sm primary" to={SETTINGS_PATH} autoFocus>
             Open Settings → Image generation
@@ -132,8 +147,8 @@ export function GeneratePanel({
       </div>
     );
   } else {
-    // Ready with a key, or a status that could not be read: the server
-    // says what is missing when Generate is pressed.
+    // Ready with a credential, or a status that could not be read: the
+    // server says what is missing when Generate is pressed.
     return (
       <div className="gpop" role="dialog" aria-label="Generate images">
         {head}
@@ -149,8 +164,36 @@ export function GeneratePanel({
   );
 }
 
+// Why the chosen provider cannot generate yet, or null (D13): no Atelier on
+// the server, or no credential.
+export function missingCredential(status: ImageGenerationStatus): string | null {
+  if (status.provider === 'atelier') {
+    if (!status.atelier.available) return 'This server has no Atelier address.';
+    return status.atelier.token ? null : noCredential('atelier');
+  }
+  return status.key ? null : noCredential('openrouter');
+}
+
+// «Through Atelier · into the collection «…» · $0.90 of $20 used this month
+// Change», under the panel's title.
+export function ThroughLine({ status, projectTitle }: { status: ImageGenerationStatus; projectTitle: string }) {
+  const line = throughLine(status, projectTitle);
+  return (
+    <div className="via">
+      Through <b>{PROVIDER_NAMES[line.provider]}</b>
+      {line.rest}{' '}
+      <Link className="lnk" to={SETTINGS_PATH}>
+        Change
+      </Link>
+    </div>
+  );
+}
+
 function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string; onDone(): void }) {
   const { generation: gen } = useBoardContext();
+  const ready = gen.status.state === 'ready' ? gen.status.status : null;
+  const provider = ready?.provider ?? 'openrouter';
+  const estimates = providerEstimates(ready);
   const entry = prompt.row.prompt;
   const [choice, setChoiceHere] = useState<GenerateChoice>(() => startChoice(gen.defaults, lastChoiceOf(gen.user)));
   const start = panelShape(entry.category, text);
@@ -170,24 +213,27 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
     setRefused(null);
   };
   const view = sentView(text);
-  const price = priceLine(choice);
+  const price = priceLine(choice, estimates);
 
   async function go() {
     if (busy) return;
     setBusy(true);
     setRefused(null);
-    const answer = await gen.start(entry.id, { model: choice.model, count: choice.count, shape });
+    const answer = await gen.start(entry.id, { model: choice.model, count: choice.count, shape }, provider);
     if (!live.current) return;
     setBusy(false);
     if (!answer) return onDone();
     setRefused(answer);
     // The account changed elsewhere (a key removed on another device): the
     // panel shows what is missing once the status is read again.
-    if (answer.code === 'no_key' || answer.code === 'not_configured') loadGenerationStatus(gen.user);
+    if (answer.code === 'no_key' || answer.code === 'not_configured' || answer.code === 'atelier_unavailable') {
+      loadGenerationStatus(gen.user);
+    }
   }
 
   return (
     <>
+      {ready && <ThroughLine status={ready} projectTitle={gen.projectTitle} />}
       <div>
         <div className="gl">Model</div>
         <div className="models">
@@ -200,7 +246,7 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
             >
               <b>{IMAGE_MODELS[key].name}</b>
               <small>{IMAGE_MODELS[key].note}</small>
-              <span className="mm">{modelLine(key)}</span>
+              <span className="mm">{modelLine(key, estimates)}</span>
             </button>
           ))}
         </div>
@@ -302,12 +348,12 @@ function useNow(): number {
   return now;
 }
 
-// Under the images: «Generating 2 of 4 with GPT Image 2.6 · 47s. It keeps
-// going if you leave this page.»
+// Under the images: «Generating 2 of 4 with GPT Image 2.6 through Atelier ·
+// 47s. It keeps going if you leave this page.»
 export function GenerationLine({
   job,
 }: {
-  job: Pick<GenerationJob, 'count' | 'done' | 'failed' | 'model' | 'startedAt'>;
+  job: Pick<GenerationJob, 'count' | 'done' | 'failed' | 'model' | 'provider' | 'startedAt'>;
 }) {
   const now = useNow();
   return (
@@ -362,13 +408,14 @@ export function GeneratedBadge({ file }: { file: FileEntry }) {
 
 // «Generated here: 3 images · $0.12», at the right end of the summary line.
 // Shown while the count or the cost is above 0: the cost may hold images
-// OpenRouter billed that then failed here.
+// a provider billed that then failed here. Its title names the providers of
+// the generated images on the board.
 export function GeneratedHere() {
   const { generation: gen } = useBoardContext();
   const total = gen.spending;
   if (!total || (total.images === 0 && total.cost <= 0)) return null;
   return (
-    <span className="spend" title="Generated in this project, as billed by OpenRouter">
+    <span className="spend" title={gen.spendingTitle}>
       <CoinIcon className="ic" />
       <span>
         Generated here:{' '}

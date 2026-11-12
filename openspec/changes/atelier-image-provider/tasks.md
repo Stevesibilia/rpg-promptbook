@@ -60,10 +60,10 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 6. Web: panel, viewer, board (brief B)
 
-- [ ] 6.1 `board/GeneratePanel.tsx` and `board/generate.ts`: the Through line, estimates per provider, the no-credential sentence, the check on open (D13)
-- [ ] 6.2 Generating line, badge tooltip, viewer's Through row and link, "Generated here" tooltip (D13)
-- [ ] 6.3 Tests for each, including an old generated file reading as OpenRouter and the link only when the status has the url
-- [ ] 6.4 Commit `feat(web): show which provider generates and link Atelier images`
+- [x] 6.1 `board/GeneratePanel.tsx` and `board/generate.ts`: the Through line, estimates per provider, the no-credential sentence, the check on open (D13)
+- [x] 6.2 Generating line, badge tooltip, viewer's Through row and link, "Generated here" tooltip (D13)
+- [x] 6.3 Tests for each, including an old generated file reading as OpenRouter and the link only when the status has the url
+- [x] 6.4 Commit `feat(web): show which provider generates and link Atelier images`
 
 ## 7. E2E, chart, docs (brief B)
 

@@ -37,7 +37,9 @@ export function Viewer({
   onShow(fileId: string): void;
   onClose(): void;
 }) {
-  const { doc, projectId, rows, shown, toast } = useBoardContext();
+  const { doc, projectId, rows, shown, toast, generation } = useBoardContext();
+  // An Atelier image links to Atelier when the server's address is known.
+  const atelierUrl = generation.status.state === 'ready' ? generation.status.status.atelier.url : null;
   const local = useLocalFiles(projectId);
   const [confirm, setConfirm] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -89,8 +91,8 @@ export function Viewer({
   );
   const question = imageQuestion(prompt, file);
   const shape = shapeOf(file);
-  // A generated file: Source, Model and Cost in place of «Matched by».
-  const generated = generatedRows(file);
+  // A generated file: Source, Through, Model and Cost in place of «Matched by».
+  const generated = generatedRows(file, atelierUrl);
   // «S3 · L'ordine di Donato», «NPCs · Dottor Salvi».
   const header = prompt.scene ? sceneLabel(prompt.scene) : tabLabel(prompt);
 
@@ -145,7 +147,17 @@ export function Viewer({
               generated.map((row) => (
                 <Fragment key={row.label}>
                   <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
+                  <dd>
+                    {row.value}
+                    {row.link && (
+                      <>
+                        {' · '}
+                        <a href={row.link.href} target="_blank" rel="noopener noreferrer">
+                          {row.link.text}
+                        </a>
+                      </>
+                    )}
+                  </dd>
                 </Fragment>
               ))
             ) : (

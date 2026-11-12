@@ -69,12 +69,15 @@ function render(prompt: ShownPrompt, gen: Partial<Generation> = {}, part?: React
     offline: false,
     status: ready(),
     retryStatus: () => {},
+    checkStatus: () => {},
+    projectTitle: "L'Ancora di Sabaoth",
     defaults: { model: 'gpt', count: 2 },
     jobs: new Map(),
     pending: new Map(),
     shapes: new Map(),
     start: async () => null,
     spending: null,
+    spendingTitle: 'Generated in this project, as billed by OpenRouter',
     open: null,
     setOpen: () => {},
     ...gen,
@@ -129,7 +132,9 @@ describe('Generate on a prompt', () => {
     expect(html).toMatch(/role="dialog" aria-label="Generate images"/);
     expect(html).toMatch(/aria-expanded="true"/);
     const t = text(html);
-    expect(t).toMatch(/Generate images ✕ Model GPT Image 2\.6 Best detail and text ≈ \$0\.04 · 53 s per image Nano Banana 2\.1 Fast draft ≈ \$0\.04 · 17 s per image/);
+    expect(t).toMatch(
+      /Generate images ✕ Through OpenRouter · billed to your OpenRouter key Change Model GPT Image 2\.6 Best detail and text ≈ \$0\.04 · 53 s per image Nano Banana 2\.1 Fast draft ≈ \$0\.04 · 17 s per image/,
+    );
     expect(t).toMatch(/Images 1 2 3 4 Shape from the prompt's --ar 16:9 3:2 1:1 2:3/);
     expect(html).toMatch(/from the prompt&#x27;s <code class="flag">--ar<\/code>/);
     expect(html).toMatch(/<button class="on" aria-pressed="true">3:2<\/button>/);
@@ -162,24 +167,29 @@ describe('Generate on a prompt', () => {
     const html = render(shown(), { jobs: new Map([['p1', job()]]) });
     expect(html.match(/class="slot-g"/g)).toHaveLength(3);
     expect(html).toMatch(/aspect-ratio:3 \/ 2/);
-    expect(text(html)).toMatch(/Generating 2 of 4 with GPT Image 2\.6 · 4[78]s\. It keeps going if you leave this page\./);
+    expect(text(html)).toMatch(/Generating 2 of 4 with GPT Image 2\.6 through OpenRouter · 4[78]s\. It keeps going if you leave this page\./);
     expect(html).toMatch(/<button class="tb sm gen" disabled="" title="Generating…"/);
     expect(text(html)).not.toMatch(/No images yet/);
   });
 
   it('puts the model and cost on a generated thumbnail', () => {
+    // Generated before Atelier came: no generatedVia, read as OpenRouter's.
     const file = { generatedModel: 'gpt', cost: 0.041 } as FileEntry;
     expect(renderToStaticMarkup(createElement(GeneratedBadge, { file }))).toBe(
-      '<span class="gen-at"><span class="badge gen gpt" title="GPT Image 2.6 Sunburst, $0.041"><span class="gen-full">GPT · $0.04</span><span class="gen-short">$0.04</span></span></span>',
+      '<span class="gen-at"><span class="badge gen gpt" title="GPT Image 2.6 Sunburst through OpenRouter, $0.041"><span class="gen-full">GPT · $0.04</span><span class="gen-short">$0.04</span></span></span>',
+    );
+    const atelier = { generatedModel: 'gpt', generatedVia: 'atelier', cost: 0.081 } as FileEntry;
+    expect(renderToStaticMarkup(createElement(GeneratedBadge, { file: atelier }))).toMatch(
+      /title="GPT Image 2\.6 Sunburst through Atelier, \$0\.081"><span class="gen-full">GPT · \$0\.08<\/span>/,
     );
     expect(renderToStaticMarkup(createElement(GeneratedBadge, { file: { generatedModel: null, cost: null } as FileEntry }))).toBe('');
   });
 
   it('shows a start the server took at once, in the shape chosen here', () => {
-    const pending: PendingStart = { model: 'nb', count: 2, since: new Date().toISOString(), jobId: 'j9' };
+    const pending: PendingStart = { model: 'nb', provider: 'atelier', count: 2, since: new Date().toISOString(), jobId: 'j9' };
     const html = render(shown(), { pending: new Map([['p1', pending]]), shapes: new Map([['j9', '1:1']]) });
     expect(html.match(/class="slot-g" style="aspect-ratio:1 \/ 1"/g)).toHaveLength(2);
-    expect(text(html)).toMatch(/Generating 1 of 2 with Nano Banana 2\.1 · 0s\./);
+    expect(text(html)).toMatch(/Generating 1 of 2 with Nano Banana 2\.1 through Atelier · 0s\./);
   });
 
   it('shows an error in place of the empty line, with Try again and dismiss', () => {
@@ -199,8 +209,74 @@ describe('Generate on a prompt', () => {
   });
 });
 
+// atelier-image-provider D13, mockup screens 2, 5 and 7.
+describe('Generate through Atelier', () => {
+  const token = {
+    hint: '7c1d',
+    checkedAt: '2026-11-12T21:40:00.000Z',
+    name: 'promptbook',
+    expiresAt: null,
+    month: { spent: 0.9, cap: 20 },
+    estimates: { gpt: 0.083, nb: 0.037 },
+  };
+  const atelier = (patch: Partial<ImageGenerationStatus['atelier']> = {}) =>
+    ready({ provider: 'atelier', atelier: { available: true, url: 'https://atelier.siberio.eu', token, ...patch } });
+
+  it('screen 2: the Through line with the collection and the month, and Atelier’s estimates', () => {
+    const html = render(shown(), { open: 'p1', status: atelier() });
+    const t = text(html);
+    expect(t).toMatch(
+      /Generate images ✕ Through Atelier · into the collection «L'Ancora di Sabaoth» · \$0\.90 of \$20 used this month Change Model GPT Image 2\.6 Best detail and text ≈ \$0\.08 · 53 s per image Nano Banana 2\.1 Fast draft ≈ \$0\.04 · 17 s per image/,
+    );
+    expect(html).toMatch(/<div class="via">Through <b>Atelier<\/b>.*<a class="lnk" href="\/settings\/image-generation"[^>]*>Change<\/a><\/div>/);
+    // GPT at Atelier's $0.083, twice.
+    expect(t).toMatch(/About \$0\.17 · 1K Cancel Generate 2/);
+  });
+
+  it('before the check: no month, the built-in estimates where Atelier gave none', () => {
+    const t = text(render(shown(), { open: 'p1', status: atelier({ token: { ...token, month: null, estimates: { nb: 0.05 } } }) }));
+    expect(t).toMatch(/Through Atelier · into the collection «L'Ancora di Sabaoth» Change Model/);
+    expect(t).toMatch(/GPT Image 2\.6 Best detail and text ≈ \$0\.04 .* Nano Banana 2\.1 Fast draft ≈ \$0\.05/);
+  });
+
+  it('names the collection as the server does', () => {
+    const long = 'A'.repeat(59) + '😀 and more';
+    const t = text(render(shown(), { open: 'p1', status: atelier(), projectTitle: `  ${long}` }));
+    expect(t).toContain(`into the collection «${'A'.repeat(59)}»`);
+    expect(text(render(shown(), { open: 'p1', status: atelier(), projectTitle: '  ' }))).toContain('«Promptbook project»');
+  });
+
+  it('screen 5: no token yet', () => {
+    const html = render(shown(), { open: 'p1', status: atelier({ token: null }) });
+    expect(text(html)).toMatch(
+      /Generate images ✕ Add your Atelier API token first\. Images are billed against your Atelier monthly cap\. Open Settings → Image generation No images yet/,
+    );
+    expect(html).toMatch(/href="\/settings\/image-generation"/);
+  });
+
+  it('a server without Atelier, Atelier still chosen', () => {
+    const t = text(render(shown(), { open: 'p1', status: atelier({ available: false, url: null, token: null }) }));
+    expect(t).toMatch(/Generate images ✕ This server has no Atelier address\. Open Settings → Image generation/);
+  });
+
+  it('screen 7: OpenRouter chosen with both set up keeps OpenRouter’s estimates', () => {
+    const t = text(render(shown(), { open: 'p1', status: ready({ atelier: { available: true, url: 'u', token } }) }));
+    expect(t).toMatch(/Through OpenRouter · billed to your OpenRouter key Change Model GPT Image 2\.6 Best detail and text ≈ \$0\.04/);
+  });
+
+  it('a running Atelier job says so', () => {
+    const t = text(render(shown(), { jobs: new Map([['p1', job({ provider: 'atelier' })]]) }));
+    expect(t).toMatch(/Generating 2 of 4 with GPT Image 2\.6 through Atelier · 4[78]s\./);
+  });
+});
+
 describe('«Generated here»', () => {
   const here = (spending: Generation['spending']) => text(render(shown(), { spending }, createElement(GeneratedHere)));
+
+  it('names the providers on the board in its title', () => {
+    const html = render(shown(), { spending: { images: 3, cost: 0.2 }, spendingTitle: 'X and Y' }, createElement(GeneratedHere));
+    expect(html).toMatch(/<span class="spend" title="X and Y">/);
+  });
 
   it("totals the project's images and their cost", () => {
     expect(here({ images: 3, cost: 0.12 })).toBe('Generated here: 3 images · $0.12');

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry, GenerationJob, ImageCategory, ImageShape } from 'promptbook-project';
+import type { BoardRow, FileEntry, GenerationJob, ImageCategory, ImageProvider, ImageShape } from 'promptbook-project';
 import type { GenerateBody, SpendingTotal } from '../api.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
@@ -49,15 +49,22 @@ export interface Generation {
   offline: boolean;
   status: StatusState;
   retryStatus(): void;
+  // Reads the status again with the credentials checked: Atelier's month and
+  // estimates (atelier-image-provider D13).
+  checkStatus(): void;
+  // The project's title: its Atelier collection's name.
+  projectTitle: string;
   defaults: GenerateChoice;
   // The job each prompt shows: its running one, else its newest error.
   jobs: ReadonlyMap<string, GenerationJob>;
   // Starts the server took whose job has not shown yet, by prompt.
   pending: ReadonlyMap<string, PendingStart>;
   shapes: ReadonlyMap<string, ImageShape>;
-  start(promptId: string, body: GenerateBody): Promise<Refused | null>;
+  start(promptId: string, body: GenerateBody, provider: ImageProvider): Promise<Refused | null>;
   // «Generated here»; null to hide it.
   spending: SpendingTotal | null;
+  // Its title: the providers that billed the generated images on the board.
+  spendingTitle: string;
   // The prompt whose Generate panel is open: one at a time.
   open: string | null;
   setOpen(promptId: string | null): void;

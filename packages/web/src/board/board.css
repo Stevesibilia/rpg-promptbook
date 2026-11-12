@@ -1295,6 +1295,9 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+.viewer .kv a {
+  color: var(--primary);
+}
 .viewer .acts {
   display: flex;
   flex-direction: column;
@@ -1576,6 +1579,25 @@
 .board .gpop .seg button {
   min-width: 38px;
   justify-content: center;
+}
+/* The provider Generate goes through (atelier-image-provider D13) */
+.board .gpop .via {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.board .gpop .via b {
+  color: var(--text);
+  font-weight: 600;
+}
+.board .gpop .via .lnk {
+  margin-left: 4px;
+  color: var(--primary);
+  text-decoration: none;
+}
+.board .gpop .via .lnk:hover {
+  text-decoration: underline;
 }
 .board .sent {
   font: 12px/1.5 var(--mono);

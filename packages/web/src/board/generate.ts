@@ -2,13 +2,16 @@ import {
   defaultSettings,
   defaultShape,
   IMAGE_MODELS,
+  IMAGE_PROVIDERS,
   isImageModelKey,
+  PROVIDER_NAMES,
   sentPrompt,
   STALE_GENERATION_MS,
   type FileEntry,
   type GenerationJob,
   type ImageCategory,
   type ImageModelKey,
+  type ImageProvider,
   type ImageShape,
   type Settings,
   type ShapeSource,
@@ -115,11 +118,15 @@ export function sentView(text: string): SentView {
   };
 }
 
+// Who generated an image: an image generated before Atelier came reads as
+// OpenRouter's (atelier-image-provider D11).
+export const viaOf = (file: Pick<FileEntry, 'generatedVia'>): ImageProvider => file.generatedVia ?? 'openrouter';
+
 // A generated thumbnail's badge: «GPT · $0.04», its title «GPT Image 2.6
-// Sunburst, $0.041»; `short`, the cost alone, for a tile too narrow for the
-// text. Null for every other file.
+// Sunburst through Atelier, $0.081»; `short`, the cost alone, for a tile too
+// narrow for the text. Null for every other file.
 export function badge(
-  file: Pick<FileEntry, 'generatedModel' | 'cost'>,
+  file: Pick<FileEntry, 'generatedModel' | 'generatedVia' | 'cost'>,
 ): { model: ImageModelKey; text: string; short: string; title: string } | null {
   const model = file.generatedModel;
   if (model === null) return null;
@@ -128,32 +135,96 @@ export function badge(
     model,
     text: `${shortModel[model]} · ${known ? money2(file.cost!) : 'cost unknown'}`,
     short: known ? money2(file.cost!) : '$?',
-    title: `${IMAGE_MODELS[model].full}, ${known ? money3(file.cost!) : 'cost unknown'}`,
+    title: `${IMAGE_MODELS[model].full} through ${PROVIDER_NAMES[viaOf(file)]}, ${known ? money3(file.cost!) : 'cost unknown'}`,
   };
 }
 
-// The viewer's rows for a generated file, in place of «Matched by».
-export function generatedRows(file: Pick<FileEntry, 'generatedModel' | 'cost'>): { label: string; value: string }[] | null {
+// A row of the viewer; `link`, when there is one, follows the value.
+export interface ViewerRow {
+  label: string;
+  value: string;
+  link?: { href: string; text: string };
+}
+
+// The viewer's rows for a generated file, in place of «Matched by»: Source,
+// Through, Model and Cost. An Atelier image links to Atelier when the
+// server's Atelier address is known (D13).
+export function generatedRows(
+  file: Pick<FileEntry, 'generatedModel' | 'generatedVia' | 'atelierImageId' | 'cost'>,
+  atelierUrl: string | null = null,
+): ViewerRow[] | null {
   const model = file.generatedModel;
   if (model === null) return null;
+  const via = viaOf(file);
+  const through: ViewerRow = { label: 'Through', value: PROVIDER_NAMES[via] };
+  if (via === 'atelier' && atelierUrl && file.atelierImageId) {
+    through.link = {
+      href: `${atelierUrl}/images/${encodeURIComponent(file.atelierImageId)}`,
+      text: `No. ${file.atelierImageId.slice(0, 8)} in Atelier ↗`,
+    };
+  }
   return [
     { label: 'Source', value: 'Generated' },
+    through,
     { label: 'Model', value: IMAGE_MODELS[model].full },
     { label: 'Cost', value: file.cost === null ? 'unknown' : money3(file.cost) },
   ];
 }
 
+// «Generated here»'s title: the providers that billed the images on the
+// board, «OpenRouter and Atelier» (D13).
+export function generatedHereTitle(files: readonly Pick<FileEntry, 'generatedModel' | 'generatedVia'>[]): string {
+  const present = new Set(files.filter((f) => f.generatedModel !== null).map(viaOf));
+  const names = IMAGE_PROVIDERS.filter((p) => present.has(p)).map((p) => PROVIDER_NAMES[p]);
+  return names.length === 0 ? 'Generated in this project' : `Generated in this project, as billed by ${names.join(' and ')}`;
+}
+
+// The Atelier collection a project's images go into, as the server names it
+// (D7): its title trimmed, at most 60 characters, never half of one.
+export function collectionTitle(title: string): string {
+  let name = title.trim();
+  if (name.length > 60) {
+    name = name.slice(0, 60);
+    if (/[\uD800-\uDBFF]$/.test(name)) name = name.slice(0, -1);
+  }
+  return name.trim() || 'Promptbook project';
+}
+
+// «$20», «$20.50»: Atelier's cap, whole dollars without cents.
+export const capDollars = (dollars: number): string => (Number.isInteger(dollars) ? `$${dollars}` : money2(dollars));
+
+// The panel's first line (D13): which provider Generate goes through.
+export function throughLine(
+  status: Pick<ImageGenerationStatus, 'provider' | 'atelier'>,
+  projectTitle: string,
+): { provider: ImageProvider; rest: string } {
+  if (status.provider === 'openrouter') return { provider: 'openrouter', rest: ' · billed to your OpenRouter key' };
+  const month = status.atelier.token?.month ?? null;
+  const used = month ? ` · ${money2(month.spent)} of ${capDollars(month.cap)} used this month` : '';
+  return { provider: 'atelier', rest: ` · into the collection «${collectionTitle(projectTitle)}»${used}` };
+}
+
+// What the panel asks for when the chosen provider has no credential.
+export const noCredential = (provider: ImageProvider): string =>
+  provider === 'atelier'
+    ? 'Add your Atelier API token first. Images are billed against your Atelier monthly cap.'
+    : 'Add your OpenRouter key first. Images are billed to your OpenRouter account.';
+
 // The images still to come on a running job.
 export const slotsLeft = (job: Pick<GenerationJob, 'count' | 'done' | 'failed'>): number =>
   Math.max(0, job.count - job.done - job.failed);
 
-// «Generating 2 of 4 with GPT Image 2.6 · 47s. It keeps going if you leave
-// this page.» The seconds since the server started it, never below 0 when
-// the clocks differ.
-export function progressLine(job: Pick<GenerationJob, 'count' | 'done' | 'failed' | 'model' | 'startedAt'>, now: number): string {
+// «Generating 2 of 4 with GPT Image 2.6 through Atelier · 47s. It keeps
+// going if you leave this page.» The seconds since the server started it,
+// never below 0 when the clocks differ.
+export function progressLine(
+  job: Pick<GenerationJob, 'count' | 'done' | 'failed' | 'model' | 'provider' | 'startedAt'>,
+  now: number,
+): string {
   const at = Math.min(job.done + job.failed + 1, job.count);
   const seconds = Math.max(0, Math.floor((now - Date.parse(job.startedAt)) / 1000));
-  return `Generating ${at} of ${job.count} with ${IMAGE_MODELS[job.model].name} · ${seconds}s. It keeps going if you leave this page.`;
+  const through = PROVIDER_NAMES[job.provider];
+  return `Generating ${at} of ${job.count} with ${IMAGE_MODELS[job.model].name} through ${through} · ${seconds}s. It keeps going if you leave this page.`;
 }
 
 // The error line under a prompt: the job's error as the server wrote it
@@ -228,14 +299,14 @@ export function jobsByPrompt(jobs: readonly GenerationJob[]): Map<string, Genera
 }
 
 // Why Generate did not start, in plain words (the route's refusals, D7).
-export function refusal(code: string, message: string, desktop: boolean): string {
+export function refusal(code: string, message: string, desktop: boolean, provider: ImageProvider = 'openrouter'): string {
   switch (code) {
     case 'busy':
       return 'Images are already being generated for this prompt.';
     case 'too_many_jobs':
       return 'Three generations are already running. Wait for one to finish.';
     case 'no_key':
-      return 'Add your OpenRouter key first. Images are billed to your OpenRouter account.';
+      return noCredential(provider);
     case 'not_configured':
       return 'This server is not set up for image generation.';
     case 'quota':
