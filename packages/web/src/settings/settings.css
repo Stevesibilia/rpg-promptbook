@@ -1,7 +1,21 @@
 .set {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 190px minmax(0, 1fr);
   gap: 24px;
+}
+/* On a phone the sections stack under their nav, which scrolls sideways
+   (the image-generation and atelier-provider mockups). */
+@media (max-width: 760px) {
+  .set {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .set nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .set nav button {
+    flex: none;
+  }
 }
 .set nav {
   display: flex;
