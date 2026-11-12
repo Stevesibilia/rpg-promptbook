@@ -257,6 +257,7 @@ Atelier path:
    failed row, and the job counts as charged for the final sentence.
 5. A poll that gets no answer is retried at the next tick; three in a row end
    the watch with "Atelier did not answer."
+6. When the watch ends by the stop, the 10-minute timeout or three unanswered polls, Atelier may still bill the missing images: the final sentence never adds " Nothing was charged." then, and their rows keep cost null.
 
 File names stay `${label}-${model}-${n}.ext`. **Why one generation, not
 `count` calls:** Atelier runs the images in parallel itself, counts them as

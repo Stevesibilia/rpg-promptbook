@@ -40,12 +40,12 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 3. Server: token routes, status, generating through Atelier (brief A)
 
-- [ ] 3.1 `PUT` and `DELETE /api/image-generation/atelier-token` and the status fields per D8; D5's switch on removal
-- [ ] 3.2 Generate route per D9; `startGenerationJob` with `provider`
-- [ ] 3.3 `jobs.ts`: `land` extracted (OpenRouter path unchanged), the Atelier path per D10 with the collection per D7
-- [ ] 3.4 Spending per provider per D12
-- [ ] 3.5 Db tests per Verification (token routes, status with `?check=1`, generation through Atelier, collection made once, reused and remade, partial failure, cap reached, token removed mid-job, the switch, spending per provider, the token in no body or captured log line); every existing OpenRouter test passes unchanged
-- [ ] 3.6 Commit `feat(server): generate board images through Atelier`
+- [x] 3.1 `PUT` and `DELETE /api/image-generation/atelier-token` and the status fields per D8; D5's switch on removal
+- [x] 3.2 Generate route per D9; `startGenerationJob` with `provider`
+- [x] 3.3 `jobs.ts`: `land` extracted (OpenRouter path unchanged), the Atelier path per D10 with the collection per D7
+- [x] 3.4 Spending per provider per D12
+- [x] 3.5 Db tests per Verification (token routes, status with `?check=1`, generation through Atelier, collection made once, reused and remade, partial failure, cap reached, token removed mid-job, the switch, spending per provider, the token in no body or captured log line); every existing OpenRouter test passes unchanged
+- [x] 3.6 Commit `feat(server): generate board images through Atelier`
 
 ## 4. Brief A hand-back
 

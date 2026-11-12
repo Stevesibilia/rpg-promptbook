@@ -9,7 +9,9 @@ import {
   readImagePrompts,
   sentPrompt,
   startGenerationJob,
+  type ImageModelKey,
   type ImagePromptEntry,
+  type ImageProvider,
 } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
@@ -21,16 +23,19 @@ import { hasRoom, quotaReached } from '../files/store.js';
 import { openLiveDocument } from '../live.js';
 import { getProject } from '../projects.js';
 import { NOT_FOUND } from '../routes/projects.js';
+import { getSettings } from '../routes/settings.js';
 import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
-import { runGenerationJob } from './jobs.js';
+import { AtelierError, describeToken, readEstimates, readMonth } from './atelier.js';
+import { ATELIER_JOB_ERRORS, runGenerationJob } from './jobs.js';
 import { checkKey, IMAGE_ERRORS } from './openrouter.js';
 import { markSecretChecked, readSecret, removeSecret, saveSecret } from './secrets.js';
 
 // Image generation's routes (board-image-generation design decisions 2, 7
-// and 11). Every one needs a session or the desktop's token. The plain key
-// is read from the request or the database and handed to the OpenRouter
-// client only; it is in no answer, error or log line.
+// and 11; atelier-image-provider design decisions 8, 9 and 12). Every one
+// needs a session or the desktop's token. The plain OpenRouter key and
+// Atelier token are read from the request or the database and handed to
+// their clients only; they are in no answer, error or log line.
 
 export type StatusError = 'key_unreadable' | 'key_rejected' | 'openrouter_unreachable';
 
@@ -39,8 +44,27 @@ export interface Spending {
   all: { images: number; cost: number };
   // This calendar month (UTC), one entry per project with at least one row
   // this month, by title; projectId and title null for projects removed for
-  // good.
-  projects: { projectId: string | null; title: string | null; images: number; cost: number }[];
+  // good. `atelier` and `openrouter` split its cost by provider.
+  projects: {
+    projectId: string | null;
+    title: string | null;
+    images: number;
+    cost: number;
+    atelier: number;
+    openrouter: number;
+  }[];
+}
+
+export type AtelierStatusError = 'token_unreadable' | 'token_rejected' | 'token_read_only' | 'atelier_unreachable';
+
+export interface AtelierTokenStatus {
+  hint: string;
+  checkedAt: string;
+  // Filled only by ?check=1 or a save:
+  name: string | null;
+  expiresAt: string | null;
+  month: { spent: number; cap: number } | null;
+  estimates: Partial<Record<ImageModelKey, number>> | null;
 }
 
 export interface ImageGenerationStatus {
@@ -49,6 +73,16 @@ export interface ImageGenerationStatus {
   // Why the key is missing or not working, when that is known.
   error?: StatusError;
   spending: Spending;
+  // The account's choice (D5).
+  provider: ImageProvider;
+  atelier: {
+    // ATELIER_URL is set.
+    available: boolean;
+    url: string | null;
+    token: AtelierTokenStatus | null;
+    // Why the token is missing or not working, when that is known.
+    error?: AtelierStatusError;
+  };
 }
 
 const GIB = 1024 ** 3;
@@ -71,9 +105,18 @@ async function spendingOf(db: Queryable, userId: string): Promise<Spending> {
      from image_generations where user_id = $1`,
     [userId],
   );
-  const projects = await db.query<{ project_id: string | null; title: string | null; images: number; cost: string }>(
+  const projects = await db.query<{
+    project_id: string | null;
+    title: string | null;
+    images: number;
+    cost: string;
+    atelier: string;
+    openrouter: string;
+  }>(
     `select g.project_id, p.title, count(*) filter (where g.ok)::int as images,
-            coalesce(sum(g.cost), 0) as cost
+            coalesce(sum(g.cost), 0) as cost,
+            coalesce(sum(g.cost) filter (where g.provider = 'atelier'), 0) as atelier,
+            coalesce(sum(g.cost) filter (where g.provider = 'openrouter'), 0) as openrouter
      from image_generations g left join projects p on p.id = g.project_id
      where g.user_id = $1 and g.created_at >= ${MONTH}
      group by g.project_id, p.title
@@ -88,6 +131,8 @@ async function spendingOf(db: Queryable, userId: string): Promise<Spending> {
       title: p.project_id === null ? null : p.title,
       images: p.images,
       cost: dollars(p.cost),
+      atelier: dollars(p.atelier),
+      openrouter: dollars(p.openrouter),
     })),
   };
 }
@@ -131,6 +176,8 @@ const busy = () => new AppError(409, 'busy', 'Images are already being generated
 export interface GenerationHandle {
   done: Promise<void>;
   userId: string;
+  // The service the job goes through: removing its credential stops it.
+  provider: ImageProvider;
   stop(reason: string): void;
 }
 
@@ -138,6 +185,14 @@ export const notConfigured = () =>
   new AppError(503, 'not_configured', 'This server is not set up for image generation.');
 
 const keySchema = z.object({ key: z.string().trim().min(1, 'is required').max(200, 'at most 200 characters') }).strict();
+
+const NOT_AN_ATELIER_TOKEN = 'This is not an Atelier API token.';
+
+const tokenSchema = z
+  .object({ token: z.string().trim().min(1).max(200).startsWith('atl_pat_') })
+  .strict();
+
+const atelierUnavailable = () => new AppError(503, 'atelier_unavailable', 'This server has no Atelier address.');
 
 const wantsCheck = (req: FastifyRequest) => (req.query as { check?: unknown } | undefined)?.check === '1';
 
@@ -150,31 +205,84 @@ export interface ImageRoutesOptions {
   runs: Map<string, GenerationHandle>;
   // Only for the tests: each OpenRouter image call's timeout.
   timeoutMs?: number | undefined;
+  // Only for the tests: an Atelier generation's poll interval and watch.
+  atelierPollMs?: number | undefined;
+  atelierWatchMs?: number | undefined;
 }
 
 export async function imageRoutes(
   app: FastifyInstance,
-  { config, db, sync, blobs, runs, timeoutMs }: ImageRoutesOptions,
+  { config, db, sync, blobs, runs, timeoutMs, atelierPollMs, atelierWatchMs }: ImageRoutesOptions,
 ) {
   const serverKey = (): Buffer => {
     if (!config.secretsKey) throw notConfigured();
     return config.secretsKey;
   };
 
-  // The saved key's status; OpenRouter is asked only with ?check=1.
+  // The details of a write token Atelier described (D8): the month and the
+  // estimates are asked too; a failure there leaves them null.
+  async function atelierDetails(
+    token: string,
+    described: { name: string; expiresAt: string | null },
+  ): Promise<Pick<AtelierTokenStatus, 'name' | 'expiresAt' | 'month' | 'estimates'>> {
+    const base = config.atelierUrl!;
+    const [month, estimates] = await Promise.all([readMonth(base, token), readEstimates(base, token)]);
+    return { name: described.name, expiresAt: described.expiresAt, month, estimates };
+  }
+
+  // The saved Atelier token's status; Atelier is asked only with ?check=1,
+  // steps 1 to 3 of D1. One failure sets the error and leaves the checked
+  // details null.
+  async function atelierStatus(userId: string, check: boolean): Promise<ImageGenerationStatus['atelier']> {
+    const available = config.atelierUrl !== null;
+    const base = { available, url: config.atelierUrl };
+    if (!config.secretsKey) return { ...base, token: null };
+    const stored = await readSecret(db, config.secretsKey, userId, 'atelier');
+    if (stored.state === 'none') return { ...base, token: null };
+    if (stored.state === 'unreadable') return { ...base, token: null, error: 'token_unreadable' };
+    const token: AtelierTokenStatus = {
+      hint: stored.hint,
+      checkedAt: stored.checkedAt,
+      name: null,
+      expiresAt: null,
+      month: null,
+      estimates: null,
+    };
+    if (!check || config.atelierUrl === null) return { ...base, token };
+    try {
+      const described = await describeToken(config.atelierUrl, stored.key);
+      if (described.access !== 'write') return { ...base, token, error: 'token_read_only' };
+      Object.assign(token, await atelierDetails(stored.key, described));
+    } catch (error) {
+      Object.assign(token, { name: null, expiresAt: null, month: null, estimates: null });
+      const rejected = error instanceof AtelierError && error.status === 401;
+      return { ...base, token, error: rejected ? 'token_rejected' : 'atelier_unreachable' };
+    }
+    token.checkedAt = (await markSecretChecked(db, userId, 'atelier')) ?? token.checkedAt;
+    return { ...base, token };
+  }
+
+  // The saved key's status; OpenRouter is asked only with ?check=1. With
+  // ?check=1 the Atelier token is checked too (D8).
   async function status(userId: string, check: boolean): Promise<ImageGenerationStatus> {
     const spending = await spendingOf(db, userId);
-    if (!config.secretsKey) return { configured: false, key: null, spending };
+    const { provider } = (await getSettings(db, userId)).imageGeneration;
+    const [openRouter, atelier] = await Promise.all([openRouterStatus(userId, check), atelierStatus(userId, check)]);
+    return { ...openRouter, spending, provider, atelier };
+  }
+
+  async function openRouterStatus(userId: string, check: boolean): Promise<Pick<ImageGenerationStatus, 'configured' | 'key' | 'error'>> {
+    if (!config.secretsKey) return { configured: false, key: null };
     const stored = await readSecret(db, config.secretsKey, userId, 'openrouter');
-    if (stored.state === 'none') return { configured: true, key: null, spending };
-    if (stored.state === 'unreadable') return { configured: true, key: null, error: 'key_unreadable', spending };
+    if (stored.state === 'none') return { configured: true, key: null };
+    if (stored.state === 'unreadable') return { configured: true, key: null, error: 'key_unreadable' };
     const key = { hint: stored.hint, checkedAt: stored.checkedAt, limitRemaining: null as number | null };
-    if (!check) return { configured: true, key, spending };
+    if (!check) return { configured: true, key };
     const checked = await checkKey(config.openRouterBaseUrl, stored.key);
-    if (!checked.ok) return { configured: true, key, error: checked.reason, spending };
+    if (!checked.ok) return { configured: true, key, error: checked.reason };
     key.checkedAt = (await markSecretChecked(db, userId, 'openrouter')) ?? key.checkedAt;
     key.limitRemaining = checked.limitRemaining;
-    return { configured: true, key, spending };
+    return { configured: true, key };
   }
 
   app.get('/api/image-generation', async (req) => {
@@ -204,7 +312,65 @@ export async function imageRoutes(
     serverKey();
     await removeSecret(db, user.id, 'openrouter');
     // The key is gone: the user's running jobs stop asking OpenRouter.
-    for (const run of runs.values()) if (run.userId === user.id) run.stop(IMAGE_ERRORS.keyRemoved);
+    for (const run of runs.values()) {
+      if (run.userId === user.id && run.provider === 'openrouter') run.stop(IMAGE_ERRORS.keyRemoved);
+    }
+    return reply.code(204).send();
+  });
+
+  // D8: checked with Atelier before it is stored; a token Atelier rejects, a
+  // read-only one, or a check that gets no answer stores nothing and keeps
+  // the old token.
+  app.put('/api/image-generation/atelier-token', async (req) => {
+    const { user } = requireSession(req);
+    const sealing = serverKey();
+    if (config.atelierUrl === null) throw atelierUnavailable();
+    const parsed = tokenSchema.safeParse(req.body);
+    if (!parsed.success) throw new AppError(400, 'invalid', NOT_AN_ATELIER_TOKEN);
+    const { token } = parsed.data;
+    let described: Awaited<ReturnType<typeof describeToken>>;
+    try {
+      described = await describeToken(config.atelierUrl, token);
+    } catch (error) {
+      if (error instanceof AtelierError && error.status === 401) {
+        throw new AppError(400, 'token_rejected', 'Atelier rejected this token.');
+      }
+      throw new AppError(502, 'atelier_unreachable', 'Atelier did not answer. Nothing was saved.');
+    }
+    if (described.access !== 'write') {
+      throw new AppError(400, 'token_read_only', 'This token is read only. Make one with Generate + read in Atelier.');
+    }
+    await saveSecret(db, sealing, user.id, 'atelier', token);
+    const saved = await status(user.id, false);
+    if (saved.atelier.token) {
+      const details = await atelierDetails(token, described).catch(() => ({
+        name: described.name,
+        expiresAt: described.expiresAt,
+        month: null,
+        estimates: null,
+      }));
+      Object.assign(saved.atelier.token, details);
+    }
+    return saved;
+  });
+
+  app.delete('/api/image-generation/atelier-token', async (req, reply) => {
+    const { user } = requireSession(req);
+    const sealing = serverKey();
+    await removeSecret(db, user.id, 'atelier');
+    // The token is gone: the user's running Atelier jobs stop.
+    for (const run of runs.values()) {
+      if (run.userId === user.id && run.provider === 'atelier') run.stop(ATELIER_JOB_ERRORS.tokenRemoved);
+    }
+    // D5: Generate goes through OpenRouter again when its key works here.
+    const settings = await getSettings(db, user.id);
+    if (settings.imageGeneration.provider === 'atelier' && (await readSecret(db, sealing, user.id, 'openrouter')).state === 'ok') {
+      await db.query(
+        `update user_settings set settings = jsonb_set(settings, '{imageGeneration,provider}', '"openrouter"'), updated_at = now()
+         where user_id = $1 and settings ? 'imageGeneration'`,
+        [user.id],
+      );
+    }
     return reply.code(204).send();
   });
 
@@ -224,10 +390,19 @@ export async function imageRoutes(
     const { user } = requireSession(req);
     const { id, promptId } = req.params as { id: string; promptId: string };
     const body = parseBody(generateSchema, req.body);
-    await ownProject(user.id, id);
+    const project = await ownProject(user.id, id);
+    // D9: the account's provider and its credential.
+    const { provider } = (await getSettings(db, user.id)).imageGeneration;
     const sealing = serverKey();
-    const stored = await readSecret(db, sealing, user.id, 'openrouter');
-    if (stored.state !== 'ok') throw new AppError(409, 'no_key', 'Add your OpenRouter key first.');
+    if (provider === 'atelier' && config.atelierUrl === null) throw atelierUnavailable();
+    const stored = await readSecret(db, sealing, user.id, provider);
+    if (stored.state !== 'ok') {
+      throw new AppError(
+        409,
+        'no_key',
+        provider === 'atelier' ? 'Add your Atelier API token first.' : 'Add your OpenRouter key first.',
+      );
+    }
     const quotaBytes = config.filesQuotaGb * GIB;
 
     const jobId = randomUUID();
@@ -260,6 +435,7 @@ export async function imageRoutes(
             id: jobId,
             promptId,
             model: body.model,
+            provider,
             count: body.count,
             by: user.id,
             startedAt: new Date().toISOString(),
@@ -281,7 +457,7 @@ export async function imageRoutes(
 
     const controller = new AbortController();
     const done = runGenerationJob(
-      { db, sync, blobs, baseUrl: config.openRouterBaseUrl, quotaBytes, log: app.log, timeoutMs },
+      { db, sync, blobs, baseUrl: config.openRouterBaseUrl, quotaBytes, log: app.log, timeoutMs, atelierPollMs, atelierWatchMs },
       {
         jobId,
         projectId: id,
@@ -292,13 +468,16 @@ export async function imageRoutes(
         model: body.model,
         count: body.count,
         shape: body.shape,
+        provider,
         key: stored.key,
+        atelierUrl: config.atelierUrl,
+        projectTitle: project.title,
         stop: controller.signal,
       },
     )
       .catch((error: unknown) => app.log.error({ jobId, err: error }, 'A generation job failed'))
       .finally(() => runs.delete(jobId));
-    runs.set(jobId, { done, userId: user.id, stop: (reason) => controller.abort(reason) });
+    runs.set(jobId, { done, userId: user.id, provider, stop: (reason) => controller.abort(reason) });
     return reply.code(202).send({ jobId });
   });
 
