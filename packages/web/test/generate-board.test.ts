@@ -9,6 +9,7 @@ import { BoardContext, type BoardContextValue, type Generation } from '../src/bo
 import { GeneratedBadge, GeneratedHere } from '../src/board/GeneratePanel.js';
 import { PromptBody } from '../src/board/ImagePrompt.js';
 import { OfflineNotice } from '../src/board/parts.js';
+import { SourceRows } from '../src/board/Viewer.js';
 import type { ShownPrompt } from '../src/board/summary.js';
 import type { PendingStart, StatusState } from '../src/board/useGeneration.js';
 
@@ -183,6 +184,33 @@ describe('Generate on a prompt', () => {
       /title="GPT Image 2\.6 Sunburst through Atelier, \$0\.081"><span class="gen-full">GPT · \$0\.08<\/span>/,
     );
     expect(renderToStaticMarkup(createElement(GeneratedBadge, { file: { generatedModel: null, cost: null } as FileEntry }))).toBe('');
+  });
+
+  // connector-board-images review: an image Claude attached from Atelier was
+  // matched by nobody's hand.
+  it('shows From · Atelier, and no Matched by, for an image attached from Atelier', () => {
+    const id = '52f9552c-7a1e-4b3d-9c2f-0e8d6a4b1f37';
+    const rows = (file: Partial<FileEntry>, atelierUrl: string | null = 'https://atelier.siberio.eu') =>
+      renderToStaticMarkup(createElement(SourceRows, { file: file as FileEntry, atelierUrl }));
+    const attached = rows({ generatedModel: null, generatedVia: null, cost: null, matchedBy: 'hand', atelierImageId: id });
+    expect(attached).toBe(
+      `<dt>From</dt><dd>Atelier · <a href="https://atelier.siberio.eu/images/${id}" target="_blank" rel="noopener noreferrer">No. 52f9552c in Atelier ↗</a></dd>`,
+    );
+    expect(attached).not.toMatch(/Matched by/);
+    expect(rows({ generatedModel: null, generatedVia: null, cost: null, matchedBy: 'hand', atelierImageId: id }, null)).toBe(
+      '<dt>From</dt><dd>Atelier</dd>',
+    );
+    // A file dropped and matched by hand: Matched by, as before.
+    expect(rows({ generatedModel: null, generatedVia: null, cost: null, matchedBy: 'hand', atelierImageId: null })).toBe(
+      '<dt>Matched by</dt><dd>you, by hand</dd>',
+    );
+    expect(rows({ generatedModel: null, generatedVia: null, cost: null, matchedBy: null, atelierImageId: null })).toBe(
+      '<dt>Matched by</dt><dd>—</dd>',
+    );
+    // A generated file: its four rows, no Matched by.
+    expect(text(rows({ generatedModel: 'gpt', generatedVia: 'openrouter', cost: 0.041, matchedBy: 'generated', atelierImageId: null }))).not.toMatch(
+      /Matched by/,
+    );
   });
 
   it('shows a start the server took at once, in the shape chosen here', () => {
