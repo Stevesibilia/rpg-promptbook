@@ -380,6 +380,41 @@ Recorded by the architect at review, 2026-11-12:
    `ImageGeneration.tsx` keeps the stored provider when the defaults are
    saved, and test fixtures gained the new fields.
 
+### D17. Accepted departures of brief B
+
+Recorded by the architect at review, 2026-11-12:
+
+1. `e2e/generate.spec.ts`: five expected strings carry D13's texts (:119,
+   :124, :137, :163, :210), and `saveKey` (:48) finds the OpenRouter key card
+   by its heading, since the Atelier footnote also names the OpenRouter key.
+2. The e2e fake has a third token, `atl_pat_capped`, whose every start answers
+   `cap_reached` (as `sk-or-v1-broke` does for OpenRouter);
+   `e2e/atelier/serve.mjs` is self-contained, with the server fake's shapes
+   and sentences but no test hooks.
+3. The spec is `e2e/generated-through-atelier.spec.ts`, so it runs after
+   `generate.spec.ts`, whose month total counts only its own images; its
+   cleanup runs in `afterEach`.
+4. `.imggen .hint` (12 px, faint) styles the cards' hints and footnotes as the
+   mockup does, the existing OpenRouter footnote included.
+5. Settings had no phone layout (also on main): below 760 px the section
+   stacks under a scrolling row of the Settings nav, for every section, as
+   both approved mockups show (commits 7d8b157 and 98a10a4).
+6. Group 5 edited two web test fixtures and one expected string (the spending
+   table's D13 text) with python in Bash before the Edit-only note; checked at
+   review.
+7. Judgement calls: wording for a saved token that stopped working
+   ("Atelier rejects this token now. Replace it.", "Atelier did not answer;
+   last checked HH:MM.", "The saved token can't be read any more. Save it
+   again.", "Works. Checked HH:MM."); a rejected or read-only credential turns
+   its choice off with "Check the token below" / "Check the key below"; the
+   panel leaves out the month when it is unknown and says "This server has no
+   Atelier address." when Atelier is chosen without one; the client applies
+   D5's switch on removal so a later save cannot send `atelier` back;
+   `DefaultsCard` reads the provider with `imageProviderOf`.
+8. Review send-back (plan-level, D10 step 1 amended): an error Atelier
+   answered reads "Atelier refused: <its message>" (eb1b557), as the mockup's
+   screen 6 shows.
+
 ## Rejected
 
 - Atelier address per account: an address typed by a user is called by the
