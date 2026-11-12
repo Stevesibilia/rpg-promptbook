@@ -11,6 +11,7 @@ import {
   recordGenerationProgress,
   sentPrompt,
   sniff,
+  type Author,
   type ImageModelKey,
   type ImageProvider,
   type ImageShape,
@@ -80,6 +81,9 @@ export interface GenerationRun {
   // the job started, which names its collection (D7).
   atelierUrl?: string | null;
   projectTitle?: string;
+  // Who the images are marked as added by: the user from the board's
+  // Generate, Claude from the connector (connector-board-images D5).
+  addedBy: Author;
   // Aborted when the key is removed or the server stops; its reason, a
   // string, is the sentence of the images it stops.
   stop: AbortSignal;
@@ -152,6 +156,56 @@ interface LandExtra {
   atelierImageId?: string;
 }
 
+// An image's bytes as the board takes them: PNG, JPEG or WebP by the bytes,
+// within the image size limit.
+export interface CheckedImage {
+  mime: string;
+  // The file name's extension: png, jpg or webp.
+  ext: string;
+  sha256: string;
+}
+
+// The type from the bytes and their hash; null for anything that is not a
+// PNG, JPEG or WebP image within FILE_LIMITS.image (connector-board-images
+// design decision 8: one path for bytes onto the board).
+export function checkImageBytes(bytes: Buffer): CheckedImage | null {
+  const type = sniff(bytes.subarray(0, 12));
+  if (!type || type.kind !== 'image' || !EXTENSIONS[type.mime]) return null;
+  if (bytes.length > FILE_LIMITS.image) return null;
+  return { mime: type.mime, ext: EXTENSIONS[type.mime]!, sha256: createHash('sha256').update(bytes).digest('hex') };
+}
+
+export interface StoreDeps {
+  db: Db;
+  blobs: BlobStore;
+  quotaBytes: number;
+}
+
+// Stores checked bytes, links them to the project within the account's
+// quota, and measures them. Throws quotaReached()'s AppError when the
+// account's files are full. Answers the width and height, null when the
+// bytes do not say.
+export async function storeImage(
+  deps: StoreDeps,
+  owner: { projectId: string; userId: string },
+  bytes: Buffer,
+  image: CheckedImage,
+): Promise<{ width: number; height: number } | null> {
+  const file = { sha256: image.sha256, size: bytes.length, mime: image.mime };
+  for (let attempt = 0; ; attempt++) {
+    await deps.blobs.put(image.sha256, Readable.from([bytes]), { maxBytes: bytes.length, size: bytes.length });
+    try {
+      await linkFile(deps.db, deps.blobs, owner.projectId, file, { userId: owner.userId, quotaBytes: deps.quotaBytes });
+      break;
+    } catch (error) {
+      // The sweep removed the bytes between the put and the link: once more.
+      if (error instanceof AppError && error.code === 'retry' && attempt === 0) continue;
+      throw error;
+    }
+  }
+  return imageDimensions(bytes, image.mime);
+}
+
 export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promise<void> {
   const { db, sync, log } = deps;
   const text = sentPrompt(run.prompt).text;
@@ -181,43 +235,31 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       ],
     );
 
-  async function store(bytes: Buffer, mime: string, sha256: string): Promise<void> {
-    const file = { sha256, size: bytes.length, mime };
-    for (let attempt = 0; ; attempt++) {
-      await deps.blobs.put(sha256, Readable.from([bytes]), { maxBytes: bytes.length, size: bytes.length });
-      try {
-        await linkFile(db, deps.blobs, run.projectId, file, { userId: run.userId, quotaBytes: deps.quotaBytes });
-        return;
-      } catch (error) {
-        if (error instanceof AppError && error.code === 'quota') throw new ImageFailed(IMAGE_ERRORS.quota);
-        // The sweep removed the bytes between the put and the link: once more.
-        if (error instanceof AppError && error.code === 'retry' && attempt === 0) continue;
-        throw error;
-      }
-    }
-  }
-
   // D10: what follows the bytes, on both paths. Checks them, stores them,
   // links them and adds the image to the board, counted on the job. Throws
   // ImageFailed with the image's sentence, or anything else on a failure of
   // ours. Answers the image's sha256.
   async function land(bytes: Buffer, cost: number | null, extra: LandExtra): Promise<string> {
     const noImage = run.provider === 'atelier' ? ATELIER_JOB_ERRORS.noImage : IMAGE_ERRORS.noImage;
-    const type = sniff(bytes.subarray(0, 12));
-    if (!type || type.kind !== 'image' || !EXTENSIONS[type.mime]) throw new ImageFailed(noImage);
-    if (bytes.length > FILE_LIMITS.image) throw new ImageFailed(noImage);
-    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const type = checkImageBytes(bytes);
+    if (!type) throw new ImageFailed(noImage);
+    const { sha256 } = type;
     // Nothing is linked to a project moved to the bin meanwhile.
     if (!(await writable())) throw new ImageFailed(BINNED);
-    await store(bytes, type.mime, sha256);
-    const size = imageDimensions(bytes, type.mime);
+    let size: { width: number; height: number } | null;
+    try {
+      size = await storeImage(deps, run, bytes, type);
+    } catch (error) {
+      if (error instanceof AppError && error.code === 'quota') throw new ImageFailed(IMAGE_ERRORS.quota);
+      throw error;
+    }
     const added = await write((doc) => {
       migrateImagePrompts(doc);
       const n = readFiles(doc).filter((f) => f.kind === 'image' && f.promptId === run.promptId).length + 1;
       const entry: NewFile = {
         sha256,
         thumbSha256: null,
-        name: `${run.label}-${run.model}-${n}.${EXTENSIONS[type.mime]}`,
+        name: `${run.label}-${run.model}-${n}.${type.ext}`,
         kind: 'image',
         mime: type.mime,
         size: bytes.length,
@@ -227,7 +269,7 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
         sceneId: null,
         promptId: run.promptId,
         matchedBy: 'generated',
-        addedBy: 'user',
+        addedBy: run.addedBy,
         generatedModel: run.model,
         cost,
         generatedVia: extra.generatedVia,

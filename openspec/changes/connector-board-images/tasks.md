@@ -30,15 +30,15 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 2. Server: one way to start a generation
 
-- [ ] 2.1 `packages/server/src/images/start.ts`: `startImageGeneration` and
+- [x] 2.1 `packages/server/src/images/start.ts`: `startImageGeneration` and
       the starter per D2; `app.ts` builds the starter once and gives it to
       `imageRoutes` and `mcpRoutes`; the route keeps session, body and 202
-- [ ] 2.2 `images/jobs.ts`: a run takes `addedBy` (D5); the storing part of
+- [x] 2.2 `images/jobs.ts`: a run takes `addedBy` (D5); the storing part of
       `land()` exported for reuse (D8)
-- [ ] 2.3 The existing route tests (`test/db/image-generate.test.ts`,
+- [x] 2.3 The existing route tests (`test/db/image-generate.test.ts`,
       `test/db/image-atelier.test.ts`) pass unedited; add one test: three
       jobs running, a fourth refused, one finishes, the next starts
-- [ ] 2.4 Commit `refactor(server): share the generation start between the route and the connector`
+- [x] 2.4 Commit `refactor(server): share the generation start between the route and the connector`
 
 ## 3. Server: `attach_atelier_image`
 

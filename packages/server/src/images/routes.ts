@@ -1,35 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import {
-  GenerationBusy,
-  IMAGE_SHAPES,
-  imageModelKeys,
-  migrateImagePrompts,
-  readGenerationJobs,
-  readImagePrompts,
-  sentPrompt,
-  startGenerationJob,
-  type ImageModelKey,
-  type ImagePromptEntry,
-  type ImageProvider,
-} from 'promptbook-project';
+import { IMAGE_SHAPES, imageModelKeys, type ImageModelKey, type ImageProvider } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db, Queryable } from '../db.js';
 import { AppError } from '../errors.js';
-import type { BlobStore } from '../files/blobs.js';
-import { hasRoom, quotaReached } from '../files/store.js';
-import { openLiveDocument } from '../live.js';
-import { getProject } from '../projects.js';
-import { NOT_FOUND } from '../routes/projects.js';
 import { getSettings } from '../routes/settings.js';
-import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 import { AtelierError, describeToken, readEstimates, readMonth } from './atelier.js';
-import { ATELIER_JOB_ERRORS, runGenerationJob } from './jobs.js';
+import { ATELIER_JOB_ERRORS } from './jobs.js';
 import { checkKey, IMAGE_ERRORS } from './openrouter.js';
 import { markSecretChecked, readSecret, removeSecret, saveSecret } from './secrets.js';
+import { atelierUnavailable, ownProject, serverKeyOf, startImageGeneration, type ImageStarter } from './start.js';
 
 // Image generation's routes (board-image-generation design decisions 2, 7
 // and 11; atelier-image-provider design decisions 8, 9 and 12). Every one
@@ -84,11 +66,6 @@ export interface ImageGenerationStatus {
     error?: AtelierStatusError;
   };
 }
-
-const GIB = 1024 ** 3;
-
-// The room a generation asks for per image before it starts (D7).
-const ROOM_PER_IMAGE = 20 * 1024 * 1024;
 
 // Dollars as OpenRouter reports them, to the micro-dollar the table keeps.
 const dollars = (value: string | number | null) => Math.round(Number(value ?? 0) * 1e6) / 1e6;
@@ -145,44 +122,9 @@ const generateSchema = z
   })
   .strict();
 
-// The start of a prompt's file names (D9): the scene and the prompt's number
-// in it, or its name in lower-case ASCII letters, digits and hyphens.
-function labelOf(prompt: ImagePromptEntry, prompts: readonly ImagePromptEntry[]): string {
-  if (prompt.category === 'scene') {
-    const number = prompts.filter((p) => p.category === 'scene' && p.sceneId === prompt.sceneId).indexOf(prompt) + 1;
-    return `${prompt.sceneId}-p${number}`;
-  }
-  const slug = (prompt.name ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
-    .replace(/-+$/, '');
-  return slug || prompt.category;
-}
-
-// At most this many jobs of one account run at once in this process (D7, 6b).
-const MAX_RUNNING_JOBS = 3;
-
-const tooManyJobs = () =>
-  new AppError(429, 'too_many_jobs', 'Three generations are already running. Wait for one to finish.');
-
-const busy = () => new AppError(409, 'busy', 'Images are already being generated for this prompt.');
-
-// A job running in this process: its end, whose account it spends for, and
-// how to stop it.
-export interface GenerationHandle {
-  done: Promise<void>;
-  userId: string;
-  // The service the job goes through: removing its credential stops it.
-  provider: ImageProvider;
-  stop(reason: string): void;
-}
-
-export const notConfigured = () =>
-  new AppError(503, 'not_configured', 'This server is not set up for image generation.');
+// The start of a prompt's file names, the running jobs' handles and the
+// start itself live in start.ts (connector-board-images design decision 2).
+export { labelOf, notConfigured, type GenerationHandle } from './start.js';
 
 const keySchema = z.object({ key: z.string().trim().min(1, 'is required').max(200, 'at most 200 characters') }).strict();
 
@@ -192,32 +134,19 @@ const tokenSchema = z
   .object({ token: z.string().trim().min(1).max(200).startsWith('atl_pat_') })
   .strict();
 
-const atelierUnavailable = () => new AppError(503, 'atelier_unavailable', 'This server has no Atelier address.');
-
 const wantsCheck = (req: FastifyRequest) => (req.query as { check?: unknown } | undefined)?.check === '1';
 
 export interface ImageRoutesOptions {
   config: Config;
   db: Db;
-  sync: Sync;
-  blobs: BlobStore;
-  // The jobs running in this process, by job id (app.ts).
-  runs: Map<string, GenerationHandle>;
-  // Only for the tests: each OpenRouter image call's timeout.
-  timeoutMs?: number | undefined;
-  // Only for the tests: an Atelier generation's poll interval and watch.
-  atelierPollMs?: number | undefined;
-  atelierWatchMs?: number | undefined;
+  // What a generation's start closes over, shared with the connector
+  // (app.ts); its `runs` are the jobs running in this process.
+  starter: ImageStarter;
 }
 
-export async function imageRoutes(
-  app: FastifyInstance,
-  { config, db, sync, blobs, runs, timeoutMs, atelierPollMs, atelierWatchMs }: ImageRoutesOptions,
-) {
-  const serverKey = (): Buffer => {
-    if (!config.secretsKey) throw notConfigured();
-    return config.secretsKey;
-  };
+export async function imageRoutes(app: FastifyInstance, { config, db, starter }: ImageRoutesOptions) {
+  const { runs } = starter;
+  const serverKey = (): Buffer => serverKeyOf(config);
 
   // The details of a write token Atelier described (D8): the month and the
   // estimates are asked too; a failure there leaves them null.
@@ -374,110 +303,22 @@ export async function imageRoutes(
     return reply.code(204).send();
   });
 
-  // Generate requests past check 6b and not yet in `runs`, by account.
-  const starting = new Map<string, number>();
-
-  // The user's project, not in the bin.
-  async function ownProject(userId: string, id: string) {
-    const project = await getProject(db, userId, id);
-    if (!project || project.deletedAt) throw NOT_FOUND();
-    return project;
-  }
-
   // D7: the checks in order, the job started on the live document, the
-  // answer sent at once; the job runs on in this process.
+  // answer sent at once; the job runs on in this process. The checks and the
+  // start are shared with the connector (start.ts).
   app.post('/api/projects/:id/image-prompts/:promptId/generate', async (req, reply) => {
     const { user } = requireSession(req);
     const { id, promptId } = req.params as { id: string; promptId: string };
     const body = parseBody(generateSchema, req.body);
-    const project = await ownProject(user.id, id);
-    // D9: the account's provider and its credential.
-    const { provider } = (await getSettings(db, user.id)).imageGeneration;
-    const sealing = serverKey();
-    if (provider === 'atelier' && config.atelierUrl === null) throw atelierUnavailable();
-    const stored = await readSecret(db, sealing, user.id, provider);
-    if (stored.state !== 'ok') {
-      throw new AppError(
-        409,
-        'no_key',
-        provider === 'atelier' ? 'Add your Atelier API token first.' : 'Add your OpenRouter key first.',
-      );
-    }
-    const quotaBytes = config.filesQuotaGb * GIB;
-
-    const jobId = randomUUID();
-    const live = await openLiveDocument(sync, id, user.id);
-    let run: { prompt: string; label: string };
-    let reserved = false;
-    try {
-      const found = await live.transact((doc) => {
-        migrateImagePrompts(doc);
-        const prompts = readImagePrompts(doc);
-        const prompt = prompts.find((p) => p.id === promptId);
-        if (!prompt) throw new AppError(404, 'prompt_not_found', 'No image prompt with that id.');
-        if (sentPrompt(prompt.prompt).text === '') throw new AppError(400, 'prompt_empty', 'The prompt has no text to send.');
-        return { prompt: prompt.prompt, label: labelOf(prompt, prompts) };
-      });
-      const running = () => readGenerationJobs(live.doc).some((j) => j.promptId === promptId && j.finishedAt === null);
-      if (running()) throw busy();
-      // 6b. Counted with the requests between this check and their start,
-      // reserved here without an await in between.
-      const own = [...runs.values()].filter((r) => r.userId === user.id).length + (starting.get(user.id) ?? 0);
-      if (own >= MAX_RUNNING_JOBS) throw tooManyJobs();
-      starting.set(user.id, (starting.get(user.id) ?? 0) + 1);
-      reserved = true;
-      if (!(await hasRoom(db, user.id, body.count * ROOM_PER_IMAGE, quotaBytes))) throw quotaReached();
-      // Check 6 again, in the same transaction as the start: two clicks start
-      // one job.
-      await live.transact((doc) => {
-        try {
-          startGenerationJob(doc, {
-            id: jobId,
-            promptId,
-            model: body.model,
-            provider,
-            count: body.count,
-            by: user.id,
-            startedAt: new Date().toISOString(),
-          });
-        } catch (error) {
-          if (error instanceof GenerationBusy) throw busy();
-          throw error;
-        }
-      });
-      run = found;
-    } finally {
-      await live.close();
-      if (reserved) {
-        const left = (starting.get(user.id) ?? 1) - 1;
-        if (left > 0) starting.set(user.id, left);
-        else starting.delete(user.id);
-      }
-    }
-
-    const controller = new AbortController();
-    const done = runGenerationJob(
-      { db, sync, blobs, baseUrl: config.openRouterBaseUrl, quotaBytes, log: app.log, timeoutMs, atelierPollMs, atelierWatchMs },
-      {
-        jobId,
-        projectId: id,
-        userId: user.id,
-        promptId,
-        prompt: run.prompt,
-        label: run.label,
-        model: body.model,
-        count: body.count,
-        shape: body.shape,
-        provider,
-        key: stored.key,
-        atelierUrl: config.atelierUrl,
-        projectTitle: project.title,
-        stop: controller.signal,
-      },
-    )
-      .catch((error: unknown) => app.log.error({ jobId, err: error }, 'A generation job failed'))
-      .finally(() => runs.delete(jobId));
-    runs.set(jobId, { done, userId: user.id, provider, stop: (reason) => controller.abort(reason) });
+    const { jobId } = await startImageGeneration(starter, {
+      userId: user.id,
+      projectId: id,
+      promptId,
+      model: body.model,
+      count: body.count,
+      shape: body.shape,
+      addedBy: 'user',
+    });
     return reply.code(202).send({ jobId });
   });
 
@@ -486,7 +327,7 @@ export async function imageRoutes(
   app.get('/api/projects/:id/image-spending', async (req) => {
     const { user } = requireSession(req);
     const { id } = req.params as { id: string };
-    await ownProject(user.id, id);
+    await ownProject(db, user.id, id);
     const row = await db.queryOne<{ images: number; cost: string }>(
       `select count(*) filter (where ok)::int as images, coalesce(sum(cost), 0) as cost
        from image_generations where project_id = $1 and user_id = $2`,
