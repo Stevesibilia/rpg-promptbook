@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 // The compose stack the tests run against (design decision 11): its own
 // project name and port, so it never touches the stack on 8090. Beside the
 // password app, a second app with single sign-on against the test issuer
-// (compose.oidc.yaml), on the same database, and a fake OpenRouter the
-// password app generates images with (compose.openrouter.yaml).
+// (compose.oidc.yaml), on the same database, and a fake OpenRouter and a fake
+// Atelier the password app generates images with (compose.openrouter.yaml,
+// compose.atelier.yaml).
 
 export const port = Number(process.env.E2E_PORT ?? 8091);
 // Another run on the same machine sets its own project, with its own ports.
@@ -31,6 +32,12 @@ export const issuerCerts = join(tmpdir(), `promptbook-e2e-certs-${port}`);
 // sk-or-v1-nolimit (packages/server/test/db/fake-openrouter.ts).
 export const openRouterPort = 8099;
 export const openRouterDelayMs = Number(process.env.E2E_OPENROUTER_DELAY_MS ?? 1500);
+// The fake Atelier, reached by the app at its service name; inside the
+// stack's network only. Its tokens: atl_pat_good, atl_pat_capped and
+// atl_pat_read (e2e/atelier/serve.mjs).
+export const atelierPort = 8098;
+export const atelierURL = `http://atelier:${atelierPort}`;
+export const atelierDelayMs = Number(process.env.E2E_ATELIER_DELAY_MS ?? 1500);
 // A fixed server key for the stack's sealed OpenRouter keys: 32 bytes of 0x2a.
 export const secretsKey = Buffer.alloc(32, 0x2a).toString('base64');
 
@@ -55,10 +62,22 @@ const env = {
   OPENROUTER_BASE_URL: `http://openrouter:${openRouterPort}/api/v1`,
   FAKE_OPENROUTER_PORT: String(openRouterPort),
   FAKE_OPENROUTER_DELAY_MS: String(openRouterDelayMs),
+  ATELIER_URL: atelierURL,
+  FAKE_ATELIER_PORT: String(atelierPort),
+  FAKE_ATELIER_DELAY_MS: String(atelierDelayMs),
 };
 
 export function compose(...args: string[]): string {
-  const files = ['-f', 'compose.yaml', '-f', 'e2e/compose.oidc.yaml', '-f', 'e2e/compose.openrouter.yaml'];
+  const files = [
+    '-f',
+    'compose.yaml',
+    '-f',
+    'e2e/compose.oidc.yaml',
+    '-f',
+    'e2e/compose.openrouter.yaml',
+    '-f',
+    'e2e/compose.atelier.yaml',
+  ];
   return execFileSync('docker', ['compose', '-p', project, ...files, ...args], {
     cwd: root,
     env,

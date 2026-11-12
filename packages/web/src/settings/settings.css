@@ -169,6 +169,14 @@
 /* Generate through and the Atelier card (atelier-image-provider, docs/mockups/atelier-provider.html) */
 .imggen .models.through {
   max-width: 520px;
+  margin-bottom: 6px;
+}
+/* Hints outside a field (a card's footnote, the hint under Generate through),
+   as the mockup draws them. */
+.imggen .hint {
+  display: block;
+  font-size: 12px;
+  color: var(--faint);
 }
 .imggen .model:disabled {
   opacity: 0.55;

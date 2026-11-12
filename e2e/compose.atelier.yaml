@@ -1,0 +1,31 @@
+# Added to compose.yaml by the end-to-end tests (e2e/stack.ts) and the
+# owner's preview: a fake Atelier the app generates images through, so no
+# test calls the real one (atelier-image-provider design decision 15). It
+# runs the app's image; the fake's file is mounted, not built in. The app
+# needs PROMPTBOOK_SECRETS_KEY and ATELIER_URL=http://atelier:${FAKE_ATELIER_PORT}.
+# Paths are relative to compose.yaml's folder.
+
+services:
+  atelier:
+    build: .
+    command: ["node", "/app/atelier/serve.mjs"]
+    environment:
+      FAKE_ATELIER_PORT: ${FAKE_ATELIER_PORT:-8098}
+      FAKE_ATELIER_DELAY_MS: ${FAKE_ATELIER_DELAY_MS:-0}
+    volumes:
+      - ./e2e/atelier/serve.mjs:/app/atelier/serve.mjs:ro
+    healthcheck:
+      # No token: the fake answers 401, which is enough to know it is up.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:${FAKE_ATELIER_PORT:-8098}/api/v1/token').then((r) => process.exit(r.status === 401 ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    depends_on:
+      atelier:
+        condition: service_healthy

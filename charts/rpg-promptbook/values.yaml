@@ -67,6 +67,14 @@ app:
     # unreadable, so each account saves its key again.
     secret: ""
 
+  # Generating through Atelier as well as OpenRouter (atelier-image-provider
+  # design decision 2). Each account saves its own Atelier API token in
+  # Settings, sealed with the key above.
+  atelier:
+    # -- Atelier's address, http or https, as ATELIER_URL. Empty: Atelier is
+    # unavailable and Generate goes through OpenRouter only.
+    url: ""
+
 waitForDatabase:
   # -- Hold the server back until the database accepts connections, so the
   # migrations at start do not crash-loop while it comes up.

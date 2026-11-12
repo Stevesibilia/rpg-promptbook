@@ -67,10 +67,10 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 7. E2E, chart, docs (brief B)
 
-- [ ] 7.1 `e2e/atelier/serve.mjs`, `e2e/compose.atelier.yaml`, `e2e/stack.ts` per D15
-- [ ] 7.2 A spec in `e2e/generate.spec.ts` (or a new `generate-atelier.spec.ts`) per Verification; the existing generate spec unchanged
-- [ ] 7.3 Chart `app.atelier.url` and the env per D2, `values-homelab.yaml`, `compose.yaml`, `.env.example`; `docs/deploy-homelab.md` and `docs/design.md` (Atelier as a provider)
-- [ ] 7.4 Commit `feat: run the Atelier path end to end and deploy its address`
+- [x] 7.1 `e2e/atelier/serve.mjs`, `e2e/compose.atelier.yaml`, `e2e/stack.ts` per D15
+- [x] 7.2 A spec in `e2e/generate.spec.ts` (or a new `generate-atelier.spec.ts`) per Verification; the existing generate spec unchanged
+- [x] 7.3 Chart `app.atelier.url` and the env per D2, `values-homelab.yaml`, `compose.yaml`, `.env.example`; `docs/deploy-homelab.md` and `docs/design.md` (Atelier as a provider)
+- [x] 7.4 Commit `feat: run the Atelier path end to end and deploy its address`
 
 ## 8. Brief B hand-back
 

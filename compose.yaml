@@ -43,6 +43,8 @@ services:
       PROMPTBOOK_SECRETS_KEY: ${PROMPTBOOK_SECRETS_KEY:-}
       # OpenRouter's API; the end-to-end stack points it at a fake.
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      # Atelier's address, for generating through Atelier: off while unset.
+      ATELIER_URL: ${ATELIER_URL:-}
     volumes:
       # The board's images and tracks, kept across restarts and rebuilds.
       - app-data:/data
