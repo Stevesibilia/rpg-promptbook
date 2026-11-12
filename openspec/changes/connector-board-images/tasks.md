@@ -93,10 +93,10 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
       `generate_image` spends money, that attaching needs the Atelier token;
       `docs/design.md` :429-431 names them
 - [x] 6.2 Commit `docs: the connector's image tools`
-- [ ] 6.3 `openspec validate connector-board-images --strict` passes
-- [ ] 6.4 `npm run typecheck`, `npm test` with the database, `npm run e2e`:
+- [x] 6.3 `openspec validate connector-board-images --strict` passes
+- [x] 6.4 `npm run typecheck`, `npm test` with the database, `npm run e2e`:
       results quoted as printed
-- [ ] 6.5 Push, tick these tasks in a last commit
+- [x] 6.5 Push, tick these tasks in a last commit
       `chore(openspec): tick the tasks of connector-board-images`, hand back
       to the architect with the results and any departure from the design
 
