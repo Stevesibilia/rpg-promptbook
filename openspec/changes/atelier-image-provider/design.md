@@ -242,7 +242,8 @@ Atelier path:
    `model: IMAGE_MODELS[run.model].id`, `aspectRatio: run.shape`,
    `count: run.count`, `collectionId`. A start error fails every image with
    Atelier's message (" Nothing was charged." added as today, since nothing
-   started).
+   started). An error Atelier answered is shown as «Atelier refused: <its
+   message>», so the reader knows which app speaks.
 2. Poll `readGeneration` every 2 s (a test may shorten it) until `status` is
    not `running`, the stop signal fires, or 10 minutes pass. Each image id not
    seen before: `downloadImage`, then `land(bytes, image.costUsd,

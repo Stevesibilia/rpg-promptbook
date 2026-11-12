@@ -375,11 +375,26 @@ describe('generating through Atelier (D7, D10)', () => {
     atelier.capReached();
     await generated(s);
     expect(readFiles(await stored(s.id))).toEqual([]);
-    expect(await jobError(s.id)).toBe(`${ATELIER_SENTENCES.capReached} Nothing was charged.`);
+    // Atelier's own answer, said to be Atelier's (D10, step 1).
+    const refused =
+      'Atelier refused: this would pass your monthly cap of $20.00 ($19.96 spent). Raise the cap in Settings or wait for next month.';
+    expect(await jobError(s.id)).toBe(`${refused} Nothing was charged.`);
     expect((await rows(s.id)).map((r) => [r.ok, r.cost, r.error, r.provider])).toEqual([
-      [false, null, ATELIER_SENTENCES.capReached, 'atelier'],
-      [false, null, ATELIER_SENTENCES.capReached, 'atelier'],
+      [false, null, refused, 'atelier'],
+      [false, null, refused, 'atelier'],
     ]);
+  });
+
+  it('says Atelier refused when its polls answer Atelier’s own error', async () => {
+    const s = await setup();
+    atelier.setDelay(1000);
+    const response = await generate(s, { model: 'gpt', count: 1, shape: '1:1' });
+    const { jobId } = response.json() as { jobId: string };
+    for (let i = 0; i < 100 && atelier.generations.length === 0; i++) await new Promise((resolve) => setTimeout(resolve, 10));
+    // The generation is gone from Atelier: each poll answers its 404.
+    atelier.generations.splice(0);
+    await s.app.generationRuns.get(jobId)?.done;
+    expect(await jobError(s.id)).toBe('Atelier refused: Generation not found.');
   });
 
   it('stops when the token is removed, without saying nothing was charged (D10.6), and switches to OpenRouter (D5)', async () => {

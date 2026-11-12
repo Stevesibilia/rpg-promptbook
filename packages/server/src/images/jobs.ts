@@ -103,6 +103,18 @@ export const ATELIER_JOB_ERRORS = {
   fewer: 'Atelier sent fewer images than asked.',
 } as const;
 
+// The codes Promptbook gives a call that got no answer Atelier wrote itself.
+const NOT_ATELIERS_OWN = new Set(['atelier_unreachable', 'atelier_bad_answer', 'atelier_refused']);
+
+// An error answered by Atelier itself, «{error, message}»: shown as «Atelier
+// refused: <its message>», so the reader knows which app speaks (D10, step
+// 1). «This …» reads on with a small letter. Null for any other failure.
+export function atelierRefused(error: unknown): string | null {
+  if (!(error instanceof AtelierError) || NOT_ATELIERS_OWN.has(error.code)) return null;
+  const message = error.message.startsWith('This ') ? `t${error.message.slice(1)}` : error.message;
+  return `Atelier refused: ${message}`;
+}
+
 const POLL_MS = 2_000;
 const WATCH_MS = 10 * 60 * 1000;
 // Polls in a row without an answer that end the watch (D10, step 5).
@@ -294,7 +306,7 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
           : run.stop.aborted
             ? stopReason()
             : error instanceof AtelierError
-              ? error.message
+              ? (atelierRefused(error) ?? error.message)
               : ATELIER_ERRORS.unreachable;
       if (!(error instanceof ImageFailed) && !(error instanceof AtelierError)) {
         log.error({ jobId: run.jobId, err: error }, 'An image of a generation job failed');
@@ -352,7 +364,11 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       generationId = await start();
     } catch (error) {
       // Nothing started: every image fails with Atelier's sentence.
-      const sentence = run.stop.aborted ? stopReason() : error instanceof AtelierError ? error.message : ATELIER_ERRORS.unreachable;
+      const sentence = run.stop.aborted
+        ? stopReason()
+        : error instanceof AtelierError
+          ? (atelierRefused(error) ?? error.message)
+          : ATELIER_ERRORS.unreachable;
       if (!(error instanceof AtelierError)) log.error({ jobId: run.jobId, err: error }, 'An Atelier generation did not start');
       const outcomes: Outcome[] = [];
       for (let i = 0; i < run.count; i++) outcomes.push(await failImage(sentence, null));
@@ -382,7 +398,8 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
         }
         log.warn({ jobId: run.jobId, err: error }, 'Atelier did not answer about a generation');
         if (++missed >= MAX_MISSED_POLLS) {
-          ended = ATELIER_ERRORS.unreachable;
+          // The last poll's error, when Atelier answered it itself.
+          ended = atelierRefused(error) ?? ATELIER_ERRORS.unreachable;
           break;
         }
       }

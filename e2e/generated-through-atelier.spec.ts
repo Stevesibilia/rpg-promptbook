@@ -28,7 +28,7 @@ const S3 = 'Soldiers in 1908 Italian uniforms among cathedral ruins, smoke, grey
 
 const SETTINGS = '/settings/image-generation';
 const CAP_REACHED =
-  'This would pass your monthly cap of $20.00 ($19.96 spent). Raise the cap in Settings or wait for next month. Nothing was charged.';
+  'Atelier refused: this would pass your monthly cap of $20.00 ($19.96 spent). Raise the cap in Settings or wait for next month. Nothing was charged.';
 
 const headers = { origin: baseURL };
 const toast = (page: Page) => page.locator('.toast');
@@ -167,7 +167,7 @@ test('Generate goes through Atelier when the account chooses it', async ({ page 
     await panel(page).getByRole('button', { name: 'Generate 2' }).click();
     const error = block(page, 'S3').locator('.info.err');
     await expect(error).toContainText(CAP_REACHED, { timeout: 30_000 });
-    await expect(error.locator('b')).toHaveText('This would pass your monthly cap of $20.00 ($19.96 spent).');
+    await expect(error.locator('b')).toHaveText('Atelier refused: this would pass your monthly cap of $20.00 ($19.96 spent).');
     await expect(block(page, 'S3').locator('.th-i')).toHaveCount(0);
 
     // Removing the token switches Generate back to OpenRouter.
