@@ -1,12 +1,16 @@
 import {
+  addFiles,
   addImagePrompt,
   duplicateTitles,
+  FILE_LIMITS,
   imageCategories,
   LIMITS,
   matchKey,
   migratedView,
   migrateImagePrompts,
   readDocumentBoard,
+  readFiles,
+  readImagePrompts,
   removeImagePrompt,
   setFirstScenePrompt,
   setMusicPrompt,
@@ -14,11 +18,17 @@ import {
   type BoardRow,
   type DocumentBoard,
   type ImageCategory,
+  type NewFile,
   type PromptRow,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { z } from 'zod';
 import { AppError } from '../errors.js';
+import { hasRoom, quotaReached } from '../files/store.js';
+import { AtelierError, downloadImage } from '../images/atelier.js';
+import { atelierRefused, checkImageBytes, storeImage } from '../images/jobs.js';
+import { readSecret } from '../images/secrets.js';
+import { atelierUnavailable, labelOf as promptLabel, quotaBytesOf, serverKeyOf } from '../images/start.js';
 import type { ProjectRow } from '../projects.js';
 import { ToolRefusal } from './errors.js';
 import type { ToolKit } from './tools.js';
@@ -145,7 +155,41 @@ const IMAGE_RULES =
   'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
   'Start each image prompt with words no other prompt starts with: the downloads find their prompt by their first words.';
 
-export function registerBoardTools({ tool, projectOf, docOf, write, templates, schemas }: ToolKit): void {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// connector-board-images design decision 10: what the image tools refuse.
+const NO_ATELIER_TOKEN = () =>
+  new AppError(409, 'no_atelier_token', 'Add your Atelier API token in Promptbook’s Settings first.');
+const UNSUPPORTED_TYPE = () => new AppError(415, 'unsupported_type', 'That Atelier file is not a PNG, JPEG or WebP image.');
+const BOARD_FULL = () => new AppError(409, 'board_full', 'The board is full.');
+
+// The server's own refusals a model can act on, at 409: toToolError hides
+// anything at 500 or above behind internal_error.
+const LEGIBLE = new Set(['not_configured', 'atelier_unavailable', 'quota']);
+
+function legible(error: unknown): unknown {
+  if (error instanceof AppError && error.status >= 500 && LEGIBLE.has(error.code)) {
+    return new AppError(409, error.code, error.message);
+  }
+  return error;
+}
+
+// Atelier's answer to a download, in words a model can act on. The token is
+// in none of them: the Atelier client puts it in no error.
+function fromAtelier(error: unknown): unknown {
+  if (!(error instanceof AtelierError)) return error;
+  if (error.status === 404) return new AppError(404, 'atelier_image_not_found', 'Atelier has no image with this id.');
+  if (error.status === 401) {
+    return new AppError(409, 'token_rejected', 'Atelier rejected the saved token. Replace it in Settings.');
+  }
+  // No answer, one that cannot be read, or a refusal Atelier did not word:
+  // atelier_unreachable, atelier_bad_answer, atelier_refused, as they are.
+  const refused = atelierRefused(error);
+  if (refused === null) return new AppError(424, error.code, error.message);
+  return new AppError(424, 'atelier_refused', refused);
+}
+
+export function registerBoardTools({ tool, projectOf, docOf, write, templates, caller, starter, schemas }: ToolKit): void {
   const { projectId, requiredText, text } = schemas;
   const promptId = requiredText(64).describe('The image prompt’s id as get_board gives it.');
   const sceneId = requiredText(64).describe('The scene’s id as get_board gives it, such as S3.');
@@ -293,6 +337,94 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, s
       });
     },
   );
+
+  tool(
+    'attach_atelier_image',
+    'Put an image that is already in the user’s Atelier on an image prompt, by the image’s id (as Atelier’s own tools give it). Promptbook downloads the original itself with the Atelier token saved in Settings; the bytes never pass through this conversation. It costs nothing. Use it for images made in Atelier outside Promptbook; to make new ones, use generate_image.',
+    { title: 'Attach an Atelier image', readOnly: false, idempotent: true },
+    {
+      projectId,
+      promptId,
+      atelierImageId: z
+        .string()
+        .trim()
+        .regex(UUID, 'must be a uuid')
+        .describe('The Atelier image’s id, a uuid, as Atelier’s own tools give it.'),
+    },
+    async (args) => {
+      try {
+        return await attach(args.projectId, args.promptId, args.atelierImageId.toLowerCase());
+      } catch (error) {
+        throw legible(error);
+      }
+    },
+  );
+
+  // connector-board-images design decision 6: every refusal that can be
+  // known before the download comes before it, and the board is written
+  // last, so a refusal changes nothing on it.
+  async function attach(id: string, promptIdArg: string, atelierImageId: string) {
+    const project = boardable(await projectOf(id));
+    const known = readImagePrompts(migratedView(await docOf(project)));
+    if (!known.some((p) => p.id === promptIdArg)) throw UNKNOWN_PROMPT();
+    const { config, db, blobs } = starter;
+    const sealing = serverKeyOf(config);
+    if (config.atelierUrl === null) throw atelierUnavailable();
+    const stored = await readSecret(db, sealing, caller.userId, 'atelier');
+    if (stored.state !== 'ok') throw NO_ATELIER_TOKEN();
+    const quotaBytes = quotaBytesOf(config);
+    // Room for the largest image Atelier may send.
+    if (!(await hasRoom(db, caller.userId, FILE_LIMITS.image, quotaBytes))) throw quotaReached();
+    let bytes: Buffer;
+    try {
+      bytes = await downloadImage(config.atelierUrl, stored.key, atelierImageId);
+    } catch (error) {
+      throw fromAtelier(error);
+    }
+    const image = checkImageBytes(bytes);
+    if (!image) throw UNSUPPORTED_TYPE();
+    const size = await storeImage({ db, blobs, quotaBytes }, { projectId: project.id, userId: caller.userId }, bytes, image);
+    return writeBoard(project, (doc: Y.Doc) => {
+      const prompts = readImagePrompts(doc);
+      const prompt = prompts.find((p) => p.id === promptIdArg);
+      // Removed while the image was downloaded.
+      if (!prompt) throw UNKNOWN_PROMPT();
+      const entry: NewFile = {
+        sha256: image.sha256,
+        thumbSha256: null,
+        name: `${promptLabel(prompt, prompts)}-atelier-${atelierImageId.slice(0, 8)}.${image.ext}`,
+        kind: 'image',
+        mime: image.mime,
+        size: bytes.length,
+        width: size?.width ?? null,
+        height: size?.height ?? null,
+        duration: null,
+        sceneId: null,
+        promptId: promptIdArg,
+        matchedBy: 'hand',
+        addedBy: 'claude',
+        generatedModel: null,
+        cost: null,
+        generatedVia: null,
+        atelierImageId,
+      };
+      let already: boolean;
+      try {
+        already = addFiles(doc, [entry]).skipped.length > 0;
+      } catch (error) {
+        // The project's cap on files.
+        if (error instanceof Error && error.message.startsWith('files: at most')) throw BOARD_FULL();
+        throw error;
+      }
+      const file = readFiles(doc).find((f) => f.sha256 === image.sha256)!;
+      return {
+        promptId: promptIdArg,
+        atelierImageId,
+        file: { name: file.name, mime: file.mime, size: file.size, width: file.width, height: file.height },
+        already,
+      };
+    });
+  }
 
   tool(
     'remove_image_prompt',

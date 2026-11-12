@@ -155,7 +155,7 @@ describe('the endpoint', () => {
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 
-  it('lists the 28 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
+  it('lists the 29 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
     const s = await setup();
     for (const era of ['modern', 'legacy'] as const) {
       const tools = await mcpListTools(s.app, s.tokens.access_token, era);
@@ -185,7 +185,7 @@ describe('the endpoint', () => {
         'read_document',
       ].sort(),
     );
-    expect(TOOL_NAMES).toHaveLength(28);
+    expect(TOOL_NAMES).toHaveLength(29);
     // The two tools that delete something: an image prompt, never a file, and
     // a template no project uses.
     expect(tools.map((t) => t.name).filter((name) => /delete|remove|seed|tick/.test(name)).sort()).toEqual([

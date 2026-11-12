@@ -124,6 +124,9 @@ export function serverKeyOf(config: Config): Buffer {
   return config.secretsKey;
 }
 
+// The account's file quota in bytes.
+export const quotaBytesOf = (config: Config) => config.filesQuotaGb * GIB;
+
 // The user's project, not in the bin.
 export async function ownProject(db: Db, userId: string, id: string) {
   const project = await getProject(db, userId, id);
@@ -149,7 +152,7 @@ export async function startImageGeneration(starter: ImageStarter, input: Generat
       provider === 'atelier' ? 'Add your Atelier API token first.' : 'Add your OpenRouter key first.',
     );
   }
-  const quotaBytes = config.filesQuotaGb * GIB;
+  const quotaBytes = quotaBytesOf(config);
 
   const jobId = randomUUID();
   let startedAt = '';

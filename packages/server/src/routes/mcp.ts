@@ -43,10 +43,10 @@ export interface McpRoutesOptions {
   starter: ImageStarter;
 }
 
-export async function mcpRoutes(app: FastifyInstance, { config, db, sync }: McpRoutesOptions) {
+export async function mcpRoutes(app: FastifyInstance, { config, db, sync, starter }: McpRoutesOptions) {
   const oauth = oauthConfig(config.publicOrigin);
   const allowedHost = new URL(config.publicOrigin).hostname;
-  const node = buildMcpHandler({ db, sync, log: app.log, version: config.appVersion, quota: new WriteQuota() });
+  const node = buildMcpHandler({ db, sync, log: app.log, version: config.appVersion, quota: new WriteQuota(), starter });
 
   // Stateless: no stream to open, no session to end. 405 to anyone, so a
   // client that opens with GET learns that instead of authorizing again.

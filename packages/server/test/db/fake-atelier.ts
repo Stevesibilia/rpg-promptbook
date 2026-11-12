@@ -71,6 +71,10 @@ export interface FakeAtelier {
   // The next call answers this status and body instead; a string body is
   // sent as it is.
   answerNext(status: number, body: unknown): void;
+  // An image already in Atelier, made outside Promptbook
+  // (connector-board-images design decision 15): served at
+  // /api/v1/images/<id>/file like a generated one. Answers its id.
+  addImage(bytes: Buffer, mime?: string): string;
   close(): Promise<void>;
 }
 
@@ -390,6 +394,11 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
     },
     answerNext(status: number, answer: unknown) {
       next = { status, body: answer };
+    },
+    addImage(bytes: Buffer, mime = 'image/png') {
+      const id = randomUUID();
+      files.set(id, { bytes, mime });
+      return id;
     },
     close: () =>
       new Promise<void>((resolve) => {

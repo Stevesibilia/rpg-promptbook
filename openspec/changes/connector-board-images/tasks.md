@@ -42,15 +42,15 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 3. Server: `attach_atelier_image`
 
-- [ ] 3.1 `mcp/server.ts`, `routes/mcp.ts`, `mcp/tools.ts`: `McpDeps` and
+- [x] 3.1 `mcp/server.ts`, `routes/mcp.ts`, `mcp/tools.ts`: `McpDeps` and
       the `ToolKit` carry the starter (config, blobs, runs); `tool()` takes
       the optional `openWorld` hint (D12)
 - [ ] 3.2 `mcp/tools.ts`: both names in `TOOL_NAMES` after
       `'remove_image_prompt'`; the `INSTRUCTIONS` sentence of D13
-- [ ] 3.3 `mcp/board.ts`: `attach_atelier_image` per D6, D7, D9, D10, with
+- [x] 3.3 `mcp/board.ts`: `attach_atelier_image` per D6, D7, D9, D10, with
       the description of D13 word for word; `legible()` per D10
-- [ ] 3.4 `test/db/fake-atelier.ts`: a way to add an image by bytes (D15)
-- [ ] 3.5 Tests in `test/db/mcp-board.test.ts` (or a file beside it): an
+- [x] 3.4 `test/db/fake-atelier.ts`: a way to add an image by bytes (D15)
+- [x] 3.5 Tests in `test/db/mcp-board.test.ts` (or a file beside it): an
       image attached (file entry fields of D7, blob stored, no
       `image_generations` row, spending unchanged); attached twice
       (`already`); OpenRouter as the account's provider still attaches; each
@@ -58,7 +58,7 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
       after each; an unknown prompt refused before Atelier is called; a
       campaign answers `no_board`; a read grant answers `insufficient_scope`;
       the token in no error text
-- [ ] 3.6 Commit `feat(connector): attach an Atelier image to an image prompt`
+- [x] 3.6 Commit `feat(connector): attach an Atelier image to an image prompt`
 
 ## 4. Server: `generate_image` and `get_board`
 
