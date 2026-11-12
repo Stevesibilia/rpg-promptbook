@@ -352,6 +352,33 @@ answers the next start with 409 `cap_reached` and Atelier's sentence;
 the OpenRouter ones, port 8098, `ATELIER_URL=http://atelier:8098`, added to
 `e2e/stack.ts`.
 
+### D16. Accepted departures of brief A
+
+Recorded by the architect at review, 2026-11-12:
+
+1. `AtelierError` has a third code, `atelier_bad_answer`, "Atelier sent an
+   answer Promptbook cannot read.", for a 2xx answer that is not D1's JSON or
+   is past the size cap; and a `field` (null unless Atelier sent one), which
+   D1 step 5 needs.
+2. Atelier-path sentences D10 did not write: bytes that are not an image →
+   "Atelier sent no image. Try again."; a failed download → the
+   `AtelierError` message, else "Atelier did not answer."
+3. `land` writes `generatedVia: 'openrouter'` on new OpenRouter images too;
+   readers see the same, since D11 reads a missing value as OpenRouter.
+4. `DELETE /api/image-generation/key` stops only the account's OpenRouter
+   jobs; each `GenerationHandle` carries its provider.
+5. The fake's shapes follow Atelier's merged v0.8.0 source. The architect
+   corrected the fake's answer to a write with a read token to Atelier's real
+   one, 403 `insufficient_scope` "This token is read only." (the hand-back
+   had guessed `forbidden`).
+6. `AppOptions` and `startApp` take `atelierPollMs` (2 s) and
+   `atelierWatchMs` (10 minutes) for the tests.
+7. Collection names are cut at 60 UTF-16 units without splitting a
+   character.
+8. Brief A made type-only edits in `packages/web` (agreed during the build):
+   `ImageGeneration.tsx` keeps the stored provider when the defaults are
+   saved, and test fixtures gained the new fields.
+
 ## Rejected
 
 - Atelier address per account: an address typed by a user is called by the

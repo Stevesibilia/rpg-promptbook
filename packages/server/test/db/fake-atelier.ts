@@ -300,7 +300,7 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
       return void res.end(found.bytes);
     }
 
-    if (req.method === 'POST' && !write) return failure(res, 403, 'forbidden', 'This token is read only.');
+    if (req.method === 'POST' && !write) return failure(res, 403, 'insufficient_scope', 'This token is read only.');
     const asked = (body ?? {}) as Record<string, unknown>;
     if (req.method === 'POST' && path === '/api/v1/collections') {
       const name = typeof asked.name === 'string' ? asked.name.trim() : '';
