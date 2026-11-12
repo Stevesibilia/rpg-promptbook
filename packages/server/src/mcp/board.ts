@@ -1,23 +1,31 @@
 import {
   addFiles,
   addImagePrompt,
+  defaultShape,
   duplicateTitles,
   FILE_LIMITS,
+  IMAGE_SHAPES,
   imageCategories,
+  imageModelKeys,
   LIMITS,
   matchKey,
   migratedView,
   migrateImagePrompts,
   readDocumentBoard,
   readFiles,
+  readGenerationJobs,
   readImagePrompts,
   removeImagePrompt,
+  sentPrompt,
   setFirstScenePrompt,
   setMusicPrompt,
   updateImagePrompt,
   type BoardRow,
   type DocumentBoard,
+  type GenerationJob,
   type ImageCategory,
+  type ImageModelKey,
+  type ImageShape,
   type NewFile,
   type PromptRow,
 } from 'promptbook-project';
@@ -28,8 +36,15 @@ import { hasRoom, quotaReached } from '../files/store.js';
 import { AtelierError, downloadImage } from '../images/atelier.js';
 import { atelierRefused, checkImageBytes, storeImage } from '../images/jobs.js';
 import { readSecret } from '../images/secrets.js';
-import { atelierUnavailable, labelOf as promptLabel, quotaBytesOf, serverKeyOf } from '../images/start.js';
+import {
+  atelierUnavailable,
+  labelOf as promptLabel,
+  quotaBytesOf,
+  serverKeyOf,
+  startImageGeneration,
+} from '../images/start.js';
 import type { ProjectRow } from '../projects.js';
+import { getSettings } from '../routes/settings.js';
 import { ToolRefusal } from './errors.js';
 import type { ToolKit } from './tools.js';
 
@@ -48,10 +63,16 @@ const SINGULAR: Record<ImageCategory, string> = { scene: 'Scene', pc: 'PC', npc:
 const labelOf = ({ prompt, number }: PromptRow) =>
   prompt.category === 'scene' ? `${prompt.sceneId} · prompt ${number}` : `${SINGULAR[prompt.category]} · ${prompt.name}`;
 
-// An image prompt as a model reads it.
-const itemOut = (row: PromptRow) => {
+// The generation jobs a board is read with: the running ones, and the
+// finished ones with an error (readGenerationJobs), oldest first.
+type Jobs = readonly GenerationJob[];
+
+// An image prompt as a model reads it. `generating` and `generationError`
+// come from its jobs (connector-board-images design decision 11).
+const itemOut = (row: PromptRow, jobs: Jobs) => {
   const { prompt } = row;
   const text = prompt.prompt !== '';
+  const own = jobs.filter((j) => j.promptId === prompt.id);
   return {
     id: prompt.id,
     category: prompt.category,
@@ -63,16 +84,18 @@ const itemOut = (row: PromptRow) => {
     status: row.status,
     files: row.images.length,
     chosen: row.images.find((f) => f.id === row.chosen)?.name ?? null,
+    generating: own.some((j) => j.finishedAt === null),
+    generationError: own.filter((j) => j.finishedAt !== null && j.error !== null).at(-1)?.error ?? null,
   };
 };
 
 // A scene as a model reads it.
-const sceneOut = (row: BoardRow) => ({
+const sceneOut = (row: BoardRow, jobs: Jobs) => ({
   sceneId: row.sceneId,
   title: row.title,
   visual: row.visual,
   mood: row.mood,
-  images: row.prompts.map(itemOut),
+  images: row.prompts.map((p) => itemOut(p, jobs)),
   music: {
     title: row.music?.title ?? null,
     style: row.music?.style ?? null,
@@ -84,13 +107,13 @@ const sceneOut = (row: BoardRow) => ({
   },
 });
 
-const boardOut = (board: DocumentBoard) => ({
+const boardOut = (board: DocumentBoard, jobs: Jobs) => ({
   appendix: board.rows.length > 0,
-  scenes: board.rows.map(sceneOut),
-  pcs: board.named.pc.map(itemOut),
-  npcs: board.named.npc.map(itemOut),
-  handouts: board.named.handout.map(itemOut),
-  outsideAppendix: board.outsideAppendix.map(itemOut),
+  scenes: board.rows.map((r) => sceneOut(r, jobs)),
+  pcs: board.named.pc.map((p) => itemOut(p, jobs)),
+  npcs: board.named.npc.map((p) => itemOut(p, jobs)),
+  handouts: board.named.handout.map((p) => itemOut(p, jobs)),
+  outsideAppendix: board.outsideAppendix.map((p) => itemOut(p, jobs)),
   unmatched: board.unmatched.length,
   duplicateTitles: duplicateTitles(board.rows),
 });
@@ -219,7 +242,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     async (args) => {
       const project = boardable(await projectOf(args.projectId));
       const extra = await templates();
-      return boardOut(readDocumentBoard(migratedView(await docOf(project)), extra));
+      const doc = migratedView(await docOf(project));
+      return boardOut(readDocumentBoard(doc, extra), readGenerationJobs(doc));
     },
   );
 
@@ -262,7 +286,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
             `${others.map((r) => r.sceneId).join(', ')} already ${others.length === 1 ? 'has' : 'have'} the track title «${args.music.title}», so Suno’s downloads cannot be matched to their scenes. Give each scene its own title.`,
           );
         }
-        return { scene: sceneOut(written), warnings };
+        return { scene: sceneOut(written, readGenerationJobs(doc)), warnings };
       });
     },
   );
@@ -303,7 +327,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         );
         const board = readDocumentBoard(doc, extra);
         return {
-          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!),
+          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!, readGenerationJobs(doc)),
           warnings: sharedWords(board, added.id),
         };
       });
@@ -331,12 +355,87 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         );
         const board = readDocumentBoard(doc, extra);
         return {
-          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!),
+          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!, readGenerationJobs(doc)),
           warnings: args.prompt !== undefined ? sharedWords(board, args.id) : [],
         };
       });
     },
   );
+
+  tool(
+    'generate_image',
+    'Generate 1 to 4 images on an image prompt, through the image provider the user chose in Settings (Atelier or OpenRouter), as the board’s Generate button does. This spends the user’s money: generate when the user asks for images, not to try a prompt out. Model, count and shape default to the user’s settings and the prompt’s own ratio. The call waits up to waitSeconds for the images; when it answers state running, read get_board later: the prompt says generating until the job ends, then its files count has grown or generationError says why not. The images land on the prompt as received.',
+    { title: 'Generate images', readOnly: false, idempotent: false, openWorld: true },
+    {
+      projectId,
+      promptId,
+      model: z.enum(imageModelKeys).optional().describe('gpt (GPT Image) or nb (Nano Banana); the user’s setting when left out.'),
+      count: z.number().int().min(1).max(4).optional().describe('1 to 4 images; the user’s setting when left out.'),
+      shape: z
+        .enum(IMAGE_SHAPES)
+        .optional()
+        .describe('16:9, 3:2, 1:1 or 2:3; from the prompt’s --ar, or its category’s default, when left out.'),
+      waitSeconds: z.number().min(0).max(50).optional().describe('How long to wait for the images, 0 to 50 seconds; 45 when left out.'),
+    },
+    async (args) => {
+      try {
+        return await generate(args);
+      } catch (error) {
+        throw legible(error);
+      }
+    },
+  );
+
+  // connector-board-images design decisions 3 and 4: the panel's defaults,
+  // the shared start, a wait that never stops the job, then what arrived.
+  async function generate(args: {
+    projectId: string;
+    promptId: string;
+    model?: ImageModelKey | undefined;
+    count?: number | undefined;
+    shape?: ImageShape | undefined;
+    waitSeconds?: number | undefined;
+  }) {
+    const project = boardable(await projectOf(args.projectId));
+    const prompt = readImagePrompts(migratedView(await docOf(project))).find((p) => p.id === args.promptId);
+    if (!prompt) throw UNKNOWN_PROMPT();
+    const settings = (await getSettings(starter.db, caller.userId)).imageGeneration;
+    const model = args.model ?? settings.model;
+    const count = args.count ?? settings.count;
+    const shape = args.shape ?? defaultShape(prompt.category, sentPrompt(prompt.prompt).ar).shape;
+    const started = await startImageGeneration(starter, {
+      userId: caller.userId,
+      projectId: project.id,
+      promptId: args.promptId,
+      model,
+      count,
+      shape,
+      addedBy: 'claude',
+    });
+    let timer: NodeJS.Timeout | undefined;
+    const waited = new Promise<boolean>((resolve) => (timer = setTimeout(() => resolve(false), (args.waitSeconds ?? 45) * 1000)));
+    const finished = await Promise.race([started.done.then(() => true), waited]);
+    clearTimeout(timer);
+    const doc = await docOf(project);
+    const since = Date.parse(started.startedAt);
+    const images = readFiles(doc)
+      .filter((f) => f.promptId === args.promptId && f.generatedModel !== null && Date.parse(f.addedAt) >= since)
+      .map((f) => ({ name: f.name, width: f.width, height: f.height, cost: f.cost, atelierImageId: f.atelierImageId }));
+    // A job that ended without an error is gone from the document.
+    const job = readGenerationJobs(doc).find((j) => j.id === started.jobId);
+    return {
+      jobId: started.jobId,
+      promptId: args.promptId,
+      provider: started.provider,
+      model,
+      count,
+      shape,
+      state: finished ? 'finished' : 'running',
+      images,
+      failed: job?.failed ?? 0,
+      error: job?.error ?? null,
+    };
+  }
 
   tool(
     'attach_atelier_image',

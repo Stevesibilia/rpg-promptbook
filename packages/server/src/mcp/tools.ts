@@ -81,6 +81,7 @@ export const TOOL_NAMES = [
   'add_image_prompt',
   'update_image_prompt',
   'remove_image_prompt',
+  'generate_image',
   'attach_atelier_image',
 ] as const;
 

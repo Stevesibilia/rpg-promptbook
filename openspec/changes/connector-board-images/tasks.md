@@ -45,7 +45,7 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 - [x] 3.1 `mcp/server.ts`, `routes/mcp.ts`, `mcp/tools.ts`: `McpDeps` and
       the `ToolKit` carry the starter (config, blobs, runs); `tool()` takes
       the optional `openWorld` hint (D12)
-- [ ] 3.2 `mcp/tools.ts`: both names in `TOOL_NAMES` after
+- [x] 3.2 `mcp/tools.ts`: both names in `TOOL_NAMES` after
       `'remove_image_prompt'`; the `INSTRUCTIONS` sentence of D13
 - [x] 3.3 `mcp/board.ts`: `attach_atelier_image` per D6, D7, D9, D10, with
       the description of D13 word for word; `legible()` per D10
@@ -62,11 +62,11 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 4. Server: `generate_image` and `get_board`
 
-- [ ] 4.1 `mcp/board.ts`: `generate_image` per D3, D4, D10, D12, with the
+- [x] 4.1 `mcp/board.ts`: `generate_image` per D3, D4, D10, D12, with the
       description of D13 word for word
-- [ ] 4.2 `mcp/board.ts`: `itemOut` gains `generating` and
+- [x] 4.2 `mcp/board.ts`: `itemOut` gains `generating` and
       `generationError` (D11)
-- [ ] 4.3 Tests: two images generated through each fake provider (answer of
+- [x] 4.3 Tests: two images generated through each fake provider (answer of
       D4, files `addedBy: 'claude'`, an `image_generations` row each);
       defaults from the account's settings and `defaultShape`;
       `waitSeconds: 0` answers running and the job still finishes; `no_key`,
@@ -74,10 +74,10 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
       the route, `too_many_jobs` counting route and tool together, `quota`
       at 409, a read grant; `get_board` shows `generating` true during a
       slow job and `generationError` after a failed one
-- [ ] 4.4 `test/db/mcp.test.ts`: 30 tools, the read-only and destructive
+- [x] 4.4 `test/db/mcp.test.ts`: 30 tools, the read-only and destructive
       lists unchanged, `generate_image` the only tool with `openWorldHint`
       true
-- [ ] 4.5 Commit `feat(connector): generate images on an image prompt`
+- [x] 4.5 Commit `feat(connector): generate images on an image prompt`
 
 ## 5. Web: the viewer row
 

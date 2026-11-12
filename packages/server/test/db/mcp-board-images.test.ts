@@ -55,6 +55,7 @@ interface Setup {
 
 async function setup({
   token = GOOD as string | null,
+  key = null as string | null,
   provider = 'atelier' as 'atelier' | 'openrouter',
   scope = 'read_write' as 'read' | 'read_write',
   category = 'adventure',
@@ -76,6 +77,10 @@ async function setup({
   });
   if (token !== null) {
     const saved = await app.inject({ method: 'PUT', url: '/api/image-generation/atelier-token', headers, payload: { token } });
+    expect(saved.statusCode).toBe(200);
+  }
+  if (key !== null) {
+    const saved = await app.inject({ method: 'PUT', url: '/api/image-generation/key', headers, payload: { key } });
     expect(saved.statusCode).toBe(200);
   }
   const settings = (await app.inject({ url: '/api/settings', headers })).json();
@@ -363,5 +368,219 @@ describe('attach_atelier_image’s refusals (D10), each leaving the board as it 
       expect(text).not.toContain(GOOD);
       expect(text).not.toContain('atl_pat_');
     }
+  });
+});
+
+const OPENROUTER_KEY = 'sk-or-v1-good';
+
+const rows = (id: string) =>
+  db.query<{ prompt_id: string; model: string; cost: string | null; ok: boolean; provider: string }>(
+    'select prompt_id, model, cost, ok, provider from image_generations where project_id = $1 order by created_at',
+    [id],
+  );
+
+async function setChoice(s: Setup, model: 'gpt' | 'nb', count: number) {
+  const settings = (await s.app.inject({ url: '/api/settings', headers: s.headers })).json();
+  const saved = await s.app.inject({
+    method: 'PUT',
+    url: '/api/settings',
+    headers: s.headers,
+    payload: { ...settings, imageGeneration: { ...settings.imageGeneration, model, count } },
+  });
+  expect(saved.statusCode).toBe(200);
+}
+
+const routeGenerate = (s: Setup, promptId: string) =>
+  s.app.inject({
+    method: 'POST',
+    url: `/api/projects/${s.id}/image-prompts/${promptId}/generate`,
+    headers: s.headers,
+    payload: { model: 'nb', count: 1, shape: '1:1' },
+  });
+
+const allDone = (s: Setup) => Promise.all([...s.app.generationRuns.values()].map((r) => r.done));
+
+describe('generate_image (D3, D4, D5)', () => {
+  it('generates two images through OpenRouter, as Claude’s, and answers them', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, model: 'gpt', count: 2, shape: '3:2' });
+    expect(answer.isError, answer.text).toBe(false);
+    const { jobId, images, ...rest } = answer.value;
+    expect(rest).toEqual({
+      promptId: s.scene,
+      provider: 'openrouter',
+      model: 'gpt',
+      count: 2,
+      shape: '3:2',
+      state: 'finished',
+      failed: 0,
+      error: null,
+    });
+    expect(typeof jobId).toBe('string');
+    expect(images).toEqual([
+      { name: 'S2-p1-gpt-1.png', width: 150, height: 100, cost: 0.04, atelierImageId: null },
+      { name: 'S2-p1-gpt-2.png', width: 150, height: 100, cost: 0.04, atelierImageId: null },
+    ]);
+    const files = await liveFiles(s);
+    expect(files.map((f) => [f.promptId, f.matchedBy, f.addedBy, f.generatedModel])).toEqual([
+      [s.scene, 'generated', 'claude', 'gpt'],
+      [s.scene, 'generated', 'claude', 'gpt'],
+    ]);
+    expect((await rows(s.id)).map((r) => [r.prompt_id, r.model, Number(r.cost), r.ok, r.provider])).toEqual([
+      [s.scene, 'gpt', 0.04, true, 'openrouter'],
+      [s.scene, 'gpt', 0.04, true, 'openrouter'],
+    ]);
+    const board = await s.call('get_board', { projectId: s.id });
+    expect(board.value.scenes[0].images[0]).toMatchObject({ status: 'received', files: 2, generating: false, generationError: null });
+  });
+
+  it('generates two images through Atelier, with their Atelier ids', async () => {
+    const s = await setup();
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.npc, model: 'nb', count: 2 });
+    expect(answer.isError, answer.text).toBe(false);
+    expect(answer.value).toMatchObject({ provider: 'atelier', model: 'nb', count: 2, shape: '2:3', state: 'finished', failed: 0, error: null });
+    const ids = atelier.generations[0]!.images.map((i) => i.id);
+    expect(answer.value.images).toEqual([
+      { name: 'padre-anselmo-nb-1.png', width: 100, height: 150, cost: 0.037, atelierImageId: ids[0] },
+      { name: 'padre-anselmo-nb-2.png', width: 100, height: 150, cost: 0.037, atelierImageId: ids[1] },
+    ]);
+    expect((await liveFiles(s)).map((f) => f.addedBy)).toEqual(['claude', 'claude']);
+    expect((await rows(s.id)).map((r) => [r.model, r.ok, r.provider])).toEqual([
+      ['nb', true, 'atelier'],
+      ['nb', true, 'atelier'],
+    ]);
+  });
+
+  it('takes the model and count from the settings, the shape as the panel picks it', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    await setChoice(s, 'nb', 3);
+    const pc = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
+      addImagePrompt(doc, { category: 'pc', name: 'Rosalia', prompt: 'a young sailor, salt wind' }, 'user').id,
+    );
+    // A PC prompt with no --ar: the category's 2:3.
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: pc });
+    expect(answer.value).toMatchObject({ model: 'nb', count: 3, shape: '2:3', state: 'finished' });
+    expect(openRouter.calls.filter((c) => c.method === 'POST').map((c) => (c.body as { model: string }).model)).toEqual([
+      'google/gemini-nano-banana-2.1',
+      'google/gemini-nano-banana-2.1',
+      'google/gemini-nano-banana-2.1',
+    ]);
+    // A scene prompt's own --ar 16:9.
+    await setChoice(s, 'gpt', 1);
+    const scene = await s.call('generate_image', { projectId: s.id, promptId: s.scene });
+    expect(scene.value).toMatchObject({ model: 'gpt', count: 1, shape: '16:9' });
+  });
+
+  it('answers running with waitSeconds 0, and the job still finishes', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    openRouter.setDelay(300);
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, count: 2, waitSeconds: 0 });
+    expect(answer.value).toMatchObject({ state: 'running', images: [], failed: 0, error: null });
+    const during = await s.call('get_board', { projectId: s.id });
+    expect(during.value.scenes[0].images[0]).toMatchObject({ generating: true, files: 0 });
+    await s.app.generationRuns.get(answer.value.jobId)?.done;
+    const after = await s.call('get_board', { projectId: s.id });
+    expect(after.value.scenes[0].images[0]).toMatchObject({ generating: false, generationError: null, files: 2 });
+  });
+
+  it('answers the job’s error, and get_board says it after a failed job', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    openRouter.failNext(500);
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, count: 1 });
+    expect(answer.value).toMatchObject({
+      state: 'finished',
+      images: [],
+      failed: 1,
+      error: 'OpenRouter did not answer. Try again. Nothing was charged.',
+    });
+    const board = await s.call('get_board', { projectId: s.id });
+    expect(board.value.scenes[0].images[0]).toMatchObject({
+      generating: false,
+      generationError: 'OpenRouter did not answer. Try again. Nothing was charged.',
+    });
+  });
+});
+
+describe('generate_image’s refusals (D10), each starting nothing', () => {
+  const nothingStarted = (s: Setup) => {
+    expect(s.app.generationRuns.size).toBe(0);
+    expect(openRouter.calls.filter((c) => c.method === 'POST')).toEqual([]);
+  };
+
+  it('answers no_key without the provider’s key', async () => {
+    const s = await setup({ token: null, provider: 'openrouter' });
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene });
+    expect(errorOf(answer)).toEqual(['no_key', 'Add your OpenRouter key first.']);
+    nothingStarted(s);
+  });
+
+  it('answers unknown_prompt and prompt_empty', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    expect((await s.call('generate_image', { projectId: s.id, promptId: 'no-such-prompt' })).error?.code).toBe('unknown_prompt');
+    const flagsOnly = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
+      addImagePrompt(doc, { category: 'pc', name: 'Rosalia', prompt: '  --ar 2:3 --v 8.1' }, 'user').id,
+    );
+    expect(errorOf(await s.call('generate_image', { projectId: s.id, promptId: flagsOnly }))).toEqual([
+      'prompt_empty',
+      'The prompt has no text to send.',
+    ]);
+    nothingStarted(s);
+  });
+
+  it('answers busy while the board’s Generate runs on the prompt', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    openRouter.setDelay(500);
+    expect((await routeGenerate(s, s.scene)).statusCode).toBe(202);
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene });
+    expect(errorOf(answer)).toEqual(['busy', 'Images are already being generated for this prompt.']);
+    expect(s.app.generationRuns.size).toBe(1);
+    await allDone(s);
+  });
+
+  it('answers too_many_jobs counting the board’s and the connector’s jobs together', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    const more = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) =>
+      ['a', 'b'].map((n) => addImagePrompt(doc, { category: 'pc', name: `PC ${n}`, prompt: `a portrait ${n}` }, 'user').id),
+    );
+    openRouter.setDelay(1500);
+    expect((await routeGenerate(s, s.scene)).statusCode).toBe(202);
+    expect((await routeGenerate(s, s.npc)).statusCode).toBe(202);
+    const third = await s.call('generate_image', { projectId: s.id, promptId: more[0]!, count: 1, waitSeconds: 0 });
+    expect(third.value).toMatchObject({ state: 'running' });
+    const fourth = await s.call('generate_image', { projectId: s.id, promptId: more[1]!, count: 1, waitSeconds: 0 });
+    expect(errorOf(fourth)).toEqual(['too_many_jobs', 'Three generations are already running. Wait for one to finish.']);
+    // And the board's Generate counts the connector's job.
+    expect((await routeGenerate(s, more[1]!)).json().error).toBe('too_many_jobs');
+    openRouter.setDelay(0);
+    await allDone(s);
+  });
+
+  it('answers quota, not_configured and atelier_unavailable as refusals a model can read', async () => {
+    // 0.03 GB: less than two images' 20 MB each.
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter', config: { filesQuotaGb: 0.03 } });
+    expect(errorOf(await s.call('generate_image', { projectId: s.id, promptId: s.scene, count: 2 }))).toEqual([
+      'quota',
+      'Your files have reached their quota.',
+    ]);
+    const noKey = await startApp({ openRouterBaseUrl: openRouter.baseUrl, atelierUrl: atelier.url, secretsKey: null });
+    expect(errorOf(await s.call('generate_image', { projectId: s.id, promptId: s.scene }, noKey))).toEqual([
+      'not_configured',
+      'This server is not set up for image generation.',
+    ]);
+    nothingStarted(s);
+    await db.query('truncate users cascade');
+    const a = await setup({ provider: 'atelier' });
+    const noAtelier = await startApp({ openRouterBaseUrl: openRouter.baseUrl, atelierUrl: null });
+    expect(errorOf(await a.call('generate_image', { projectId: a.id, promptId: a.scene }, noAtelier))).toEqual([
+      'atelier_unavailable',
+      'This server has no Atelier address.',
+    ]);
+    expect(atelier.calls).toEqual([]);
+  });
+
+  it('answers insufficient_scope to a read grant', async () => {
+    const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter', scope: 'read' });
+    expect((await s.call('generate_image', { projectId: s.id, promptId: s.scene })).error?.code).toBe('insufficient_scope');
+    nothingStarted(s);
   });
 });
