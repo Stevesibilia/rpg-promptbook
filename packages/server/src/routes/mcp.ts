@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { bearerToken } from '../accounts/auth.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
+import type { ImageStarter } from '../images/start.js';
 import { WriteQuota } from '../mcp/quota.js';
 import { buildMcpHandler, type McpCaller } from '../mcp/server.js';
 import { MCP_PATH, oauthConfig } from '../oauth/config.js';
@@ -34,10 +35,18 @@ function challenge(reply: FastifyReply, resourceMetadataUrl: string, presented: 
     });
 }
 
-export async function mcpRoutes(app: FastifyInstance, { config, db, sync }: { config: Config; db: Db; sync: Sync }) {
+export interface McpRoutesOptions {
+  config: Config;
+  db: Db;
+  sync: Sync;
+  // The generation start shared with the board's Generate (app.ts).
+  starter: ImageStarter;
+}
+
+export async function mcpRoutes(app: FastifyInstance, { config, db, sync, starter }: McpRoutesOptions) {
   const oauth = oauthConfig(config.publicOrigin);
   const allowedHost = new URL(config.publicOrigin).hostname;
-  const node = buildMcpHandler({ db, sync, log: app.log, version: config.appVersion, quota: new WriteQuota() });
+  const node = buildMcpHandler({ db, sync, log: app.log, version: config.appVersion, quota: new WriteQuota(), starter });
 
   // Stateless: no stream to open, no session to end. 405 to anyone, so a
   // client that opens with GET learns that instead of authorizing again.

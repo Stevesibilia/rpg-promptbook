@@ -1,25 +1,50 @@
 import {
+  addFiles,
   addImagePrompt,
+  defaultShape,
   duplicateTitles,
+  FILE_LIMITS,
+  IMAGE_SHAPES,
   imageCategories,
+  imageModelKeys,
   LIMITS,
   matchKey,
   migratedView,
   migrateImagePrompts,
   readDocumentBoard,
+  readFiles,
+  readGenerationJobs,
+  readImagePrompts,
   removeImagePrompt,
+  sentPrompt,
   setFirstScenePrompt,
   setMusicPrompt,
   updateImagePrompt,
   type BoardRow,
   type DocumentBoard,
+  type GenerationJob,
   type ImageCategory,
+  type ImageModelKey,
+  type ImageShape,
+  type NewFile,
   type PromptRow,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { z } from 'zod';
 import { AppError } from '../errors.js';
+import { hasRoom, quotaReached } from '../files/store.js';
+import { AtelierError, downloadImage } from '../images/atelier.js';
+import { atelierRefused, checkImageBytes, storeImage } from '../images/jobs.js';
+import { readSecret } from '../images/secrets.js';
+import {
+  atelierUnavailable,
+  labelOf as promptLabel,
+  quotaBytesOf,
+  serverKeyOf,
+  startImageGeneration,
+} from '../images/start.js';
 import type { ProjectRow } from '../projects.js';
+import { getSettings } from '../routes/settings.js';
 import { ToolRefusal } from './errors.js';
 import type { ToolKit } from './tools.js';
 
@@ -38,10 +63,16 @@ const SINGULAR: Record<ImageCategory, string> = { scene: 'Scene', pc: 'PC', npc:
 const labelOf = ({ prompt, number }: PromptRow) =>
   prompt.category === 'scene' ? `${prompt.sceneId} · prompt ${number}` : `${SINGULAR[prompt.category]} · ${prompt.name}`;
 
-// An image prompt as a model reads it.
-const itemOut = (row: PromptRow) => {
+// The generation jobs a board is read with: the running ones, and the
+// finished ones with an error (readGenerationJobs), oldest first.
+type Jobs = readonly GenerationJob[];
+
+// An image prompt as a model reads it. `generating` and `generationError`
+// come from its jobs (connector-board-images design decision 11).
+const itemOut = (row: PromptRow, jobs: Jobs) => {
   const { prompt } = row;
   const text = prompt.prompt !== '';
+  const own = jobs.filter((j) => j.promptId === prompt.id);
   return {
     id: prompt.id,
     category: prompt.category,
@@ -53,16 +84,18 @@ const itemOut = (row: PromptRow) => {
     status: row.status,
     files: row.images.length,
     chosen: row.images.find((f) => f.id === row.chosen)?.name ?? null,
+    generating: own.some((j) => j.finishedAt === null),
+    generationError: own.filter((j) => j.finishedAt !== null && j.error !== null).at(-1)?.error ?? null,
   };
 };
 
 // A scene as a model reads it.
-const sceneOut = (row: BoardRow) => ({
+const sceneOut = (row: BoardRow, jobs: Jobs) => ({
   sceneId: row.sceneId,
   title: row.title,
   visual: row.visual,
   mood: row.mood,
-  images: row.prompts.map(itemOut),
+  images: row.prompts.map((p) => itemOut(p, jobs)),
   music: {
     title: row.music?.title ?? null,
     style: row.music?.style ?? null,
@@ -74,13 +107,13 @@ const sceneOut = (row: BoardRow) => ({
   },
 });
 
-const boardOut = (board: DocumentBoard) => ({
+const boardOut = (board: DocumentBoard, jobs: Jobs) => ({
   appendix: board.rows.length > 0,
-  scenes: board.rows.map(sceneOut),
-  pcs: board.named.pc.map(itemOut),
-  npcs: board.named.npc.map(itemOut),
-  handouts: board.named.handout.map(itemOut),
-  outsideAppendix: board.outsideAppendix.map(itemOut),
+  scenes: board.rows.map((r) => sceneOut(r, jobs)),
+  pcs: board.named.pc.map((p) => itemOut(p, jobs)),
+  npcs: board.named.npc.map((p) => itemOut(p, jobs)),
+  handouts: board.named.handout.map((p) => itemOut(p, jobs)),
+  outsideAppendix: board.outsideAppendix.map((p) => itemOut(p, jobs)),
   unmatched: board.unmatched.length,
   duplicateTitles: duplicateTitles(board.rows),
 });
@@ -145,7 +178,41 @@ const IMAGE_RULES =
   'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
   'Start each image prompt with words no other prompt starts with: the downloads find their prompt by their first words.';
 
-export function registerBoardTools({ tool, projectOf, docOf, write, templates, schemas }: ToolKit): void {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// connector-board-images design decision 10: what the image tools refuse.
+const NO_ATELIER_TOKEN = () =>
+  new AppError(409, 'no_atelier_token', 'Add your Atelier API token in Promptbook’s Settings first.');
+const UNSUPPORTED_TYPE = () => new AppError(415, 'unsupported_type', 'That Atelier file is not a PNG, JPEG or WebP image.');
+const BOARD_FULL = () => new AppError(409, 'board_full', 'The board is full.');
+
+// The server's own refusals a model can act on, at 409: toToolError hides
+// anything at 500 or above behind internal_error.
+const LEGIBLE = new Set(['not_configured', 'atelier_unavailable', 'quota']);
+
+function legible(error: unknown): unknown {
+  if (error instanceof AppError && error.status >= 500 && LEGIBLE.has(error.code)) {
+    return new AppError(409, error.code, error.message);
+  }
+  return error;
+}
+
+// Atelier's answer to a download, in words a model can act on. The token is
+// in none of them: the Atelier client puts it in no error.
+function fromAtelier(error: unknown): unknown {
+  if (!(error instanceof AtelierError)) return error;
+  if (error.status === 404) return new AppError(404, 'atelier_image_not_found', 'Atelier has no image with this id.');
+  if (error.status === 401) {
+    return new AppError(409, 'token_rejected', 'Atelier rejected the saved token. Replace it in Settings.');
+  }
+  // No answer, one that cannot be read, or a refusal Atelier did not word:
+  // atelier_unreachable, atelier_bad_answer, atelier_refused, as they are.
+  const refused = atelierRefused(error);
+  if (refused === null) return new AppError(424, error.code, error.message);
+  return new AppError(424, 'atelier_refused', refused);
+}
+
+export function registerBoardTools({ tool, projectOf, docOf, write, templates, caller, starter, schemas }: ToolKit): void {
   const { projectId, requiredText, text } = schemas;
   const promptId = requiredText(64).describe('The image prompt’s id as get_board gives it.');
   const sceneId = requiredText(64).describe('The scene’s id as get_board gives it, such as S3.');
@@ -175,7 +242,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, s
     async (args) => {
       const project = boardable(await projectOf(args.projectId));
       const extra = await templates();
-      return boardOut(readDocumentBoard(migratedView(await docOf(project)), extra));
+      const doc = migratedView(await docOf(project));
+      return boardOut(readDocumentBoard(doc, extra), readGenerationJobs(doc));
     },
   );
 
@@ -218,7 +286,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, s
             `${others.map((r) => r.sceneId).join(', ')} already ${others.length === 1 ? 'has' : 'have'} the track title «${args.music.title}», so Suno’s downloads cannot be matched to their scenes. Give each scene its own title.`,
           );
         }
-        return { scene: sceneOut(written), warnings };
+        return { scene: sceneOut(written, readGenerationJobs(doc)), warnings };
       });
     },
   );
@@ -259,7 +327,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, s
         );
         const board = readDocumentBoard(doc, extra);
         return {
-          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!),
+          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!, readGenerationJobs(doc)),
           warnings: sharedWords(board, added.id),
         };
       });
@@ -287,12 +355,175 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, s
         );
         const board = readDocumentBoard(doc, extra);
         return {
-          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!),
+          prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!, readGenerationJobs(doc)),
           warnings: args.prompt !== undefined ? sharedWords(board, args.id) : [],
         };
       });
     },
   );
+
+  tool(
+    'generate_image',
+    'Generate 1 to 4 images on an image prompt, through the image provider the user chose in Settings (Atelier or OpenRouter), as the board’s Generate button does. This spends the user’s money: generate when the user asks for images, not to try a prompt out. Model, count and shape default to the user’s settings and the prompt’s own ratio. The call waits up to waitSeconds for the images; when it answers state running, read get_board later: the prompt says generating until the job ends, then its files count has grown or generationError says why not. The images land on the prompt as received.',
+    { title: 'Generate images', readOnly: false, idempotent: false, openWorld: true },
+    {
+      projectId,
+      promptId,
+      model: z.enum(imageModelKeys).optional().describe('gpt (GPT Image) or nb (Nano Banana); the user’s setting when left out.'),
+      count: z.number().int().min(1).max(4).optional().describe('1 to 4 images; the user’s setting when left out.'),
+      shape: z
+        .enum(IMAGE_SHAPES)
+        .optional()
+        .describe('16:9, 3:2, 1:1 or 2:3; from the prompt’s --ar, or its category’s default, when left out.'),
+      waitSeconds: z.number().min(0).max(50).optional().describe('How long to wait for the images, 0 to 50 seconds; 45 when left out.'),
+    },
+    async (args) => {
+      try {
+        return await generate(args);
+      } catch (error) {
+        throw legible(error);
+      }
+    },
+  );
+
+  // connector-board-images design decisions 3 and 4: the panel's defaults,
+  // the shared start, a wait that never stops the job, then what arrived.
+  async function generate(args: {
+    projectId: string;
+    promptId: string;
+    model?: ImageModelKey | undefined;
+    count?: number | undefined;
+    shape?: ImageShape | undefined;
+    waitSeconds?: number | undefined;
+  }) {
+    const project = boardable(await projectOf(args.projectId));
+    const prompt = readImagePrompts(migratedView(await docOf(project))).find((p) => p.id === args.promptId);
+    if (!prompt) throw UNKNOWN_PROMPT();
+    const settings = (await getSettings(starter.db, caller.userId)).imageGeneration;
+    const model = args.model ?? settings.model;
+    const count = args.count ?? settings.count;
+    const shape = args.shape ?? defaultShape(prompt.category, sentPrompt(prompt.prompt).ar).shape;
+    const started = await startImageGeneration(starter, {
+      userId: caller.userId,
+      projectId: project.id,
+      promptId: args.promptId,
+      model,
+      count,
+      shape,
+      addedBy: 'claude',
+    });
+    let timer: NodeJS.Timeout | undefined;
+    const waited = new Promise<boolean>((resolve) => (timer = setTimeout(() => resolve(false), (args.waitSeconds ?? 45) * 1000)));
+    const finished = await Promise.race([started.done.then(() => true), waited]);
+    clearTimeout(timer);
+    const doc = await docOf(project);
+    const since = Date.parse(started.startedAt);
+    const images = readFiles(doc)
+      .filter((f) => f.promptId === args.promptId && f.generatedModel !== null && Date.parse(f.addedAt) >= since)
+      .map((f) => ({ name: f.name, width: f.width, height: f.height, cost: f.cost, atelierImageId: f.atelierImageId }));
+    // A job that ended without an error is gone from the document.
+    const job = readGenerationJobs(doc).find((j) => j.id === started.jobId);
+    return {
+      jobId: started.jobId,
+      promptId: args.promptId,
+      provider: started.provider,
+      model,
+      count,
+      shape,
+      state: finished ? 'finished' : 'running',
+      images,
+      failed: job?.failed ?? 0,
+      error: job?.error ?? null,
+    };
+  }
+
+  tool(
+    'attach_atelier_image',
+    'Put an image that is already in the user’s Atelier on an image prompt, by the image’s id (as Atelier’s own tools give it). Promptbook downloads the original itself with the Atelier token saved in Settings; the bytes never pass through this conversation. It costs nothing. Use it for images made in Atelier outside Promptbook; to make new ones, use generate_image.',
+    { title: 'Attach an Atelier image', readOnly: false, idempotent: true },
+    {
+      projectId,
+      promptId,
+      atelierImageId: z
+        .string()
+        .trim()
+        .regex(UUID, 'must be a uuid')
+        .describe('The Atelier image’s id, a uuid, as Atelier’s own tools give it.'),
+    },
+    async (args) => {
+      try {
+        return await attach(args.projectId, args.promptId, args.atelierImageId.toLowerCase());
+      } catch (error) {
+        throw legible(error);
+      }
+    },
+  );
+
+  // connector-board-images design decision 6: every refusal that can be
+  // known before the download comes before it, and the board is written
+  // last, so a refusal changes nothing on it.
+  async function attach(id: string, promptIdArg: string, atelierImageId: string) {
+    const project = boardable(await projectOf(id));
+    const known = readImagePrompts(migratedView(await docOf(project)));
+    if (!known.some((p) => p.id === promptIdArg)) throw UNKNOWN_PROMPT();
+    const { config, db, blobs } = starter;
+    const sealing = serverKeyOf(config);
+    if (config.atelierUrl === null) throw atelierUnavailable();
+    const stored = await readSecret(db, sealing, caller.userId, 'atelier');
+    if (stored.state !== 'ok') throw NO_ATELIER_TOKEN();
+    const quotaBytes = quotaBytesOf(config);
+    // Room for the largest image Atelier may send.
+    if (!(await hasRoom(db, caller.userId, FILE_LIMITS.image, quotaBytes))) throw quotaReached();
+    let bytes: Buffer;
+    try {
+      bytes = await downloadImage(config.atelierUrl, stored.key, atelierImageId);
+    } catch (error) {
+      throw fromAtelier(error);
+    }
+    const image = checkImageBytes(bytes);
+    if (!image) throw UNSUPPORTED_TYPE();
+    const size = await storeImage({ db, blobs, quotaBytes }, { projectId: project.id, userId: caller.userId }, bytes, image);
+    return writeBoard(project, (doc: Y.Doc) => {
+      const prompts = readImagePrompts(doc);
+      const prompt = prompts.find((p) => p.id === promptIdArg);
+      // Removed while the image was downloaded.
+      if (!prompt) throw UNKNOWN_PROMPT();
+      const entry: NewFile = {
+        sha256: image.sha256,
+        thumbSha256: null,
+        name: `${promptLabel(prompt, prompts)}-atelier-${atelierImageId.slice(0, 8)}.${image.ext}`,
+        kind: 'image',
+        mime: image.mime,
+        size: bytes.length,
+        width: size?.width ?? null,
+        height: size?.height ?? null,
+        duration: null,
+        sceneId: null,
+        promptId: promptIdArg,
+        matchedBy: 'hand',
+        addedBy: 'claude',
+        generatedModel: null,
+        cost: null,
+        generatedVia: null,
+        atelierImageId,
+      };
+      let already: boolean;
+      try {
+        already = addFiles(doc, [entry]).skipped.length > 0;
+      } catch (error) {
+        // The project's cap on files.
+        if (error instanceof Error && error.message.startsWith('files: at most')) throw BOARD_FULL();
+        throw error;
+      }
+      const file = readFiles(doc).find((f) => f.sha256 === image.sha256)!;
+      return {
+        promptId: promptIdArg,
+        atelierImageId,
+        file: { name: file.name, mime: file.mime, size: file.size, width: file.width, height: file.height },
+        already,
+      };
+    });
+  }
 
   tool(
     'remove_image_prompt',

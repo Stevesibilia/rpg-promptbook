@@ -8,7 +8,7 @@ import { ActionSelect } from './ActionSelect.js';
 import { imageQuestion, moveImage, REMOVE_NOTE, removeFromBoard, toggleImage } from './actions.js';
 import { useBoardContext } from './context.js';
 import { useLocalFiles } from './device.js';
-import { generatedRows } from './generate.js';
+import { attachedRow, generatedRows, type ViewerRow } from './generate.js';
 import { FileImage } from './parts.js';
 import { fileSize, promptGroups, promptLabel, sceneLabel, shapeOf, tabLabel } from './summary.js';
 
@@ -91,8 +91,6 @@ export function Viewer({
   );
   const question = imageQuestion(prompt, file);
   const shape = shapeOf(file);
-  // A generated file: Source, Through, Model and Cost in place of «Matched by».
-  const generated = generatedRows(file, atelierUrl);
   // «S3 · L'ordine di Donato», «NPCs · Dottor Salvi».
   const header = prompt.scene ? sceneLabel(prompt.scene) : tabLabel(prompt);
 
@@ -143,29 +141,7 @@ export function Viewer({
                 </dd>
               </>
             ) : null}
-            {generated ? (
-              generated.map((row) => (
-                <Fragment key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd>
-                    {row.value}
-                    {row.link && (
-                      <>
-                        {' · '}
-                        <a href={row.link.href} target="_blank" rel="noopener noreferrer">
-                          {row.link.text}
-                        </a>
-                      </>
-                    )}
-                  </dd>
-                </Fragment>
-              ))
-            ) : (
-              <>
-                <dt>Matched by</dt>
-                <dd>{file.matchedBy ? matchedLabels[file.matchedBy] : '—'}</dd>
-              </>
-            )}
+            <SourceRows file={file} atelierUrl={atelierUrl} />
             <dt>Added</dt>
             <dd>
               {snapshotTime(file.addedAt)}
@@ -247,5 +223,42 @@ export function Viewer({
       )}
     </div>,
     document.body,
+  );
+}
+
+// Where the file came from, in the details list: a generated file's Source,
+// Through, Model and Cost; an image attached from Atelier, «From · Atelier»
+// alone, since Claude attached it and nobody matched it by hand
+// (connector-board-images review); any other file's «Matched by».
+export function SourceRows({ file, atelierUrl }: { file: FileEntry; atelierUrl: string | null }) {
+  const generated = generatedRows(file, atelierUrl);
+  if (generated) return generated.map((row) => <Row key={row.label} row={row} />);
+  const attached = attachedRow(file, atelierUrl);
+  if (attached) return <Row row={attached} />;
+  return (
+    <>
+      <dt>Matched by</dt>
+      <dd>{file.matchedBy ? matchedLabels[file.matchedBy] : '—'}</dd>
+    </>
+  );
+}
+
+// One row of the details list; its link, when there is one, follows the value.
+function Row({ row }: { row: ViewerRow }) {
+  return (
+    <Fragment>
+      <dt>{row.label}</dt>
+      <dd>
+        {row.value}
+        {row.link && (
+          <>
+            {' · '}
+            <a href={row.link.href} target="_blank" rel="noopener noreferrer">
+              {row.link.text}
+            </a>
+          </>
+        )}
+      </dd>
+    </Fragment>
   );
 }

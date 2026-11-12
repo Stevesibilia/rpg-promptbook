@@ -337,7 +337,8 @@ README says how to connect it.
   Connected apps lists the approved apps and revokes them.
 - **Tools:** projects, the outline, the prep document by section, the to-do
   list, inspiration, research topics and notes, the brainstorm log, the
-  board's prompts. Claude can add and edit; it never ticks a to-do item and
+  board's prompts, and the board's images (`generate_image`,
+  `attach_atelier_image`, #61). Claude can add and edit; it never ticks a to-do item and
   never rewrites the seed, and the only thing it deletes is an image prompt
   (`remove_image_prompt`, #36), whose images go to the Unmatched tray.
 - **Section-scoped edits:** Claude replaces one section, scene or sheet, or
@@ -431,6 +432,14 @@ the prep document:
   `set_scene_prompts`); the user adds, edits and removes them by hand.
   Removing a prompt sends its images to the Unmatched tray. Prompts are not
   versioned.
+- Claude puts images on the board through the connector (#61, the OpenSpec
+  change `connector-board-images`): `generate_image` starts a generation on
+  a prompt exactly as the Generate button does, sharing its limits and
+  spending the user's money; `attach_atelier_image` downloads an image
+  already in the user's Atelier, with the account's Atelier token, and adds
+  it to a prompt as a received image with no model or cost. `get_board`
+  says per prompt whether images are being generated and the last
+  generation's error.
 - Boards from before the categories migrate on every replica: each scene's
   prompt and chosen image become its prompt 1.
 - Files are stored once per content, reachable only by their owner, and

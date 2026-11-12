@@ -39,6 +39,7 @@ import { registerBoardTools } from './board.js';
 import { refOf, registerTemplateTools } from './templates.js';
 import { addScene, check, locate, MARKDOWN_MAX, replaceSection } from './edits.js';
 import type { Db } from '../db.js';
+import type { ImageStarter } from '../images/start.js';
 import type { Sync } from '../sync.js';
 import type { McpCaller, McpDeps } from './server.js';
 
@@ -80,6 +81,8 @@ export const TOOL_NAMES = [
   'add_image_prompt',
   'update_image_prompt',
   'remove_image_prompt',
+  'generate_image',
+  'attach_atelier_image',
 ] as const;
 
 const READ_LOG_FIRST = 'At the start of a new chat about a project, read its brainstorm log first.';
@@ -89,7 +92,7 @@ export const INSTRUCTIONS = [
   `${READ_LOG_FIRST} At the end of a brainstorm, write one entry with add_brainstorm_entry: the ideas, the decisions, the rejected ideas with why, and the open questions.`,
   'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
   'Document templates set a project’s sections, scene fields and boxes. To change one, read it with get_template, then send save_template_version the whole template with the version you read; built-ins are read-only, so duplicate_template first. Projects keep their version until update_project_template moves them.',
-  'For a board’s prompts, read get_board first. Image prompts come in four categories: Scenes (any number per scene), PCs, NPCs and Handouts (a name and a prompt each); add them with add_image_prompt, change them with update_image_prompt. Music is one Suno prompt per scene, written with set_scene_prompts.',
+  'For a board’s prompts, read get_board first. Image prompts come in four categories: Scenes (any number per scene), PCs, NPCs and Handouts (a name and a prompt each); add them with add_image_prompt, change them with update_image_prompt. Music is one Suno prompt per scene, written with set_scene_prompts. generate_image makes images on a prompt and spends the user’s money; attach_atelier_image puts an image already in Atelier on a prompt.',
 ].join('\n');
 
 // What a scene needs so that adding it adds no error, read from the
@@ -127,6 +130,9 @@ interface Hints {
   readOnly: boolean;
   idempotent: boolean;
   destructive?: boolean;
+  // A tool that acts in a world outside Promptbook (connector-board-images
+  // design decision 12); false when absent.
+  openWorld?: boolean;
 }
 
 type ToolName = (typeof TOOL_NAMES)[number];
@@ -150,10 +156,13 @@ export interface ToolKit {
   db: Db;
   sync: Sync;
   caller: McpCaller;
+  // The generation start shared with the board's Generate; also the config,
+  // the file store and the running jobs the image tools need.
+  starter: ImageStarter;
   schemas: { id: typeof id; projectId: typeof projectId; requiredText: typeof requiredText; text: typeof text };
 }
 
-export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log, quota }: McpDeps): void {
+export function registerTools(server: McpServer, caller: McpCaller, { db, sync, log, quota, starter }: McpDeps): void {
   // Every tool runs through here: the scope check, one envelope for the
   // answer, one translation of failures.
   const tool = <Shape extends z.ZodRawShape>(
@@ -172,7 +181,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
           readOnlyHint: hints.readOnly,
           destructiveHint: hints.destructive ?? false,
           idempotentHint: hints.idempotent,
-          openWorldHint: false,
+          openWorldHint: hints.openWorld ?? false,
         },
         inputSchema: z.strictObject(shape),
       },
@@ -628,7 +637,18 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
   );
 
   const templates = () => accountTemplates(db, caller.userId);
-  const kit: ToolKit = { tool, projectOf, docOf, write, templates, db, sync, caller, schemas: { id, projectId, requiredText, text } };
+  const kit: ToolKit = {
+    tool,
+    projectOf,
+    docOf,
+    write,
+    templates,
+    db,
+    sync,
+    caller,
+    starter,
+    schemas: { id, projectId, requiredText, text },
+  };
   registerBoardTools(kit);
   registerTemplateTools(kit);
 }

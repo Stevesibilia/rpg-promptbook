@@ -99,8 +99,10 @@ export interface FileEntry {
   cost: number | null;
   // The service that generated it (atelier-image-provider design decision
   // 11): a generated image saved before Atelier reads 'openrouter'; null for
-  // every file not generated. The Atelier image's id, a uuid, only when it
-  // came through Atelier.
+  // every file not generated. The Atelier image's id, a uuid, only on an
+  // image generated through Atelier or attached from it through the
+  // connector (connector-board-images design decision 7); an attached image
+  // has no model, cost or provider.
   generatedVia: ImageProvider | null;
   atelierImageId: string | null;
 }
@@ -187,7 +189,11 @@ function toFile(item: Item): FileEntry {
     image && isImageModelKey(item.get('generatedModel')) ? (item.get('generatedModel') as ImageModelKey) : null;
   const via = item.get('generatedVia');
   const generatedVia = generatedModel === null ? null : isImageProvider(via) ? via : 'openrouter';
-  const atelierImageId = generatedVia === 'atelier' && isUuid(item.get('atelierImageId')) ? (item.get('atelierImageId') as string) : null;
+  // Generated through Atelier, or attached from it (no model at all).
+  const atelierImageId =
+    image && (generatedVia === 'atelier' || generatedModel === null) && isUuid(item.get('atelierImageId'))
+      ? (item.get('atelierImageId') as string)
+      : null;
   return {
     id: item.get('id') as string,
     sha256: item.get('sha256') as string,
@@ -545,8 +551,8 @@ function checkNewFile(file: NewFile, i: number): void {
   const atelierImageId = file.atelierImageId ?? null;
   if (via !== null && !isImageProvider(via)) throw new Error(`${field}.generatedVia: unknown provider "${String(via)}"`);
   if (via !== null && model === null) throw new Error(`${field}.generatedVia: only a generated image has one`);
-  if (atelierImageId !== null && (via !== 'atelier' || !isUuid(atelierImageId))) {
-    throw new Error(`${field}.atelierImageId: a uuid, only on an image generated through Atelier`);
+  if (atelierImageId !== null && (!isUuid(atelierImageId) || !(via === 'atelier' || model === null))) {
+    throw new Error(`${field}.atelierImageId: a uuid, on an image generated through Atelier or attached from it`);
   }
   if ((model !== null || cost !== null) && file.kind !== 'image') {
     throw new Error(`${field}: only an image is generated`);

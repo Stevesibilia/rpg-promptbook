@@ -130,7 +130,7 @@ describe('the board tools in the list', () => {
   it('lists get_board as a read tool and set_scene_prompts as an idempotent write tool', async () => {
     const s = await setup();
     const tools = await mcpListTools(s.app, s.token);
-    expect(tools).toHaveLength(28);
+    expect(tools).toHaveLength(30);
     expect(tools.find((t) => t.name === 'get_board')!.annotations).toMatchObject({
       readOnlyHint: true,
       idempotentHint: true,
@@ -475,6 +475,8 @@ describe('a board from before image categories', () => {
         status: 'chosen',
         files: 2,
         chosen: 'steve_2.png',
+        generating: false,
+        generationError: null,
       },
     ]);
     const stored = await storedDoc(s.id);

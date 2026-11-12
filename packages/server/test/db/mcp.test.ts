@@ -155,7 +155,7 @@ describe('the endpoint', () => {
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 
-  it('lists the 28 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
+  it('lists the 30 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
     const s = await setup();
     for (const era of ['modern', 'legacy'] as const) {
       const tools = await mcpListTools(s.app, s.tokens.access_token, era);
@@ -163,7 +163,9 @@ describe('the endpoint', () => {
       for (const tool of tools) {
         expect(tool.description, tool.name).toBeTruthy();
         expect(tool.inputSchema?.type, tool.name).toBe('object');
-        expect(tool.annotations?.openWorldHint, tool.name).toBe(false);
+        // generate_image spends money and makes images at a provider
+        // (connector-board-images design decision 12).
+        expect(tool.annotations?.openWorldHint, tool.name).toBe(tool.name === 'generate_image');
         expect(tool.annotations?.destructiveHint, tool.name).toBe(['replace_section', 'remove_image_prompt', 'delete_template'].includes(tool.name));
       }
     }
@@ -185,7 +187,20 @@ describe('the endpoint', () => {
         'read_document',
       ].sort(),
     );
-    expect(TOOL_NAMES).toHaveLength(28);
+    expect(TOOL_NAMES).toHaveLength(30);
+    expect(tools.find((t) => t.name === 'generate_image')!.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    });
+    expect(tools.find((t) => t.name === 'attach_atelier_image')!.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    expect(tools.find((t) => t.name === 'generate_image')!.description).toContain('spends the user’s money');
     // The two tools that delete something: an image prompt, never a file, and
     // a template no project uses.
     expect(tools.map((t) => t.name).filter((name) => /delete|remove|seed|tick/.test(name)).sort()).toEqual([

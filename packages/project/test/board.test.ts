@@ -838,16 +838,58 @@ describe('generated images (board-image-generation D9, D12)', () => {
       mapOfFile(doc, hash(25)).set('atelierImageId', bad);
       expect(of(25)).toMatchObject({ generatedVia: 'atelier', atelierImageId: null });
     }
-    // An id on an image that names another provider, or none, is not read.
+    // An id on a generated image that names another provider is not read.
     mapOfFile(doc, hash(26)).set('atelierImageId', ATELIER_ID);
     expect(of(26)).toMatchObject({ generatedVia: 'openrouter', atelierImageId: null });
     // An unknown provider on a generated image reads OpenRouter; on a file
-    // that is not generated, none.
+    // that is not generated, none. A file that is not generated keeps its
+    // Atelier id: it was attached from Atelier (connector-board-images
+    // design decision 7).
     mapOfFile(doc, hash(25)).set('generatedVia', 'flux');
     expect(of(25).generatedVia).toBe('openrouter');
     mapOfFile(doc, hash(27)).set('generatedVia', 'atelier');
     mapOfFile(doc, hash(27)).set('atelierImageId', ATELIER_ID);
-    expect(of(27)).toMatchObject({ generatedVia: null, atelierImageId: null });
+    expect(of(27)).toMatchObject({ generatedVia: null, atelierImageId: ATELIER_ID });
+    mapOfFile(doc, hash(27)).set('atelierImageId', 'not-a-uuid');
+    expect(of(27).atelierImageId).toBeNull();
+  });
+
+  // connector-board-images design decision 7.
+  it('keeps the Atelier id of an image attached from Atelier, with no model, cost or provider', () => {
+    const doc = project({ document: APPENDIX });
+    const p = scene(doc, 'S1', 'a library');
+    const { added } = addFiles(doc, [image(30, { promptId: p.id, matchedBy: 'hand', addedBy: 'claude', atelierImageId: ATELIER_ID })]);
+    expect(added[0]).toMatchObject({ generatedModel: null, cost: null, generatedVia: null, atelierImageId: ATELIER_ID });
+    expect(readFiles(doc).find((f) => f.sha256 === hash(30))).toMatchObject({
+      promptId: p.id,
+      matchedBy: 'hand',
+      addedBy: 'claude',
+      generatedModel: null,
+      cost: null,
+      generatedVia: null,
+      atelierImageId: ATELIER_ID,
+    });
+    expect(mapOfFile(doc, hash(30)).get('atelierImageId')).toBe(ATELIER_ID);
+    expect(mapOfFile(doc, hash(30)).has('generatedVia')).toBe(false);
+    // A generated Atelier file reads as before.
+    addFiles(doc, [generated(31, p.id, { generatedModel: 'nb', cost: 0.037, generatedVia: 'atelier', atelierImageId: ATELIER_ID })]);
+    expect(readFiles(doc).find((f) => f.sha256 === hash(31))).toMatchObject({
+      generatedModel: 'nb',
+      cost: 0.037,
+      generatedVia: 'atelier',
+      atelierImageId: ATELIER_ID,
+    });
+  });
+
+  it('refuses an Atelier id that is not a uuid on an attached image, or on an image generated through OpenRouter', () => {
+    const doc = project();
+    expect(() => addFiles(doc, [image(32, { atelierImageId: 'not-a-uuid' })])).toThrow(
+      'files[0].atelierImageId: a uuid, on an image generated through Atelier or attached from it',
+    );
+    expect(() => addFiles(doc, [image(32, { generatedModel: 'gpt', generatedVia: 'openrouter', atelierImageId: ATELIER_ID })])).toThrow(
+      /atelierImageId: a uuid, on an image generated through Atelier or attached from it/,
+    );
+    expect(readFiles(doc)).toEqual([]);
   });
 
   it('refuses a provider or Atelier id that is not one', () => {

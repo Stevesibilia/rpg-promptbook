@@ -7,7 +7,8 @@ import type { Db } from './db.js';
 import { AppError } from './errors.js';
 import { openBlobStore, type BlobStore } from './files/blobs.js';
 import { IMAGE_ERRORS } from './images/openrouter.js';
-import { imageRoutes, type GenerationHandle } from './images/routes.js';
+import { imageRoutes } from './images/routes.js';
+import type { GenerationHandle, ImageStarter } from './images/start.js';
 import { authRoutes } from './routes/auth.js';
 import { cuebardRoutes } from './routes/cuebard.js';
 import { filesRoutes } from './routes/files.js';
@@ -131,18 +132,23 @@ export async function buildApp({
   await app.register(cuebardRoutes, { db, sync: app.sync, blobs: store });
   await app.register(snapshotsRoutes, { db, sync: app.sync });
   await app.register(filesRoutes, { config, db, blobs: store });
-  await app.register(imageRoutes, {
+  // One starter for the board's Generate and the connector's generate_image
+  // (connector-board-images design decision 2): their limits count together.
+  const starter: ImageStarter = {
     config,
     db,
     sync: app.sync,
     blobs: store,
     runs: app.generationRuns,
+    starting: new Map<string, number>(),
+    log: app.log,
     timeoutMs: generationTimeoutMs,
     atelierPollMs,
     atelierWatchMs,
-  });
+  };
+  await app.register(imageRoutes, { config, db, starter });
   await app.register(oauthRoutes, { config, db, sync: app.sync });
-  await app.register(mcpRoutes, { config, db, sync: app.sync });
+  await app.register(mcpRoutes, { config, db, sync: app.sync, starter });
   await app.register(webPlugin, { config });
   return app;
 }

@@ -4,6 +4,7 @@ import * as Y from 'yjs';
 import { api, ApiError, type ImageGenerationStatus } from '../src/api.js';
 import { ThumbBackfill, type BackfillDeps } from '../src/board/backfill.js';
 import {
+  attachedRow,
   badge,
   collectionTitle,
   doneToast,
@@ -187,6 +188,24 @@ describe('generated images', () => {
     expect(generatedRows(file({ generatedVia: 'atelier' }), 'https://a')![1]).toEqual({ label: 'Through', value: 'Atelier' });
     // An OpenRouter image never links.
     expect(generatedRows(file({ atelierImageId: id }), 'https://a')![1]).toEqual({ label: 'Through', value: 'OpenRouter' });
+  });
+
+  // connector-board-images design decision 14.
+  it('show where an image attached from Atelier came from, with no badge', () => {
+    const id = '52f9552c-7a1e-4b3d-9c2f-0e8d6a4b1f37';
+    const attached = file({ generatedModel: null, generatedVia: null, cost: null, matchedBy: 'hand', addedBy: 'claude', atelierImageId: id });
+    expect(attachedRow(attached, 'https://atelier.siberio.eu')).toEqual({
+      label: 'From',
+      value: 'Atelier',
+      link: { href: `https://atelier.siberio.eu/images/${id}`, text: 'No. 52f9552c in Atelier ↗' },
+    });
+    expect(attachedRow(attached, null)).toEqual({ label: 'From', value: 'Atelier' });
+    expect(attachedRow(attached)).toEqual({ label: 'From', value: 'Atelier' });
+    expect(badge(attached)).toBeNull();
+    expect(generatedRows(attached, 'https://a')).toBeNull();
+    // A dropped file has no row, and a generated Atelier image keeps its own.
+    expect(attachedRow(file({ generatedModel: null, cost: null, matchedBy: 'prompt' }), 'https://a')).toBeNull();
+    expect(attachedRow(file({ generatedVia: 'atelier', atelierImageId: id }), 'https://a')).toBeNull();
   });
 
   it('name the providers that billed them in «Generated here»', () => {
