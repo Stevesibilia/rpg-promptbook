@@ -44,17 +44,17 @@ describe('settings', () => {
     const app = await startApp();
     const headers = { cookie: `pb_session=${await signedIn(app)}`, origin: ORIGIN };
     const put = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/settings', headers, payload: payload as object });
-    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'gpt', count: 2 });
+    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'gpt', count: 2, provider: 'openrouter' });
 
     const saved = await put({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 4 } });
     expect(saved.statusCode).toBe(200);
-    expect(saved.json().imageGeneration).toEqual({ model: 'nb', count: 4 });
+    expect(saved.json().imageGeneration).toEqual({ model: 'nb', count: 4, provider: 'openrouter' });
 
     const { imageGeneration: _left, ...older } = defaultSettings();
     const kept = await put({ ...older, author: 'Stefano Sibilia' });
     expect(kept.statusCode).toBe(200);
     expect(kept.json()).toMatchObject({ author: 'Stefano Sibilia', imageGeneration: { model: 'nb', count: 4 } });
-    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'nb', count: 4 });
+    expect((await app.inject({ url: '/api/settings', headers })).json().imageGeneration).toEqual({ model: 'nb', count: 4, provider: 'openrouter' });
 
     // A row saved before image generation reads with the default.
     await db.query(`update user_settings set settings = settings - 'imageGeneration'`);

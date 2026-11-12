@@ -20,12 +20,12 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 1. Project: provider on settings, files and jobs (brief A)
 
-- [ ] 1.1 `packages/project/src/providers.ts` per D5; exports in `index.ts`
-- [ ] 1.2 `settings.ts`: `imageGeneration.provider`, default and old settings read `'openrouter'` (D5)
-- [ ] 1.3 `board.ts`: `FileEntry.generatedVia` and `atelierImageId`, read, checked and written per D11; `NewFile` takes both optionally
-- [ ] 1.4 `generation.ts`: `GenerationJob.provider`, `startGenerationJob` takes it, `toJob` reads a missing one as `'openrouter'` (D11)
-- [ ] 1.5 Tests: settings default and an old settings object; a generated file with and without `generatedVia`; a non-uuid `atelierImageId` dropped; a job with and without `provider`
-- [ ] 1.6 Commit `feat(project): image provider on settings, generated files and jobs`
+- [x] 1.1 `packages/project/src/providers.ts` per D5; exports in `index.ts`
+- [x] 1.2 `settings.ts`: `imageGeneration.provider`, default and old settings read `'openrouter'` (D5)
+- [x] 1.3 `board.ts`: `FileEntry.generatedVia` and `atelierImageId`, read, checked and written per D11; `NewFile` takes both optionally
+- [x] 1.4 `generation.ts`: `GenerationJob.provider`, `startGenerationJob` takes it, `toJob` reads a missing one as `'openrouter'` (D11)
+- [x] 1.5 Tests: settings default and an old settings object; a generated file with and without `generatedVia`; a non-uuid `atelierImageId` dropped; a job with and without `provider`
+- [x] 1.6 Commit `feat(project): image provider on settings, generated files and jobs`
 
 ## 2. Server: configuration, secrets, the Atelier client (brief A)
 

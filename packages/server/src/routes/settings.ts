@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { categories, defaultSettings, imageModelKeys, type Settings } from 'promptbook-project';
+import { categories, defaultSettings, IMAGE_PROVIDERS, imageModelKeys, type Settings } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Db, Queryable } from '../db.js';
@@ -33,6 +33,9 @@ export const settingsSchema = z
       .object({
         model: z.enum(imageModelKeys),
         count: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+        // The service Generate goes through (atelier-image-provider design
+        // decision 5); settings saved before it read OpenRouter.
+        provider: z.enum(IMAGE_PROVIDERS).default('openrouter'),
       })
       .strict()
       .default(() => defaultSettings().imageGeneration),

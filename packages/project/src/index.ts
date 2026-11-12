@@ -207,7 +207,8 @@ export {
 } from './model.js';
 export { projectRow, type ProjectRow, type RowDates } from './row.js';
 export { Sha256, sha256Hex } from './sha256.js';
-export { defaultSettings, type Settings } from './settings.js';
+export { IMAGE_PROVIDERS, isImageProvider, PROVIDER_NAMES, type ImageProvider } from './providers.js';
+export { defaultSettings, imageProviderOf, type Settings } from './settings.js';
 export { formatOf, REACTIONS_THEN, skeletonDocument, type SkeletonInput } from './skeleton.js';
 export { FILE_LIMITS, MAX_FILE_BYTES, sniff, SNIFF_BYTES, type Sniffed } from './sniff.js';
 export { countWords, summarize, type SummarizeOptions, type Summary } from './summary.js';

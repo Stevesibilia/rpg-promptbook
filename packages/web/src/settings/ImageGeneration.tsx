@@ -240,7 +240,8 @@ export function KeyCard({
 
 export function DefaultsCard({ settings, onSave }: { settings: Settings; onSave(next: Settings): void }) {
   const current = generateDefaults(settings);
-  const save = (next: typeof current) => onSave({ ...settings, imageGeneration: next });
+  const save = (next: typeof current) =>
+    onSave({ ...settings, imageGeneration: { ...next, provider: settings.imageGeneration.provider } });
   return (
     <div className="card wide-card">
       <h3>Defaults for Generate</h3>

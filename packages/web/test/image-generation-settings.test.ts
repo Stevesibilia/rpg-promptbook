@@ -101,7 +101,7 @@ describe('the defaults for Generate', () => {
   const card = (settings: Settings) => renderToStaticMarkup(createElement(DefaultsCard, { settings, onSave: () => {} }));
 
   it('shows the saved model and count', () => {
-    const html = card({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 3 } });
+    const html = card({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 3, provider: 'openrouter' } });
     expect(html).toMatch(/<button class="model on" aria-pressed="true"><b>Nano Banana 2\.1<\/b>/);
     expect(html).toMatch(/<button class="on" aria-pressed="true">3<\/button>/);
     expect(text(html)).toMatch(/Images per Generate 1 2 3 4 The Generate panel starts from these; your last choice there is kept for the session\.$/);

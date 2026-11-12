@@ -51,6 +51,8 @@ const file = (patch: Partial<FileEntry> = {}): FileEntry => ({
   addedBy: 'user',
   generatedModel: 'gpt',
   cost: 0.041,
+  generatedVia: 'openrouter',
+  atelierImageId: null,
   ...patch,
 });
 
@@ -58,6 +60,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   id: 'j1',
   promptId: 'p1',
   model: 'gpt',
+  provider: 'openrouter',
   count: 4,
   done: 1,
   failed: 0,
@@ -72,7 +75,7 @@ const at = (iso: string) => Date.parse(iso);
 
 describe('the Generate panel', () => {
   it('starts from the Settings defaults, then from the last choice of the session', () => {
-    const defaults = generateDefaults({ imageGeneration: { model: 'nb', count: 3 } });
+    const defaults = generateDefaults({ imageGeneration: { model: 'nb', count: 3, provider: 'openrouter' } });
     expect(startChoice(defaults, null)).toEqual({ model: 'nb', count: 3 });
     expect(startChoice(defaults, { model: 'gpt', count: 1 })).toEqual({ model: 'gpt', count: 1 });
   });

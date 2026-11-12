@@ -50,6 +50,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   id: 'j1',
   promptId: 'p1',
   model: 'gpt',
+  provider: 'openrouter',
   count: 4,
   done: 1,
   failed: 0,
