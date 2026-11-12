@@ -49,7 +49,7 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 4. Brief A hand-back
 
-- [ ] 4.1 Push; hand back with literal typecheck, unit and db results, any departures, and the status JSON as the fake returns it for a checked Atelier token (brief B builds against it)
+- [x] 4.1 Push; hand back with literal typecheck, unit and db results, any departures, and the status JSON as the fake returns it for a checked Atelier token (brief B builds against it)
 
 ## 5. Web: Settings → Image generation (brief B)
 
