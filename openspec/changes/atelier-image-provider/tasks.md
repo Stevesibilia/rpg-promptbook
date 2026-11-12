@@ -74,5 +74,5 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 8. Brief B hand-back
 
-- [ ] 8.1 Screenshots per Verification against the fake, saved outside the repository, paths in the hand-back
-- [ ] 8.2 Push; hand back with literal results of typecheck, unit, db and e2e, the screenshots, departures
+- [x] 8.1 Screenshots per Verification against the fake, saved outside the repository, paths in the hand-back
+- [x] 8.2 Push; hand back with literal results of typecheck, unit, db and e2e, the screenshots, departures
