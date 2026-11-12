@@ -9,8 +9,9 @@ width and height, marked as Claude's, and SHALL keep the Atelier image's id.
 It SHALL carry no model and no cost: its thumbnail SHALL show no badge, and
 it SHALL add nothing to the project's or the account's spending. The viewer
 SHALL show a row «From · Atelier» for it, with the link «No. <first 8> in
-Atelier ↗» when the server's Atelier address is known. Its thumbnail SHALL
-be filled in like a generated image's.
+Atelier ↗» when the server's Atelier address is known, and SHALL show no
+«Matched by» row for it. Its thumbnail SHALL be filled in like a generated
+image's.
 
 #### Scenario: An attached image on the board
 

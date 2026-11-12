@@ -215,6 +215,25 @@ one row in the list that is already there; no new control, so no mockup.
 **D15. The fake Atelier** gains a way for a test to add an image by bytes
 and get its id. No test calls a real Atelier or OpenRouter.
 
+## Accepted departures (architect, at review, 2026-11-12)
+
+1. **D7**: `toFile` keeps an `atelierImageId` only on an image, so a track
+   never reads one.
+2. **D7**: the id is stored and named in lower case; the tool accepts
+   capitals.
+3. **D10**: an Atelier error of its own other than 404 and 401 answers the
+   code `atelier_refused` with the text `Atelier refused: <message>`.
+4. **D11**: `itemOut` is shared, so `add_image_prompt`, `update_image_prompt`
+   and `set_scene_prompts` answer `generating` and `generationError` too.
+5. **D14**: an attached image shows «From · Atelier» and no «Matched by»
+   row. `matchedBy` stays `'hand'` in the data; the row read «you, by hand»
+   beside «Added by Claude», which was false. The plan had missed it.
+6. **D8**: the shared storing is two exports of `images/jobs.ts`,
+   `checkImageBytes` and `storeImage`.
+7. `packages/project/test/board.test.ts` had an assertion that a file not
+   generated drops its `atelierImageId`; D7 reverses it and the expectation
+   follows.
+
 ## Not touched
 
 - The generate route's behaviour, status codes and body; the panel.
