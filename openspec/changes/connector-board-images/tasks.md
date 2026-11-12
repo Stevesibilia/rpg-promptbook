@@ -20,13 +20,13 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 1. Project: an Atelier id on an attached image
 
-- [ ] 1.1 `packages/project/src/board.ts`: `toFile` and `checkNewFile` per
+- [x] 1.1 `packages/project/src/board.ts`: `toFile` and `checkNewFile` per
       D7; the comment on `FileEntry.atelierImageId` says both cases
-- [ ] 1.2 Tests: an image with `atelierImageId` and no model is accepted
+- [x] 1.2 Tests: an image with `atelierImageId` and no model is accepted
       and read back; one with `generatedVia: 'openrouter'` and an id is
       refused; a non-uuid id is refused; a generated Atelier file reads as
       before
-- [ ] 1.3 Commit `feat(project): keep the Atelier id of an attached image`
+- [x] 1.3 Commit `feat(project): keep the Atelier id of an attached image`
 
 ## 2. Server: one way to start a generation
 
