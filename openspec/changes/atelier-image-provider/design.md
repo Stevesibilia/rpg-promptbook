@@ -139,6 +139,7 @@ web disables an unready choice); the generate route checks the chosen
 provider's credentials (D9). Removing the Atelier token while
 `provider = 'atelier'` sets it to `'openrouter'` when a readable OpenRouter
 key exists (mockup: "Token removed. Generate now goes through OpenRouter.").
+A `PUT /api/settings` whose `imageGeneration` has no `provider` keeps the stored one, as the route already keeps a missing `imageGeneration`; older clients then cannot drop the choice.
 
 ### D6. Atelier client: `packages/server/src/images/atelier.ts`
 

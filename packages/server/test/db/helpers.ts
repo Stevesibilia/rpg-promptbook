@@ -53,6 +53,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     filesGraceDays: 30,
     secretsKey: TEST_SECRETS_KEY,
     openRouterBaseUrl: 'http://127.0.0.1:9/api/v1',
+    atelierUrl: null,
     ...overrides,
   };
 }

@@ -65,8 +65,13 @@ export async function settingsRoutes(app: FastifyInstance, { db }: { db: Db }) {
       settings.defaultTemplates = (await getSettings(db, user.id)).defaultTemplates;
     }
     // Likewise a client from before image generation sends no defaults for it.
-    if ((req.body as { imageGeneration?: unknown } | null)?.imageGeneration === undefined) {
+    const sent = (req.body as { imageGeneration?: { provider?: unknown } } | null)?.imageGeneration;
+    if (sent === undefined) {
       settings.imageGeneration = (await getSettings(db, user.id)).imageGeneration;
+    } else if (sent.provider === undefined) {
+      // And a client from before Atelier sends no provider: the chosen one
+      // stays (atelier-image-provider design decision 5).
+      settings.imageGeneration.provider = (await getSettings(db, user.id)).imageGeneration.provider;
     }
     await db.query(
       `insert into user_settings (user_id, settings) values ($1, $2)

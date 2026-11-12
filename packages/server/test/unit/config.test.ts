@@ -21,6 +21,7 @@ describe('configuration', () => {
       filesGraceDays: 30,
       secretsKey: null,
       openRouterBaseUrl: 'https://openrouter.ai/api/v1',
+      atelierUrl: null,
     });
   });
 
@@ -41,6 +42,7 @@ describe('configuration', () => {
         PROMPTBOOK_FILES_GRACE_DAYS: '7',
         PROMPTBOOK_SECRETS_KEY: KEY,
         OPENROUTER_BASE_URL: 'http://openrouter:8099/api/v1/',
+        ATELIER_URL: 'https://atelier.example/',
       }),
     ).toEqual({
       databaseUrl: base.DATABASE_URL,
@@ -57,6 +59,7 @@ describe('configuration', () => {
       filesGraceDays: 7,
       secretsKey: Buffer.alloc(32, 9),
       openRouterBaseUrl: 'http://openrouter:8099/api/v1',
+      atelierUrl: 'https://atelier.example',
     });
   });
 
@@ -107,6 +110,18 @@ describe('configuration', () => {
         }
         expect(message).toMatch(/PROMPTBOOK_SECRETS_KEY must be the base64 of 32 bytes/);
         expect(message).not.toContain(value);
+      }
+    });
+
+    it('reads ATELIER_URL, optional, and drops a trailing slash (atelier-image-provider D2)', () => {
+      expect(loadConfig(base).atelierUrl).toBeNull();
+      expect(loadConfig({ ...base, ATELIER_URL: '' }).atelierUrl).toBeNull();
+      expect(loadConfig({ ...base, ATELIER_URL: '   ' }).atelierUrl).toBeNull();
+      expect(loadConfig({ ...base, ATELIER_URL: 'https://atelier.siberio.eu' }).atelierUrl).toBe('https://atelier.siberio.eu');
+      expect(loadConfig({ ...base, ATELIER_URL: 'http://atelier:8098' }).atelierUrl).toBe('http://atelier:8098');
+      expect(loadConfig({ ...base, ATELIER_URL: ' https://atelier.siberio.eu// ' }).atelierUrl).toBe('https://atelier.siberio.eu');
+      for (const value of ['atelier.siberio.eu', 'ftp://atelier.siberio.eu', 'not a url']) {
+        expect(() => loadConfig({ ...base, ATELIER_URL: value })).toThrow(/ATELIER_URL must be a http: or https: URL/);
       }
     });
 

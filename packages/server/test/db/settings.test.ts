@@ -70,6 +70,40 @@ describe('settings', () => {
     }
   });
 
+  it('keeps the chosen provider when a client sends defaults without one (atelier-image-provider D5)', async () => {
+    await steve();
+    const app = await startApp();
+    const headers = { cookie: `pb_session=${await signedIn(app)}`, origin: ORIGIN };
+    const put = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/settings', headers, payload: payload as object });
+    const read = async () => (await app.inject({ url: '/api/settings', headers })).json().imageGeneration;
+
+    const chosen = await put({ ...defaultSettings(), imageGeneration: { model: 'gpt', count: 2, provider: 'atelier' } });
+    expect(chosen.statusCode).toBe(200);
+    expect(chosen.json().imageGeneration).toEqual({ model: 'gpt', count: 2, provider: 'atelier' });
+    expect(await read()).toEqual({ model: 'gpt', count: 2, provider: 'atelier' });
+
+    // Defaults without a provider, as a client from before Atelier sends them.
+    const older = await put({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 3 } });
+    expect(older.statusCode).toBe(200);
+    expect(older.json().imageGeneration).toEqual({ model: 'nb', count: 3, provider: 'atelier' });
+    expect(await read()).toEqual({ model: 'nb', count: 3, provider: 'atelier' });
+
+    // Without any defaults, likewise.
+    const { imageGeneration: _left, ...oldest } = defaultSettings();
+    await put(oldest);
+    expect(await read()).toEqual({ model: 'nb', count: 3, provider: 'atelier' });
+
+    // A provider sent is the one kept.
+    await put({ ...defaultSettings(), imageGeneration: { model: 'nb', count: 3, provider: 'openrouter' } });
+    expect(await read()).toEqual({ model: 'nb', count: 3, provider: 'openrouter' });
+
+    // A row saved before Atelier reads OpenRouter.
+    await db.query(`update user_settings set settings = jsonb_set(settings, '{imageGeneration}', '{"model":"gpt","count":1}')`);
+    expect(await read()).toEqual({ model: 'gpt', count: 1, provider: 'openrouter' });
+
+    expect((await put({ ...defaultSettings(), imageGeneration: { model: 'gpt', count: 2, provider: 'flux' } })).statusCode).toBe(400);
+  });
+
   it('refuses a body that is not a whole settings object', async () => {
     await steve();
     const app = await startApp();

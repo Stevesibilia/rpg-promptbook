@@ -25,7 +25,7 @@ import type { Sync } from '../sync.js';
 import { parseBody } from '../validation.js';
 import { runGenerationJob } from './jobs.js';
 import { checkKey, IMAGE_ERRORS } from './openrouter.js';
-import { markOpenRouterKeyChecked, readOpenRouterKey, removeOpenRouterKey, saveOpenRouterKey } from './secrets.js';
+import { markSecretChecked, readSecret, removeSecret, saveSecret } from './secrets.js';
 
 // Image generation's routes (board-image-generation design decisions 2, 7
 // and 11). Every one needs a session or the desktop's token. The plain key
@@ -165,14 +165,14 @@ export async function imageRoutes(
   async function status(userId: string, check: boolean): Promise<ImageGenerationStatus> {
     const spending = await spendingOf(db, userId);
     if (!config.secretsKey) return { configured: false, key: null, spending };
-    const stored = await readOpenRouterKey(db, config.secretsKey, userId);
+    const stored = await readSecret(db, config.secretsKey, userId, 'openrouter');
     if (stored.state === 'none') return { configured: true, key: null, spending };
     if (stored.state === 'unreadable') return { configured: true, key: null, error: 'key_unreadable', spending };
     const key = { hint: stored.hint, checkedAt: stored.checkedAt, limitRemaining: null as number | null };
     if (!check) return { configured: true, key, spending };
     const checked = await checkKey(config.openRouterBaseUrl, stored.key);
     if (!checked.ok) return { configured: true, key, error: checked.reason, spending };
-    key.checkedAt = (await markOpenRouterKeyChecked(db, userId)) ?? key.checkedAt;
+    key.checkedAt = (await markSecretChecked(db, userId, 'openrouter')) ?? key.checkedAt;
     key.limitRemaining = checked.limitRemaining;
     return { configured: true, key, spending };
   }
@@ -193,7 +193,7 @@ export async function imageRoutes(
       throw new AppError(400, 'key_rejected', 'OpenRouter rejected this key.');
     }
     if (!checked.ok) throw new AppError(502, 'openrouter_unreachable', 'OpenRouter did not answer. Nothing was saved.');
-    await saveOpenRouterKey(db, sealing, user.id, key);
+    await saveSecret(db, sealing, user.id, 'openrouter', key);
     const saved = await status(user.id, false);
     if (saved.key) saved.key.limitRemaining = checked.limitRemaining;
     return saved;
@@ -202,7 +202,7 @@ export async function imageRoutes(
   app.delete('/api/image-generation/key', async (req, reply) => {
     const { user } = requireSession(req);
     serverKey();
-    await removeOpenRouterKey(db, user.id);
+    await removeSecret(db, user.id, 'openrouter');
     // The key is gone: the user's running jobs stop asking OpenRouter.
     for (const run of runs.values()) if (run.userId === user.id) run.stop(IMAGE_ERRORS.keyRemoved);
     return reply.code(204).send();
@@ -226,7 +226,7 @@ export async function imageRoutes(
     const body = parseBody(generateSchema, req.body);
     await ownProject(user.id, id);
     const sealing = serverKey();
-    const stored = await readOpenRouterKey(db, sealing, user.id);
+    const stored = await readSecret(db, sealing, user.id, 'openrouter');
     if (stored.state !== 'ok') throw new AppError(409, 'no_key', 'Add your OpenRouter key first.');
     const quotaBytes = config.filesQuotaGb * GIB;
 

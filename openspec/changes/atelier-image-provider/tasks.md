@@ -29,14 +29,14 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 2. Server: configuration, secrets, the Atelier client (brief A)
 
-- [ ] 2.1 `config.ts`: `ATELIER_URL` → `Config.atelierUrl` (D2); `testConfig` in `test/db/helpers.ts`; `startApp` takes `atelierUrl`
-- [ ] 2.2 `migrations/009_atelier.sql` per D3 (check the constraint name first); `test/db/migrations.test.ts` lists it
-- [ ] 2.3 `images/secrets.ts` by kind per D4; callers updated, no behaviour change
-- [ ] 2.4 `images/atelier.ts` per D6
-- [ ] 2.5 `test/db/fake-atelier.ts` per D15
-- [ ] 2.6 `routes/settings.ts`: `imageGeneration.provider` validated and kept (D5)
-- [ ] 2.7 Tests: `loadConfig` for `ATELIER_URL` (absent, blank, https, http, no scheme, trailing `/` removed); the client against the fake for each step and error kind (JSON error, network, oversize answer); the token never in an error message
-- [ ] 2.8 Commit `feat(server): Atelier address, token storage and API client`
+- [x] 2.1 `config.ts`: `ATELIER_URL` → `Config.atelierUrl` (D2); `testConfig` in `test/db/helpers.ts`; `startApp` takes `atelierUrl`
+- [x] 2.2 `migrations/009_atelier.sql` per D3 (check the constraint name first); `test/db/migrations.test.ts` lists it
+- [x] 2.3 `images/secrets.ts` by kind per D4; callers updated, no behaviour change
+- [x] 2.4 `images/atelier.ts` per D6
+- [x] 2.5 `test/db/fake-atelier.ts` per D15
+- [x] 2.6 `routes/settings.ts`: `imageGeneration.provider` validated and kept (D5)
+- [x] 2.7 Tests: `loadConfig` for `ATELIER_URL` (absent, blank, https, http, no scheme, trailing `/` removed); the client against the fake for each step and error kind (JSON error, network, oversize answer); the token never in an error message
+- [x] 2.8 Commit `feat(server): Atelier address, token storage and API client`
 
 ## 3. Server: token routes, status, generating through Atelier (brief A)
 
