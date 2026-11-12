@@ -53,10 +53,10 @@ or the real Atelier: every test and preview runs against the fakes (D15).
 
 ## 5. Web: Settings → Image generation (brief B)
 
-- [ ] 5.1 `api.ts`: the status type per D8, `saveAtelierToken`, `removeAtelierToken`, the provider in settings
-- [ ] 5.2 `settings/ImageGeneration.tsx` and `imageGenerationTexts.ts`: Generate through, the Atelier card, defaults and spending changes per D13
-- [ ] 5.3 Tests: each card state of mockup screens 1, 1b, 1c, 1d; choosing a provider saves it and toasts; Remove switches per D5
-- [ ] 5.4 Commit `feat(web): choose Atelier or OpenRouter in Settings`
+- [x] 5.1 `api.ts`: the status type per D8, `saveAtelierToken`, `removeAtelierToken`, the provider in settings
+- [x] 5.2 `settings/ImageGeneration.tsx` and `imageGenerationTexts.ts`: Generate through, the Atelier card, defaults and spending changes per D13
+- [x] 5.3 Tests: each card state of mockup screens 1, 1b, 1c, 1d; choosing a provider saves it and toasts; Remove switches per D5
+- [x] 5.4 Commit `feat(web): choose Atelier or OpenRouter in Settings`
 
 ## 6. Web: panel, viewer, board (brief B)
 

@@ -166,6 +166,32 @@
   font: 11.5px var(--mono);
   color: var(--muted);
 }
+/* Generate through and the Atelier card (atelier-image-provider, docs/mockups/atelier-provider.html) */
+.imggen .models.through {
+  max-width: 520px;
+}
+.imggen .model:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.imggen .model .ok {
+  color: var(--primary);
+  font-size: 12px;
+}
+.imggen .model .no {
+  color: var(--amber);
+  font-size: 12px;
+}
+.imggen .srv {
+  font: 12.5px var(--mono);
+  color: var(--muted);
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  width: max-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 .imggen .with-btn {
   flex-wrap: wrap;
 }

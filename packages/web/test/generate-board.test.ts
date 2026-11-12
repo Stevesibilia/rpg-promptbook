@@ -42,6 +42,8 @@ const ready = (patch: Partial<ImageGenerationStatus> = {}): StatusState => ({
     configured: true,
     key: { hint: 'a41f', checkedAt: '2026-11-11T21:40:00.000Z', limitRemaining: null },
     spending: { month: { images: 0, cost: 0 }, all: { images: 0, cost: 0 }, projects: [] },
+    provider: 'openrouter',
+    atelier: { available: true, url: 'http://atelier.test', token: null },
     ...patch,
   },
 });

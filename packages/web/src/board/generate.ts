@@ -13,6 +13,7 @@ import {
   type Settings,
   type ShapeSource,
 } from 'promptbook-project';
+import type { ImageGenerationStatus } from '../api.js';
 import { categoryText, newName, type ShownPrompt } from './summary.js';
 
 // The texts and choices of image generation on the board
@@ -51,14 +52,28 @@ export const money3 = (dollars: number): string => `$${dollars.toFixed(3)}`;
 // The short names on a thumbnail's badge: they live in the web client.
 export const shortModel: Record<ImageModelKey, string> = { gpt: 'GPT', nb: 'Nano Banana' };
 
+// The price estimates of the chosen provider (atelier-image-provider D13):
+// Atelier's own, as its last check answered them, through Atelier; null for
+// the built-in ones.
+export type Estimates = Partial<Record<ImageModelKey, number>> | null;
+
+export const providerEstimates = (
+  status: Pick<ImageGenerationStatus, 'provider' | 'atelier'> | null | undefined,
+): Estimates => (status?.provider === 'atelier' ? (status.atelier?.token?.estimates ?? null) : null);
+
+// A model's estimate per image, falling back to the built-in one where the
+// provider gave none.
+export const estimateOf = (model: ImageModelKey, estimates: Estimates = null): number =>
+  estimates?.[model] ?? IMAGE_MODELS[model].estimate;
+
 // «≈ $0.04 · 53 s per image», under a model's name on its card.
-export const modelLine = (model: ImageModelKey): string =>
-  `≈ ${money2(IMAGE_MODELS[model].estimate)} · ${IMAGE_MODELS[model].seconds} s per image`;
+export const modelLine = (model: ImageModelKey, estimates: Estimates = null): string =>
+  `≈ ${money2(estimateOf(model, estimates))} · ${IMAGE_MODELS[model].seconds} s per image`;
 
 // The footer: «About $0.08 · 1K», the estimate times the count. The tier,
 // never a size in pixels: the two models answer different sizes (Q4).
-export function priceLine(choice: GenerateChoice): { amount: string; text: string } {
-  const amount = money2(IMAGE_MODELS[choice.model].estimate * choice.count);
+export function priceLine(choice: GenerateChoice, estimates: Estimates = null): { amount: string; text: string } {
+  const amount = money2(estimateOf(choice.model, estimates) * choice.count);
   return { amount, text: `About ${amount} · 1K` };
 }
 
