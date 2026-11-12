@@ -1,0 +1,923 @@
+<!doctype html>
+<!--
+  Mockup: generating board images through Atelier as well as OpenRouter (#59).
+  Draft for the owner's review, not the shipped UI. Built on image-generation.html (#57, agreed
+  2026-11-11); only what changes is shown. Content is invented (L'Ancora di Sabaoth).
+  - Settings -> Image generation: "Generate through" Atelier or OpenRouter, each with its own credentials.
+  - Atelier: the server's Atelier address, a write API token per account, the month against Atelier's cap.
+  - Generate panel: says which one it goes through; prices from that provider.
+  - Images through Atelier also go into an Atelier collection named after the project; the viewer links there.
+  - States: no Atelier token, server without Atelier, Atelier's monthly cap reached.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptbook through Atelier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Mockup only. Same tokens as editor.html, connector.html and desktop.html (gdrarchive's Emerald look).
+   Layout: the project shell (rail, top bar, status bar) around one scrolling board of scene rows,
+   each row split into an Image half and a Music half; halves stack when the app is narrow. */
+:root {
+  --bg: #131917; --surface: #1a221f; --surface-2: #202a26; --hover: #232d29;
+  --border: #33403a; --text: #e7ece9; --muted: #97a49d; --faint: #6b7972;
+  --primary: #1fb98a; --primary-hover: #2fcb9b; --on-primary: #08150f;
+  --amber: #f5a623; --danger: #ff5a6a; --info: #6aa8ff; --on-info: #08121f;
+  --desk: #0a0e0c; --scrim: rgba(5,10,8,.72); --shadow: rgba(0,0,0,.45);
+  --radius: 6px;
+  --font: 'Barlow', system-ui, sans-serif;
+  --display: 'Barlow Condensed', 'Barlow', sans-serif;
+  --prose: 'Spectral', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f6f8f7; --hover: #eaefec;
+  --border: #d3dbd7; --text: #17201c; --muted: #5b6862; --faint: #8b9690;
+  --primary: #0f8f69; --primary-hover: #0c7a59; --on-primary: #ffffff;
+  --amber: #b9740a; --danger: #d42a3c; --info: #2f6fd1; --on-info: #ffffff;
+  --desk: #d9e0dc; --scrim: rgba(20,30,26,.55); --shadow: rgba(20,30,26,.18);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--desk); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 9px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+a { color: var(--primary); text-decoration: none; cursor: pointer; } a:hover { text-decoration: underline; }
+code { font: 12.5px var(--mono); }
+[hidden] { display: none !important; }
+
+/* Stage: the web app fills it; the desktop and phone screens put a frame around it (desktop.html) */
+.stage { position: fixed; inset: 0; display: grid; place-items: stretch; padding: 0 0 0 310px; }
+body.lmin .stage { padding-left: 0; }
+.window { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg);
+  border-left: 1px solid var(--border); overflow: hidden; container-type: inline-size; container-name: app; }
+.wt { display: none; height: 32px; flex: none; align-items: center; gap: 8px; padding: 0 12px; position: relative; user-select: none;
+  background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.wt .ttl { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+.tl { display: flex; gap: 8px; } .tl i { width: 12px; height: 12px; border-radius: 50%; }
+.tl i:nth-child(1) { background: #ff5f57; } .tl i:nth-child(2) { background: #febc2e; } .tl i:nth-child(3) { background: #28c840; }
+body.desk .stage { place-items: center; padding: 18px 18px 18px 330px; }
+body.desk.lmin .stage { padding-left: 18px; }
+body.desk .window { width: min(1280px, 100%); height: min(820px, 100%); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 30px 80px var(--shadow); }
+body.desk .wt { display: flex; }
+body.phone .stage { place-items: center; padding: 18px 18px 18px 330px; }
+body.phone.lmin .stage { padding-left: 18px; }
+body.phone .window { width: 390px; max-width: 100%; height: min(844px, 100%); border: 1px solid var(--border); border-radius: 30px; box-shadow: 0 30px 80px var(--shadow); }
+.notch { display: none; height: 30px; flex: none; align-items: center; justify-content: space-between; padding: 0 26px; font: 600 12.5px var(--font); background: var(--surface); }
+body.phone .notch { display: flex; }
+
+/* App grid (connector.html) */
+.app { flex: 1; min-height: 0; display: grid; grid-template-rows: 44px auto 1fr 26px; grid-template-columns: 48px minmax(0, 1fr); }
+.topbar { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 0; min-width: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { width: 48px; flex: none; display: grid; place-items: center; font: 700 18px var(--display); color: var(--primary); }
+.crumbs { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.spacer { flex: 1; }
+.sync { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
+.sync.local i { background: var(--amber); } .sync.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.tb { padding: 5px 9px; border-radius: var(--radius); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tb:hover { background: var(--hover); color: var(--text); }
+.tb.line { border: 1px solid var(--border); color: var(--text); }
+.tb.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tb.primary:hover { background: var(--primary-hover); }
+.tb.danger { color: var(--danger); }
+.tb.red { background: var(--danger); color: #fff; font-weight: 600; }
+.tb.sm { padding: 3px 8px; font-size: 12.5px; }
+.tb.xs { padding: 1px 6px; font-size: 12px; gap: 4px; }
+.tb.ok { color: var(--primary); }
+.tb svg, .rail svg, .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tb.sm svg, .tb.xs svg { width: 15px; height: 15px; }
+.kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--primary) 30%, var(--surface-2)); display: grid; place-items: center; font: 600 12px var(--font); color: var(--text); flex: none; }
+.avatar.cl { background: color-mix(in srgb, var(--info) 28%, var(--surface-2)); }
+.strips { grid-column: 1 / -1; grid-row: 2; }
+
+/* Rail */
+.rail { grid-column: 1; grid-row: 3 / 5; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.rail button { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); position: relative; }
+.rail button:hover { background: var(--hover); color: var(--text); }
+.rail button.on { color: var(--primary); background: var(--hover); }
+.rail button.on::before { content: ''; position: absolute; left: -5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--primary); }
+.rail .bottom { margin-top: auto; } .rail .last { margin-bottom: 8px; }
+.rail button[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 44px; white-space: nowrap; z-index: 9;
+  background: var(--text); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+.rail .new { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--info); }
+
+/* Center */
+.center { grid-column: 2; grid-row: 3; overflow: auto; min-width: 0; position: relative; }
+.status { grid-column: 2 / -1; grid-row: 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: var(--faint);
+  background: var(--surface); border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.status .r { margin-left: auto; } .status .a { color: var(--amber); }
+.pane { max-width: 1240px; margin: 0 auto; padding: 22px 28px 80px; }
+.head { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; position: relative; }
+.head h1 { font: 700 28px var(--display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.head .lead { color: var(--muted); margin: 0 0 4px 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hint { font-size: 12px; color: var(--faint); }
+.who-cl { color: var(--info); } .who-you { color: var(--primary); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.panel-h { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+
+/* Board header: summary and filters */
+.sumline { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.summary { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.summary b { color: var(--text); font-weight: 600; }
+.summary .sep { color: var(--faint); margin: 0 4px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: none; }
+.seg button { padding: 4px 10px; color: var(--muted); border-right: 1px solid var(--border); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.seg .n { font: 500 11.5px var(--mono); color: var(--faint); }
+.segwrap { overflow-x: auto; max-width: 100%; }
+
+/* Matching help popover */
+.pop { position: absolute; top: calc(100% + 6px); right: 0; width: 380px; max-width: calc(100cqw - 32px); z-index: 30; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 32px var(--shadow); padding: 12px 14px; font-size: 13px; }
+.pop h4 { margin: 0 0 8px; font: 600 14px var(--font); display: flex; justify-content: space-between; align-items: center; }
+.pop .m { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.pop .m b { font-weight: 600; } .pop .m p { margin: 0; color: var(--muted); }
+.pop .fn { font: 11.5px/1.5 var(--mono); color: var(--text); word-break: break-all; margin-top: 3px; }
+.pop .fn u { text-decoration: none; background: color-mix(in srgb, var(--primary) 22%, transparent); border-radius: 2px; }
+.pop .arrow { color: var(--faint); font-size: 12px; }
+
+/* Strips: result of a drop, offline line, Claude banner (as connector.html's info line) */
+.info { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 8px 12px; margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--info) 45%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--info) 8%, transparent); }
+.info .ic { color: var(--info); width: 16px; height: 16px; }
+.info.good { border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.info.good .ic { color: var(--primary); }
+.info.local { border-color: color-mix(in srgb, var(--amber) 45%, transparent); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+.info.local .ic { color: var(--amber); }
+.info b { color: var(--text); font-weight: 600; } .info > span { flex: 1; min-width: 0; }
+.info .x { margin-left: auto; }
+
+.claude { padding: 14px 16px; margin-bottom: 14px; border-color: color-mix(in srgb, var(--info) 45%, transparent); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; }
+.claude h3 { margin: 0; font: 700 19px var(--display); letter-spacing: .02em; }
+.claude p { margin: 0; color: var(--muted); }
+.ask { display: flex; align-items: center; gap: 8px; font: 12.5px/1.45 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 6px 6px 10px; margin: 8px 0 6px; }
+.ask span { flex: 1; min-width: 0; }
+
+/* Unmatched tray */
+.tray { position: sticky; top: 0; z-index: 6; margin-bottom: 14px; border-color: color-mix(in srgb, var(--amber) 55%, transparent); box-shadow: 0 6px 18px var(--shadow); }
+.tray .th { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.tray .th b { font-weight: 600; } .tray .th .cnt { color: var(--amber); font: 500 12px var(--mono); }
+.tray .th .ic { color: var(--amber); width: 16px; height: 16px; }
+.uf { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.uf:last-child { border-bottom: 0; }
+.uf .fn { font: 12px/1.4 var(--mono); word-break: break-all; }
+.uf .why { font-size: 12px; color: var(--faint); }
+.uf .uact { display: flex; gap: 8px; align-items: center; }
+.uf select { padding: 4px 8px; font-size: 13px; width: 250px; }
+.uf .amb { font: 600 11px var(--font); color: var(--amber); border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent); border-radius: 999px; padding: 0 7px; margin-right: 4px; white-space: nowrap; }
+.uf .mini { width: 64px; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 4px; }
+.uf .trk { width: 64px; height: 36px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); }
+
+/* Scene rows */
+.rows { display: flex; flex-direction: column; gap: 14px; }
+.scene { overflow: hidden; }
+.scene .sh { display: flex; align-items: baseline; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+.scene .sid { font: 600 13px var(--mono); color: var(--primary); }
+.scene .stt { font: 600 18px/1.3 var(--prose); }
+.scene .sh .go { margin-left: auto; font-size: 12.5px; }
+.halves { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.half { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 9px; min-width: 0; transition: opacity .15s; }
+.half + .half { border-left: 1px solid var(--border); }
+.half.dim { opacity: .4; }
+.hh { display: flex; align-items: center; gap: 8px; }
+.hh .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); display: inline-flex; gap: 6px; align-items: center; }
+.hh .lab .ic { width: 15px; height: 15px; }
+.hh .st { margin-left: auto; }
+.st { font-size: 12px; padding: 1px 9px 1px 7px; border-radius: 999px; border: 1px solid; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.st i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+.st.wanted { color: var(--muted); border-color: var(--border); }
+.st.received { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 50%, transparent); } .st.received i { background: currentColor; }
+.st.chosen { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 55%, transparent); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.st.chosen i { border: 0; width: auto; height: auto; } .st.chosen i::before { content: '✓'; font-style: normal; font-size: 11px; }
+.srcline { font: italic 14px/1.45 var(--prose); color: var(--muted); }
+.srcline .k { font: 500 12px var(--mono); font-style: normal; color: var(--faint); margin-right: 4px; }
+.srcline a { font: 12.5px var(--font); font-style: normal; margin-left: 6px; white-space: nowrap; }
+.srcline.empty { color: var(--faint); }
+.pbox { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.ptext { font: 12.5px/1.55 var(--mono); padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pfoot { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.prov { font-size: 12px; color: var(--faint); margin-right: auto; }
+.parts3 { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; }
+.parts3 > * { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.parts3 > :nth-last-child(-n+3) { border-bottom: 0; }
+.parts3 .pl { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-top: 8px; padding-left: 10px; }
+.parts3 .pv { font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.parts3 .pv.lyr { white-space: normal; } .parts3 .pv.lyr span { white-space: nowrap; }
+.parts3 .pv.title { font: 600 14px/1.4 var(--font); }
+.parts3 .pv small { display: block; font: 11.5px var(--font); color: var(--faint); }
+.parts3 .pc { padding: 4px 6px; display: flex; align-items: flex-start; }
+.fixed { font: 12px var(--mono); color: var(--muted); padding: 6px 10px; border-top: 1px dashed var(--border); }
+.noprompt { border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--faint); font-size: 13px; }
+.noprompt span { flex: 1; min-width: 160px; }
+.editbox textarea { width: 100%; min-height: 96px; font: 12.5px/1.55 var(--mono); resize: vertical; display: block; border: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--bg); }
+.editbox { border: 1px solid var(--primary); border-radius: var(--radius); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.editbox .eg { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 6px 8px; padding: 8px 10px; background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; }
+.editbox .eg label { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-top: 6px; }
+.editbox .eg input, .editbox .eg textarea { font: 12.5px/1.5 var(--mono); padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; min-height: 0; background: var(--surface-2); }
+.editbox .eg textarea { min-height: 70px; }
+.editbox .pfoot .hint { margin-right: auto; }
+
+/* Category switch: Scenes, PCs, NPCs, Handouts */
+.cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.cats button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px 9px; min-width: 0; text-align: left; border-right: 1px solid var(--border); }
+.cats button:last-child { border-right: 0; }
+.cats button:hover { background: var(--hover); }
+.cats button.on { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+.cats button.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--primary); }
+.cats .cl { font: 700 18px/1.2 var(--display); letter-spacing: .02em; display: flex; align-items: baseline; gap: 6px; color: var(--muted); }
+.cats button.on .cl { color: var(--text); }
+.cats .cl .n { font: 500 11.5px var(--mono); color: var(--faint); }
+.cats .cl .nd { width: 7px; height: 7px; border-radius: 50%; background: var(--info); align-self: center; }
+.cats .cs { font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cats .cs.w { color: var(--muted); }
+
+/* Scene rows: a stack of image prompts in the image half */
+.hh .hsum { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.ip { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; transition: opacity .15s; }
+.ip.dim { opacity: .4; }
+.iph { display: flex; align-items: center; gap: 8px; }
+.iph .num { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.iph .st { margin-left: auto; }
+.rm { color: var(--faint); } .rm:hover { color: var(--danger); background: var(--hover); }
+.addp { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--muted); font-size: 13px; }
+.addp:hover, .addcard:hover { border-color: var(--primary); color: var(--primary); }
+.addp svg, .addcard svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+
+/* PCs, NPCs, Handouts: project-wide cards */
+.ents { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
+.ent { overflow: hidden; min-width: 0; }
+.ent .eh { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.ent .enm { font: 600 17px/1.3 var(--prose); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ent .enm.new { color: var(--faint); font-style: italic; font-weight: 400; }
+.ent .eh .st { margin-left: auto; }
+.ent .eb { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+.ent .thumbs { gap: 6px; }
+.addcard { min-height: 120px; border: 1px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
+.none { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
+.emptyst.catempty { margin: 24px auto; }
+
+/* Thumbnails */
+.thumbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.th-i { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 5px; overflow: hidden; cursor: zoom-in; outline: 1px solid color-mix(in srgb, var(--text) 10%, transparent); outline-offset: -1px; }
+.th-i::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); pointer-events: none; }
+.th-i.chosen { outline: 2px solid var(--primary); outline-offset: 1px; }
+.th-i.others { filter: saturate(.55) brightness(.8); }
+.pick { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.85); background: rgba(0,0,0,.35);
+  display: grid; place-items: center; color: #fff; font-size: 12px; opacity: 0; transition: opacity .12s; z-index: 2; }
+.th-i:hover .pick, .pick:focus-visible { opacity: 1; }
+.th-i.chosen .pick { opacity: 1; background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.th-i .badge { position: absolute; left: 5px; bottom: 5px; z-index: 2; font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; display: inline-flex; gap: 3px; align-items: center; }
+.th-i .badge .ic { width: 11px; height: 11px; stroke-width: 2.2; }
+.badge.new { background: var(--info); color: var(--on-info); left: 5px; top: 5px; bottom: auto; }
+.badge.dev { background: rgba(0,0,0,.62); color: #ffd28a; }
+.th-i .idx { position: absolute; right: 6px; bottom: 4px; z-index: 2; font: 500 10.5px var(--mono); color: rgba(255,255,255,.75); }
+.empty-drop { border: 1px dashed var(--border); border-radius: 5px; padding: 12px; font-size: 12.5px; color: var(--faint); display: flex; gap: 8px; align-items: center; }
+.empty-drop .ic { width: 16px; height: 16px; }
+.slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.slots i { aspect-ratio: 16 / 9; border-radius: 5px; border: 1px dashed var(--border); }
+
+/* Tracks */
+.tracks { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.trk-r { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 8px 6px 6px; border-bottom: 1px solid var(--border); position: relative; }
+.trk-r:last-child { border-bottom: 0; }
+.trk-r.chosen { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.play { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; color: var(--text); }
+.play:hover { border-color: var(--primary); color: var(--primary); }
+.play svg { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.trk-r .fn { font: 12.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trk-r .fn small { display: block; font: 11.5px var(--font); color: var(--faint); }
+.trk-r .dur { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.trk-r .bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--primary); }
+.trk-r.playing .bar { animation: prog 14s linear forwards; }
+.trk-r .newdot { font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; background: var(--info); color: var(--on-info); margin-left: 6px; vertical-align: 1px; }
+.trk-r .devdot { font: 600 10.5px var(--font); padding: 0 6px; border-radius: 999px; border: 1px solid var(--amber); color: var(--amber); margin-left: 6px; vertical-align: 1px; }
+@keyframes prog { to { width: 100%; } }
+.chosen-tag { font-size: 12px; color: var(--primary); display: inline-flex; gap: 4px; align-items: center; padding: 2px 6px; }
+
+/* Empty state: no appendix */
+.emptyst { max-width: 640px; margin: 40px auto; padding: 26px 28px; }
+.emptyst h2 { font: 700 26px var(--display); letter-spacing: .02em; margin: 0 0 6px; text-wrap: balance; }
+.emptyst p { color: var(--muted); margin: 0 0 12px; }
+.emptyst pre { font: 12.5px/1.6 var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 16px; overflow-x: auto; color: var(--muted); }
+.emptyst pre b { color: var(--text); font-weight: 500; }
+.emptyst .big-ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); color: var(--primary); margin-bottom: 14px; }
+.emptyst .big-ic .ic { width: 24px; height: 24px; }
+
+/* Drop overlay, over the board area */
+.dropov { grid-column: 2; grid-row: 3; position: relative; z-index: 20; min-width: 0; display: grid; place-items: center; padding: 18px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px); }
+.dropov .zone { width: 100%; height: 100%; border: 2px dashed var(--primary); border-radius: 14px; display: grid; place-items: center; text-align: center;
+  background: color-mix(in srgb, var(--primary) 6%, transparent); padding: 16px; }
+.dropov .zone .ic { width: 46px; height: 46px; color: var(--primary); stroke-width: 1.4; }
+.dropov h2 { font: 700 30px var(--display); letter-spacing: .02em; margin: 10px 0 4px; text-wrap: balance; }
+.dropov p { color: var(--muted); margin: 0 0 4px; }
+.dropov .cnt { font: 500 13px var(--mono); color: var(--primary); margin-top: 10px; }
+
+/* Lightbox */
+.scrim { position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: grid; place-items: center; padding: 24px; }
+.lb { width: min(1180px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 320px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; box-shadow: 0 30px 80px var(--shadow); }
+.lb .stagei { position: relative; background: #050706; display: grid; place-items: center; padding: 16px 56px; min-height: 0; }
+.lb .big { width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 4px; position: relative; overflow: hidden; }
+.lb .big::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+.lb .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.08); color: #e7ece9; display: grid; place-items: center; }
+.lb .nav:hover { background: rgba(255,255,255,.18); }
+.lb .nav.l { left: 8px; } .lb .nav.r { right: 8px; }
+.lb .ctr { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font: 12px var(--mono); color: #97a49d; }
+.lb .side { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--border); min-width: 0; overflow: auto; }
+.lb .side .top { display: flex; justify-content: space-between; align-items: center; }
+.lb .fn { font: 12.5px/1.5 var(--mono); word-break: break-all; }
+.kv { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 5px 10px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--faint); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.lb .acts { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+.lb .acts .tb { justify-content: center; padding: 7px 10px; }
+.lb .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.lb .strip button { aspect-ratio: 16 / 9; border-radius: 3px; outline: 1px solid var(--border); position: relative; }
+.lb .strip button.cur { outline: 2px solid var(--text); }
+.lb .strip button.ch::after { content: '✓'; position: absolute; top: 1px; right: 3px; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
+
+/* Modal and toast (connector.html) */
+.cscrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; }
+.modal { width: min(460px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px var(--shadow); }
+.modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal .mh h3 { margin: 0; font: 700 22px var(--display); letter-spacing: .02em; }
+.modal .mb { padding: 16px 18px; } .modal .mb p { margin: 0 0 8px; } .modal .mb p.m { color: var(--muted); margin: 0; }
+.modal .mf { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--border); }
+.toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 80; background: var(--text); color: var(--bg);
+  padding: 8px 14px; border-radius: var(--radius); font-size: 13px; box-shadow: 0 8px 24px var(--shadow); max-width: calc(100vw - 32px); }
+.toast.big { display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
+
+/* Export for CueBard: summary dialog */
+.tb:disabled { opacity: .45; cursor: default; } .tb.primary:disabled:hover { background: var(--primary); }
+.modal.wide { width: min(540px, calc(100vw - 32px)); }
+.cbx .mb { display: flex; flex-direction: column; gap: 12px; }
+.cbx .mb p { margin: 0; }
+.xsum { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 6px 12px; margin: 0; padding: 10px 12px; font-size: 13.5px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-variant-numeric: tabular-nums; }
+.xsum dt { color: var(--faint); } .xsum dd { margin: 0; color: var(--muted); } .xsum dd b { color: var(--text); font-weight: 600; }
+.xsum .sep { color: var(--faint); margin: 0 4px; }
+.xwarn h4 { margin: 0 0 6px; font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); display: flex; gap: 6px; align-items: center; }
+.xwarn h4 .ic { width: 14px; height: 14px; }
+.xwarn ul { list-style: none; margin: 0; padding: 0; max-height: 188px; overflow: auto; border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); border-radius: var(--radius); }
+.xwarn li { padding: 5px 10px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.xwarn li:last-child { border-bottom: 0; } .xwarn li b { color: var(--text); font-weight: 600; }
+.xnote { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--faint); }
+.xnote .ic { width: 15px; height: 15px; }
+.xnote.dev { color: var(--amber); }
+.xnone { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; color: var(--muted); font-size: 13.5px; }
+
+/* Notes for the reviewer: screen switcher (desktop.html) */
+.legend { position: fixed; left: 18px; top: 18px; z-index: 50; width: 280px; background: var(--surface-2); border: 1px solid var(--primary);
+  border-radius: 8px; padding: 10px 12px; font-size: 12.5px; box-shadow: 0 10px 30px var(--shadow); max-height: calc(100vh - 36px); overflow: auto; }
+.legend h5 { margin: 0 0 6px; font: 600 12px var(--font); color: var(--primary); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; align-items: center; }
+.legend ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); } .legend li { margin: 3px 0; }
+.legend li b { color: var(--text); font-weight: 600; }
+.legend .lrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.legend .lrow button { font-size: 11.5px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+.legend .lrow button.on { border-color: var(--primary); color: var(--primary); }
+.legend .lab { font: 600 10.5px var(--font); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.legend.min { width: auto; } .legend.min ul, .legend.min .lrow, .legend.min .lab { display: none; } .legend.min h5 { margin: 0; gap: 10px; }
+
+/* Narrow app (phone screen, or a narrow browser): rail hidden, halves stacked */
+@container app (max-width: 760px) {
+  .app { grid-template-columns: 0 minmax(0, 1fr); grid-template-rows: 44px auto 1fr 0; }
+  .rail, .status { display: none; }
+  .topbar { gap: 6px; padding-right: 8px; }
+  .topbar .chip, .topbar .hide-n, .topbar .kbd { display: none; }
+  .sync span { display: none; } .sync { padding: 5px; }
+  .pane { padding: 16px 16px 60px; }
+  .head h1 { font-size: 25px; } .head .lead { margin-left: 0; flex-basis: 100%; }
+  .head .acts { width: 100%; }
+  .halves { grid-template-columns: minmax(0, 1fr); }
+  .half + .half { border-left: 0; border-top: 1px solid var(--border); }
+  .thumbs, .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pick { opacity: 1; }
+  .uf { grid-template-columns: 64px minmax(0, 1fr); }
+  .uf .uact { grid-column: 1 / -1; } .uf select { flex: 1; width: auto; min-width: 0; }
+  .tray { position: static; }
+  .claude { grid-template-columns: minmax(0, 1fr); } .claude > .avatar { display: none; }
+  .scene .sh { padding: 10px 14px; } .half { padding: 12px 14px 14px; }
+  .scene .sh .go { margin-left: 0; flex-basis: 100%; }
+  .sumline { gap: 10px; } .sumline .spacer { display: none; }
+  .cats button { padding: 7px 8px 8px; } .cats .cl { font-size: 16px; gap: 4px; }
+  .ip { padding: 8px 8px 10px; } .ent .eb { padding: 12px 12px 14px; }
+  .thumbs.tall { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+}
+@media (max-width: 900px) {
+  .lb { grid-template-columns: minmax(0, 1fr); overflow: auto; } .lb .side { border-left: 0; border-top: 1px solid var(--border); }
+  .lb .stagei { padding: 12px 48px; }
+}
+@media (max-width: 760px) {
+  .stage, body.desk .stage, body.phone .stage { padding: 0; }
+  body.phone .window, body.desk .window { width: 100%; height: 100%; border-radius: 0; border: 0; }
+  .window { border-left: 0; }
+  .legend { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 60vh; }
+  .legend.min { left: auto; }
+  .scrim { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ===== NEW for image generation (#57) ===== */
+.ip { position: relative; }
+.tb.gen { border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent); color: var(--primary); }
+.tb.gen:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.tb[disabled] { opacity: .45; cursor: not-allowed; }
+.gpop { position: absolute; right: 10px; top: auto; margin-top: 4px; width: 420px; max-width: calc(100% - 20px); z-index: 30; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 14px 36px var(--shadow); padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 10px; }
+.gpop h4 { margin: 0; font: 600 14px var(--font); display: flex; justify-content: space-between; align-items: center; }
+.gpop .gl { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.gpop .gl span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.models { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.model { text-align: left; border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 9px; display: flex; flex-direction: column; gap: 1px; }
+.model b { font-weight: 600; } .model small { color: var(--faint); font-size: 12px; }
+.model.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.model .mm { font: 11.5px var(--mono); color: var(--muted); }
+.model:disabled { opacity: .55; cursor: not-allowed; }
+.model .ok { color: var(--primary); font-size: 12px; } .model .no { color: var(--amber); font-size: 12px; }
+.via { display: block; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.via .lnk { margin-left: 4px; }
+.via b { color: var(--text); font-weight: 600; } .via .lnk { color: var(--primary); cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.srv { font: 12.5px var(--mono); color: var(--muted); padding: 7px 10px; border: 1px dashed var(--border); border-radius: var(--radius); width: max-content; max-width: 100%; }
+.kv a { color: var(--primary); }
+.gpop .seg button { min-width: 38px; justify-content: center; }
+.sent { font: 12px/1.5 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; max-height: 92px; overflow: auto; }
+.sent s { color: var(--faint); }
+.sent ins { text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--primary) 20%, transparent); border-radius: 2px; }
+.gpop details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.gfoot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.gfoot .est { margin-right: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gfoot .est b { color: var(--text); }
+.nokey { display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+.genline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.genline .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); border-top-color: var(--primary); animation: spin .9s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.slot-g { aspect-ratio: 16 / 9; max-width: 100%; border-radius: 5px; border: 1px dashed var(--border); position: relative; overflow: hidden;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--primary) 10%, transparent) 50%, transparent 70%) var(--surface-2); background-size: 220% 100%; animation: shimmer 1.6s linear infinite; }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .slot-g, .genline .spin { animation: none; } }
+.badge.gen { background: rgba(0,0,0,.66); color: #d6efe4; font-variant-numeric: tabular-nums; }
+.badge.mj { background: rgba(0,0,0,.55); color: #c9c2b6; }
+.info.err { border-color: color-mix(in srgb, var(--danger) 50%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); margin: 0; }
+.info.err .ic { color: var(--danger); }
+.spend { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
+.spend b { color: var(--text); font-weight: 600; }
+.spend .ic { width: 14px; height: 14px; color: var(--primary); }
+.mhalf { color: var(--faint); font-size: 13px; }
+/* Settings (settings.css), scoped so the board's .card and .pane stay as they are */
+.setv .pane { max-width: 1080px; padding: 24px 28px 120px; }
+.setv .head { margin-bottom: 16px; }
+.set { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; }
+.set nav { display: flex; flex-direction: column; gap: 2px; }
+.set nav button { text-align: left; padding: 6px 10px; border-radius: var(--radius); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.set nav button.on { background: var(--hover); color: var(--text); }
+.set nav .newt { font: 600 10px var(--font); color: var(--on-info); background: var(--info); border-radius: 999px; padding: 0 6px; }
+.set h2 { font: 700 21px var(--display); letter-spacing: .02em; margin: 0 0 4px; }
+.set .lead { color: var(--muted); margin: 0 0 14px; max-width: 70ch; }
+.setv .card { padding: 14px 16px; margin-bottom: 12px; max-width: 640px; }
+.setv .card h3 { margin: 0 0 10px; font: 600 15px var(--font); }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label { font: 600 12px var(--font); color: var(--muted); letter-spacing: .04em; }
+.field .hint { font-size: 12px; color: var(--faint); }
+.with-btn { display: flex; gap: 8px; flex-wrap: wrap; } .with-btn input { flex: 1; min-width: 200px; }
+.keyv { font: 13px var(--mono); padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); flex: 1; min-width: 200px; }
+.okline { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--primary); }
+.okline .ic { width: 15px; height: 15px; }
+.okline.bad { color: var(--danger); }
+.spt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.spt th { text-align: left; font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.spt td { padding: 6px; border-bottom: 1px solid var(--border); } .spt tr:last-child td { border-bottom: 0; }
+.spt td.n { text-align: right; } .spt th.n { text-align: right; }
+.bigsum { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 10px; }
+.bigsum div { display: flex; flex-direction: column; } .bigsum b { font: 700 22px var(--display); } .bigsum span { font-size: 12px; color: var(--faint); }
+.needs { display: flex; gap: 8px; align-items: center; color: var(--amber); font-size: 13px; }
+.needs .ic { width: 16px; height: 16px; }
+@container app (max-width: 760px) { .set { grid-template-columns: minmax(0, 1fr); } .set nav { flex-direction: row; overflow-x: auto; } .gpop { left: 8px; right: 8px; width: auto; max-width: none; } }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="window" id="win">
+  <div class="wt"><span class="tl"><i></i><i></i><i></i></span><span class="ttl">L'Ancora di Sabaoth · Promptbook</span></div>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="logo" title="Promptbook">P</div>
+      <div class="crumbs" id="crumbs"><span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L'Ancora di Sabaoth</b></div>
+      <span class="chip" id="kindChip">One-shot</span>
+      <div class="spacer"></div>
+      <span class="sync" id="sync" title="Sync status"><i></i><span id="syncT">Synced</span></span>
+      <button class="tb" id="theme" title="Light or dark (mockup)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16a8 8 0 0 0 0-16z" fill="currentColor"/></svg></button>
+      <button class="tb primary hide-n"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg>PDF</button>
+      <span class="avatar" title="Signed in as Stefano">S</span>
+    </header>
+    <div class="strips" id="strips"></div>
+    <nav class="rail">
+      <button data-tip="Document"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></button>
+      <button data-tip="Inspiration"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></button>
+      <button data-tip="Research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button>
+      <button id="railBoard" class="on" data-tip="Images and music"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="11" rx="1.5"/><path d="M3 12l3.5-3 3 2.5 2-1.5L16 13"/><path d="M19 9v9.5"/><circle cx="17" cy="18.5" r="2"/><path d="M19 9l2.5-1"/></svg></button>
+      <button data-tip="Brainstorm log"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></button>
+      <button data-tip="History"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+      <button class="bottom" data-tip="Projects"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+      <button class="last" id="railSet" data-tip="Settings and templates"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+    </nav>
+    <main class="center" id="center"></main>
+    <footer class="status">
+      <span id="sbL">Images and music</span><span id="sbCount"></span>
+      <span class="r">Claude connected · read and edit</span><span id="sbSync">Synced 21:40 · promptbook.siberio.eu</span>
+    </footer>
+  </div>
+</div>
+</div>
+
+<div class="scrim" id="lb" hidden><div class="lb" role="dialog" aria-label="Image viewer">
+  <div class="stagei"><div class="big" id="lbBig"></div></div>
+  <div class="side">
+    <div class="top"><span class="panel-h" id="lbScene"></span><button class="tb sm" id="lbClose" title="Close (Esc)">✕</button></div>
+    <div class="fn" id="lbFn"></div>
+    <dl class="kv" id="lbKv"></dl>
+    <div class="acts"><button class="tb primary" id="lbChoose"></button>
+      <button class="tb danger"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Remove</button></div>
+  </div>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="legend" id="legend">
+  <h5>Mockup notes · #59 <button id="legendX" title="Collapse">–</button></h5>
+  <div class="lab">Screen</div>
+  <div class="lrow" id="screens">
+    <button data-sc="settings" class="on">1 Settings, Atelier</button><button data-sc="setnotok">1b No Atelier token</button><button data-sc="setnosrv">1c Server without Atelier</button><button data-sc="setor">1d OpenRouter chosen</button>
+    <button data-sc="pop">2 Generate</button><button data-sc="running">3 Generating</button><button data-sc="viewer">4 Viewer</button>
+    <button data-sc="nokey">5 No token yet</button><button data-sc="error">6 Cap reached</button><button data-sc="popor">7 Generate, OpenRouter</button>
+  </div>
+  <ul>
+    <li><b>Generate through</b> (1): each account picks Atelier or OpenRouter in Settings → Image generation. Both can be set up; only the chosen one is used. A choice is off until its credentials are in.</li>
+    <li><b>Atelier</b>: the address is the server's (set by whoever runs Promptbook), so you only paste a <b>write</b> API token made in Atelier → Settings → API tokens. Stored encrypted, like the OpenRouter key. Saving checks it and shows the token's name, when it expires and the month against Atelier's cap (1).</li>
+    <li>A server with no Atelier address (1c) shows Atelier as unavailable; OpenRouter works as today.</li>
+    <li><b>Generate</b> (2) says which one it goes through, with a link to change it. Same two models and shapes; prices are that provider's estimates (Atelier averages its last real costs, so GPT shows about $0.08 today).</li>
+    <li>Through Atelier, the images also land in an <b>Atelier collection named after the project</b>, made on the first Generate. The viewer (4) links each image to Atelier.</li>
+    <li><b>Errors</b> come back in Atelier's words on the prompt, such as the monthly cap (6). Nothing is charged for a failed image.</li>
+    <li><b>Spending</b> in Settings and «Generated here» count both providers; images made before stay as they are.</li>
+    <li>Unchanged and not shown: Midjourney prompts, NPC and handout cards, desktop offline. See image-generation.html.</li>
+  </ul>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const IC = {
+  img: '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5L5 20"/></svg>',
+  mus: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  spark: '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>',
+  drop: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>',
+  check: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>',
+  warn: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  off: '<svg class="ic" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5-2.7M14 10.3A10 10 0 0 1 19 13M2 9.5a15 15 0 0 1 4.5-2.8M12 20h.01"/></svg>',
+  coin: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5"/></svg>',
+};
+const PAL = {
+  S1: ['#1d1610', '#5b4429', '#e3b366', '#2b2119'], S1b: ['#1a120a', '#6b4a22', '#f0c070', '#2e2014'],
+  S2: ['#141c20', '#4d6672', '#d3e0e2', '#26343a'], S2b: ['#10181c', '#3e5a66', '#e6efe9', '#1f2e34'],
+  S3: ['#1b1b1e', '#5c5853', '#c2ae92', '#34302d'],
+  N1: ['#1a1410', '#5e4630', '#e8c38a', '#30241a'], N1b: ['#14100c', '#4e3a28', '#f0d4a2', '#2a2016'],
+  N3: ['#0f1a1c', '#3a6066', '#cfe6e4', '#1e3236'], H1: ['#3a2e1c', '#a8895a', '#f2e4c0', '#6e5838'],
+};
+const POS = ['24% 34%', '72% 28%', '40% 62%', '82% 70%'];
+function art(key, i) {
+  const p = PAL[key] || PAL.S1, pos = POS[i % 4];
+  const ground = [18, 24, 14, 21][i % 4], hz = [58, 54, 62, 50][i % 4], beam = [112, 64, 128, 76][i % 4];
+  return `background:
+    radial-gradient(ellipse 30% 38% at ${pos}, ${p[2]} 0, transparent 70%),
+    radial-gradient(ellipse 95% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.6) 100%),
+    linear-gradient(to top, rgba(0,0,0,.7) 0 ${ground}%, transparent ${ground}%),
+    linear-gradient(${beam}deg, transparent 38%, rgba(0,0,0,.32) 38% 44%, transparent 44%),
+    linear-gradient(${178 - i * 9}deg, ${p[1]} 0%, ${p[3]} 52%, ${p[0]} 100%);`;
+}
+
+const MODELS = {
+  gpt: { name: 'GPT Image 2.6', full: 'GPT Image 2.6 Sunburst', id: 'openai/gpt-image-2.6-sunburst', note: 'Best detail and text', cost: 0.040, atl: 0.083, secs: 53, short: 'GPT' },
+  nb: { name: 'Nano Banana 2.1', full: 'Nano Banana 2.1', id: 'google/gemini-nano-banana-2.1', note: 'Fast draft', cost: 0.037, atl: 0.037, secs: 17, short: 'Nano Banana' },
+};
+const PROV = { atelier: 'Atelier', openrouter: 'OpenRouter' };
+const estOf = (k, via) => via === 'atelier' ? MODELS[k].atl : MODELS[k].cost;
+const DEF_AR = { scene: '16:9', pc: '2:3', npc: '2:3', handout: '1:1' };
+const SIZE = { '16:9': '1536 × 864', '3:2': '1536 × 1024', '1:1': '1024 × 1024', '2:3': '1024 × 1536' };
+const money = n => '$' + n.toFixed(2), money3 = n => '$' + n.toFixed(3);
+
+/* Midjourney flags: cut at the first " --", keep --ar for the shape, turn --no into a sentence */
+function split(text) {
+  const i = text.search(/\s--[a-z]/);
+  if (i < 0) return { base: text.trim(), flags: '', ar: null, no: null };
+  const base = text.slice(0, i).trim(), flags = text.slice(i).trim();
+  const ar = (/--ar\s+(\d+:\d+)/.exec(flags) || [])[1] || null;
+  const no = ((/--no\s+(.+?)(?=\s--|$)/.exec(flags) || [])[1] || '').trim() || null;
+  return { base, flags, ar, no };
+}
+const sentText = t => { const s = split(t); return s.base.replace(/[.\s]*$/, '') + (s.no ? `. No ${s.no.replace(/,\s*([^,]+)$/, ' or $1')}.` : ''); };
+
+/* Invented one-shot (L'Ancora di Sabaoth): never owner content */
+const mkGen = (art, n, model, start = 0, via = 'openrouter') => Array.from({ length: n }, (_, k) => ({ art, i: start + k, src: 'gen', model, via, aid: via === 'atelier' ? ['3f9c2a1e', '8b04d7c2', 'c71e5a90', '19ad42f6'][(start + k) % 4] : null, cost: model === 'gpt' ? (via === 'atelier' ? [0.081, 0.086, 0.079, 0.084] : [0.033, 0.041, 0.048, 0.029])[(start + k) % 4] : [0.036, 0.037, 0.038, 0.036][(start + k) % 4], by: 'Stefano', when: '2 days ago' }));
+const mkMj = (art, n, slug) => Array.from({ length: n }, (_, k) => ({ art, i: k, src: 'mj', name: `steve_${slug}_8f2c41d0-…_${k}.png`, by: 'Stefano', when: '5 days ago' }));
+let PROMPTS;
+function seed() {
+  PROMPTS = [
+    { pid: 's1a', cat: 'scene', sid: 'S1', n: 1, by: 'claude', when: '5 days ago',
+      text: 'collapsed 1900s Sicilian library at night, broken beams, books buried in dust, oil lamp light, shadows stretching toward the sea, sepia and ash palette --ar 16:9 --v 8.1',
+      files: mkMj('S1', 4, 'collapsed_1900s_Sicilian_library_at_night'), chosen: 2 },
+    { pid: 's1b', cat: 'scene', sid: 'S1', n: 2, by: 'claude', when: '2 days ago',
+      text: 'Wide shot of a collapsed 1900s Sicilian library at night. Broken ceiling beams, books buried in grey dust, one oil lamp on the floor throwing long shadows toward a broken window that opens on a black sea. Sepia and ash palette, 1900s glass-plate photograph, grain and soft vignette.',
+      files: mkGen('S1b', 2, 'gpt'), chosen: 0 },
+    { pid: 's2a', cat: 'scene', sid: 'S2', n: 1, by: 'claude', when: '1 hour ago',
+      text: "A ruined doctor's office in 1908 at cold dawn. On the wall, anatomical drawings of the Strait of Messina shaped like a human body; on the desk, spilled ether bottles and a cracked brass microscope. Pale light through a broken wall, dust in the air. Muted greens and grey, period photograph, quiet and uncanny.",
+      files: [], chosen: null },
+    { pid: 's3a', cat: 'scene', sid: 'S3', n: 1, by: 'claude', when: '5 days ago',
+      text: 'collapsed cathedral facade, soldiers in 1908 Italian uniforms standing perfectly still among the ruins, survivors kneeling in rows, smoke and grey sky, desaturated --ar 3:2 --v 8.1 --no text, letters, modern buildings',
+      files: [], chosen: null },
+    { pid: 'n1', cat: 'npc', name: 'Padre Anselmo', by: 'claude', when: '2 days ago',
+      text: 'Medium portrait of a gaunt Sicilian priest in his sixties, 1908. Torn cassock grey with plaster dust, a wooden rosary wound around his left hand, eyes too calm for the ruins behind him. Low lamp light from the left, glass-plate photograph, sepia.',
+      files: [...mkGen('N1', 2, 'nb'), ...mkGen('N1b', 1, 'gpt', 2, 'atelier')], chosen: 2 },
+    { pid: 'n2', cat: 'npc', name: 'Capitano Donato', by: 'claude', when: '1 hour ago',
+      text: 'Close portrait of an Italian army captain in 1908 uniform, perfectly still, face grey with dust, one white glove, eyes fixed past the viewer. Overcast light, period photograph.',
+      files: [], chosen: null },
+    { pid: 'n3', cat: 'npc', name: 'Rosalia la cantatrice', by: 'claude', when: '5 days ago',
+      text: 'old Sicilian fisherwoman singing on the shore at dusk, black shawl, the sea glinting behind her like many eyes, melancholic --ar 2:3 --v 8.1',
+      files: mkMj('N3', 4, 'old_Sicilian_fisherwoman_singing_on_the'), chosen: null },
+    { pid: 'h1', cat: 'handout', name: 'Telegramma del prefetto', by: 'claude', when: '1 hour ago',
+      text: 'A 1908 Italian telegram form on a wooden table, seen from above. Typed in capitals: "MESSINA DISTRUTTA STOP MANDATE NAVI STOP". Yellowed paper, a fold crease, warm lamp light. Realistic period prop.',
+      files: [], chosen: null },
+  ];
+}
+const SCENES = [
+  { id: 'S1', t: 'La casa che cede', suno: 'dark ambient, slow, low rumbling drones, creaking wood, sudden silences, dread' },
+  { id: 'S2', t: "L'ambulatorio di Salvi", suno: 'dark ambient, clinical, sparse, quiet clock ticking, glass harmonics, uneasy strings' },
+  { id: 'S3', t: "L'ordine di Donato", suno: 'dark martial ambient, slow, single snare drum, low brass drone, eerie stillness' },
+];
+const CAT = { scene: 'Scenes', pc: 'PCs', npc: 'NPCs', handout: 'Handouts' };
+
+let S;
+function reset() { seed(); S = { view: 'board', cat: 'scene', key: true, offline: false, err: null, pop: null, opt: { model: 'gpt', n: 2, ar: null }, run: null, lb: null, fresh: new Set(), setKey: true, prov: 'atelier', tok: true, setTok: true, srv: true }; }
+const ready = v => v === 'atelier' ? S.srv && S.tok : S.key;
+reset();
+
+const label = p => p.cat === 'scene' ? `${p.sid} · prompt ${p.n}` : p.name;
+const statusOf = p => !p.files.length ? 'wanted' : p.chosen != null ? 'chosen' : 'received';
+const chip = st => `<span class="st ${st}"><i></i>${st[0].toUpperCase() + st.slice(1)}</span>`;
+const arFor = p => split(p.text).ar || DEF_AR[p.cat];
+const genFiles = () => PROMPTS.flatMap(p => p.files.filter(f => f.src === 'gen'));
+const spent = () => genFiles().reduce((a, f) => a + f.cost, 0);
+
+function thumbs(p) {
+  const ar = arFor(p).replace(':', ' / ');
+  const tall = (() => { const [w, h] = arFor(p).split(':').map(Number); return w < h; })();
+  let h = '';
+  if (p.files.length || (S.run && S.run.pid === p.pid)) {
+    h += `<div class="thumbs${tall ? ' tall' : ''}">` + p.files.map((f, i) => `<div class="th-i${p.chosen === i ? ' chosen' : p.chosen != null ? ' others' : ''}" style="${art(f.art, f.i)}aspect-ratio:${ar};" data-open="${p.pid}:${i}" tabindex="0" role="button" aria-label="Open image ${i + 1}">
+      <button class="pick" data-pick="${p.pid}:${i}" title="${p.chosen === i ? 'Chosen' : 'Choose this image'}">✓</button>
+      ${S.fresh.has(f) ? '<span class="badge new">new</span>' : ''}
+      ${f.src === 'gen' ? `<span class="badge gen" title="${MODELS[f.model].full} through ${PROV[f.via]}, ${money3(f.cost)}">${MODELS[f.model].short} · ${money(f.cost)}</span>` : '<span class="badge mj">Midjourney</span>'}
+    </div>`).join('');
+    if (S.run && S.run.pid === p.pid) for (let k = S.run.done; k < S.run.n; k++) h += `<div class="slot-g" style="aspect-ratio:${ar};"></div>`;
+    h += '</div>';
+  } else if (!(S.err && S.err === p.pid)) {
+    h += `<div class="empty-drop">${IC.drop}<span>No images yet. Generate them, or drop downloaded files here.</span></div>`;
+  }
+  if (S.run && S.run.pid === p.pid) {
+    const m = MODELS[S.run.model];
+    h += `<div class="genline"><span class="spin"></span><span>Generating ${S.run.done + 1} of ${S.run.n} with ${m.name} through ${PROV[S.run.via]} · ${S.run.t}s. It keeps going if you leave this page.</span></div>`;
+  }
+  if (S.err === p.pid) h += `<div class="info err">${IC.warn}<span><b>Atelier refused: this would pass your monthly cap of $20.00 ($19.96 spent).</b> Raise the cap in Atelier's Settings or wait for next month. Nothing was charged.</span><button class="tb sm line" data-gen="${p.pid}">Try again</button></div>`;
+  return h;
+}
+
+function genButton(p) {
+  if (S.offline) return `<button class="tb sm gen" disabled title="Generating needs the server. It comes back when this computer is online.">${IC.spark}<span>Generate</span></button>`;
+  const busy = S.run && S.run.pid === p.pid;
+  return `<button class="tb sm gen" data-gen="${p.pid}" ${busy ? 'disabled title="Generating…"' : ''} aria-expanded="${S.pop === p.pid}">${IC.spark}<span>Generate</span></button>`;
+}
+
+function pop(p) {
+  if (S.pop !== p.pid) return '';
+  if (!ready(S.prov)) return `<div class="gpop" role="dialog" aria-label="Generate images"><h4>Generate images <button class="tb xs" data-popx>✕</button></h4>
+    <div class="nokey"><span>${S.prov === 'atelier' ? 'Add your Atelier API token first. Images are billed against your Atelier monthly cap.' : 'Add your OpenRouter key first. Images are billed to your OpenRouter account.'}</span>
+    <span><button class="tb sm primary" data-goto="${S.prov === 'atelier' ? 'setnotok' : 'setor'}">Open Settings → Image generation</button></span></div></div>`;
+  const o = S.opt, m = MODELS[o.model], s = split(p.text), ar = o.ar || arFor(p);
+  const est = estOf(o.model, S.prov) * o.n;
+  const mod = k => `<button class="model${o.model === k ? ' on' : ''}" data-model="${k}"><b>${MODELS[k].name}</b><small>${MODELS[k].note}</small><span class="mm">≈ ${money(estOf(k, S.prov))} · ${MODELS[k].secs} s per image</span></button>`;
+  const via = S.prov === 'atelier'
+    ? `<div class="via">Through <b>Atelier</b> · into the collection «L'Ancora di Sabaoth» · $0.90 of $20 used this month <button class="lnk" data-goto="settings">Change</button></div>`
+    : `<div class="via">Through <b>OpenRouter</b> · billed to your OpenRouter key <button class="lnk" data-goto="setor">Change</button></div>`;
+  const sent = s.flags
+    ? `${esc(s.base)}${s.no ? ` <ins>No ${esc(s.no.replace(/,\s*([^,]+)$/, ' or $1'))}.</ins>` : ''} <s>${esc(s.flags)}</s>`
+    : esc(s.base);
+  return `<div class="gpop" role="dialog" aria-label="Generate images">
+    <h4>Generate images <button class="tb xs" data-popx title="Close">✕</button></h4>
+    ${via}
+    <div><div class="gl">Model</div><div class="models">${mod('gpt')}${mod('nb')}</div></div>
+    <div class="row" style="gap:18px">
+      <div><div class="gl">Images</div><div class="seg">${[1, 2, 3, 4].map(n => `<button class="${o.n === n ? 'on' : ''}" data-n="${n}">${n}</button>`).join('')}</div></div>
+      <div><div class="gl">Shape <span>${s.ar ? "from the prompt's --ar" : `default for ${CAT[p.cat]}`}</span></div><div class="seg">${['16:9', '3:2', '1:1', '2:3'].map(a => `<button class="${ar === a ? 'on' : ''}" data-ar="${a}">${a}</button>`).join('')}</div></div>
+    </div>
+    <details${s.flags ? ' open' : ''}><summary>What is sent${s.flags ? ': Midjourney flags left out' : ''}</summary><div class="sent">${sent}</div></details>
+    <div class="gfoot"><span class="est">About <b>${money(est)}</b> · ${SIZE[ar]}</span><button class="tb sm line" data-popx>Cancel</button><button class="tb sm primary" data-start="${p.pid}">${IC.spark}Generate ${o.n}</button></div>
+  </div>`;
+}
+
+function promptCard(p, inCard) {
+  const st = statusOf(p);
+  const head = inCard ? '' : `<div class="iph"><span class="num">Prompt ${p.n}</span>${chip(st)}<button class="tb xs rm" title="Remove prompt">${IC.trash}</button></div>`;
+  return `${head}<div class="pbox"><div class="ptext">${esc(p.text)}</div>
+    <div class="pfoot"><span class="prov">by <span class="${p.by === 'claude' ? 'who-cl' : 'who-you'}">${p.by === 'claude' ? 'Claude' : 'you'}</span> · ${p.when}</span>
+    <button class="tb sm line">${IC.copy}<span>Copy</span></button><button class="tb sm line">${IC.edit}<span>Edit</span></button>${genButton(p)}</div></div>
+    ${pop(p)}${thumbs(p)}`;
+}
+
+function board() {
+  const ps = PROMPTS.filter(p => p.cat === S.cat), n = genFiles().length;
+  const tally = c => { const x = PROMPTS.filter(p => p.cat === c); return `<span class="n">${x.length}</span>`; };
+  const wanted = c => PROMPTS.filter(p => p.cat === c && statusOf(p) === 'wanted').length;
+  let h = `<div class="pane"><div class="head"><h1>Images and music</h1><p class="lead">Image prompts for scenes, PCs, NPCs and handouts; music for each scene.</p></div>
+    <div class="sumline"><span class="summary"><b>${PROMPTS.length}</b> image prompts<span class="sep">·</span>${PROMPTS.filter(p => statusOf(p) === 'wanted').length} wanted</span>
+    <span class="spacer"></span><span class="spend" title="Generated in this project, as billed by Atelier and OpenRouter">${IC.coin}<span>Generated here: <b>${n} images · ${money(spent())}</b></span></span></div>
+    <div class="cats" role="tablist">${Object.keys(CAT).map(c => `<button role="tab" class="${S.cat === c ? 'on' : ''}" aria-selected="${S.cat === c}" data-cat="${c}"><span class="cl">${CAT[c]} ${tally(c)}</span><span class="cs${wanted(c) ? ' w' : ''}">${wanted(c) ? wanted(c) + ' wanted' : 'all have images'}</span></button>`).join('')}</div>`;
+  if (S.offline) h += `<div class="info local">${IC.off}<span><b>Offline.</b> Choosing, editing and dropping files still work. Generate comes back when this computer is online.</span></div>`;
+  if (S.cat === 'scene') {
+    h += '<div class="rows">' + SCENES.map(sc => {
+      const sp = ps.filter(p => p.sid === sc.id);
+      return `<section class="card scene"><div class="sh"><span class="sid">${sc.id}</span><span class="stt">${esc(sc.t)}</span></div>
+        <div class="halves"><div class="half"><div class="hh"><span class="lab">${IC.img}Images</span><span class="hsum">${sp.length} prompt${sp.length > 1 ? 's' : ''}</span></div>
+        <div class="stack">${sp.map(p => `<div class="ip" id="p-${p.pid}">${promptCard(p)}</div>`).join('')}</div></div>
+        <div class="half"><div class="hh"><span class="lab">${IC.mus}Music</span></div><div class="pbox"><div class="ptext">${esc(sc.suno)}</div></div><span class="mhalf">Music is unchanged by this change.</span></div></div></section>`;
+    }).join('') + '</div>';
+  } else {
+    h += '<div class="ents">' + (ps.length ? ps.map(p => `<article class="card ent"><div class="eh"><span class="enm">${esc(p.name)}</span>${chip(statusOf(p))}<button class="tb xs rm" title="Remove">${IC.trash}</button></div>
+      <div class="eb"><div class="ip" style="border:0;padding:0" id="p-${p.pid}">${promptCard(p, true)}</div></div></article>`).join('') : `<p class="none">No ${CAT[S.cat]} yet.</p>`) + '</div>';
+  }
+  return h + '</div>';
+}
+
+function settings() {
+  const nav = ['To-do templates', 'Document templates', 'Author and licence', 'Account', 'Connected apps', 'Image generation', 'Sync and storage', 'Appearance'];
+  let body = '';
+  if (S.offline) {
+    body = `<div class="card"><div class="needs">${IC.off}<span>Image generation is kept on the server. Connect this computer to change it.</span></div></div>`;
+  } else {
+    const opt = v => {
+      const ok = ready(v), why = v === 'atelier' ? (!S.srv ? 'Not available on this server' : S.tok ? 'Token works' : 'Add a token below') : (S.key ? 'Key works' : 'Add a key below');
+      const note = v === 'atelier' ? 'One monthly cap; images also in its gallery' : 'Your own key, billed to that account';
+      return `<button class="model${S.prov === v ? ' on' : ''}" data-prov="${v}" ${ok ? '' : 'disabled'}><b>${PROV[v]}</b><small>${note}</small><span class="${ok ? 'ok' : 'no'}">${why}</span></button>`;
+    };
+    body += `<div class="card"><h3>Generate through</h3><div class="models" style="max-width:520px">${opt('atelier')}${opt('openrouter')}</div>
+      <span class="hint">Generate uses this one for every project. Images already generated keep where they came from.</span></div>`;
+    body += `<div class="card"><h3>Atelier</h3>` + (!S.srv
+      ? `<div class="needs">${IC.warn}<span>This Promptbook server has no Atelier address. Whoever runs it sets <code>ATELIER_URL</code>.</span></div>`
+      : `<div class="field"><label>Address</label><span class="srv">https://atelier.siberio.eu</span><span class="hint">Set by the server.</span></div>` + (S.setTok
+        ? `<div class="field"><label>API token</label><div class="with-btn"><span class="keyv">atl_pat_••••••••••••7c1d</span><button class="tb line" data-settok="replace">Replace</button><button class="tb danger" data-settok="remove">Remove</button></div>
+           <span class="okline">${IC.check}<span>Works. Write token «promptbook», expires 12 Nov 2027. $0.90 of the $20 cap used in November (checked 21:40).</span></span></div>`
+        : `<div class="field"><label for="tok">API token</label><div class="with-btn"><input id="tok" type="password" placeholder="atl_pat_…" autocomplete="off" spellcheck="false"><button class="tb primary" data-settok="save">Save and check</button></div>
+           <span class="hint">Make a token with write access in Atelier → Settings → API tokens.</span></div>`)
+        + `<p class="hint" style="margin:8px 0 0">Stored encrypted on the server, like the OpenRouter key. Images also go into an Atelier collection named after the project, made on the first Generate.</p>`) + `</div>`;
+    body += `<div class="card"><h3>OpenRouter key</h3>` + (S.setKey
+      ? `<div class="field"><label>Key</label><div class="with-btn"><span class="keyv">sk-or-v1-••••••••••••a41f</span><button class="tb line" data-setkey="replace">Replace</button><button class="tb danger" data-setkey="remove">Remove</button></div>
+         <span class="okline">${IC.check}<span>Works. $12.40 credit left on this key (checked 21:40).</span></span></div>`
+      : `<div class="field"><label for="key">Key</label><div class="with-btn"><input id="key" type="password" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false"><button class="tb primary" data-setkey="save">Save and check</button></div>
+         <span class="hint">Create one at openrouter.ai/settings/keys. A spending limit on the key caps what Promptbook can spend.</span></div>`)
+      + `<p class="hint" style="margin:8px 0 0">Stored encrypted on the server and used only to generate your images. It is never sent to the browser or the desktop app. Images are billed to your OpenRouter account.</p></div>`;
+    body += `<div class="card"><h3>Defaults for Generate</h3>
+      <div class="field"><label>Model</label><div class="models" style="max-width:460px">
+        <button class="model on"><b>GPT Image 2.6</b><small>Best detail and text</small><span class="mm">≈ ${money(estOf('gpt', S.prov))} · 53 s per image</span></button>
+        <button class="model"><b>Nano Banana 2.1</b><small>Fast draft</small><span class="mm">≈ ${money(estOf('nb', S.prov))} · 17 s per image</span></button></div></div>
+      <div class="field"><label>Images per Generate</label><div class="seg" style="width:max-content"><button>1</button><button class="on">2</button><button>3</button><button>4</button></div>
+      <span class="hint">The Generate panel starts from these; your last choice there is kept for the session.</span></div></div>`;
+    const n = genFiles().length, sv = v => genFiles().filter(f => f.via === v).reduce((a, f) => a + f.cost, 0);
+    body += `<div class="card"><h3>Spending</h3><div class="bigsum"><div><b>${money(spent())}</b><span>November, ${n} images</span></div><div><b>${money(spent() + 1.21)}</b><span>All time, ${n + 29} images</span></div></div>
+      <table class="spt"><thead><tr><th>Project</th><th class="n">Images</th><th class="n">Atelier</th><th class="n">OpenRouter</th><th class="n">November</th></tr></thead><tbody>
+      <tr><td>L'Ancora di Sabaoth</td><td class="n">${n}</td><td class="n">${money(sv('atelier'))}</td><td class="n">${money(sv('openrouter'))}</td><td class="n">${money(spent())}</td></tr>
+      <tr><td>Il Faro di Capo Peloro</td><td class="n">0</td><td class="n">$0.00</td><td class="n">$0.00</td><td class="n">$0.00</td></tr></tbody></table>
+      <p class="hint" style="margin:8px 0 0">Costs as Atelier or OpenRouter report them for each image. Atelier's cap also counts what you make in Atelier itself. Removing an image does not remove its cost.</p></div>`;
+  }
+  return `<div class="pane"><div class="head"><h1>Settings</h1></div><div class="set">
+    <nav aria-label="Settings">${nav.map(x => `<button class="${x === 'Image generation' ? 'on' : ''}">${x}${x === 'Image generation' ? '<span class="newt">new</span>' : ''}</button>`).join('')}</nav>
+    <section><h2>Image generation</h2><p class="lead">Generate board images with GPT Image or Nano Banana from any image prompt, through Atelier or straight through OpenRouter.</p>${body}</section></div></div>`;
+}
+
+function render() {
+  const c = $('#center');
+  c.classList.toggle('setv', S.view === 'settings');
+  c.innerHTML = S.view === 'board' ? board() : settings();
+  $('#railBoard').classList.toggle('on', S.view === 'board'); $('#railSet').classList.toggle('on', S.view === 'settings');
+  $('#crumbs').innerHTML = S.view === 'board' ? `<span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L'Ancora di Sabaoth</b>` : '<b>Settings</b>';
+  $('#kindChip').hidden = S.view !== 'board';
+  $('#sbL').textContent = S.view === 'board' ? 'Images and music' : 'Settings';
+  $('#sbCount').textContent = S.view === 'board' ? `${PROMPTS.length} image prompts` : '';
+  const sy = $('#sync'); sy.classList.toggle('local', S.offline); $('#syncT').textContent = S.offline ? 'Offline' : 'Synced';
+  $('#sbSync').textContent = S.offline ? 'Offline since 21:12 · changes kept on this computer' : 'Synced 21:40 · promptbook.siberio.eu';
+}
+const P = id => PROMPTS.find(p => p.pid === id);
+function toast(t) { const e = $('#toast'); e.textContent = t; e.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => e.hidden = true, 3200); }
+
+function start(pid) {
+  const p = P(pid); S.pop = null; S.err = null;
+  S.run = { pid, model: S.opt.model, n: S.opt.n, done: 0, t: 0, ar: S.opt.ar || arFor(p), via: S.prov };
+  const per = S.run.model === 'gpt' ? 2600 : 1100; render();
+  const tick = setInterval(() => { if (!S.run || S.run.pid !== pid) return clearInterval(tick); S.run.t += S.run.model === 'gpt' ? 5 : 2; render(); }, 250);
+  const step = () => {
+    if (!S.run || S.run.pid !== pid) return;
+    const f = mkGen(p.cat === 'scene' ? (p.sid === 'S2' ? 'S2b' : 'S3') : 'N1b', 1, S.run.model, p.files.length, S.run.via)[0]; f.when = 'just now';
+    p.files.push(f); S.fresh.add(f); S.run.done++;
+    if (S.run.done >= S.run.n) { const r = S.run; S.run = null; clearInterval(tick); render();
+      const cost = p.files.slice(-r.n).reduce((a, x) => a + x.cost, 0);
+      toast(`${r.n} image${r.n > 1 ? 's' : ''} for ${label(p)} · ${money(cost)}`); return; }
+    render(); setTimeout(step, per);
+  };
+  setTimeout(step, per);
+}
+
+function openLb(pid, i) {
+  const p = P(pid), f = p.files[i]; S.lb = { pid, i };
+  $('#lbBig').setAttribute('style', art(f.art, f.i) + `aspect-ratio:${arFor(p).replace(':', ' / ')};`);
+  $('#lbScene').textContent = p.cat === 'scene' ? `${p.sid} · Prompt ${p.n}` : `${CAT[p.cat]} · ${p.name}`;
+  $('#lbFn').textContent = f.src === 'gen' ? `${pid}-${MODELS[f.model].short.toLowerCase().replace(' ', '-')}-${i + 1}.png` : f.name;
+  const ar = arFor(p);
+  $('#lbKv').innerHTML = f.src === 'gen'
+    ? `<dt>Source</dt><dd>Generated</dd><dt>Through</dt><dd>${f.via === 'atelier' ? `Atelier · <a href="#" onclick="return false">No. ${f.aid} in Atelier ↗</a>` : 'OpenRouter'}</dd><dt>Model</dt><dd>${MODELS[f.model].full}</dd><dt>Cost</dt><dd>${money3(f.cost)}</dd><dt>Size</dt><dd>${SIZE[ar]}</dd><dt>Added</dt><dd>${f.by} · ${f.when}</dd>`
+    : `<dt>Source</dt><dd>Dropped file (Midjourney)</dd><dt>Matched</dt><dd>by prompt words</dd><dt>Added</dt><dd>${f.by} · ${f.when}</dd>`;
+  $('#lbChoose').textContent = p.chosen === i ? 'Chosen ✓' : 'Choose this image';
+  $('#lb').hidden = false;
+}
+
+const SCREENS = {
+  board: () => {}, npcs: () => { S.cat = 'npc'; },
+  pop: () => { S.pop = 's2a'; }, mjflags: () => { S.pop = 's3a'; S.opt.ar = null; },
+  running: () => { S.run = { pid: 's2a', model: 'gpt', n: 4, done: 1, t: 47, via: 'atelier' }; const p = P('s2a'); const f = mkGen('S2b', 1, 'gpt', 0, 'atelier')[0]; f.when = 'just now'; p.files.push(f); S.fresh.add(f); },
+  viewer: () => { S.cat = 'npc'; setTimeout(() => openLb('n1', 2), 30); },
+  nokey: () => { S.tok = false; S.setTok = false; S.pop = 's2a'; },
+  error: () => { S.err = 's3a'; },
+  popor: () => { S.prov = 'openrouter'; S.pop = 's2a'; },
+  settings: () => { S.view = 'settings'; },
+  setnotok: () => { S.view = 'settings'; S.tok = false; S.setTok = false; S.prov = 'openrouter'; },
+  setnosrv: () => { S.view = 'settings'; S.srv = false; S.tok = false; S.prov = 'openrouter'; },
+  setor: () => { S.view = 'settings'; S.prov = 'openrouter'; },
+};
+function screen(k) {
+  reset(); $('#lb').hidden = true; SCREENS[k](); render();
+  $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === k));
+  const t = { pop: 'p-s2a', popor: 'p-s2a', running: 'p-s2a', nokey: 'p-s2a', error: 'p-s3a' }[k];
+  if (t) setTimeout(() => document.getElementById(t)?.scrollIntoView({ block: 'center' }), 30); else $('#center').scrollTop = 0;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const sc = t.closest('[data-sc]'); if (sc) return screen(sc.dataset.sc);
+  if (t.closest('#legendX')) { $('#legend').classList.toggle('min'); return; }
+  if (t.closest('#theme')) { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; return; }
+  if (t.closest('#railSet')) { S.view = 'settings'; S.pop = null; render(); return; }
+  if (t.closest('#railBoard')) { S.view = 'board'; render(); return; }
+  const go = t.closest('[data-goto]'); if (go) return screen(go.dataset.goto);
+  const cat = t.closest('[data-cat]'); if (cat) { S.cat = cat.dataset.cat; S.pop = null; render(); return; }
+  const g = t.closest('[data-gen]'); if (g) { S.err = null; S.pop = S.pop === g.dataset.gen ? null : g.dataset.gen; S.opt.ar = null; render(); return; }
+  if (t.closest('[data-popx]')) { S.pop = null; render(); return; }
+  const md = t.closest('[data-model]'); if (md) { S.opt.model = md.dataset.model; render(); return; }
+  const nn = t.closest('[data-n]'); if (nn) { S.opt.n = +nn.dataset.n; render(); return; }
+  const ar = t.closest('[data-ar]'); if (ar) { S.opt.ar = ar.dataset.ar; render(); return; }
+  const st = t.closest('[data-start]'); if (st) { if (st.dataset.start === 's3a' && S.err === 'demo') return; start(st.dataset.start); return; }
+  const pk = t.closest('[data-pick]'); if (pk) { e.stopPropagation(); const [pid, i] = pk.dataset.pick.split(':'); const p = P(pid); p.chosen = p.chosen === +i ? null : +i; render(); return; }
+  const op = t.closest('[data-open]'); if (op) { const [pid, i] = op.dataset.open.split(':'); openLb(pid, +i); return; }
+  if (t.closest('#lbClose') || t.id === 'lb') { $('#lb').hidden = true; return; }
+  if (t.closest('#lbChoose') && S.lb) { const p = P(S.lb.pid); p.chosen = p.chosen === S.lb.i ? null : S.lb.i; openLb(S.lb.pid, S.lb.i); render(); return; }
+  const pv = t.closest('[data-prov]'); if (pv && !pv.disabled) { S.prov = pv.dataset.prov; render(); toast(`Generate now goes through ${PROV[S.prov]}.`); return; }
+  const tk = t.closest('[data-settok]');
+  if (tk) { const a = tk.dataset.settok;
+    if (a === 'save') { S.setTok = true; S.tok = true; render(); toast('Token saved and checked: write access, $0.90 of $20 used.'); }
+    else if (a === 'remove') { S.setTok = false; S.tok = false; if (S.prov === 'atelier' && S.key) S.prov = 'openrouter'; render(); toast(S.prov === 'openrouter' ? 'Token removed. Generate now goes through OpenRouter.' : 'Token removed.'); }
+    else { S.setTok = false; render(); }
+    return; }
+  const sk = t.closest('[data-setkey]');
+  if (sk) { const a = sk.dataset.setkey;
+    if (a === 'save') { S.setKey = true; S.key = true; render(); toast('Key saved and checked: $12.40 credit left.'); }
+    else if (a === 'remove') { S.setKey = false; S.key = false; render(); toast('Key removed. Generate asks for a key again.'); }
+    else { S.setKey = false; render(); }
+    return; }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#lb').hidden = true; if (S.pop) { S.pop = null; render(); } } });
+const q = new URLSearchParams(location.search); screen(q.get('screen') && SCREENS[q.get('screen')] ? q.get('screen') : 'settings');
+</script>
+</body>
+</html>
