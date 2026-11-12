@@ -157,18 +157,33 @@ export function generatedRows(
   if (model === null) return null;
   const via = viaOf(file);
   const through: ViewerRow = { label: 'Through', value: PROVIDER_NAMES[via] };
-  if (via === 'atelier' && atelierUrl && file.atelierImageId) {
-    through.link = {
-      href: `${atelierUrl}/images/${encodeURIComponent(file.atelierImageId)}`,
-      text: `No. ${file.atelierImageId.slice(0, 8)} in Atelier ↗`,
-    };
-  }
+  if (via === 'atelier' && atelierUrl && file.atelierImageId) through.link = atelierLink(atelierUrl, file.atelierImageId);
   return [
     { label: 'Source', value: 'Generated' },
     through,
     { label: 'Model', value: IMAGE_MODELS[model].full },
     { label: 'Cost', value: file.cost === null ? 'unknown' : money3(file.cost) },
   ];
+}
+
+// «No. 3f9c2a1e in Atelier ↗», to the image's page in Atelier.
+const atelierLink = (atelierUrl: string, id: string): NonNullable<ViewerRow['link']> => ({
+  href: `${atelierUrl}/images/${encodeURIComponent(id)}`,
+  text: `No. ${id.slice(0, 8)} in Atelier ↗`,
+});
+
+// The viewer's row for an image attached from Atelier through the connector
+// (connector-board-images design decision 14): «From · Atelier», linked to
+// Atelier when the server's Atelier address is known. Null for every other
+// file, a generated one included.
+export function attachedRow(
+  file: Pick<FileEntry, 'generatedModel' | 'atelierImageId'>,
+  atelierUrl: string | null = null,
+): ViewerRow | null {
+  if (file.generatedModel !== null || !file.atelierImageId) return null;
+  const row: ViewerRow = { label: 'From', value: 'Atelier' };
+  if (atelierUrl) row.link = atelierLink(atelierUrl, file.atelierImageId);
+  return row;
 }
 
 // «Generated here»'s title: the providers that billed the images on the

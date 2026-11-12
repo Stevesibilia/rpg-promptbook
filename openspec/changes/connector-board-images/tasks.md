@@ -81,11 +81,11 @@ fakes. Write files with the Write and Edit tools, not shell heredocs.
 
 ## 5. Web: the viewer row
 
-- [ ] 5.1 `packages/web/src/board/generate.ts` and `Viewer.tsx`: the row of
+- [x] 5.1 `packages/web/src/board/generate.ts` and `Viewer.tsx`: the row of
       D14; no badge for an attached image
-- [ ] 5.2 Tests: the row with and without an Atelier address; no row for a
+- [x] 5.2 Tests: the row with and without an Atelier address; no row for a
       dropped file; `badge()` null for an attached image
-- [ ] 5.3 Commit `feat(web): show where an attached Atelier image came from`
+- [x] 5.3 Commit `feat(web): show where an attached Atelier image came from`
 
 ## 6. Docs, checks, hand-back
 
