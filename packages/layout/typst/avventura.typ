@@ -29,7 +29,7 @@
   let value = (kind: kind, from: from)
   if id != none { value.insert("id", id) }
   if label != none { value.insert("label", label) }
-  context [#metadata((..value, page: here().page(), y: here().position().y.pt()))<pb-pos>]
+  context [#metadata((..value, page: here().page(), y: here().position().y.pt(), x: here().position().x.pt()))<pb-pos>]
 }
 
 // The edge tab and the footer's section from here on.
@@ -377,29 +377,37 @@
     section-heading(night.overviewTitle, from: if night.overview != none { night.overview.from })
   }
   if night.overview != none { any-blocks(night.overview.blocks) }
-  columns-part(
-    {
-      if night.clock != none {
-        section-heading(night.clock.title, from: night.clock.from)
-        show list.item: set block(below: 2mm)
-        any-blocks(night.clock.blocks)
-      }
-      if night.truths != none {
-        section-heading(night.truths.title, from: night.truths.from)
-        any-blocks(night.truths.blocks)
-      }
-    },
-    {
-      v(5mm)
-      if night.reminders != none {
-        side-box(night.reminders.title, { pos("block", night.reminders.from); any-blocks(night.reminders.blocks) })
-      }
-      if night.revelations != none {
-        side-box(night.revelations.title, any-blocks(night.revelations.blocks))
-      }
-      for b in night.sideBoxes { callout(b) }
-    },
-  )
+  // Each night part prints in the column the input names for it, with that
+  // column's look (design A5).
+  let night-main(name, part) = {
+    section-heading(part.title, from: part.from)
+    if name == "clock" {
+      show list.item: set block(below: 2mm)
+      any-blocks(part.blocks)
+    } else {
+      any-blocks(part.blocks)
+    }
+  }
+  // The revelations' box has no position of its own: the overview's holds it.
+  let night-side(name, part) = if name == "revelations" {
+    side-box(part.title, any-blocks(part.blocks))
+  } else {
+    side-box(part.title, { pos("block", part.from); any-blocks(part.blocks) })
+  }
+  let night-main-column = for name in night.main { night-main(name, night.at(name)) }
+  // Without a side part or a side box, the main column prints full width.
+  if night.side.len() == 0 and night.sideBoxes.len() == 0 {
+    night-main-column
+  } else {
+    columns-part(
+      night-main-column,
+      {
+        v(5mm)
+        for name in night.side { night-side(name, night.at(name)) }
+        for b in night.sideBoxes { callout(b) }
+      },
+    )
+  }
   own-sections(input.own.night)
 
   // ---- Inizio: «Inizio forte», «Mappa delle scene» -----------------------
@@ -668,6 +676,19 @@
     }
   })
 
+  // A scene field in the side column: «Da non perdere qui» as a box, the
+  // others in the small type with a label (design A5).
+  let scene-side(f, boxed: false) = if boxed {
+    side-box(f.label, { pos("block", f.from); field-blocks(f) })
+  } else {
+    block(below: 3mm, {
+      set text(size: 9pt)
+      pos("block", f.from)
+      block(below: 2mm, label-text(f.label))
+      field-blocks(f)
+    })
+  }
+
   for scene in input.scenes {
     pagebreak(weak: true)
     let heading-text = if scene.id != "" { scene.id + ". " + scene.title } else { scene.title }
@@ -701,53 +722,47 @@
       })
     }
 
-    columns-part(
-      {
-        for b in scene.readAlouds { callout(b) }
-        if scene.happens != none {
-          h3(scene.happens.label)
-          field-blocks(scene.happens)
-        }
-        if scene.clues != none {
-          h3(scene.clues.label)
-          field-blocks(scene.clues)
-        }
-        for b in scene.handouts { callout(b) }
-        for b in scene.boxes { callout(b) }
-        if scene.tests != none {
-          block(width: 100%, stroke: 0.3mm + rule, inset: (x: 3mm, y: 2.5mm), above: 3mm, below: 3mm, breakable: false, {
-            pos("block", scene.tests.from)
-            [*#scene.tests.label.* ]
-            for b in scene.tests.blocks { md(b.markdown) }
-          })
-        }
-        if scene.reactions != none { blk(scene.reactions, table: "reactions") }
-        blocks(scene.tables)
-        if scene.derail != none {
-          block(above: 2.5mm, {
-            pos("block", scene.derail.from)
-            text(fill: accent, weight: "semibold", scene.derail.label + ".")
-            [ ]
-            for b in scene.derail.blocks { md(b.markdown) }
-          })
-        }
-      },
-      {
-        if scene.mustHave != none {
-          side-box(scene.mustHave.label, { pos("block", scene.mustHave.from); field-blocks(scene.mustHave) })
-        }
-        if scene.cast != none {
-          block(below: 3mm, {
-            set text(size: 9pt)
-            pos("block", scene.cast.from)
-            block(below: 2mm, label-text(scene.cast.label))
-            field-blocks(scene.cast)
-          })
-        }
-        for t in scene.threats { threat-box(t) }
-        for b in scene.sideBoxes { callout(b) }
-      },
-    )
+    let scene-main-column = {
+      for b in scene.readAlouds { callout(b) }
+      for name in scene.main {
+        let f = scene.at(name)
+        h3(f.label)
+        field-blocks(f)
+      }
+      for b in scene.handouts { callout(b) }
+      for b in scene.boxes { callout(b) }
+      if scene.tests != none {
+        block(width: 100%, stroke: 0.3mm + rule, inset: (x: 3mm, y: 2.5mm), above: 3mm, below: 3mm, breakable: false, {
+          pos("block", scene.tests.from)
+          [*#scene.tests.label.* ]
+          for b in scene.tests.blocks { md(b.markdown) }
+        })
+      }
+      if scene.reactions != none { blk(scene.reactions, table: "reactions") }
+      blocks(scene.tables)
+      if scene.derail != none {
+        block(above: 2.5mm, {
+          pos("block", scene.derail.from)
+          text(fill: accent, weight: "semibold", scene.derail.label + ".")
+          [ ]
+          for b in scene.derail.blocks { md(b.markdown) }
+        })
+      }
+    }
+    // Without a side field, a threat box or a side box, the main column
+    // prints full width.
+    if scene.side.len() == 0 and scene.threats.len() == 0 and scene.sideBoxes.len() == 0 {
+      scene-main-column
+    } else {
+      columns-part(
+        scene-main-column,
+        {
+          for name in scene.side { scene-side(scene.at(name), boxed: name == "mustHave") }
+          for t in scene.threats { threat-box(t) }
+          for b in scene.sideBoxes { callout(b) }
+        },
+      )
+    }
 
     // Under both columns, in the order the text has them. A bold label the
     // template does not know prints as written, «Se il tempo stringe:»
