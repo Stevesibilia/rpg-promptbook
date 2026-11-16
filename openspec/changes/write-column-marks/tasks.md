@@ -33,5 +33,5 @@
       command writes the marks on a document without any, one undo removes
       them all, and the command is no longer listed afterwards.
 - [x] 3.2 `docs/design.md`: one sentence in the «Column marks» bullet.
-- [ ] 3.3 Typecheck, all package tests (server with `TEST_DATABASE_URL`),
+- [x] 3.3 Typecheck, all package tests (server with `TEST_DATABASE_URL`),
       e2e, in containers. Sabaoth's four PDF hashes stay as they are.

@@ -58,4 +58,15 @@ renameHeadings: false, writeColumns: true })` returns, and is built on the
 
 ## Accepted departures
 
-None yet.
+- D1: `columnMarkEdits` calls `updateEdits` with the same template on both
+  sides instead of `columnInserts` directly. Same code path, and the equality
+  the decision asks for holds by construction.
+- D2: `marksMissing` is computed in `CommandPalette` when it mounts, not in
+  `EditorPage`. It is still read once per opening.
+- D4: the test compares `columnOf` for every part of the fixture before and
+  after the edits, in `promptbook-project`, as task 1.3 allows.
+- Task 2.3: `TemplateUpdate` has no unit tests; the default is covered by
+  e2e.
+- Task 2.4: the syntax sheet lists marks and parts, not palette commands, so
+  it is unchanged.
+- e2e: the old update test became a helper and two tests.
