@@ -116,7 +116,10 @@ text and Sabaoth gets no threat box.
   succede da sé», «Chi c'è», «Indizi qui». The mark is not part of the name:
   the outline, the checks and the connector read the heading without it. An
   unknown word, or a mark on any other part, is a warning and moves nothing.
-  Inline fields, `###` headings and campaign documents take no mark.
+  Inline fields, `###` headings and campaign documents take no mark. A
+  document made before has none: the palette command «Write column marks»
+  (#65) writes every missing mark from the template in one undo step, and the
+  template update dialog writes them by default.
 - **Closed, validated grammar:** sections, scene fields and callout types come
   from a closed list. Scenes keep `### S1. Name`, which gives each scene a
   stable id. Threat sheets get separate keys (Grado, Natura, Ferite,

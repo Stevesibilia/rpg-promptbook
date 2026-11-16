@@ -535,7 +535,9 @@ test('columns: the switches, a project with marks, the palette and the PDF', asy
   expect(nightPage!.indexOf('Rivelazioni')).toBeLessThan(nightPage!.indexOf('Orologio'));
 });
 
-test('columns: the update writes the marks only when ticked, in one undo step', async ({ page }) => {
+// A project on v2 of a copy of Avventura whose text has no mark on
+// «Orologio», and v3 of the copy, which moves «Orologio» to the side.
+async function withoutMarks(page: Page): Promise<{ name: string; projectId: string }> {
   const name = `Colonne update ${Date.now().toString(36)}`;
   await duplicate(page);
   await page.getByLabel('Name', { exact: true }).fill(name);
@@ -562,15 +564,19 @@ test('columns: the update writes the marks only when ticked, in one undo step', 
   await column(page, 'Orologio').getByRole('button', { name: 'Side' }).click();
   await save(page, 3, '', ['Section «Orologio» prints in the side column']);
 
-  await page.goto(`/projects/${project.id}`);
+  return { name, projectId: project.id };
+}
+
+test('columns: the update writes the marks by default, in one undo step', async ({ page }) => {
+  const { name, projectId } = await withoutMarks(page);
+  await page.goto(`/projects/${projectId}`);
   await expect(page.locator('.cm-content')).toBeVisible();
   await chip(page).click();
   const update = page.getByRole('dialog', { name: `Update to ${name} v3` });
   await expect(update).toContainText('Section «Orologio» prints in the side column');
   const option = update.getByLabel('Write the column marks where the text has none');
-  await expect(option).not.toBeChecked();
+  await expect(option).toBeChecked();
   await expect(update).toContainText('e.g. «## Orologio {principale}»; marks you wrote stay as they are');
-  await option.check();
   await update.getByRole('button', { name: 'Update to v3' }).click();
   await expect(update).toHaveCount(0);
   await expect(page.locator('.status')).toContainText(`Template: ${name} v3`);
@@ -583,4 +589,43 @@ test('columns: the update writes the marks only when ticked, in one undo step', 
   await expect(page.locator('.status')).toContainText(`Template: ${name} v2`);
   await expect(markOn(page, 'Orologio')).toHaveCount(0);
   await expect(markOn(page, 'Verità del mondo')).toHaveText('{laterale}');
+});
+
+test('columns: the update with the option unticked leaves the text, and the palette writes the marks in one undo step', async ({ page }) => {
+  const { name, projectId } = await withoutMarks(page);
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.locator('.cm-content')).toBeVisible();
+  await chip(page).click();
+  const update = page.getByRole('dialog', { name: `Update to ${name} v3` });
+  const option = update.getByLabel('Write the column marks where the text has none');
+  await expect(option).toBeChecked();
+  await option.uncheck();
+  await update.getByRole('button', { name: 'Update to v3' }).click();
+  await expect(update).toHaveCount(0);
+  await expect(page.locator('.status')).toContainText(`Template: ${name} v3`);
+  await page.locator('.cm-line', { hasText: 'titolo:' }).click();
+  await expect(markOn(page, 'Orologio')).toHaveCount(0);
+
+  // The palette lists the command while a mark is missing; one run writes the
+  // template's column, and one undo takes every mark away.
+  const palette = page.getByRole('dialog', { name: 'Command palette' });
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('write column');
+  await expect(palette.getByRole('option')).toHaveText(['Write column marks']);
+  await page.keyboard.press('Enter');
+  await expect(palette).toHaveCount(0);
+  await expect(markOn(page, 'Orologio')).toHaveText('{laterale}');
+  await expect(markOn(page, 'Verità del mondo')).toHaveText('{laterale}');
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('write column');
+  await expect(palette.getByRole('option')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(markOn(page, 'Orologio')).toHaveCount(0);
+  await expect(markOn(page, 'Verità del mondo')).toHaveText('{laterale}');
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('write column');
+  await expect(palette.getByRole('option')).toHaveText(['Write column marks']);
+  await page.keyboard.press('Escape');
 });
