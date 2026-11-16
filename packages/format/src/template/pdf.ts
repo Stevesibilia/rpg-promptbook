@@ -37,7 +37,9 @@ export function sectionPdf(section: SectionDefinition, kind: Kind): SectionPdf {
 
 // The section with the patch applied, keeping only the options that differ
 // from their defaults for the template's kind, and no `pdf` at all when none
-// does: an option set back to its default leaves the section as it was.
+// does: an option set back to its default leaves the section as it was. The
+// column, which is not one of these options, is kept as it is (placement.ts
+// sets it).
 export function withPdf<T extends SectionDefinition>(section: T, patch: SectionPdfPatch, kind: Kind): T {
   const base = defaults(section, kind);
   const next = { ...section.pdf, ...patch };
@@ -46,6 +48,7 @@ export function withPdf<T extends SectionDefinition>(section: T, patch: SectionP
     const value = next[key];
     if (value !== undefined && value !== base[key]) pdf[key] = value;
   }
+  if (section.pdf?.column !== undefined) pdf.column = section.pdf.column;
   const { pdf: _old, ...rest } = section;
   return (Object.keys(pdf).length > 0 ? { ...rest, pdf } : rest) as T;
 }

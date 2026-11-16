@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { baseURL } from './stack.js';
 import { connectClaude } from './claude.js';
-import { signIn } from './helpers.js';
+import { signIn, syncPill } from './helpers.js';
 import { pdfTexts } from './pdf-text.js';
 
 // Document templates (template-editor, mockup states 1 to 9): duplicate a
@@ -391,4 +391,196 @@ test('Claude saves a version of a template and updates an open project to it', a
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'History' }).click();
   await expect(page.getByRole('row').filter({ hasText: `Template «${name}» v1 → v2` })).toBeVisible();
+});
+
+// Where the night parts and the scene fields print (template-placement,
+// mockup states 3, 4, 8 and 10): the template editor's switches and
+// sketches, a project whose document carries the marks, the palette's move,
+// an unknown word in Checks, and the saved PDF.
+
+const column = (page: Page, name: string) => page.getByRole('group', { name: `Column: ${name}` });
+const fieldRow = (page: Page, label: string) =>
+  page.getByTestId('field-row').filter({ has: page.locator(`input[value="${label}"]`) });
+const markOn = (page: Page, text: string) => page.locator('.cm-line', { hasText: text }).locator('.cm-pm');
+
+// The PDF the review saves, as the text of its pages.
+async function savedPdf(page: Page): Promise<string[]> {
+  await page.keyboard.press('ControlOrMeta+Shift+P');
+  const review = page.getByRole('region', { name: 'PDF review' });
+  await expect(review.locator('.thumbs-col .th').first()).toBeVisible(ENGINE);
+  const download = page.waitForEvent('download');
+  await review.getByRole('button', { name: 'Save PDF' }).click();
+  const chunks: Buffer[] = [];
+  for await (const chunk of await (await download).createReadStream()) chunks.push(chunk as Buffer);
+  await page.keyboard.press('Escape');
+  await expect(review).toHaveCount(0);
+  return pdfTexts(Buffer.concat(chunks));
+}
+
+test('columns: the switches, a project with marks, the palette and the PDF', async ({ page }) => {
+  const name = `Colonne e2e ${Date.now().toString(36)}`;
+
+  // The built-in shows today's places, every switch disabled.
+  await row(page, 'Avventura').getByRole('button', { name: 'View' }).click();
+  await expect(column(page, 'Da non perdere stasera').getByRole('button', { name: 'Side' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(column(page, 'Orologio').getByRole('button', { name: 'Main' })).toHaveAttribute('aria-pressed', 'true');
+  for (const button of await page.locator('.col button').all()) await expect(button).toBeDisabled();
+  await expect(page.getByTestId('night-sketch')).toBeVisible();
+
+  // A copy: «Orologio» to the side, «Rivelazioni» to the main column.
+  await duplicate(page);
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await column(page, 'Orologio').getByRole('button', { name: 'Side' }).click();
+  await expect(column(page, 'Orologio').getByRole('button', { name: 'Side' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(sectionRow(page, 'Orologio')).toHaveClass(/changed/);
+  const night = page.getByTestId('night-sketch');
+  await expect(night.getByTestId('sketch-side')).toContainText('Orologio');
+  await expect(night.getByTestId('sketch-main')).not.toContainText('Orologio');
+  const preview = page.getByTestId('starting-document');
+  await expect(markOn(page, 'Orologio')).toHaveText('{laterale}');
+  await expect(preview).toContainText('Orologio {laterale}');
+  await expect(saveBar(page)).toContainText('2 unsaved changes');
+
+  const revelations = page.getByTestId('revelations-row');
+  await expect(revelations.getByLabel('Revelations label')).toHaveValue('↳ Rivelazioni');
+  await expect(revelations.getByLabel('Revelations label')).toBeDisabled();
+  await column(page, 'Rivelazioni').getByRole('button', { name: 'Main' }).click();
+  await expect(night.getByTestId('sketch-main')).toContainText('Rivelazioni');
+  await expect(markOn(page, 'Rivelazioni')).toHaveText('{principale}');
+  await expect(saveBar(page)).toContainText('3 unsaved changes');
+
+  // Scene fields: the four switches and the fixed places.
+  await page.getByRole('tab', { name: /Scene fields/ }).click();
+  for (const label of ['Da non perdere qui', 'Cosa succede da sé', "Chi c'è", 'Indizi qui']) {
+    await expect(column(page, label)).toBeVisible();
+  }
+  await expect(fieldRow(page, 'Prove e regole').locator('.tg.fixed')).toHaveText('Framed, main column');
+  await expect(fieldRow(page, 'Se deragliano').locator('.tg.fixed')).toHaveText('End of main column');
+  await expect(fieldRow(page, 'In gioco').locator('.tg.fixed')).toHaveText('Scene header');
+  await expect(page.getByTestId('scene-sketch').getByTestId('sketch-side')).toContainText("Chi c'è");
+  await column(page, "Chi c'è").getByRole('button', { name: 'Main' }).click();
+  await expect(page.getByTestId('scene-sketch').getByTestId('sketch-main')).toContainText("Chi c'è");
+  await expect(saveBar(page)).toContainText('4 unsaved changes');
+  await column(page, "Chi c'è").getByRole('button', { name: 'Side' }).click();
+  await expect(saveBar(page)).toContainText('3 unsaved changes');
+  await expect(fieldRow(page, "Chi c'è")).not.toHaveClass(/changed/);
+  await page.getByRole('tab', { name: /Sections/ }).click();
+  await save(page, 2, 'Orologio a lato', [
+    'Section «Orologio» prints in the side column',
+    'Revelations list «Rivelazioni» prints in the main column',
+  ]);
+  const editor = new URL(page.url()).pathname;
+  const templateId = editor.split('/').at(-1)!;
+
+  // A project from v2: its document carries the marks.
+  const response = await page.request.post('/api/projects', {
+    headers: { origin: baseURL },
+    data: { category: 'one-shot', title: `Le colonne ${Date.now().toString(36)}`, template: { id: templateId, version: 2 } },
+  });
+  expect(response.status()).toBe(201);
+  const { project } = (await response.json()) as { project: { id: string } };
+  await page.goto(`/projects/${project.id}`);
+  await expect(page.locator('.cm-content')).toBeVisible();
+  await expect(outline(page)).toContainText('Orologio');
+  // The mark shows with the cursor elsewhere.
+  await page.locator('.cm-line', { hasText: 'titolo:' }).click();
+  await expect(markOn(page, 'Orologio')).toHaveText('{laterale}');
+  await expect(markOn(page, 'Orologio')).toBeVisible();
+  await expect(markOn(page, 'Da non perdere stasera')).toHaveText('{laterale}');
+  await expect(markOn(page, 'Rivelazioni')).toHaveText('{principale}');
+  // The scene is further down: the outline brings it into view.
+  await outline(page).getByText('Prima scena').click();
+  await expect(markOn(page, 'Da non perdere qui')).toHaveText('{laterale}');
+  await page.keyboard.press('ControlOrMeta+Home');
+
+  // The palette moves «Orologio» back to the main column.
+  await page.locator('.cm-line', { hasText: 'Orologio' }).click();
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Command palette' });
+  await page.keyboard.type('column');
+  await expect(palette.getByRole('option')).toHaveText(['Move to main column']);
+  await page.keyboard.press('Enter');
+  await expect(palette).toHaveCount(0);
+  await page.locator('.cm-line', { hasText: 'titolo:' }).click();
+  await expect(markOn(page, 'Orologio')).toHaveText('{principale}');
+  // On a part without a column, neither command.
+  await page.locator('.cm-line', { hasText: 'Mappa delle scene' }).click();
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.keyboard.type('column');
+  await expect(palette.getByRole('option')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  // An unknown word: a warning, in its own style.
+  await page.locator('.cm-line', { hasText: 'Verità del mondo' }).click();
+  await page.keyboard.press('End');
+  for (let i = 0; i < '{principale}'.length; i++) await page.keyboard.press('Backspace');
+  await page.keyboard.type('{latterale}');
+  await page.locator('.cm-line', { hasText: 'titolo:' }).click();
+  await expect(page.locator('.cm-line', { hasText: 'Verità del mondo' }).locator('.cm-pm-bad')).toHaveText('{latterale}');
+  await expect(page.locator('.inspector .plist .prow', { hasText: 'Unknown column «latterale»' })).toBeVisible();
+
+  // A revelation under the label, then the PDF: no mark printed, and the
+  // revelations, set to the main column, head it before «Orologio».
+  await page.locator('.cm-line', { hasText: 'Rivelazioni' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('- **R1.** La lanterna è spenta da anni. (I1)');
+  await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
+  const pages = await savedPdf(page);
+  expect(pages.join('\n')).not.toContain('{');
+  const nightPage = pages.find((text) => text.includes('La lanterna è spenta da anni'));
+  expect(nightPage).toBeDefined();
+  expect(nightPage!.indexOf('Rivelazioni')).toBeGreaterThanOrEqual(0);
+  expect(nightPage!.indexOf('Rivelazioni')).toBeLessThan(nightPage!.indexOf('Orologio'));
+});
+
+test('columns: the update writes the marks only when ticked, in one undo step', async ({ page }) => {
+  const name = `Colonne update ${Date.now().toString(36)}`;
+  await duplicate(page);
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await save(page, 2, '', []);
+  const templateId = new URL(page.url()).pathname.split('/').at(-1)!;
+
+  // A project on v2 whose text has no mark on «Orologio».
+  const response = await page.request.post('/api/projects', {
+    headers: { origin: baseURL },
+    data: { category: 'one-shot', title: `Senza segni ${Date.now().toString(36)}`, template: { id: templateId, version: 2 } },
+  });
+  const { project } = (await response.json()) as { project: { id: string } };
+  await page.goto(`/projects/${project.id}`);
+  await expect(page.locator('.cm-content')).toBeVisible();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  const text = '---\ntitolo: Senza segni\n---\n\n## Orologio\n\n- La marea sale.\n\n## Verità del mondo {laterale}\n\n- Il faro è chiuso.\n';
+  await page.keyboard.insertText(text);
+  await expect(outline(page)).toContainText('Verità del mondo');
+  await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
+
+  // v3 moves «Orologio» to the side.
+  await page.goto(`/settings/documents/${templateId}`);
+  await column(page, 'Orologio').getByRole('button', { name: 'Side' }).click();
+  await save(page, 3, '', ['Section «Orologio» prints in the side column']);
+
+  await page.goto(`/projects/${project.id}`);
+  await expect(page.locator('.cm-content')).toBeVisible();
+  await chip(page).click();
+  const update = page.getByRole('dialog', { name: `Update to ${name} v3` });
+  await expect(update).toContainText('Section «Orologio» prints in the side column');
+  const option = update.getByLabel('Write the column marks where the text has none');
+  await expect(option).not.toBeChecked();
+  await expect(update).toContainText('e.g. «## Orologio {principale}»; marks you wrote stay as they are');
+  await option.check();
+  await update.getByRole('button', { name: 'Update to v3' }).click();
+  await expect(update).toHaveCount(0);
+  await expect(page.locator('.status')).toContainText(`Template: ${name} v3`);
+  await page.locator('.cm-line', { hasText: 'titolo:' }).click();
+  await expect(markOn(page, 'Orologio')).toHaveText('{laterale}');
+  await expect(markOn(page, 'Verità del mondo')).toHaveText('{laterale}');
+
+  // One undo puts back the text and v2.
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.locator('.status')).toContainText(`Template: ${name} v2`);
+  await expect(markOn(page, 'Orologio')).toHaveCount(0);
+  await expect(markOn(page, 'Verità del mondo')).toHaveText('{laterale}');
 });

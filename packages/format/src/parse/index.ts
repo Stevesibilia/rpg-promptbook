@@ -35,6 +35,7 @@ export function parseAdventure(text: string, { template, systems = builtinSystem
     sheets: [],
     pregenerated: null,
     revelations: [],
+    revelationsLabel: null,
     clues: [],
     reminders: [],
     sceneMap: [],

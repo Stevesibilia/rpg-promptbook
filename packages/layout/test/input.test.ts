@@ -437,3 +437,155 @@ describe('role sections left out', () => {
     expect(JSON.stringify(full)).not.toContain('Appendice');
   });
 });
+
+describe('the placement of the night and scene parts', () => {
+  const withTemplate = (change: (t: AdventureTemplateInput) => void) => {
+    const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+    change(definition);
+    const template = defineTemplate(definition);
+    return (text: string) =>
+      toLayoutInput(parseAdventure(text, { template }).model, defaultLayoutOptions, project, template);
+  };
+  // Sabaoth with one line rewritten.
+  const edited = (from: string | RegExp, to: string) => {
+    const text = sabaoth();
+    const out = text.replace(from, to);
+    expect(out).not.toBe(text);
+    return out;
+  };
+  const columns = (input: ReturnType<typeof layout>) => ({ main: input.night.main, side: input.night.side });
+  const sceneColumns = (input: ReturnType<typeof layout>) => input.scenes.map((s) => [s.main, s.side]);
+
+  it('puts every part in today\'s column when the text has no mark', () => {
+    const input = layout(sabaoth());
+    expect(columns(input)).toEqual({ main: ['clock', 'truths'], side: ['reminders', 'revelations'] });
+    const s1 = input.scenes[0]!;
+    expect([s1.mustHave, s1.happens, s1.cast, s1.clues].every((f) => f !== null)).toBe(true);
+    expect(s1.main).toEqual(['happens', 'clues']);
+    expect(s1.side).toEqual(['mustHave', 'cast']);
+  });
+
+  it('moves a night section each way with a mark', () => {
+    expect(columns(layout(edited(/^## Orologio$/m, '## Orologio {laterale}')))).toEqual({
+      main: ['truths'],
+      side: ['reminders', 'revelations', 'clock'],
+    });
+    expect(columns(layout(edited(/^## Da non perdere stasera$/m, '## Da non perdere stasera {principale}')))).toEqual({
+      main: ['reminders', 'clock', 'truths'],
+      side: ['revelations'],
+    });
+  });
+
+  it('moves the revelations with a mark on their label', () => {
+    const input = layout(edited(/^\*\*Rivelazioni\*\*$/m, '**Rivelazioni** {principale}'));
+    expect(columns(input)).toEqual({ main: ['revelations', 'clock', 'truths'], side: ['reminders'] });
+    expect(markdown(input.night.revelations?.blocks)).toMatch(/^- \*\*R1\.\*\*/);
+    expect(markdown(input.night.overview?.blocks)).not.toContain('Rivelazioni');
+  });
+
+  it('starts the revelations at their label', () => {
+    const text = sabaoth();
+    const input = layout(text);
+    expect(text.slice(input.night.revelations!.from)).toMatch(/^\*\*Rivelazioni\*\*\n/);
+  });
+
+  it('moves a field in its scene only', () => {
+    const input = layout(edited('**Da non perdere qui**', '**Da non perdere qui** {principale}'));
+    expect(sceneColumns(input).slice(0, 2)).toEqual([
+      [['mustHave', 'happens', 'clues'], ['cast']],
+      [['happens', 'clues'], ['mustHave', 'cast']],
+    ]);
+    expect(markdown(input.scenes[0]!.mustHave?.blocks)).toMatch(/^- \[ \] Neri pronuncia/);
+  });
+
+  it('moves the parts a template sets, with no mark in the text', () => {
+    const moved = withTemplate((t) => {
+      t.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+      t.sections.find((s) => s.role === 'reminders')!.pdf = { column: 'main' };
+      t.overview.column = 'main';
+      t.sceneFields.find((f) => f.role === 'cast')!.column = 'main';
+      t.sceneFields.find((f) => f.role === 'happens')!.column = 'side';
+    });
+    const input = moved(sabaoth());
+    expect(columns(input)).toEqual({ main: ['revelations', 'reminders', 'truths'], side: ['clock'] });
+    expect(input.scenes[0]!.main).toEqual(['cast', 'clues']);
+    expect(input.scenes[0]!.side).toEqual(['mustHave', 'happens']);
+  });
+
+  it('lets a mark beat the template, and an unknown word leave the template\'s column', () => {
+    const moved = withTemplate((t) => {
+      t.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+    });
+    expect(columns(moved(edited(/^## Orologio$/m, '## Orologio {principale}'))).main).toEqual(['clock', 'truths']);
+    expect(columns(moved(edited(/^## Orologio$/m, '## Orologio {latterale}'))).side).toEqual([
+      'reminders',
+      'revelations',
+      'clock',
+    ]);
+    expect(columns(layout(edited(/^## Orologio$/m, '## Orologio {latterale}'))).main).toEqual(['clock', 'truths']);
+  });
+
+  it('leaves a missing section, a section left out and a missing field out of both columns', () => {
+    const missing = layout(edited(/^## Verità del mondo$[\s\S]*?(?=^## Inizio forte$)/m, ''));
+    expect(columns(missing)).toEqual({ main: ['clock'], side: ['reminders', 'revelations'] });
+    const leftOut = withTemplate((t) => {
+      t.sections.find((s) => s.role === 'reminders')!.pdf = { print: false };
+    });
+    expect(columns(leftOut(sabaoth()))).toEqual({ main: ['clock', 'truths'], side: ['revelations'] });
+    const noCast = layout(edited(/^\*\*Chi c'è\*\*$[\s\S]*?(?=^\*\*Indizi qui\*\*$)/m, ''));
+    expect(noCast.scenes[0]!.side).toEqual(['mustHave']);
+    expect(noCast.scenes[1]!.side).toEqual(['mustHave', 'cast']);
+  });
+
+  it('keeps the side column\'s order: «Da non perdere stasera» first, then the text', () => {
+    const text = edited(/^## Orologio$/m, '## Orologio {laterale}').replace(
+      /^## Verità del mondo$/m,
+      '## Verità del mondo {laterale}',
+    );
+    expect(columns(layout(text))).toEqual({ main: [], side: ['reminders', 'revelations', 'clock', 'truths'] });
+    // The reminders after the clock in the text still head the side column.
+    const reordered = (() => {
+      const doc = sabaoth();
+      const reminders = /^## Da non perdere stasera$[\s\S]*?(?=^## Orologio$)/m.exec(doc)![0];
+      return doc
+        .replace(reminders, '')
+        .replace(/^## Orologio$/m, '## Orologio {laterale}')
+        .replace(/^## Inizio forte$/m, `${reminders}## Inizio forte`);
+    })();
+    expect(columns(layout(reordered)).side).toEqual(['reminders', 'revelations', 'clock']);
+  });
+
+  it('keeps the text\'s order in the main column', () => {
+    const doc = sabaoth();
+    const clock = /^## Orologio$[\s\S]*?(?=^## Verità del mondo$)/m.exec(doc)![0];
+    const reordered = doc.replace(clock, '').replace(/^## Inizio forte$/m, `${clock}## Inizio forte`);
+    expect(columns(layout(reordered)).main).toEqual(['truths', 'clock']);
+  });
+
+  it('prints no lone revelations label, the starting document\'s', () => {
+    const text =
+      "---\ntitolo: Nuova\n---\n\n## A colpo d'occhio\n\n**Rivelazioni** {laterale}\n\n## Da non perdere stasera {laterale}\n\n- [ ] Una cosa.\n";
+    const input = layout(text);
+    expect(input.night.revelations).toBeNull();
+    expect(input.night.overview?.blocks).toEqual([]);
+    expect(columns(input)).toEqual({ main: [], side: ['reminders'] });
+    // A label followed by other text is an ordinary paragraph and prints.
+    const prose = layout(text.replace('**Rivelazioni** {laterale}', '**Rivelazioni** da scrivere.'));
+    expect(markdown(prose.night.overview?.blocks)).toBe('**Rivelazioni** da scrivere.');
+  });
+
+  it('never prints a revelations label\'s mark', () => {
+    const head = "---\ntitolo: Nuova\n---\n\n## A colpo d'occhio\n\n";
+    // A label over a list with no revelation ids prints as today, without its mark.
+    const plain = layout(`${head}**Rivelazioni** {principale}\n\n- una cosa da scoprire\n`);
+    expect(plain.night.revelations).toBeNull();
+    expect(markdown(plain.night.overview?.blocks)).toBe('**Rivelazioni**\n\n- una cosa da scoprire');
+    // A lone label before the real list does not print; nor does an unknown word.
+    const twice = layout(
+      `${head}**Rivelazioni** {latterale}\n\nIl lago tace.\n\n**Rivelazioni** {principale}\n\n- **R1.** Ottavio è vivo.\n`,
+    );
+    expect(markdown(twice.night.overview?.blocks)).toBe('Il lago tace.');
+    expect(markdown(twice.night.revelations?.blocks)).toBe('- **R1.** Ottavio è vivo.');
+    expect(JSON.stringify([plain, twice])).not.toMatch(/\{(laterale|principale|latterale)\}/);
+  });
+});

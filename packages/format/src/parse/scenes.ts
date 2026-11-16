@@ -11,6 +11,7 @@ import {
   type BoxIds,
   type ParseContext,
 } from './blocks.js';
+import { labelMark } from './marks.js';
 import { escapeRegExp, plainText, slug } from './source.js';
 
 export interface SceneOutput {
@@ -74,7 +75,9 @@ export function readScene(ctx: ParseContext, heading: Heading, nodes: RootConten
 
     if (label) {
       const known = template.sceneFields.some((f) => f.label === label.label);
-      const rest = afterLabel(source.text.slice(label.end, source.end(node)));
+      // A label followed by nothing but a column mark is a block field.
+      const mark = node.type === 'paragraph' ? labelMark(ctx, node, label) : null;
+      const rest = mark ? '' : afterLabel(source.text.slice(label.end, source.end(node)));
       const field: SceneField = {
         label: label.label,
         known,
@@ -83,6 +86,7 @@ export function readScene(ctx: ParseContext, heading: Heading, nodes: RootConten
         labelRange: source.range(label.start, label.end),
         text: rest,
         blocks: [],
+        mark,
       };
       scene.fields.push(field);
       next = field.form === 'block' ? field : null;

@@ -1,7 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import { Facet, StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import type { AdventureTemplate, CalloutDefinition } from 'promptbook-format';
+import { columnOfWord, type AdventureTemplate, type CalloutDefinition } from 'promptbook-format';
 
 // The live preview (design decision 4): decorations over the source, built
 // from the Markdown syntax tree so they follow every keystroke. Marks show on
@@ -12,11 +12,15 @@ export interface PreviewConfig {
   callouts: readonly CalloutDefinition[];
   // The scene id prefix ("S"), styled in scene headings; null for none.
   sceneIdPrefix: string | null;
+  // Column marks (`{laterale}`) styled after a ## heading or a bold label:
+  // adventures and one-shots only, so a campaign shows braces as text.
+  columnMarks: boolean;
 }
 
 export const previewConfigOf = (template: AdventureTemplate, checked: boolean): PreviewConfig => ({
   callouts: template.callouts,
   sceneIdPrefix: checked ? template.ids.scene : null,
+  columnMarks: checked,
 });
 
 // What the preview does to a range of the text.
@@ -192,6 +196,13 @@ export function inlineItems(
               items.push({ kind: 'hide', from: before ? mark.from - 1 : mark.from, to: space ? mark.to + 1 : mark.to });
             }
           }
+          if (heading[1] === '2' && config.columnMarks && node.node.parent?.name === 'Document') {
+            const start = marks[0] ? marks[0].to : node.from;
+            const rest = doc.sliceString(start, line.to);
+            const mark = HEADING_MARK.exec(rest);
+            // A heading that is nothing but the mark keeps it as its text.
+            if (mark && rest.slice(0, mark.index).trim()) items.push(markItem(start + mark.index, mark[0], mark[1]!));
+          }
           if (heading[1] === '3' && config.sceneIdPrefix) {
             const start = marks[0] ? marks[0].to : node.from;
             const rest = doc.sliceString(start, line.to);
@@ -207,10 +218,25 @@ export function inlineItems(
           const line = doc.lineAt(node.from);
           const inner = doc.sliceString(node.from + 2, node.to - 2);
           const atStart = !line.text.slice(0, node.from - line.from).trim();
-          const alone = atStart && !doc.sliceString(node.to, line.to).trim();
+          const after = doc.sliceString(node.to, line.to);
+          // A mark after a label alone in its paragraph keeps the label's
+          // look, and shows on every line.
+          const paragraph = node.node.parent;
+          const mark =
+            config.columnMarks &&
+            atStart &&
+            !inner.trimEnd().endsWith(':') &&
+            paragraph?.name === 'Paragraph' &&
+            paragraph.from === node.from &&
+            paragraph.to <= line.to &&
+            paragraph.parent?.name === 'Document'
+              ? LABEL_MARK.exec(after)
+              : null;
+          const alone = atStart && (!after.trim() || mark !== null);
           if (atStart && (inner.trimEnd().endsWith(':') || alone)) {
             items.push({ kind: 'mark', from: node.from, to: node.to, className: 'cm-fl' });
           }
+          if (mark) items.push(markItem(node.to + mark.index + mark[0].indexOf(mark[1]!), mark[1]!, mark[2]!));
           if (off(node.from)) hideMarks(node.node.getChildren('EmphasisMark'));
           return;
         }
@@ -253,6 +279,19 @@ export function inlineItems(
   }
   return items;
 }
+
+// A column mark as the format reads it (template-placement design decision
+// A1): one word of letters in braces, not escaped, at the end of a ## heading
+// (before a closing run of #) or alone after a bold label.
+const HEADING_MARK = /(?<!\\)\{[ \t]*(\p{L}+)[ \t]*\}(?=[ \t]*(?:[ \t]#+[ \t]*)?$)/u;
+const LABEL_MARK = /^[ \t]*((?<!\\)\{[ \t]*(\p{L}+)[ \t]*\})[ \t]*$/u;
+
+const markItem = (from: number, text: string, word: string): PreviewItem => ({
+  kind: 'mark',
+  from,
+  to: from + text.length,
+  className: columnOfWord(word) ? 'cm-pm' : 'cm-pm cm-pm-bad',
+});
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

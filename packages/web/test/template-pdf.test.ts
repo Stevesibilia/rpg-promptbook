@@ -42,7 +42,11 @@ function column(draft: Template, readOnly = false): string[] {
     createElement(SectionsTab, { draft, saved: draft, dispatch: () => {}, readOnly, newUid: () => 'x' }),
   );
   const head = /<div class="rh g-sec"[^>]*>(.*?)<\/div>/.exec(html)![1]!;
-  const cells = [...html.matchAll(/<span class="pdf">(.*?)<\/span><(?:button class="del|span><\/span><\/div)/g)].map((m) =>
+  // The revelations' row is not a section's; a column switch reads «(…)».
+  const rows = html
+    .replace(/<div class="rr g-sec subrow".*?<\/div>/g, '')
+    .replace(/<span class="col"[^>]*>(.*?)<\/span>/g, '($1)');
+  const cells = [...rows.matchAll(/<span class="pdf">(.*?)<\/span><(?:button class="del|span><\/span><\/div)/g)].map((m) =>
     m[1]!
       .replace(/<button[^>]*aria-pressed="(true|false)"[^>]*?( disabled="")?>([^<]*)<\/button>/g, (_, on, disabled, text) =>
         `[${text}${on === 'true' ? ' on' : ''}${disabled ? ' disabled' : ''}]`,
@@ -75,7 +79,8 @@ describe('the «In the PDF» column', () => {
     const cells = column(saved);
     expect(cells[0]).toBe('In the PDF');
     expect(cells[at(saved, 'Inizio forte') + 1]).toBe('{Start page}[Printed on]');
-    expect(cells[at(saved, 'Da non perdere stasera') + 1]).toBe('{Night page, side}[Printed on]');
+    expect(cells[at(saved, 'Da non perdere stasera') + 1]).toBe('{Night page}([Main][Side on])[Printed on]');
+    expect(cells[at(saved, 'Orologio') + 1]).toBe('{Night page}([Main on][Side])[Printed on]');
     expect(cells[at(saved, 'Appendice') + 1]).toBe('{Not printed}');
     expect(cells[at(saved, 'Atmosfera') + 1]).toBe('[Printed on][New page on][Side column]');
   });

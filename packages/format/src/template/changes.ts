@@ -7,6 +7,7 @@ import type {
   Template,
 } from './schema.js';
 import { sectionPdf } from './pdf.js';
+import { nightPartOf, scenePartOf, templateColumn, type PlacedPart } from './placement.js';
 
 // One difference between two templates, as the editor's save dialog, its save
 // bar and the update dialog list them. `label` names the item as `to` has it
@@ -14,7 +15,7 @@ import { sectionPdf } from './pdf.js';
 // values of what changed, as text.
 export interface TemplateChange {
   kind: 'added' | 'changed' | 'removed';
-  what: 'section' | 'field' | 'box' | 'key' | 'limits' | 'name' | 'system';
+  what: 'section' | 'field' | 'revelations' | 'box' | 'key' | 'limits' | 'name' | 'system';
   label: string;
   before?: string;
   after?: string;
@@ -123,7 +124,31 @@ function pdfText(s: SectionDefinition, kind: Template['kind']): string {
   return ['printed', ...(newPage ? ['new page'] : []), ...(sideColumn ? ['side column'] : [])].join(', ');
 }
 
-function sections(from: readonly SectionDefinition[], to: readonly SectionDefinition[], kind: Template['kind']): TemplateChange[] {
+// The two adventure templates whose columns are compared; absent when either
+// is a campaign.
+type Columns = { from: AdventureTemplate; to: AdventureTemplate } | undefined;
+
+// The change of a part's column between the two templates, if any. Items
+// paired across two different parts are not compared.
+function columnChange(
+  what: TemplateChange['what'],
+  label: string,
+  columns: Columns,
+  a: PlacedPart | null,
+  b: PlacedPart | null,
+): TemplateChange[] {
+  if (!columns || !a || a !== b) return [];
+  const before = templateColumn(columns.from, a);
+  const after = templateColumn(columns.to, b);
+  return before === after ? [] : [changed(what, label, 'column', before, after)];
+}
+
+function sections(
+  from: readonly SectionDefinition[],
+  to: readonly SectionDefinition[],
+  kind: Template['kind'],
+  columns: Columns,
+): TemplateChange[] {
   return diffList(from, to, {
     what: 'section',
     name: (s) => s.name,
@@ -140,12 +165,17 @@ function sections(from: readonly SectionDefinition[], to: readonly SectionDefini
       if (JSON.stringify(sectionPdf(a, kind)) !== JSON.stringify(sectionPdf(b, kind))) {
         out.push(changed('section', b.name, 'pdf', pdfText(a, kind), pdfText(b, kind)));
       }
+      out.push(...columnChange('section', b.name, columns, nightPartOf(a.role), nightPartOf(b.role)));
       return out;
     },
   });
 }
 
-function fields(from: readonly SceneFieldDefinition[], to: readonly SceneFieldDefinition[]): TemplateChange[] {
+function fields(
+  from: readonly SceneFieldDefinition[],
+  to: readonly SceneFieldDefinition[],
+  columns: Columns,
+): TemplateChange[] {
   return diffList(from, to, {
     what: 'field',
     name: (f) => f.label,
@@ -158,6 +188,7 @@ function fields(from: readonly SceneFieldDefinition[], to: readonly SceneFieldDe
       if (a.requirement !== b.requirement) out.push(changed('field', b.label, 'requirement', a.requirement, b.requirement));
       if (a.form !== b.form) out.push(changed('field', b.label, 'form', a.form, b.form));
       if (a.climax !== b.climax) out.push(changed('field', b.label, 'climax', String(a.climax), String(b.climax)));
+      out.push(...columnChange('field', b.label, columns, scenePartOf(a.role), scenePartOf(b.role)));
       return out;
     },
   });
@@ -231,8 +262,9 @@ function limits(from: AdventureTemplate, to: AdventureTemplate): TemplateChange[
 }
 
 // The changes from one template to another, in the order the editor lists
-// them: name, game system, sections, scene fields, boxes, front matter keys,
-// limits and style. Items pair by uid, else by role, else by name (a box by
+// them: name, game system, sections, the revelations list, scene fields,
+// boxes, front matter keys, limits and style. A column is compared as each
+// template resolves it, so a stored default is no change. Items pair by uid, else by role, else by name (a box by
 // its type and meta). The parts the editor does not edit (ids, tables,
 // sheets, appendix, references) are not compared.
 export function templateChanges(from: Template, to: Template): TemplateChange[] {
@@ -243,8 +275,13 @@ export function templateChanges(from: Template, to: Template): TemplateChange[] 
   const fromSystem = fromAdventure?.system ?? '';
   const toSystem = toAdventure?.system ?? '';
   if (fromSystem !== toSystem) out.push({ kind: 'changed', what: 'system', label: toSystem, before: fromSystem, after: toSystem });
-  out.push(...sections(from.sections, to.sections, to.kind));
-  out.push(...fields(fromAdventure?.sceneFields ?? [], toAdventure?.sceneFields ?? []));
+  const columns: Columns = fromAdventure && toAdventure ? { from: fromAdventure, to: toAdventure } : undefined;
+  out.push(...sections(from.sections, to.sections, to.kind, columns));
+  if (columns) {
+    const label = columns.to.overview.revelations;
+    out.push(...columnChange('revelations', label, columns, 'revelations', 'revelations'));
+  }
+  out.push(...fields(fromAdventure?.sceneFields ?? [], toAdventure?.sceneFields ?? [], columns));
   out.push(...boxes(fromAdventure?.callouts ?? [], toAdventure?.callouts ?? []));
   out.push(...keys(from.meta, to.meta));
   if (fromAdventure && toAdventure) out.push(...limits(fromAdventure, toAdventure));

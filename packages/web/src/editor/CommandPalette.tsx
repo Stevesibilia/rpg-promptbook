@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { EditorView } from '@codemirror/view';
 import { keyLabel } from './cm/keymap.js';
 import { useViewValue } from './InspectorSection.js';
+import { columnTargetOf } from './columns.js';
 import { outlineOf } from './outline.js';
 import { filterEntries, paletteEntries, type PaletteAction } from './palette.js';
 import type { UpdateSource } from './StatusBar.js';
 
 const same = (a: unknown, b: unknown) => a === b;
+const readColumn = (state: Parameters<typeof columnTargetOf>[0]) => columnTargetOf(state)?.column ?? null;
 
 // The command palette (design decision 10): a text field over the outline's
 // items and the commands. The list follows the document while it is open;
@@ -28,7 +30,12 @@ export function CommandPalette({
   onClose(): void;
 }) {
   const items = useViewValue(view, updates, outlineOf, same);
-  const entries = useMemo(() => paletteEntries(items ?? [], { checked, printable }), [items, checked, printable]);
+  // Where the part under the cursor prints, for «Move to … column».
+  const column = useViewValue(view, updates, readColumn, same);
+  const entries = useMemo(
+    () => paletteEntries(items ?? [], { checked, printable, column: checked ? column : null }),
+    [items, checked, printable, column],
+  );
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const shown = useMemo(() => filterEntries(entries, query), [entries, query]);

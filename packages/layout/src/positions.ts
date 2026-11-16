@@ -13,6 +13,8 @@ export interface Position {
   page: number;
   // Points from the top of the page.
   y: number;
+  // Points from the left edge of the page: which column printed it.
+  x?: number;
 }
 
 // By page, then from the top of the page; positions at the same place keep

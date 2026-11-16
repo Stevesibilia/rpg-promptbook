@@ -18,6 +18,7 @@ import type { Hiding } from './Checks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
 import { licenceHandler } from './cm/preview.js';
 import { hideHandler } from './cm/problems.js';
+import { columnEdit, columnTargetOf } from './columns.js';
 import { CommandPalette } from './CommandPalette.js';
 import { hidingActions } from './hiding.js';
 import { Editor } from './Editor.js';
@@ -246,6 +247,15 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
       case 'projects':
         navigate('/');
         return;
+      case 'column': {
+        // Found again on the text as it is now; nothing when the part has
+        // gone or already prints there.
+        const target = view && columnTargetOf(view.state);
+        if (view && target && target.column !== action.to) {
+          write(view, [columnEdit(target, action.to)], { userEvent: 'input.column' });
+        }
+        return;
+      }
     }
   };
 

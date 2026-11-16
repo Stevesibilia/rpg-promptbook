@@ -14,6 +14,7 @@ import type {
 } from '../model.js';
 import type { SectionDefinition } from '../template/schema.js';
 import { leadingLabel, toBlock, toList, type BoxIds, type ParseContext } from './blocks.js';
+import { headingMark, labelMark } from './marks.js';
 import { readScene, sceneHeading, trailingIds } from './scenes.js';
 import { readPregenerated, readSheet } from './sheets.js';
 import { escapeRegExp, plainText } from './source.js';
@@ -45,7 +46,9 @@ function splitAt(nodes: RootContent[], depth: number) {
 // Reads one ## section into the model.
 export function readSection(ctx: ParseContext, model: Model, heading: Heading, nodes: RootContent[]): void {
   const { source, template } = ctx;
-  const headingText = plainText(heading).trim();
+  // The mark is a setting, not part of the name: it is off the heading text
+  // before anything matches or quotes it.
+  const { title: headingText, mark } = headingMark(ctx, heading);
   const definition = matchSection(template.sections, headingText);
   const last = nodes.at(-1) ?? heading;
   const section: Section = {
@@ -54,6 +57,7 @@ export function readSection(ctx: ParseContext, model: Model, heading: Heading, n
     heading: headingText,
     known: definition !== null,
     role: definition?.role ?? null,
+    mark,
     range: source.range(source.start(heading), source.end(last)),
     headingRange: source.nodeRange(heading),
     blocks: [],
@@ -109,9 +113,12 @@ export function readSection(ctx: ParseContext, model: Model, heading: Heading, n
 
   plain(nodes);
   switch (section.role) {
-    case 'overview':
-      model.revelations.push(...readRevelations(ctx, nodes));
+    case 'overview': {
+      const { revelations, label } = readRevelations(ctx, nodes);
+      model.revelations.push(...revelations);
+      model.revelationsLabel ??= label;
       break;
+    }
     case 'reminders':
       model.reminders.push(...readReminders(section));
       break;
@@ -127,15 +134,31 @@ export function readSection(ctx: ParseContext, model: Model, heading: Heading, n
   }
 }
 
-// "**Rivelazioni**" on its own, then a list of "- **R1.** text (I1, I2)".
-function readRevelations(ctx: ParseContext, nodes: RootContent[]): Revelation[] {
-  const { template } = ctx;
+type RevelationsLabel = Model['revelationsLabel'];
+
+// "**Rivelazioni**" on its own, or with a column mark, then a list of
+// "- **R1.** text (I1, I2)". The first label with a list is the list's label;
+// without one, the first label alone in its paragraph (no colon, nothing but
+// an optional mark after it) counts with no list under it (a new project's
+// starting document has one), and gives no revelations.
+function readRevelations(ctx: ParseContext, nodes: RootContent[]): { revelations: Revelation[]; label: RevelationsLabel } {
+  const { source, template } = ctx;
   const revelationId = new RegExp(`^(${escapeRegExp(template.ids.revelation)}\\d+)\\.?$`);
   const revelations: Revelation[] = [];
+  let withList: RevelationsLabel = null;
+  let lone: RevelationsLabel = null;
   nodes.forEach((node, index) => {
     const label = leadingLabel(ctx, node);
+    if (node.type !== 'paragraph' || label?.label !== template.overview.revelations) return;
     const next = nodes[index + 1];
-    if (label?.label !== template.overview.revelations || next?.type !== 'list') return;
+    const mark = labelMark(ctx, node, label);
+    const found = { labelRange: source.range(label.start, label.end), mark };
+    if (next?.type !== 'list') {
+      const alone = mark !== null || (!label.colon && source.text.slice(label.end, source.end(node)).trim() === '');
+      if (alone) lone ??= found;
+      return;
+    }
+    withList ??= found;
     for (const item of toList(ctx, next).items) {
       const match = item.label ? revelationId.exec(item.label) : null;
       if (!match) continue;
@@ -143,7 +166,7 @@ function readRevelations(ctx: ParseContext, nodes: RootContent[]): Revelation[] 
       revelations.push({ id: match[1]!, text, clues: ids, range: item.range });
     }
   });
-  return revelations;
+  return { revelations, label: withList ?? lone };
 }
 
 function readReminders(section: Section): Reminder[] {

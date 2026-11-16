@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { defaultTemplateRef, resolveTemplate, type Template } from 'promptbook-format';
+import { columnMark, defaultTemplateRef, resolveTemplate, scenePartOf, templateColumn, type Template } from 'promptbook-format';
 import {
   addInspirationItem,
   addLogEntry,
@@ -90,7 +90,7 @@ const READ_LOG_FIRST = 'At the start of a new chat about a project, read its bra
 export const INSTRUCTIONS = [
   'Promptbook holds the prep of tabletop role-playing games: campaigns, adventures and one-shots.',
   `${READ_LOG_FIRST} At the end of a brainstorm, write one entry with add_brainstorm_entry: the ideas, the decisions, the rejected ideas with why, and the open questions.`,
-  'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
+  'To edit the prep document, read the section first with read_document, then send replace_section the hash you read, keeping the heading and its column mark ({principale} or {laterale}) when it has one. The template’s field names (Luogo e momento, [!leggi]…) stay in Italian.',
   'Document templates set a project’s sections, scene fields and boxes. To change one, read it with get_template, then send save_template_version the whole template with the version you read; built-ins are read-only, so duplicate_template first. Projects keep their version until update_project_template moves them.',
   'For a board’s prompts, read get_board first. Image prompts come in four categories: Scenes (any number per scene), PCs, NPCs and Handouts (a name and a prompt each); add them with add_image_prompt, change them with update_image_prompt. Music is one Suno prompt per scene, written with set_scene_prompts. generate_image makes images on a prompt and spends the user’s money; attach_atelier_image puts an image already in Atelier on a prompt.',
 ].join('\n');
@@ -100,8 +100,13 @@ export const INSTRUCTIONS = [
 // Tool lists are per connection, not per project: the built-in avventura@1
 // (template-registry design decision 8).
 const template = adventureTemplateOf({ category: 'adventure', template: defaultTemplateRef('adventure') });
-const fieldText = (f: (typeof template.sceneFields)[number]) =>
-  f.form === 'inline' ? `**${f.label}:** …` : `**${f.label}** followed by a list`;
+// A block field the scene page places shows its column mark, which is
+// optional (template-placement design decision A7).
+const fieldText = (f: (typeof template.sceneFields)[number]) => {
+  if (f.form === 'inline') return `**${f.label}:** …`;
+  const part = scenePartOf(f.role);
+  return `**${f.label}**${part ? ` ${columnMark(templateColumn(template, part))}` : ''} followed by a list`;
+};
 const SCENE_REQUIRED = [
   ...template.callouts
     .filter((c) => (c.allowedIn as readonly string[]).includes('scene') && c.perPlace.min > 0)
@@ -423,6 +428,7 @@ export function registerTools(server: McpServer, caller: McpCaller, { db, sync, 
     'add_scene',
     'Add a scene at the end of the «Scene» section of an adventure or a one-shot, with the next id (S1, S2…). Send the title and the scene’s body without its heading; the template’s field names stay in Italian. ' +
       `The body needs, or the result reports an error: ${SCENE_REQUIRED.join('; ')}. ` +
+      'The column mark after a block field’s label ({laterale} for the side column, {principale} for the main one) is optional: it sets where that field prints on this scene’s page, and without it the field prints where the template says. ' +
       'Problems never refuse the scene: it is written and the result lists them; fix them in later edits when you can. ' +
       (SCENE_RECOMMENDED.length ? `Recommended (a warning when missing): ${SCENE_RECOMMENDED.join('; ')}. ` : '') +
       'A snapshot is kept first, and the user can undo it. ' +

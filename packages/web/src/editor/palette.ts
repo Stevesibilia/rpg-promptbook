@@ -1,3 +1,4 @@
+import type { Column } from 'promptbook-format';
 import { statuses, type Status } from 'promptbook-project';
 import { statusLabels } from '../projects/list.js';
 import { shortcut, type ShortcutId } from './cm/keymap.js';
@@ -13,7 +14,10 @@ export type PaletteAction =
   | { kind: 'status'; status: Status }
   | { kind: 'pdf' }
   | { kind: 'licence' }
-  | { kind: 'projects' };
+  | { kind: 'projects' }
+  // The part under the cursor to the other column (template-placement design
+  // decision A9).
+  | { kind: 'column'; to: Column };
 
 export interface PaletteEntry {
   // Unique in the list, stable while the outline stays the same.
@@ -26,10 +30,14 @@ export interface PaletteEntry {
 
 // Commands first, then every outline item. Problems are offered only where
 // there are checks (adventures and one-shots), the PDF where the project
-// prints (every category since campaign-pdf).
+// prints (every category since campaign-pdf). `column` is where the part
+// under the cursor prints, null when the cursor is in no part that takes a
+// column: the move to the other column comes after the other commands, so
+// the first row stays the same, and is not listed at all
+// without such a part (the palette has no disabled rows).
 export function paletteEntries(
   items: readonly OutlineItem[],
-  { checked, printable }: { checked: boolean; printable: boolean },
+  { checked, printable, column = null }: { checked: boolean; printable: boolean; column?: Column | null },
 ): PaletteEntry[] {
   const fromTable = (id: Exclude<ShortcutId, 'palette' | 'escape'>): PaletteEntry => ({
     key: `cmd:${id}`,
@@ -37,6 +45,14 @@ export function paletteEntries(
     keys: shortcut(id).keys,
     action: { kind: 'shortcut', id },
   });
+  const move: PaletteEntry[] =
+    column === null
+      ? []
+      : [
+          column === 'main'
+            ? { key: 'column', label: 'Move to side column', keys: null, action: { kind: 'column', to: 'side' } }
+            : { key: 'column', label: 'Move to main column', keys: null, action: { kind: 'column', to: 'main' } },
+        ];
   return [
     fromTable('outline'),
     fromTable('inspector'),
@@ -57,6 +73,7 @@ export function paletteEntries(
       : []),
     { key: 'licence', label: 'Choose licence…', keys: null, action: { kind: 'licence' } },
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
+    ...move,
     ...items.map((item): PaletteEntry => ({
       key: `go:${item.key}`,
       label: `Go to ${item.id ? `${item.id} ` : ''}${item.name}`,

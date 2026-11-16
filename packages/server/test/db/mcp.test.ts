@@ -975,3 +975,44 @@ describe('hidden problems', () => {
     }
   });
 });
+
+// Column marks through the connector (template-placement design decisions
+// A2, A7 and A10).
+describe('column marks', () => {
+  it('names the marked parts without their marks in the outline and the targets', async () => {
+    const s = await setup({ text: ADVENTURE.replace('## Orologio', '## Orologio {laterale}') });
+    const outline = (await s.call('get_outline', { projectId: s.id })).value;
+    const titles = outline.targets.map((t: { title?: string; target: string }) => t.title ?? t.target);
+    expect(titles).toContain('Orologio');
+    expect(JSON.stringify(outline)).not.toContain('{laterale}');
+    const read = (await s.call('read_document', { projectId: s.id, target: 'Orologio' })).value;
+    expect(read.target).toBe('Orologio');
+    expect(read.text).toBe('## Orologio {laterale}\n\nPrima scossa a mezzanotte.');
+  });
+
+  it('shows the optional mark of the block fields in add_scene’s description', async () => {
+    const s = await setup();
+    const description = (await mcpListTools(s.app, s.tokens.access_token)).find((t) => t.name === 'add_scene')!.description!;
+    expect(description).toContain('**Da non perdere qui** {laterale} followed by a list');
+    expect(description).toContain('**Cosa succede da sé** {principale} followed by a list');
+    expect(description).toContain('**Indizi qui** {principale} followed by a list');
+    expect(description).toContain('**In gioco:** …');
+    expect(description).toContain('is optional');
+    const answer = await mcpInitialize(s.app, s.tokens.access_token);
+    expect(answer.message.result!.instructions).toContain('keeping the heading and its column mark ({principale} or {laterale})');
+  });
+
+  it('adds a scene whose labels carry marks, with no column problem', async () => {
+    const s = await setup();
+    const body = FULL_BODY.replace('**Da non perdere qui**', '**Da non perdere qui** {principale}').replace(
+      '**Cosa succede da sé**',
+      '**Cosa succede da sé** {laterale}',
+    );
+    expect(body).toContain('{principale}');
+    const outcome = await s.call('add_scene', { projectId: s.id, title: 'La fiera', markdown: body });
+    expect(outcome.isError).toBe(false);
+    const codes = outcome.value.problems.map((p: { code: string }) => p.code);
+    expect(codes.filter((c: string) => c.startsWith('column.') || c === 'content.unplaced')).toEqual([]);
+    expect(await storedText(s.id)).toContain('**Da non perdere qui** {principale}\n\n- Il banco del puparo.');
+  });
+});

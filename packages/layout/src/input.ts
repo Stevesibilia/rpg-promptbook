@@ -3,15 +3,20 @@
 // stays declarative; every decision about what goes where is made here.
 
 import {
+  columnOf,
+  nightPartOf,
+  SCENE_PARTS,
   sectionPdf,
   type AdventureTemplate,
   type Block,
   type JsonValue,
   type Model,
+  type NightPart,
   type Reference,
   type Scene,
   type SceneField,
   type SceneFieldRole,
+  type ScenePart,
   type Section,
   type SectionRole,
   type Sheet,
@@ -109,16 +114,22 @@ export interface LayoutScene {
   to: number;
   place: LayoutField | null;
   inPlay: LayoutField | null;
-  // The side column.
+  // The four fields that print in a column, the main or the side one: the
+  // column of the field's mark, else the template's (design A5, A6).
   mustHave: LayoutField | null;
+  happens: LayoutField | null;
   cast: LayoutField | null;
+  clues: LayoutField | null;
+  // The names of those fields in each column, in the order mustHave, happens,
+  // cast, clues; a field the scene does not have is in neither.
+  main: ScenePart[];
+  side: ScenePart[];
+  // The side column, after its fields.
   threats: LayoutThreat[];
   sideBoxes: LayoutBlock[];
-  // The main column.
-  // Every read-aloud of the scene, in the order written.
+  // The main column: every read-aloud of the scene, in the order written, then
+  // its fields, then the rest.
   readAlouds: LayoutBlock[];
-  happens: LayoutField | null;
-  clues: LayoutField | null;
   handouts: LayoutBlock[];
   boxes: LayoutBlock[];
   tests: LayoutField | null;
@@ -184,11 +195,18 @@ export interface LayoutInput {
     // night has nothing else to print.
     overviewTitle: string | null;
     overview: LayoutPart | null;
+    // The night parts, each printed in its column (design A5, A6).
     revelations: LayoutPart | null;
-    sideBoxes: LayoutBlock[];
     reminders: LayoutPart | null;
     clock: LayoutPart | null;
     truths: LayoutPart | null;
+    // The names of the parts in the main column, in the order of the text,
+    // and in the side column, «Da non perdere stasera» first, then the order
+    // of the text. A part that does not print is in neither.
+    main: NightPart[];
+    side: NightPart[];
+    // The overview's side boxes, at the end of the side column.
+    sideBoxes: LayoutBlock[];
   };
   start: {
     from: number;
@@ -474,6 +492,9 @@ function scene(template: AdventureTemplate, model: Model, found: Scene, sheets: 
 
   const boxes = found.boxes.map((b) => blockOf(template, b, found.references, sheets));
   const isReadAloud = (i: number) => found.readAlouds.includes(found.boxes[i]!.id);
+  // A mark on a field moves it in this scene only.
+  const present = SCENE_PARTS.filter((part) => byRole(part) !== undefined);
+  const column = (part: ScenePart) => columnOf(template, part, byRole(part)!.mark);
   return {
     id: found.id ?? '',
     title: found.title,
@@ -482,12 +503,14 @@ function scene(template: AdventureTemplate, model: Model, found: Scene, sheets: 
     place: get('place'),
     inPlay: get('inPlay'),
     mustHave: get('mustHave'),
+    happens: get('happens'),
     cast: get('cast'),
+    clues: get('clues'),
+    main: present.filter((part) => column(part) === 'main'),
+    side: present.filter((part) => column(part) === 'side'),
     threats,
     sideBoxes: boxes.filter((b) => b.box?.side),
     readAlouds: boxes.filter((_, i) => isReadAloud(i)),
-    happens: get('happens'),
-    clues: get('clues'),
     handouts: boxes.filter((b) => b.box?.role === 'handout'),
     boxes: boxes.filter((b, i) => !isReadAloud(i) && !b.box?.side && b.box?.role !== 'handout'),
     tests: get('tests'),
@@ -622,7 +645,7 @@ export function toLayoutInput(
   const from = (...sections: (Section | undefined)[]) =>
     sections.find(Boolean)?.range.start.offset ?? start;
 
-  // «A colpo d'occhio» prints without its revelations, which go to the side
+  // «A colpo d'occhio» prints without its revelations, which print in their
   // column under their own heading.
   const overview = role('overview');
   const first = model.revelations[0]?.range.start.offset;
@@ -631,7 +654,23 @@ export function toLayoutInput(
   );
   const split = revealing !== undefined && revealing >= 0 ? revealing : -1;
   const labelBefore = split > 0 && overview!.blocks[split - 1]!.kind === 'paragraph' ? split - 1 : split;
-  const overviewBlocks = overview?.blocks.filter((b, i) => split < 0 || (i !== split && i !== labelBefore)) ?? [];
+  // A revelations label alone in its paragraph, with an optional mark (design
+  // A1), is a setting, not text: with no list under it yet (a new project's
+  // starting document has one) it does not print (A7), and a label that
+  // prints keeps its words and loses its mark, which is never printed.
+  const revelationsLabel = new RegExp(
+    `^\\*\\*${escape(template.overview.revelations)}\\*\\*[ \\t]*(\\{[ \\t]*\\p{L}+[ \\t]*\\})?[ \\t]*$`,
+    'u',
+  );
+  const isLabel = (b: Block): b is Block & { kind: 'paragraph' } =>
+    b.kind === 'paragraph' && revelationsLabel.test(b.text);
+  const overviewBlocks: Block[] = [];
+  overview?.blocks.forEach((b, i) => {
+    if (split >= 0 && (i === split || i === labelBefore)) return;
+    if (!isLabel(b)) overviewBlocks.push(b);
+    else if (overview.blocks[i + 1]?.kind === 'list')
+      overviewBlocks.push({ ...b, text: b.text.replace(/[ \t]*\{[^}]*\}[ \t]*$/, '') });
+  });
   const revelationBlocks = split >= 0 ? [overview!.blocks[split]!] : [];
   const overviewSide = overviewBlocks.filter((b) => box(b)?.side);
 
@@ -650,17 +689,37 @@ export function toLayoutInput(
   const ids = scenes.map((s) => s.id).filter((id): id is string => id !== null);
   const own = ownSections(template, model);
 
+  const revelations =
+    overview && revelationBlocks.length > 0
+      ? partOf(template, overview, revelationBlocks, template.overview.revelations)
+      : null;
+  // The revelations start at their label, else at their list.
+  if (revelations) revelations.from = overview!.blocks[labelBefore]!.range.start.offset;
+  const nightSections = (['reminders', 'clock', 'truths'] as const).map((name) => role(name));
   const nightParts = {
     overview: overview ? part(overview, overviewBlocks.filter((b) => !box(b)?.side)) : null,
-    revelations:
-      overview && revelationBlocks.length > 0
-        ? partOf(template, overview, revelationBlocks, template.overview.revelations)
-        : null,
+    revelations,
+    reminders: part(nightSections[0]),
+    clock: part(nightSections[1]),
+    truths: part(nightSections[2]),
     sideBoxes: overviewSide.map((b) => toBlock(b)),
-    reminders: part(role('reminders')),
-    clock: part(role('clock')),
-    truths: part(role('truths')),
   };
+  // Each night part with its column, in the order of the text.
+  const placed: { name: NightPart; from: number; column: 'main' | 'side' }[] = [
+    ...(revelations
+      ? [{ name: 'revelations' as const, from: revelations.from, column: columnOf(template, 'revelations', model.revelationsLabel?.mark) }]
+      : []),
+    ...nightSections
+      .filter((section): section is Section => section !== undefined)
+      .map((section) => {
+        const name = nightPartOf(section.role)!;
+        return { name, from: section.range.start.offset, column: columnOf(template, name, section.mark) };
+      }),
+  ].sort((a, b) => a.from - b.from);
+  const nightMain = placed.filter((p) => p.column === 'main').map((p) => p.name);
+  const nightSide = placed.filter((p) => p.column === 'side').map((p) => p.name);
+  // «Da non perdere stasera» heads the side column.
+  nightSide.sort((a, b) => Number(b === 'reminders') - Number(a === 'reminders'));
   const nightPrints =
     overview !== undefined ||
     nightParts.revelations !== null ||
@@ -734,6 +793,8 @@ export function toLayoutInput(
       from: from(overview, role('reminders')),
       overviewTitle: nightPrints ? headingOf(template, 'overview', "A colpo d'occhio") : null,
       ...nightParts,
+      main: nightMain,
+      side: nightSide,
     },
     start: { from: from(strongStart, sceneMap), strongStart: part(strongStart), sceneMap: part(sceneMap) },
     rules: rules ? { ...part(rules, rules.blocks.filter((b) => !box(b)?.side))!, sideBoxes: rulesSide.map((b) => toBlock(b)) } : null,

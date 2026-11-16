@@ -9,7 +9,7 @@ import { useReturnFocus } from '../ui/focus.js';
 import { ChangeList } from './ChangeList.js';
 import { latestVersions } from './list.js';
 import { useTemplates } from './TemplatesContext.js';
-import { checksAfter, checksText, updatePlan } from './update.js';
+import { checksAfter, checksText, updatePlan, writesColumnMarks } from './update.js';
 import './templates.css';
 
 // «<name> vK · vN available» in the project's top bar when its template has
@@ -65,17 +65,27 @@ function UpdateDialog({
   const plan = useMemo(() => updatePlan(from, to), [from, to]);
   const [addSections, setAddSections] = useState(plan.added.length > 0);
   const [renameHeadings, setRenameHeadings] = useState(plan.renamed.length > 0);
+  // Off by default: a mark freezes the part where the new version puts it.
+  const [writeColumns, setWriteColumns] = useState(false);
   // The text as it is when the dialog opened, for the checks' preview; the
   // update itself reads it again.
   const [text] = useState(() => doc.getText('document').toString());
-  const after = useMemo(
-    () => checksAfter(text, from, to, updateEdits(text, from, to, { addSections, renameHeadings })),
+  const marksToWrite = useMemo(
+    () => writesColumnMarks(text, from, to, { addSections, renameHeadings }),
     [text, from, to, addSections, renameHeadings],
+  );
+  // The option counts only while it is shown, and is unticked when it shows
+  // again.
+  if (!marksToWrite && writeColumns) setWriteColumns(false);
+  const columns = writeColumns && marksToWrite;
+  const after = useMemo(
+    () => checksAfter(text, from, to, updateEdits(text, from, to, { addSections, renameHeadings, writeColumns: columns })),
+    [text, from, to, addSections, renameHeadings, columns],
   );
 
   const update = () => {
     const now = doc.getText('document').toString();
-    const edits = updateEdits(now, from, to, { addSections, renameHeadings });
+    const edits = updateEdits(now, from, to, { addSections, renameHeadings, writeColumns: columns });
     applyTemplateUpdate(doc, undoManagerOf(doc), edits, to);
     onUpdated();
   };
@@ -124,6 +134,15 @@ function UpdateDialog({
                 {r.what === 'section' ? `«## ${r.before}» becomes «## ${r.after}»` : `«${r.before}» becomes «${r.after}» in the scenes`}
               </small>
             ))}
+          </span>
+        </label>
+      )}
+      {marksToWrite && (
+        <label className="chk">
+          <input type="checkbox" checked={writeColumns} onChange={(e) => setWriteColumns(e.target.checked)} />
+          <span>
+            Write the column marks where the text has none
+            <small>e.g. «## Orologio {'{principale}'}»; marks you wrote stay as they are</small>
           </span>
         </label>
       )}

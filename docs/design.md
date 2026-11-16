@@ -106,6 +106,17 @@ text and Sabaoth gets no threat box.
   `> [!leggi]` read-aloud (one per scene), `> [!documento] Title` handout,
   `> [!riquadro] Title` box, `> [!riquadro|laterale] Title` side column.
   Callouts render as boxes in Obsidian and stay readable in any editor.
+- **Column marks** (#63): one word in braces after a `##` heading or after
+  a block field's bold label says in which column of the PDF that part
+  prints: `## Orologio {laterale}` (side column),
+  `**Da non perdere qui** {principale}` (main column). The two words are the
+  same in every template. Only the parts the page lays out in columns take a
+  mark: «Da non perdere stasera», «Orologio», «Verità del mondo», the
+  «Rivelazioni» label, and the scene fields «Da non perdere qui», «Cosa
+  succede da sé», «Chi c'è», «Indizi qui». The mark is not part of the name:
+  the outline, the checks and the connector read the heading without it. An
+  unknown word, or a mark on any other part, is a warning and moves nothing.
+  Inline fields, `###` headings and campaign documents take no mark.
 - **Closed, validated grammar:** sections, scene fields and callout types come
   from a closed list. Scenes keep `### S1. Name`, which gives each scene a
   stable id. Threat sheets get separate keys (Grado, Natura, Ferite,
@@ -541,6 +552,19 @@ ahead of the desktop app, so the web client builds it with the
   page»; a section that starts a page gets an edge tab (twelve at most).
   Sections the template does not list print, flowing. The built-in
   «Campagna» v2 sets the default page breaks; projects on v1 keep it.
+- **Placement set by the template** (#63, mockup
+  [templates.html](mockups/templates.html)): an adventure template sets the
+  column, main or side, of the night-page parts («Da non perdere stasera»,
+  the revelations, «Orologio», «Verità del mondo») and of four scene fields
+  («Da non perdere qui», «Cosa succede da sé», «Chi c'è», «Indizi qui»). A
+  mark in the text (`{laterale}`, `{principale}`, see Source format)
+  overrides the template for that part, in that scene only for a field. New
+  projects and inserted fields carry the template's column as a mark; a part
+  without a mark follows the template, so older documents print as before
+  and the built-in «Avventura» keeps its places. Nothing moves by itself: a
+  side box is never broken across pages and a part that does not fit stays
+  in its column until the owner moves it. A page with an empty side column
+  prints its main column full width.
 - Later: images in the PDF and the missing-image check (phase 2, with the
   asset board), earlier PDF versions and compare (#4, with snapshots), the A5
   booklet.

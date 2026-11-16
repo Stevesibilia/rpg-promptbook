@@ -63,10 +63,12 @@ const marksField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-const base = (template: AdventureTemplate): Extension => [
+// A campaign's preview styles with the built-in adventure's boxes but shows
+// no column marks: its braces are text.
+const base = (template: AdventureTemplate, campaign: boolean): Extension => [
   markdownWithTables(),
   editorHighlight,
-  preview(previewConfigOf(template, true)),
+  preview({ ...previewConfigOf(template, true), columnMarks: !campaign }),
   tables,
   marksField,
   EditorView.editable.of(false),
@@ -80,8 +82,10 @@ export function StartingPreview({
   template,
   marks,
   chip,
+  campaign = false,
 }: {
   text: string;
+  campaign?: boolean;
   // The callouts and the scene id the preview styles with: the draft's, or
   // for a campaign, the built-in adventure's.
   template: AdventureTemplate;
@@ -95,14 +99,14 @@ export function StartingPreview({
   useEffect(() => {
     const created = new EditorView({
       parent: host.current!,
-      state: EditorState.create({ doc: '', extensions: base(template) }),
+      state: EditorState.create({ doc: '', extensions: base(template, campaign) }),
     });
     view.current = created;
     return () => {
       view.current = null;
       created.destroy();
     };
-  }, [template]);
+  }, [template, campaign]);
 
   useEffect(() => {
     const current = view.current;
