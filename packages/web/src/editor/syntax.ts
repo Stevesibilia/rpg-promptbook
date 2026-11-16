@@ -1,10 +1,13 @@
-import type {
-  AdventureTemplate,
-  CalloutDefinition,
-  FieldDefinition,
-  Place,
-  Requirement,
-  SystemDefinition,
+import {
+  columnMark,
+  nightPartOf,
+  scenePartOf,
+  type AdventureTemplate,
+  type CalloutDefinition,
+  type FieldDefinition,
+  type Place,
+  type Requirement,
+  type SystemDefinition,
 } from 'promptbook-format';
 import { REACTIONS_THEN } from './inserts.js';
 
@@ -124,6 +127,26 @@ function sheetGroups(
   ];
 }
 
+// The column marks (template-placement design decision A9), with the parts
+// that take one: the night sections, the revelations list, and the scene
+// fields the scene page lays out.
+function columnGroup(template: AdventureTemplate): SyntaxGroup {
+  const parts = [
+    ...template.sections.filter((s) => s.role === 'overview' || nightPartOf(s.role)).map((s) =>
+      s.role === 'overview' ? template.overview.revelations : s.name,
+    ),
+    ...template.sceneFields.filter((f) => scenePartOf(f.role)).map((f) => f.label),
+  ];
+  const note = "after a ## heading or a block field's label: prints the part in that column, whatever the template says";
+  return {
+    title: `Columns, for ${parts.join(', ')}`,
+    rows: [
+      { syntax: columnMark('main'), name: 'Main column', requirement: null, note },
+      { syntax: columnMark('side'), name: 'Side column', requirement: null, note },
+    ],
+  };
+}
+
 export function syntaxOf(template: AdventureTemplate, system?: SystemDefinition): SyntaxGroup[] {
   const scenes = template.sections.find((s) => s.role === 'scenes');
   const sheets = template.sections.find((s) => s.role === 'sheets');
@@ -155,6 +178,7 @@ export function syntaxOf(template: AdventureTemplate, system?: SystemDefinition)
         note: f.climax ? 'climax scene' : '',
       })),
     },
+    columnGroup(template),
     {
       title: 'Callouts',
       rows: template.callouts.map((c) => ({

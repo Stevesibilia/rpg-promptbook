@@ -42,7 +42,7 @@ describe('insertText', () => {
       return `${text.slice(0, cursor)}‸${text.slice(cursor)}`;
     };
     expect(text({ kind: 'field', label: 'Prove e regole' })).toBe('**Prove e regole:** ‸');
-    expect(text({ kind: 'field', label: 'Indizi qui' })).toBe('**Indizi qui**\n\n- ‸');
+    expect(text({ kind: 'field', label: 'Indizi qui' })).toBe('**Indizi qui** {principale}\n\n- ‸');
     expect(text({ kind: 'readAloud' })).toBe('> [!leggi]\n> ‸');
     expect(text({ kind: 'callout', callout: callout('documento') })).toBe('> [!documento] ‸\n> ');
     expect(text({ kind: 'callout', callout: callout('riquadro') })).toBe('> [!riquadro] ‸\n> ');
@@ -112,7 +112,7 @@ describe('placeInsert in template order', () => {
     const text = sabaoth.slice(0, cosa) + sabaoth.slice(chi);
     const out = run(text, { kind: 'field', label: 'Cosa succede da sé' }, s1);
     const box = parse(text).model.scenes[0]!.boxes.find((b) => b.kind === 'callout' && b.type === 'leggi')!;
-    expect(out.slice(box.range.end.offset)).toMatch(/^\n\n\*\*Cosa succede da sé\*\*\n\n- ‸\n\n\*\*Chi c'è\*\*/);
+    expect(out.slice(box.range.end.offset)).toMatch(/^\n\n\*\*Cosa succede da sé\*\* \{principale\}\n\n- ‸\n\n\*\*Chi c'è\*\*/);
   });
 
   it('fills an empty scene field by field, one blank line between each', () => {
@@ -125,7 +125,7 @@ describe('placeInsert in template order', () => {
     }
     text = run(text, { kind: 'readAloud' }, at);
     expect(text.slice(at)).toMatch(
-      /^### S1\. Prima scena\n\n\*\*Luogo e momento:\*\* \n\n\*\*In gioco:\*\* \n\n\*\*Da non perdere qui\*\*\n\n- \n\n> \[!leggi\]\n> ‸\n\n## Indizi\n/,
+      /^### S1\. Prima scena\n\n\*\*Luogo e momento:\*\* \n\n\*\*In gioco:\*\* \n\n\*\*Da non perdere qui\*\* \{laterale\}\n\n- \n\n> \[!leggi\]\n> ‸\n\n## Indizi\n/,
     );
   });
 

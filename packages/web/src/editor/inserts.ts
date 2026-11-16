@@ -1,4 +1,14 @@
-import type { AdventureTemplate, CalloutDefinition, Model, Scene, SheetKindDefinition, TextEdit } from 'promptbook-format';
+import {
+  columnMark,
+  scenePartOf,
+  templateColumn,
+  type AdventureTemplate,
+  type CalloutDefinition,
+  type Model,
+  type Scene,
+  type SheetKindDefinition,
+  type TextEdit,
+} from 'promptbook-format';
 
 // Every insert of design decision 8, shared by This scene, the `/` menu and
 // the palette so each writes the same text. Labels, callout types, the
@@ -63,7 +73,12 @@ export function insertText(what: Insert, template: AdventureTemplate, model?: Mo
   switch (what.kind) {
     case 'field': {
       const field = template.sceneFields.find((f) => f.label === what.label);
-      return end(field?.form === 'block' ? `**${what.label}**\n\n- ` : `**${what.label}:** `);
+      if (field?.form !== 'block') return end(`**${what.label}:** `);
+      // A block field the scene page places carries the template's column
+      // (template-placement design decision A7).
+      const part = scenePartOf(field.role);
+      const mark = part ? ` ${columnMark(templateColumn(template, part))}` : '';
+      return end(`**${what.label}**${mark}\n\n- `);
     }
     case 'readAloud': {
       const callout = readAloudOf(template);

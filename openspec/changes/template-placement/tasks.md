@@ -109,12 +109,12 @@ elsewhere is reported, not made.
 
 ## 10. Web: the marks in the editor (brief C)
 
-- [ ] 10.1 `editor/cm/preview.ts`: `cm-pm` and `cm-pm-bad` on a mark, never hidden; a label followed by a mark keeps `cm-fl`; `PreviewConfig.columnMarks` (A9). `editor/editor.css`: the two classes, as the mockup's `.pm` and `.pm.bad`
-- [ ] 10.2 `editor/inserts.ts` `insertText` case `'field'`: the mark for a block field that takes a column (A7); check `slotAnchor` and the `/` menu's `existingField` (`cm/slash.ts:195`) still find a marked label
-- [ ] 10.3 `editor/palette.ts` and `EditorPage.tsx`: the `column` option of `paletteEntries`, the two entries, the action that writes or replaces the mark as one edit (A9)
-- [ ] 10.4 `editor/syntax.ts`: the «Columns» group (A9)
-- [ ] 10.5 Tests: the preview items for a marked heading and a marked label on and off the active line, an unknown word, a campaign (no item); the insert text for the four fields on the built-in and on a template that moves one, and for an inline field; the palette's entries with the cursor in a section, a field's list, the revelations list, a part without a column, a campaign; the edit written with no mark, a known mark, an unknown word; the syntax rows
-- [ ] 10.6 Commit `feat(web): column marks in the editor`
+- [x] 10.1 `editor/cm/preview.ts`: `cm-pm` and `cm-pm-bad` on a mark, never hidden; a label followed by a mark keeps `cm-fl`; `PreviewConfig.columnMarks` (A9). `editor/editor.css`: the two classes, as the mockup's `.pm` and `.pm.bad`
+- [x] 10.2 `editor/inserts.ts` `insertText` case `'field'`: the mark for a block field that takes a column (A7); check `slotAnchor` and the `/` menu's `existingField` (`cm/slash.ts:195`) still find a marked label
+- [x] 10.3 `editor/palette.ts` and `EditorPage.tsx`: the `column` option of `paletteEntries`, the two entries, the action that writes or replaces the mark as one edit (A9)
+- [x] 10.4 `editor/syntax.ts`: the «Columns» group (A9)
+- [x] 10.5 Tests: the preview items for a marked heading and a marked label on and off the active line, an unknown word, a campaign (no item); the insert text for the four fields on the built-in and on a template that moves one, and for an inline field; the palette's entries with the cursor in a section, a field's list, the revelations list, a part without a column, a campaign; the edit written with no mark, a known mark, an unknown word; the syntax rows
+- [x] 10.6 Commit `feat(web): column marks in the editor`
 
 ## 11. Web and server: the update option and the connector (brief C)
 

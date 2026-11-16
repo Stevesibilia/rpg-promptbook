@@ -86,6 +86,18 @@
   font-weight: 600;
   color: var(--primary);
 }
+/* A column mark (template-placement), shown on every line */
+.editor .cm-pm {
+  font: 500 12px var(--mono);
+  color: var(--primary);
+  margin-left: 7px;
+  white-space: nowrap;
+}
+.editor .cm-pm.cm-pm-bad {
+  color: var(--amber);
+  text-decoration: underline wavy;
+  text-underline-offset: 3px;
+}
 
 /* Front matter */
 .editor .cm-line.cm-fm {
