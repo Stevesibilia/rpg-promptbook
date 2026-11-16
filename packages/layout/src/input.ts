@@ -654,21 +654,23 @@ export function toLayoutInput(
   );
   const split = revealing !== undefined && revealing >= 0 ? revealing : -1;
   const labelBefore = split > 0 && overview!.blocks[split - 1]!.kind === 'paragraph' ? split - 1 : split;
-  // A revelations label with no list under it yet (a new project's starting
-  // document has one) is a setting, not text: it does not print (design A7).
-  const lone = model.revelationsLabel?.labelRange.start.offset;
-  const loneLabel =
-    split < 0 && lone !== undefined && overview
-      ? overview.blocks.findIndex(
-          (b, i) =>
-            b.kind === 'paragraph' &&
-            b.range.start.offset <= lone &&
-            lone < b.range.end.offset &&
-            overview.blocks[i + 1]?.kind !== 'list',
-        )
-      : -1;
-  const overviewBlocks =
-    overview?.blocks.filter((b, i) => (split < 0 || (i !== split && i !== labelBefore)) && i !== loneLabel) ?? [];
+  // A revelations label alone in its paragraph, with an optional mark (design
+  // A1), is a setting, not text: with no list under it yet (a new project's
+  // starting document has one) it does not print (A7), and a label that
+  // prints keeps its words and loses its mark, which is never printed.
+  const revelationsLabel = new RegExp(
+    `^\\*\\*${escape(template.overview.revelations)}\\*\\*[ \\t]*(\\{[ \\t]*\\p{L}+[ \\t]*\\})?[ \\t]*$`,
+    'u',
+  );
+  const isLabel = (b: Block): b is Block & { kind: 'paragraph' } =>
+    b.kind === 'paragraph' && revelationsLabel.test(b.text);
+  const overviewBlocks: Block[] = [];
+  overview?.blocks.forEach((b, i) => {
+    if (split >= 0 && (i === split || i === labelBefore)) return;
+    if (!isLabel(b)) overviewBlocks.push(b);
+    else if (overview.blocks[i + 1]?.kind === 'list')
+      overviewBlocks.push({ ...b, text: b.text.replace(/[ \t]*\{[^}]*\}[ \t]*$/, '') });
+  });
   const revelationBlocks = split >= 0 ? [overview!.blocks[split]!] : [];
   const overviewSide = overviewBlocks.filter((b) => box(b)?.side);
 

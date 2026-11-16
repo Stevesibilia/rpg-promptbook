@@ -573,4 +573,19 @@ describe('the placement of the night and scene parts', () => {
     const prose = layout(text.replace('**Rivelazioni** {laterale}', '**Rivelazioni** da scrivere.'));
     expect(markdown(prose.night.overview?.blocks)).toBe('**Rivelazioni** da scrivere.');
   });
+
+  it('never prints a revelations label\'s mark', () => {
+    const head = "---\ntitolo: Nuova\n---\n\n## A colpo d'occhio\n\n";
+    // A label over a list with no revelation ids prints as today, without its mark.
+    const plain = layout(`${head}**Rivelazioni** {principale}\n\n- una cosa da scoprire\n`);
+    expect(plain.night.revelations).toBeNull();
+    expect(markdown(plain.night.overview?.blocks)).toBe('**Rivelazioni**\n\n- una cosa da scoprire');
+    // A lone label before the real list does not print; nor does an unknown word.
+    const twice = layout(
+      `${head}**Rivelazioni** {latterale}\n\nIl lago tace.\n\n**Rivelazioni** {principale}\n\n- **R1.** Ottavio è vivo.\n`,
+    );
+    expect(markdown(twice.night.overview?.blocks)).toBe('Il lago tace.');
+    expect(markdown(twice.night.revelations?.blocks)).toBe('- **R1.** Ottavio è vivo.');
+    expect(JSON.stringify([plain, twice])).not.toMatch(/\{(laterale|principale|latterale)\}/);
+  });
 });
