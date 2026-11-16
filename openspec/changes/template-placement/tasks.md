@@ -126,13 +126,13 @@ elsewhere is reported, not made.
 
 ## 12. e2e and docs (brief C)
 
-- [ ] 12.1 In a fresh worktree build web and desktop before `npm run e2e`, and do not edit while the stack builds. Check that the volumes of an earlier e2e stack are gone first
-- [ ] 12.2 `e2e/templates.spec.ts`: in an own template set «Orologio» to «Side» and «↳ Rivelazioni» to «Main»; the sketch, the starting document's marks, the save bar and the save dialog's two lines; the Scene fields tab's switches and tags; the built-in disabled
-- [ ] 12.3 `e2e/projects.spec.ts` or `e2e/editor.spec.ts`: a project created from that template has `## Orologio {laterale}` in its document; the mark is visible with the cursor elsewhere; «Move to main column» from the palette rewrites it; an unknown word shows the warning in Checks; the saved PDF's text (`pdfTexts`) has no `{`
-- [ ] 12.4 `e2e/templates.spec.ts`: the update dialog's third option on a project whose text has no marks: unticked by default, ticked writes the marks, one undo restores the text and the version
-- [ ] 12.5 Fix the e2e specs that quote the starting document; the whole e2e suite green; literal results. Specs share one account in file order: keep new generating steps out of the files that sort before `generate.spec.ts`
-- [ ] 12.6 Docs: `README.md` where it describes the format or the PDF; check, change only what is wrong (`docs/design.md` is already written by the architect)
-- [ ] 12.7 Commit `test(e2e): column marks and switches`
+- [x] 12.1 In a fresh worktree build web and desktop before `npm run e2e`, and do not edit while the stack builds. Check that the volumes of an earlier e2e stack are gone first
+- [x] 12.2 `e2e/templates.spec.ts`: in an own template set «Orologio» to «Side» and «↳ Rivelazioni» to «Main»; the sketch, the starting document's marks, the save bar and the save dialog's two lines; the Scene fields tab's switches and tags; the built-in disabled
+- [x] 12.3 `e2e/projects.spec.ts` or `e2e/editor.spec.ts`: a project created from that template has `## Orologio {laterale}` in its document; the mark is visible with the cursor elsewhere; «Move to main column» from the palette rewrites it; an unknown word shows the warning in Checks; the saved PDF's text (`pdfTexts`) has no `{`
+- [x] 12.4 `e2e/templates.spec.ts`: the update dialog's third option on a project whose text has no marks: unticked by default, ticked writes the marks, one undo restores the text and the version
+- [x] 12.5 Fix the e2e specs that quote the starting document; the whole e2e suite green; literal results. Specs share one account in file order: keep new generating steps out of the files that sort before `generate.spec.ts`
+- [x] 12.6 Docs: `README.md` where it describes the format or the PDF; check, change only what is wrong (`docs/design.md` is already written by the architect)
+- [x] 12.7 Commit `test(e2e): column marks and switches`
 
 ## 13. Proof and hand-back of brief C
 
