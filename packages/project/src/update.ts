@@ -243,3 +243,12 @@ export function updateEdits(text: string, from: Template, to: Template, options:
 
   return edits.sort((a, b) => a.from - b.from || a.to - b.to);
 }
+
+// The mark of the template's column on each part of the text that takes one
+// and has none (write-column-marks design decision D1): what a template
+// update to the same version with `writeColumns` writes, so the two never
+// disagree. A part with a mark, valid or not, is left alone; a template that
+// is not an adventure template gives no edits.
+export function columnMarkEdits(text: string, template: Template): TextEdit[] {
+  return updateEdits(text, template, template, { addSections: false, renameHeadings: false, writeColumns: true });
+}

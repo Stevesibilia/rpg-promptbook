@@ -2,14 +2,14 @@
 
 ## 1. promptbook-project
 
-- [ ] 1.1 Export `columnMarkEdits(text, template)` from `update.ts` and the
+- [x] 1.1 Export `columnMarkEdits(text, template)` from `update.ts` and the
       package index, built on `columnInserts` (D1).
-- [ ] 1.2 Tests: every unmarked part of the built-in template gets its mark;
+- [x] 1.2 Tests: every unmarked part of the built-in template gets its mark;
       a marked part and an invalid mark are left alone; a template that sets
       another column writes that column; applying the edits twice gives no
       second edit; a non-adventure template gives none; the result equals
       `updateEdits(text, t, t, …writeColumns)`.
-- [ ] 1.3 Test D4: for `packages/layout/test/fixtures/la-lanterna-spenta.md`
+- [x] 1.3 Test D4: for `packages/layout/test/fixtures/la-lanterna-spenta.md`
       the layout input is the same before and after the edits (put the test
       where both packages are reachable without a new dependency; if none
       is, compare `columnOf` for every part in `promptbook-project`).

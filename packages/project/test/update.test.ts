@@ -1,6 +1,18 @@
-import { defineTemplate, templates, type AdventureTemplateInput, type CampaignTemplateInput, type TextEdit } from 'promptbook-format';
+import { readFileSync } from 'node:fs';
+import {
+  columnOf,
+  defineTemplate,
+  nightPartOf,
+  parseAdventure,
+  scenePartOf,
+  templates,
+  type AdventureTemplate,
+  type AdventureTemplateInput,
+  type CampaignTemplateInput,
+  type TextEdit,
+} from 'promptbook-format';
 import { describe, expect, it } from 'vitest';
-import { updateEdits } from '../src/index.js';
+import { columnMarkEdits, updateEdits } from '../src/index.js';
 import { fixture } from './helpers.js';
 
 const apply = (text: string, edits: TextEdit[]) =>
@@ -244,5 +256,91 @@ describe('updateEdits with writeColumns', () => {
     definition.version = 2;
     const text = '## Premessa\n\nTesto.\n\n## Sessioni\n';
     expect(updateEdits(text, templates.campagna, defineTemplate(definition), options)).toEqual([]);
+  });
+});
+
+describe('columnMarkEdits', () => {
+  const doc = (marks: { clock?: string; truths?: string; revelations?: string; cast?: string } = {}) =>
+    [
+      '---\ntitolo: Prova\n---\n',
+      `## A colpo d'occhio\n\nTesto.\n\n**Rivelazioni**${marks.revelations ?? ''}\n\n- **R1.** Vero. (I1)\n`,
+      '## Da non perdere stasera\n\n- Uno.\n',
+      `## Orologio${marks.clock ?? ''}\n\n- Due.\n`,
+      `## Verità del mondo${marks.truths ?? ''}\n\n- Tre.\n`,
+      `## Scene\n\n### S1. Prova\n\n**Luogo e momento:** qui.\n\n**Da non perdere qui**\n\n- Quattro.\n\n**Chi c'è**${marks.cast ?? ''}\n\n- Cinque.\n`,
+    ].join('\n');
+  const builtIn = templates.avventura;
+
+  it('writes the template column on every unmarked part of the built-in template', () => {
+    const text = doc();
+    const out = apply(text, columnMarkEdits(text, builtIn));
+    expect(out).toContain('**Rivelazioni** {laterale}');
+    expect(out).toContain('## Da non perdere stasera {laterale}');
+    expect(out).toContain('## Orologio {principale}');
+    expect(out).toContain('## Verità del mondo {principale}');
+    expect(out).toContain('**Da non perdere qui** {laterale}');
+    expect(out).toContain("**Chi c'è** {laterale}");
+  });
+
+  it('leaves a marked part and an invalid mark alone', () => {
+    const text = doc({ clock: ' {laterale}', truths: ' {latterale}', cast: ' {principale}' });
+    const out = apply(text, columnMarkEdits(text, builtIn));
+    expect(out).toContain('## Orologio {laterale}\n');
+    expect(out).toContain('## Verità del mondo {latterale}\n');
+    expect(out).toContain("**Chi c'è** {principale}\n");
+    expect(out).toContain('**Rivelazioni** {laterale}');
+  });
+
+  it('writes the column the template sets, when it is not the default', () => {
+    const t = own(5, (d) => {
+      d.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+    });
+    const text = doc();
+    expect(apply(text, columnMarkEdits(text, t))).toContain('## Orologio {laterale}\n');
+  });
+
+  it('gives no second edit after the first is applied', () => {
+    const once = apply(doc(), columnMarkEdits(doc(), builtIn));
+    expect(columnMarkEdits(once, builtIn)).toEqual([]);
+  });
+
+  it('gives no edits for a template that is not an adventure template', () => {
+    expect(columnMarkEdits('## Premessa\n\nTesto.\n\n## Sessioni\n', templates.campagna)).toEqual([]);
+  });
+
+  it('equals a same-version update that writes the columns', () => {
+    const t = own(5, (d) => {
+      d.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+    });
+    for (const text of [doc(), doc({ truths: ' {laterale}' }), sabaoth]) {
+      expect(columnMarkEdits(text, t)).toEqual(updateEdits(text, t, t, { addSections: false, renameHeadings: false, writeColumns: true }));
+    }
+  });
+
+  it('keeps the column of every part, on the invented fixture', () => {
+    const text = readFileSync(new URL('../../layout/test/fixtures/la-lanterna-spenta.md', import.meta.url), 'utf8');
+    // Where each part prints: its mark, else the template's (what the layout
+    // reads, design decision D4).
+    const columns = (source: string, template: AdventureTemplate) => {
+      const model = parseAdventure(source, { template }).model;
+      return [
+        ...model.sections.flatMap((s) => {
+          const part = nightPartOf(s.role);
+          return part ? [`${s.heading}:${columnOf(template, part, s.mark)}`] : [];
+        }),
+        ...(model.revelationsLabel ? [`revelations:${columnOf(template, 'revelations', model.revelationsLabel.mark)}`] : []),
+        ...model.scenes.flatMap((scene) =>
+          scene.fields.flatMap((f) => {
+            const part = f.form === 'block' ? scenePartOf(template.sceneFields.find((d) => d.label === f.label)?.role) : null;
+            return part ? [`${scene.heading}/${f.label}:${columnOf(template, part, f.mark)}`] : [];
+          }),
+        ),
+      ];
+    };
+    const edits = columnMarkEdits(text, builtIn);
+    expect(edits.length).toBeGreaterThan(0);
+    const after = apply(text, edits);
+    expect(columns(after, builtIn)).toEqual(columns(text, builtIn));
+    expect(columnMarkEdits(after, builtIn)).toEqual([]);
   });
 });
