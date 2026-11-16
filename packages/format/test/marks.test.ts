@@ -151,6 +151,25 @@ describe('the revelations label', () => {
     expect(columnProblems(result.problems)).toEqual([]);
   });
 
+  it('with a colon and no list gives no label', () => {
+    const doc = change('**Rivelazioni**\n\n- **R1.** La verità. (I1, I2, I3)\n', '**Rivelazioni:**\n');
+    expect(parse(doc).model.revelationsLabel).toBeNull();
+  });
+
+  it('with a list wins over a lone label before it', () => {
+    const doc = change('**Rivelazioni**\n', '**Rivelazioni** {laterale}\n\nTesto.\n\n**Rivelazioni** {principale}\n');
+    const { model } = parse(doc);
+    expect(model.revelationsLabel?.mark?.word).toBe('principale');
+    expect(model.revelations.map((r) => r.id)).toEqual(['R1']);
+  });
+
+  it('keeps braces in a revelation as text', () => {
+    const doc = change('- **R1.** La verità. (I1, I2, I3)', '- **R1.** {x}');
+    const { model } = parse(doc);
+    expect(model.revelations[0]?.text).toBe('{x}');
+    expect(model.revelationsLabel?.mark).toBeNull();
+  });
+
   it('followed by other text and no list gives no label', () => {
     const doc = change('**Rivelazioni**\n\n- **R1.** La verità. (I1, I2, I3)\n', '**Rivelazioni** poi testo\n');
     expect(parse(doc).model.revelationsLabel).toBeNull();
@@ -249,6 +268,18 @@ describe('documents without marks', () => {
     expect(result.model.scenes.flatMap((s) => s.fields).every((f) => f.mark === null)).toBe(true);
     expect(result.model.revelationsLabel?.mark ?? null).toBeNull();
     expect(columnProblems(result.problems)).toEqual([]);
+  });
+
+  // The problems as main reported them before column marks.
+  it.each([
+    [
+      'l-ancora-di-sabaoth.md',
+      'meta.required content.unplaced section.missing content.unplaced content.unplaced content.unplaced limit.preamble.words callout.count callout.count callout.quote.plain callout.count callout.quote.plain callout.count callout.quote.plain callout.count callout.quote.plain callout.count callout.quote.plain scene.field.unknown',
+    ],
+    ['l-ancora-di-sabaoth.converted.md', 'section.missing limit.preamble.words ref.threat.outside scene.field.unknown sheet.nested-threat'],
+  ])('%s keeps its problems', (name, expected) => {
+    const result = parseAdventure(fixture(name), { template: templates.avventura });
+    expect(codes(result.problems)).toEqual(expected.split(' '));
   });
 
   it('the sample has no mark and its revelations label', () => {

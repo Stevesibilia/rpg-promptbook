@@ -137,23 +137,28 @@ export function readSection(ctx: ParseContext, model: Model, heading: Heading, n
 type RevelationsLabel = Model['revelationsLabel'];
 
 // "**Rivelazioni**" on its own, or with a column mark, then a list of
-// "- **R1.** text (I1, I2)". The first label is the list's label; a label
-// alone in its paragraph counts also with no list under it (a new project's
+// "- **R1.** text (I1, I2)". The first label with a list is the list's label;
+// without one, the first label alone in its paragraph (no colon, nothing but
+// an optional mark after it) counts with no list under it (a new project's
 // starting document has one), and gives no revelations.
 function readRevelations(ctx: ParseContext, nodes: RootContent[]): { revelations: Revelation[]; label: RevelationsLabel } {
   const { source, template } = ctx;
   const revelationId = new RegExp(`^(${escapeRegExp(template.ids.revelation)}\\d+)\\.?$`);
   const revelations: Revelation[] = [];
-  let found: RevelationsLabel = null;
+  let withList: RevelationsLabel = null;
+  let lone: RevelationsLabel = null;
   nodes.forEach((node, index) => {
     const label = leadingLabel(ctx, node);
     if (node.type !== 'paragraph' || label?.label !== template.overview.revelations) return;
     const next = nodes[index + 1];
     const mark = labelMark(ctx, node, label);
-    const alone = mark !== null || source.text.slice(label.end, source.end(node)).trim() === '';
-    if (next?.type !== 'list' && !alone) return;
-    found ??= { labelRange: source.range(label.start, label.end), mark };
-    if (next?.type !== 'list') return;
+    const found = { labelRange: source.range(label.start, label.end), mark };
+    if (next?.type !== 'list') {
+      const alone = mark !== null || (!label.colon && source.text.slice(label.end, source.end(node)).trim() === '');
+      if (alone) lone ??= found;
+      return;
+    }
+    withList ??= found;
     for (const item of toList(ctx, next).items) {
       const match = item.label ? revelationId.exec(item.label) : null;
       if (!match) continue;
@@ -161,7 +166,7 @@ function readRevelations(ctx: ParseContext, nodes: RootContent[]): { revelations
       revelations.push({ id: match[1]!, text, clues: ids, range: item.range });
     }
   });
-  return { revelations, label: found };
+  return { revelations, label: withList ?? lone };
 }
 
 function readReminders(section: Section): Reminder[] {
