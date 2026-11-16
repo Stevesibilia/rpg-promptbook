@@ -73,22 +73,46 @@ function headingTextEnd(text: string, range: Range): number {
   return from + line.length;
 }
 
+// True when a mark written right after the bold label would read as one: the
+// label has no colon and nothing follows it in its paragraph (A1).
+function bareLabel(text: string, range: Range): boolean {
+  const end = range.end.offset;
+  if (/:(\*\*|__)$/.test(text.slice(range.start.offset, end)) || text[end] === ':') return false;
+  const newline = text.indexOf('\n', end);
+  if (newline === -1) return text.slice(end).trim() === '';
+  if (text.slice(end, newline).trim() !== '') return false;
+  const after = text.indexOf('\n', newline + 1);
+  const next = text.slice(newline + 1, after === -1 ? text.length : after);
+  return next.trim() === '' || /^ {0,3}([-*+]|\d+[.)])([ \t]|$)/.test(next);
+}
+
+// What the text will name a section or a field after the update's renames.
+interface Names {
+  section: (name: string) => string | undefined;
+  field: (label: string, at: number) => string;
+}
+
 // The mark of the new version's column for each part of the text that takes
 // one and has none, as an insert at the end of its heading or label. A part
-// whose section or field the new version no longer has gets none.
-function columnInserts(model: Model, text: string, from: AdventureTemplate, to: AdventureTemplate): TextEdit[] {
+// the new version will not read as the same part (its section or field was
+// removed, or renamed while the text keeps the old name) gets none, and so
+// does a revelations label a mark cannot follow.
+function columnInserts(model: Model, text: string, from: AdventureTemplate, to: AdventureTemplate, names: Names): TextEdit[] {
   const out: TextEdit[] = [];
   const add = (at: number, part: PlacedPart) => out.push({ from: at, to: at, insert: ` ${columnMark(templateColumn(to, part))}` });
   for (const section of model.sections) {
     const part = nightPartOf(section.role);
-    if (part && !section.mark && to.sections.some((s) => s.role === part)) add(headingTextEnd(text, section.headingRange), part);
+    if (!part || section.mark || !section.name) continue;
+    const now = names.section(section.name) ?? sectionNamed(to.sections, section.heading)?.name;
+    if (nightPartOf(to.sections.find((s) => s.name === now)?.role) === part) add(headingTextEnd(text, section.headingRange), part);
   }
   const label = model.revelationsLabel;
-  if (label && !label.mark) add(label.labelRange.end.offset, 'revelations');
+  if (label && !label.mark && bareLabel(text, label.labelRange)) add(label.labelRange.end.offset, 'revelations');
   for (const field of model.scenes.flatMap((scene) => scene.fields)) {
     if (field.form !== 'block' || field.mark) continue;
     const part = scenePartOf(from.sceneFields.find((f) => f.label === field.label)?.role);
-    if (part && to.sceneFields.some((f) => f.role === part)) add(field.labelRange.end.offset, part);
+    const now = names.field(field.label, field.labelRange.start.offset);
+    if (part && scenePartOf(to.sceneFields.find((f) => f.label === now)?.role) === part) add(field.labelRange.end.offset, part);
   }
   return out;
 }
@@ -128,6 +152,9 @@ export function updateEdits(text: string, from: Template, to: Template, options:
     if (old && now) renamedSection.set(old.name, now);
   }
   const becomes = (name: string) => renamedSection.get(name) ?? to.sections.find((s) => s.name === name);
+  // The sections and field labels whose rename the edits write.
+  const renamedHeadings = new Set<string>();
+  const renamedLabels = new Map<number, string>();
 
   if (options.renameHeadings) {
     for (const section of present) {
@@ -139,7 +166,10 @@ export function updateEdits(text: string, from: Template, to: Template, options:
       const edit = line.includes(full)
         ? rewrite(text, section.from, section.from + line.length, full, now.heading ?? now.name)
         : rewrite(text, section.from, section.from + line.length, old.name, now.name);
-      if (edit) edits.push(edit);
+      if (edit) {
+        edits.push(edit);
+        renamedHeadings.add(section.name);
+      }
     }
     if (adventures) {
       const renamedField = new Map<string, string>();
@@ -153,7 +183,10 @@ export function updateEdits(text: string, from: Template, to: Template, options:
           const now = renamedField.get(field.label);
           if (now === undefined) continue;
           const edit = rewrite(text, field.labelRange.start.offset, field.labelRange.end.offset, field.label, now);
-          if (edit) edits.push(edit);
+          if (edit) {
+            edits.push(edit);
+            renamedLabels.set(field.labelRange.start.offset, now);
+          }
         }
       }
     }
@@ -191,7 +224,11 @@ export function updateEdits(text: string, from: Template, to: Template, options:
   }
 
   if (options.writeColumns && adventures) {
-    for (const mark of columnInserts(model(adventures.from), text, adventures.from, adventures.to)) {
+    const names: Names = {
+      section: (name) => (renamedHeadings.has(name) ? renamedSection.get(name)?.name : undefined),
+      field: (label, at) => renamedLabels.get(at) ?? label,
+    };
+    for (const mark of columnInserts(model(adventures.from), text, adventures.from, adventures.to, names)) {
       // A renamed heading gets its mark after the new name, in the same edit;
       // a section added right after an empty heading comes after its mark.
       const rename = edits.find((e) => e.to === mark.from && e.from < e.to);

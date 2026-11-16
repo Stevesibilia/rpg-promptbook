@@ -188,6 +188,29 @@ describe('updateEdits with writeColumns', () => {
     expect(out).toContain('\n**Presenti** {laterale}\n');
   });
 
+  it('writes no mark under an old name the new version renamed, when the rename is not written', () => {
+    const v6 = own(6, (t) => {
+      t.sections.find((s) => s.role === 'clock')!.name = 'Clessidra';
+      t.sceneFields.find((f) => f.role === 'cast')!.label = 'Presenti';
+    });
+    const text = doc();
+    const out = apply(text, updateEdits(text, v2, v6, { addSections: false, renameHeadings: false, writeColumns: true }));
+    expect(out).toContain('\n## Orologio\n');
+    expect(out).toContain("\n**Chi c'è**\n");
+    expect(out).toContain('\n## Verità del mondo {principale}\n');
+    expect(out).toContain('\n**Da non perdere qui** {laterale}\n');
+  });
+
+  it.each([
+    ['a colon', '**Rivelazioni:**'],
+    ['text after it', '**Rivelazioni** ecco la lista'],
+  ])('writes no mark after a revelations label with %s, and nothing on a second update', (_, label) => {
+    const text = doc().replace('**Rivelazioni**\n', `${label}\n`);
+    const once = apply(text, updateEdits(text, v2, v5, options));
+    expect(once).toContain(`\n${label}\n`);
+    expect(updateEdits(once, v2, v5, options)).toEqual([]);
+  });
+
   it('writes no mark on an inline field of a column role', () => {
     const text = doc().replace("**Chi c'è**\n\n- Cinque.", "**Chi c'è:** qualcuno.");
     const out = apply(text, updateEdits(text, v2, v5, options));
