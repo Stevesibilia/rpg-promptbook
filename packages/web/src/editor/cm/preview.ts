@@ -196,7 +196,7 @@ export function inlineItems(
               items.push({ kind: 'hide', from: before ? mark.from - 1 : mark.from, to: space ? mark.to + 1 : mark.to });
             }
           }
-          if (heading[1] === '2' && config.columnMarks) {
+          if (heading[1] === '2' && config.columnMarks && node.node.parent?.name === 'Document') {
             const start = marks[0] ? marks[0].to : node.from;
             const rest = doc.sliceString(start, line.to);
             const mark = HEADING_MARK.exec(rest);
@@ -223,7 +223,13 @@ export function inlineItems(
           // look, and shows on every line.
           const paragraph = node.node.parent;
           const mark =
-            config.columnMarks && atStart && !inner.trimEnd().endsWith(':') && paragraph?.name === 'Paragraph' && paragraph.to <= line.to
+            config.columnMarks &&
+            atStart &&
+            !inner.trimEnd().endsWith(':') &&
+            paragraph?.name === 'Paragraph' &&
+            paragraph.from === node.from &&
+            paragraph.to <= line.to &&
+            paragraph.parent?.name === 'Document'
               ? LABEL_MARK.exec(after)
               : null;
           const alone = atStart && (!after.trim() || mark !== null);

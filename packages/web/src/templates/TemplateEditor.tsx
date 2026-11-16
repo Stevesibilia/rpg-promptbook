@@ -286,7 +286,13 @@ function Editor({ initial, builtin, settings }: { initial: Template; builtin: bo
             {shown === 'limits' && draft.kind === 'adventure' && <LimitsTab {...props} draft={draft} />}
           </div>
         </div>
-        <StartingPreview text={text} template={previewTemplate} marks={marks} chip={builtin ? `v${base.version}` : 'live'} />
+        <StartingPreview
+          text={text}
+          template={previewTemplate}
+          campaign={campaign}
+          marks={marks}
+          chip={builtin ? `v${base.version}` : 'live'}
+        />
       </div>
       {!builtin && dirty && (
         <div className="savebar" role="region" aria-label="Unsaved changes">

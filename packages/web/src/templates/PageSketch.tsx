@@ -23,7 +23,8 @@ export interface SketchPart {
 }
 
 export interface Sketch {
-  top: string;
+  // The full-width chip at the top; null for none.
+  top: string | null;
   main: SketchPart[];
   side: SketchPart[];
   // The dashed chips of what the layout places before and after the parts.
@@ -57,7 +58,7 @@ export function nightSketch(template: AdventureTemplate): Sketch {
   }
   const side = parts.filter(by('side', template));
   return {
-    top: overview ? (overview.heading ?? overview.name) : 'Overview',
+    top: overview && sectionPdf(overview, 'adventure').print ? (overview.heading ?? overview.name) : null,
     main: parts.filter(by('main', template)),
     side: [...side.filter((p) => p.part === 'reminders'), ...side.filter((p) => p.part !== 'reminders')],
     mainBefore: [],
@@ -109,7 +110,7 @@ export function PageSketch({ page, template }: { page: 'night' | 'scene'; templa
     <div className="sk" role="figure" aria-label={`${title} sketch`} data-testid={`${page}-sketch`}>
       <h4>{title} · where each part prints</h4>
       <div className="pg">
-        <div className="full">{fixed(sketch.top)}</div>
+        {sketch.top && <div className="sk-full">{fixed(sketch.top)}</div>}
         <div className="c" data-testid="sketch-main">
           <span className="cap">Main column</span>
           {main.length ? main : <span className="none">nothing</span>}
@@ -123,7 +124,7 @@ export function PageSketch({ page, template }: { page: 'night' | 'scene'; templa
           ))}
           {sketch.sideAfter.map(fixed)}
         </div>
-        {sketch.bottom && <div className="full">{fixed(sketch.bottom)}</div>}
+        {sketch.bottom && <div className="sk-full">{fixed(sketch.bottom)}</div>}
       </div>
     </div>
   );

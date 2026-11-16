@@ -74,7 +74,9 @@ function UpdateDialog({
     () => writesColumnMarks(text, from, to, { addSections, renameHeadings }),
     [text, from, to, addSections, renameHeadings],
   );
-  // The option counts only while it is shown.
+  // The option counts only while it is shown, and is unticked when it shows
+  // again.
+  if (!marksToWrite && writeColumns) setWriteColumns(false);
   const columns = writeColumns && marksToWrite;
   const after = useMemo(
     () => checksAfter(text, from, to, updateEdits(text, from, to, { addSections, renameHeadings, writeColumns: columns })),

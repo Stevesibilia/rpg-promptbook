@@ -205,6 +205,13 @@ describe('the page sketches', () => {
     expect(markup).toContain('<span class="none">nothing</span>');
   });
 
+  it('leave out the overview and its revelations when the overview is left out', () => {
+    const i = at(saved, 'overview');
+    const out = run(saved, pdfAction(i, saved.sections[i]!, { print: false }, 'adventure'));
+    expect(nightSketch(out).top).toBeNull();
+    expect(names(nightSketch(out).side)).toEqual(['Da non perdere stasera']);
+  });
+
   it('draw the scene page in the layout’s fixed order', () => {
     const sketch = sceneSketch(saved);
     expect(sketch.top).toBe('Title · Luogo e momento · In gioco');

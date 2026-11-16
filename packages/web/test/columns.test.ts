@@ -138,6 +138,15 @@ describe('the column marks in the preview', () => {
       '**Indizi qui** {laterale}',
       'e ancora testo',
       '',
+      'Testo prima',
+      '**Indizi qui** {laterale}',
+      '',
+      '> **Indizi qui** {laterale}',
+      '',
+      '- uno',
+      '',
+      '  **Indizi qui** {laterale}',
+      '',
     ].join('\n');
     expect(marks(previewState(text, 0, false)).filter((m) => m.includes('cm-pm'))).toEqual(['{laterale}:cm-pm']);
   });
@@ -224,6 +233,21 @@ describe('the part under the cursor', () => {
     expect(text.slice(0, edit.from) + edit.insert + text.slice(edit.to)).toBe('## Orologio {laterale} ##\n\n- La marea.\n');
   });
 
+  it('takes the revelations list’s items without an id, and stops at the list’s end', () => {
+    const text = "## A colpo d'occhio\n\n**Rivelazioni**\n\n- **R1.** Una. (I1)\n- Senza id,\n  su due righe.\n\nDopo la lista.\n";
+    const parsed = parseAdventure(text, { template }).model;
+    expect(columnTarget(parsed, template, text, text.indexOf('Senza id'))).toMatchObject({ part: 'revelations' });
+    expect(columnTarget(parsed, template, text, text.indexOf('su due righe'))).toMatchObject({ part: 'revelations' });
+    expect(columnTarget(parsed, template, text, text.indexOf('Dopo la lista'))).toBeNull();
+  });
+
+  it('is not the revelations when an ordered list from 2 follows the label', () => {
+    const text = "## A colpo d'occhio\n\n**Rivelazioni**\n2. Una.\n";
+    const parsed = parseAdventure(text, { template }).model;
+    const t = columnTarget(parsed, template, text, text.indexOf('**Rivelazioni'));
+    expect(t).toBeNull();
+  });
+
   it('is not the revelations when their label has a colon or text after it', () => {
     for (const label of ['**Rivelazioni:**', '**Rivelazioni** e altro']) {
       const text = `## A colpo d'occhio\n\n${label}\n\n- **R1.** Una. (I1)\n`;
@@ -254,14 +278,15 @@ describe('the palette', () => {
       .map((e) => [e.label, e.action]);
   };
 
-  it('offers the move to the other column, first, for the part under the cursor', () => {
+  it('offers the move to the other column for the part under the cursor, after the commands', () => {
     expect(entries(at('- La marea'))).toEqual([['Move to side column', { kind: 'column', to: 'side' }]]);
     expect(entries(at('- Le reti'))).toEqual([['Move to main column', { kind: 'column', to: 'main' }]]);
     expect(entries(at('- **R2.**'))).toEqual([['Move to side column', { kind: 'column', to: 'side' }]]);
+    // After the other commands: Ctrl+K then Enter still toggles the outline.
     const { state } = analysed(doc, at('- La marea'));
-    expect(paletteEntries(outlineOf(state), { checked: true, printable: true, column: 'main' })[0]!.label).toBe(
-      'Move to side column',
-    );
+    const labels = paletteEntries(outlineOf(state), { checked: true, printable: true, column: 'main' }).map((e) => e.label);
+    expect(labels[0]).toBe('Toggle outline');
+    expect(labels.indexOf('Move to side column')).toBe(labels.indexOf('Back to projects') + 1);
   });
 
   it('lists neither command elsewhere', () => {

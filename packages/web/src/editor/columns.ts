@@ -56,7 +56,37 @@ function bareLabel(text: string, range: Range): boolean {
   if (text.slice(end, newline).trim() !== '') return false;
   if (newline === text.length) return true;
   const next = text.slice(newline + 1, lineEnd(text, newline + 1));
-  return next.trim() === '' || /^ {0,3}([-*+]|\d+[.)])([ \t]|$)/.test(next);
+  return next.trim() === '' || INTERRUPTS.test(next);
+}
+
+// A list item that can end a paragraph in CommonMark: a bullet, or an
+// ordered item numbered 1, with some text.
+const INTERRUPTS = /^ {0,3}([-*+]|1[.)])[ \t]+\S/;
+const ITEM = /^ {0,3}([-*+]|\d+[.)])([ \t]|$)/;
+
+// The end of the list right under a label's line: its items and their
+// continuation lines; the label's line end when no list follows.
+function listEnd(text: string, from: number): number {
+  let end = lineEnd(text, from);
+  let pos = end;
+  let items = false;
+  let blank = false;
+  while (pos < text.length) {
+    const start = pos + 1;
+    const stop = lineEnd(text, start);
+    const line = text.slice(start, stop);
+    pos = stop;
+    if (!line.trim()) {
+      blank = true;
+      continue;
+    }
+    const item = ITEM.test(line);
+    if (!item && !(items && (!blank || /^( {2,}|\t)/.test(line)))) break;
+    items ||= item;
+    blank = false;
+    end = stop;
+  }
+  return end;
 }
 
 const lineStart = (text: string, at: number) => text.lastIndexOf('\n', at - 1) + 1;
@@ -74,9 +104,7 @@ export function columnTarget(model: Model, template: AdventureTemplate, text: st
   const label = model.revelationsLabel;
   if (label && (label.mark || bareLabel(text, label.labelRange))) {
     const start = label.labelRange.start.offset;
-    const after = model.revelations.filter((r) => r.range.start.offset > start);
-    const end = Math.max(lineEnd(text, start), ...after.map((r) => r.range.end.offset));
-    if (inside(pos, lineStart(text, start), end)) {
+    if (inside(pos, lineStart(text, start), listEnd(text, start))) {
       return target('revelations', label.mark, label.labelRange.end.offset);
     }
   }

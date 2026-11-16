@@ -32,7 +32,8 @@ export interface PaletteEntry {
 // there are checks (adventures and one-shots), the PDF where the project
 // prints (every category since campaign-pdf). `column` is where the part
 // under the cursor prints, null when the cursor is in no part that takes a
-// column: the move to the other column is listed first, and not at all
+// column: the move to the other column comes after the other commands, so
+// the first row stays the same, and is not listed at all
 // without such a part (the palette has no disabled rows).
 export function paletteEntries(
   items: readonly OutlineItem[],
@@ -53,7 +54,6 @@ export function paletteEntries(
             : { key: 'column', label: 'Move to main column', keys: null, action: { kind: 'column', to: 'main' } },
         ];
   return [
-    ...move,
     fromTable('outline'),
     fromTable('inspector'),
     fromTable('focus'),
@@ -73,6 +73,7 @@ export function paletteEntries(
       : []),
     { key: 'licence', label: 'Choose licence…', keys: null, action: { kind: 'licence' } },
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
+    ...move,
     ...items.map((item): PaletteEntry => ({
       key: `go:${item.key}`,
       label: `Go to ${item.id ? `${item.id} ` : ''}${item.name}`,

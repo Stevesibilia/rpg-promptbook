@@ -354,7 +354,7 @@
   gap: 6px 8px;
   max-width: 440px;
 }
-.sk .full {
+.sk .sk-full {
   grid-column: 1 / -1;
 }
 .sk .c {
