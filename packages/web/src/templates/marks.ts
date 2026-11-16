@@ -1,4 +1,4 @@
-import { sectionPdf, type Template } from 'promptbook-format';
+import { COLUMN_WORDS, sectionPdf, type Template } from 'promptbook-format';
 import type { ListItems, ListName } from './draft.js';
 
 // Which rows of the draft are new or changed since the saved version (the
@@ -23,6 +23,15 @@ function listOf<L extends ListName>(t: Template, list: L): ListItems[L][] {
   if (t.kind !== 'adventure') return [];
   return (list === 'sceneFields' ? t.sceneFields : t.callouts) as ListItems[L][];
 }
+
+// JSON with the keys of every object in order, so a row rebuilt with its keys
+// in another order (a switch set back) compares equal to the saved one.
+const stable = (value: unknown): string =>
+  JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
 
 // The mark of each row of the draft's list, by index; unchanged rows have
 // none.
@@ -49,7 +58,7 @@ export function rowMarks<L extends ListName>(saved: Template, draft: Template, l
     const index = partner(item);
     if (index === -1) return 'added';
     taken.add(index);
-    return JSON.stringify(before[index]) === JSON.stringify(item) ? null : 'changed';
+    return stable(before[index]) === stable(item) ? null : 'changed';
   });
 }
 
@@ -69,6 +78,8 @@ export interface LineMark {
 
 // The marks on the starting document's lines: a heading by its section, a
 // bold label by its field, a box by its type, a front matter key by its key.
+const MARK_AT_END = new RegExp(`[ \\t]*\\{(?:${Object.values(COLUMN_WORDS).join('|')})\\}$`);
+
 export function previewMarks(text: string, saved: Template, draft: Template): LineMark[] {
   const marked = <L extends ListName>(list: L, key: (item: ListItems[L]) => string) => {
     const marks = rowMarks(saved, draft, list);
@@ -108,7 +119,8 @@ export function previewMarks(text: string, saved: Template, draft: Template): Li
       const key = /^([^:\s][^:]*):/.exec(line)?.[1];
       if (key) mark = keys.get(key) ?? null;
     } else if (line.startsWith('## ')) {
-      const heading = line.slice(3);
+      // The heading without the column mark the skeleton writes after it.
+      const heading = line.slice(3).replace(MARK_AT_END, '');
       mark = sections.get(heading) ?? null;
       isOptional = optional.has(heading);
       isOut = out.has(heading);

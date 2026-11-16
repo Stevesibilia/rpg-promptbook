@@ -62,7 +62,9 @@ export function changeText(change: TemplateChange, to: Template): string {
     case 'climax':
       return change.after === 'true' ? `${subject} now climax only` : `${subject} no longer climax only`;
     case 'column':
-      return `${subject} now in the ${change.after} column`;
+      // A part of the night or scene page (template-placement design
+      // decision A8); a box keeps its own wording.
+      return change.what === 'box' ? `${subject} now in the ${change.after} column` : `${subject} prints in the ${change.after} column`;
     case 'places':
       return `${subject} now allowed in ${places(change.after ?? '', to)}`;
     case 'count':

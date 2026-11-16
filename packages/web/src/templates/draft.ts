@@ -3,7 +3,10 @@ import {
   isLocked,
   READ_KEYS,
   TemplateError,
+  withColumn,
   withPdf,
+  type Column,
+  type PlacedPart,
   type SectionPdfPatch,
   type AdventureTemplate,
   type CalloutDefinition,
@@ -50,6 +53,9 @@ export type DraftAction =
   | { type: 'remove'; list: ListName; index: number }
   | { type: 'add'; list: ListName; name: string; uid: string }
   | { type: 'patch'; list: ListName; index: number; patch: Record<string, unknown> }
+  // A part's column (template-placement design decision A9), through
+  // withColumn: a switch set back leaves the template as it was saved.
+  | { type: 'column'; part: PlacedPart; column: Column }
   | { type: 'limits'; patch: Partial<AdventureTemplate['limits']> }
   | { type: 'dashes'; on: boolean };
 
@@ -150,6 +156,8 @@ export function draftReducer(t: Template, action: DraftAction): Template {
         items.map((item, i) => (i === action.index ? { ...(item as object), ...action.patch } : item)),
       );
     }
+    case 'column':
+      return t.kind === 'adventure' ? withColumn(t, action.part, action.column) : t;
     case 'limits':
       return t.kind === 'adventure' ? { ...t, limits: { ...t.limits, ...action.patch } } : t;
     case 'dashes': {

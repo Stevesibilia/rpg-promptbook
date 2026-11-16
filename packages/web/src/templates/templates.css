@@ -208,10 +208,10 @@
   appearance: none;
 }
 .g-sec {
-  grid-template-columns: 44px minmax(0, 1fr) 118px 132px 212px 30px;
+  grid-template-columns: 44px minmax(0, 1fr) 118px 132px 248px 30px;
 }
 .g-fld {
-  grid-template-columns: 44px minmax(0, 1fr) 82px 112px 118px 64px 30px;
+  grid-template-columns: 44px minmax(0, 1fr) 82px 112px 118px 64px 150px 30px;
 }
 .g-box {
   grid-template-columns: minmax(0, 1.2fr) 96px 72px minmax(0, 1.4fr) 92px 30px;
@@ -306,6 +306,87 @@
 }
 .pdf button.tg:disabled {
   opacity: 0.55;
+}
+/* The column a part prints in (template-placement): a two-button switch, the
+   revelations' indented row, and the page sketch under the tables */
+.col {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.col button {
+  font: 500 11.5px var(--font);
+  padding: 1px 8px;
+  color: var(--faint);
+}
+.col button.on {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+}
+.col button:disabled {
+  cursor: default;
+}
+.pdf .col button:disabled:not(.on) {
+  opacity: 0.55;
+}
+.rr.subrow input {
+  padding-left: 24px;
+}
+.sk {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+}
+.sk h4 {
+  font: 600 10.5px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 8px;
+}
+.sk .pg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36%;
+  gap: 6px 8px;
+  max-width: 440px;
+}
+.sk .full {
+  grid-column: 1 / -1;
+}
+.sk .c {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sk .cap {
+  font: 600 10px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.sk .p {
+  font: 500 11.5px/15px var(--font);
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.sk .p.box {
+  background: color-mix(in srgb, var(--amber) 11%, transparent);
+}
+.sk .p.fx {
+  border-style: dashed;
+  color: var(--faint);
+}
+.sk .none {
+  font: italic 11.5px var(--font);
+  color: var(--faint);
 }
 .rr select.tg.add-place {
   width: auto;
@@ -544,6 +625,10 @@
   }
   .rh.g-sec,
   .rr.g-sec {
-    min-width: 760px;
+    min-width: 800px;
+  }
+  .rh.g-fld,
+  .rr.g-fld {
+    min-width: 780px;
   }
 }

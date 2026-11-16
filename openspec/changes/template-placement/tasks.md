@@ -100,12 +100,12 @@ elsewhere is reported, not made.
 
 ## 9. Web: the template editor (brief C)
 
-- [ ] 9.1 `templates/draft.ts`: a draft action that sets a part's column through `withColumn`; `pdfAction` keeps the column (it goes through `withPdf`)
-- [ ] 9.2 `templates/TemplateRows.tsx`: the «Main | Side» switch in `PdfOptions` for the three roles, `rolePlaces.reminders` «Night page», the «↳ Rivelazioni» row under the overview's row, the «In the PDF» column of `FieldsTab` with the switch or the fixed tag of A9; all disabled read-only. `templates.css`: the switch (the mockup's `.col`), the sub-row, the wider `.g-sec` and `.g-fld` grids; check 1440 px and the narrow layout
-- [ ] 9.3 A new `templates/PageSketch.tsx` for the night page and the scene page, under each table (design.md «The approved UI»)
-- [ ] 9.4 `templates/marks.ts` `previewMarks`: match a `## ` heading without its mark (`:110-115`); `templates/changes.ts` `changeText`: «…prints in the side column» for a section, a field and the revelations, the box wording unchanged (A8)
-- [ ] 9.5 Tests: each switch patches through `withColumn` and switching back leaves no change and no row mark; toggling «Printed» keeps the column; the Rivelazioni row shows for an adventure and not for a campaign, and is not a draft row; the fixed tags per field role; the sketch lists follow the draft and leave out a section left out; `previewMarks` still marks «optional», «not in the PDF» and changed on a marked heading; the three change texts; built-in read-only
-- [ ] 9.6 Commit `feat(web): column switches in the template editor`
+- [x] 9.1 `templates/draft.ts`: a draft action that sets a part's column through `withColumn`; `pdfAction` keeps the column (it goes through `withPdf`)
+- [x] 9.2 `templates/TemplateRows.tsx`: the «Main | Side» switch in `PdfOptions` for the three roles, `rolePlaces.reminders` «Night page», the «↳ Rivelazioni» row under the overview's row, the «In the PDF» column of `FieldsTab` with the switch or the fixed tag of A9; all disabled read-only. `templates.css`: the switch (the mockup's `.col`), the sub-row, the wider `.g-sec` and `.g-fld` grids; check 1440 px and the narrow layout
+- [x] 9.3 A new `templates/PageSketch.tsx` for the night page and the scene page, under each table (design.md «The approved UI»)
+- [x] 9.4 `templates/marks.ts` `previewMarks`: match a `## ` heading without its mark (`:110-115`); `templates/changes.ts` `changeText`: «…prints in the side column» for a section, a field and the revelations, the box wording unchanged (A8)
+- [x] 9.5 Tests: each switch patches through `withColumn` and switching back leaves no change and no row mark; toggling «Printed» keeps the column; the Rivelazioni row shows for an adventure and not for a campaign, and is not a draft row; the fixed tags per field role; the sketch lists follow the draft and leave out a section left out; `previewMarks` still marks «optional», «not in the PDF» and changed on a marked heading; the three change texts; built-in read-only
+- [x] 9.6 Commit `feat(web): column switches in the template editor`
 
 ## 10. Web: the marks in the editor (brief C)
 

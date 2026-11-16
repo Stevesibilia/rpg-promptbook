@@ -1,8 +1,22 @@
-import { useState, type Dispatch, type FormEvent, type ReactNode } from 'react';
-import { sectionPdf, type AdventureTemplate, type Place, type SectionDefinition, type SectionRole, type Template } from 'promptbook-format';
+import { Fragment, useState, type Dispatch, type FormEvent, type ReactNode } from 'react';
+import {
+  nightPartOf,
+  scenePartOf,
+  sectionPdf,
+  templateColumn,
+  type AdventureTemplate,
+  type Column,
+  type Place,
+  type PlacedPart,
+  type SceneFieldDefinition,
+  type SectionDefinition,
+  type SectionRole,
+  type Template,
+} from 'promptbook-format';
 import { isLocked, keyRenamable, pdfAction, warnsOnDashes, type DraftAction, type ListItems, type ListName } from './draft.js';
 import { placeName } from './changes.js';
 import { rowMarks, type Mark } from './marks.js';
+import { PageSketch } from './PageSketch.js';
 
 // The editor's tabs (mockup states 3 to 6), one component each: the rows of
 // a list, with ▲▼, the name, «Needed», «Used for» with its lock, ✕, and an
@@ -43,7 +57,7 @@ const rolePlaces: Record<SectionRole, string> = {
   synopsis: 'Cover',
   backstory: 'Cover',
   overview: 'Night page',
-  reminders: 'Night page, side',
+  reminders: 'Night page',
   clock: 'Night page',
   truths: 'Night page',
   strongStart: 'Start page',
@@ -69,6 +83,17 @@ const fieldRoles: Record<string, string> = {
   situation: 'Situation rules',
   decides: 'What it decides',
 };
+
+// Where the scene page prints a field that takes no column (template-placement
+// design decision A9), by its role; a field without a role prints under both
+// columns.
+const fieldPlaces: Partial<Record<NonNullable<SceneFieldDefinition['role']>, string>> = {
+  place: 'Scene header',
+  inPlay: 'Scene header',
+  tests: 'Framed, main column',
+  derail: 'End of main column',
+};
+const UNDER_BOTH = 'Under both columns';
 
 const keyRoles: Record<string, string> = { title: 'Title', subtitle: 'Subtitle', system: 'Game system' };
 
@@ -255,19 +280,55 @@ function Toggle({
 // column» while it prints. A campaign's (campaign-pdf design decision 12):
 // the appendix «Never in the PDF», any other section «Printed / Left out»
 // and «New page» while it prints, never a side column.
+// The «Main | Side» switch of a part that takes a column (mockup states 3
+// and 4): the chosen button filled and pressed.
+function ColumnSwitch({
+  part,
+  name,
+  template,
+  dispatch,
+  readOnly,
+}: {
+  part: PlacedPart;
+  name: string;
+  template: AdventureTemplate;
+  dispatch: Dispatch<DraftAction>;
+  readOnly: boolean;
+}) {
+  const value = templateColumn(template, part);
+  const button = (column: Column, text: string) => (
+    <button
+      type="button"
+      className={value === column ? 'on' : ''}
+      aria-pressed={value === column}
+      disabled={readOnly}
+      onClick={() => value !== column && dispatch({ type: 'column', part, column })}
+    >
+      {text}
+    </button>
+  );
+  return (
+    <span className="col" role="group" aria-label={`Column: ${name}`}>
+      {button('main', 'Main')}
+      {button('side', 'Side')}
+    </span>
+  );
+}
+
 function PdfOptions({
   section,
   index,
-  kind,
+  template,
   dispatch,
   readOnly,
 }: {
   section: SectionDefinition;
   index: number;
-  kind: Template['kind'];
+  template: Template;
   dispatch: Dispatch<DraftAction>;
   readOnly: boolean;
 }) {
+  const { kind } = template;
   const pdf = sectionPdf(section, kind);
   const name = section.heading ?? section.name;
   const toggle = (change: Parameters<typeof pdfAction>[2]) => () => dispatch(pdfAction(index, section, change, kind));
@@ -298,11 +359,15 @@ function PdfOptions({
     );
   }
   if (section.role) {
+    const part = nightPartOf(section.role);
     return (
       <span className="pdf">
         <span className="tg fixed" title="This section's place in the PDF is set by the layout">
           {rolePlaces[section.role]}
         </span>
+        {part && template.kind === 'adventure' && (
+          <ColumnSwitch part={part} name={name} template={template} dispatch={dispatch} readOnly={readOnly} />
+        )}
         {section.role === 'appendix' ? null : printed}
       </span>
     );
@@ -321,6 +386,33 @@ function PdfOptions({
         </>
       ) : null}
     </span>
+  );
+}
+
+// The revelations list inside the overview (mockup state 3): an indented row
+// right under the overview's, which cannot be edited, moved or removed, with
+// the column switch. It is not a row of the template's sections and takes no
+// row mark.
+function RevelationsRow({ template, dispatch, readOnly }: {
+  template: AdventureTemplate;
+  dispatch: Dispatch<DraftAction>;
+  readOnly: boolean;
+}) {
+  const name = template.overview.revelations;
+  return (
+    <div className="rr g-sec subrow" data-testid="revelations-row">
+      <span />
+      <input aria-label="Revelations label" value={`↳ ${name}`} disabled />
+      <span className="role">its list</span>
+      <Role name="Revelations" title="The list of revelations inside this section" />
+      <span className="pdf">
+        <span className="tg fixed" title="This list's place in the PDF is set by the layout">
+          Night page
+        </span>
+        <ColumnSwitch part="revelations" name={name} template={template} dispatch={dispatch} readOnly={readOnly} />
+      </span>
+      <span />
+    </div>
   );
 }
 
@@ -355,7 +447,8 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
           const set = patch(dispatch, 'sections', i);
           const role = s.role ? sectionRoles[s.role] : null;
           return (
-            <div className={`rr g-sec${markClass(marks[i])}`} key={s.uid ?? s.role ?? `${i}`} data-testid="section-row">
+            <Fragment key={s.uid ?? s.role ?? `${i}`}>
+            <div className={`rr g-sec${markClass(marks[i])}`} data-testid="section-row">
               <Move list="sections" index={i} count={draft.sections.length} dispatch={dispatch} readOnly={readOnly} label={s.name} />
               <input
                 aria-label={`Heading, row ${i + 1}`}
@@ -380,7 +473,7 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
                     : 'Your own section: checked for presence only'
                 }
               />
-              <PdfOptions section={s} index={i} kind={draft.kind} dispatch={dispatch} readOnly={readOnly} />
+              <PdfOptions section={s} index={i} template={draft} dispatch={dispatch} readOnly={readOnly} />
               <Remove
                 list="sections"
                 index={i}
@@ -391,6 +484,10 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
                 readOnly={readOnly}
               />
             </div>
+            {s.role === 'overview' && draft.kind === 'adventure' && (
+              <RevelationsRow template={draft} dispatch={dispatch} readOnly={readOnly} />
+            )}
+            </Fragment>
           );
         })}
       </Rows>
@@ -399,7 +496,30 @@ export function SectionsTab({ draft, saved, dispatch, readOnly, newUid }: TabPro
           ? 'Sections the template does not list still print, flowing after the section before them.'
           : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}
       </p>
+      {draft.kind === 'adventure' && <PageSketch page="night" template={draft} />}
     </>
+  );
+}
+
+// A field's «In the PDF» cell: the column switch for the four fields the
+// scene page lays out, the fixed place for the others.
+function FieldPlace({ field, template, dispatch, readOnly }: {
+  field: SceneFieldDefinition;
+  template: AdventureTemplate;
+  dispatch: Dispatch<DraftAction>;
+  readOnly: boolean;
+}) {
+  const part = scenePartOf(field.role);
+  return (
+    <span className="pdf">
+      {part ? (
+        <ColumnSwitch part={part} name={field.label} template={template} dispatch={dispatch} readOnly={readOnly} />
+      ) : (
+        <span className="tg fixed" title="This field's place on the scene page is set by the layout">
+          {(field.role && fieldPlaces[field.role]) ?? UNDER_BOTH}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -417,6 +537,7 @@ export function FieldsTab({ draft, saved, dispatch, readOnly, newUid }: TabProps
             <span>Needed</span>
             <span>Used for</span>
             <span>Climax</span>
+            <span>In the PDF</span>
             <span />
           </>
         }
@@ -456,6 +577,7 @@ export function FieldsTab({ draft, saved, dispatch, readOnly, newUid }: TabProps
                 />{' '}
                 only
               </label>
+              <FieldPlace field={f} template={draft} dispatch={dispatch} readOnly={readOnly} />
               <Remove
                 list="sceneFields"
                 index={i}
@@ -473,6 +595,7 @@ export function FieldsTab({ draft, saved, dispatch, readOnly, newUid }: TabProps
         <b>Inline</b>: <code>**Label:** text</code> on one line. <b>Block</b>: <code>**Label**</code> then a list or a
         table. <b>Climax only</b>: expected in the last scene, allowed in any.
       </p>
+      <PageSketch page="scene" template={draft} />
     </>
   );
 }
