@@ -163,7 +163,10 @@ export interface Section {
   heading: string;
   known: boolean;
   role: SectionRole | null;
+  // The column mark at the end of the heading, kept out of `heading`.
+  mark: ColumnMark | null;
   range: Range;
+  // The whole heading line, the mark included.
   headingRange: Range;
   // The section's own content. Scenes, sheets and appendix rows are kept in
   // their own lists; what comes before the first of them stays here.
@@ -178,6 +181,8 @@ export interface SceneField {
   form: 'inline' | 'block';
   range: Range;
   labelRange: Range;
+  // The column mark after a block field's label; an inline field has none.
+  mark: ColumnMark | null;
   // The text after the label, for an inline field.
   text: string;
   // The lists and tables that follow a block label.
@@ -370,6 +375,9 @@ export interface Model {
   sheets: Sheet[];
   pregenerated: Pregenerated | null;
   revelations: Revelation[];
+  // The bold label of the revelations list in the overview, when the list has
+  // one; also a label alone in its paragraph with no list under it yet.
+  revelationsLabel: { labelRange: Range; mark: ColumnMark | null } | null;
   clues: Clue[];
   reminders: Reminder[];
   sceneMap: SceneMapRow[];

@@ -5,6 +5,7 @@ import type { Source } from '../parse/source.js';
 import { checkAppendix } from './appendix.js';
 import { checkCallouts } from './callouts.js';
 import { checkClues } from './clues.js';
+import { checkColumns } from './columns.js';
 import { checkLimits } from './limits.js';
 import { checkReferences } from './references.js';
 import { checkScenes } from './scenes.js';
@@ -27,6 +28,7 @@ export type Check = (input: CheckInput) => Problem[];
 
 export const checks: Check[] = [
   checkSections,
+  checkColumns,
   checkScenes,
   checkCallouts,
   checkReferences,
