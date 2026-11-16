@@ -1,4 +1,5 @@
 import { parseAdventure, templateChanges, type Problem, type Template, type TextEdit } from 'promptbook-format';
+import { updateEdits, type UpdateOptions } from 'promptbook-project';
 
 // What «Update to <name> vN» shows (mockup state 8, design decisions 10 and
 // 19): the headings the update would add and rename, and how the checks'
@@ -83,4 +84,13 @@ export function checksText({ errors, warnings }: ChecksAfter): string {
   if (errors) parts.push(errors > 0 ? `${n(errors, 'new error')}` : `${n(errors, 'error')} fewer`);
   if (warnings) parts.push(warnings > 0 ? `${n(warnings, 'new warning')}` : `${n(warnings, 'warning')} fewer`);
   return parts.length ? parts.join(', ') : 'no change in the checks';
+}
+
+// Whether «Write the column marks» would write anything with the other two
+// options as they are (template-placement design decision A8): a part that
+// takes a column and has no mark.
+export function writesColumnMarks(text: string, from: Template, to: Template, options: UpdateOptions): boolean {
+  const without = updateEdits(text, from, to, { ...options, writeColumns: false });
+  const marked = updateEdits(text, from, to, { ...options, writeColumns: true });
+  return JSON.stringify(marked) !== JSON.stringify(without);
 }

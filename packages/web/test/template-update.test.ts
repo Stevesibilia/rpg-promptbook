@@ -1,7 +1,7 @@
 import { defineTemplate, templates, type AdventureTemplateInput } from 'promptbook-format';
-import { updateEdits } from 'promptbook-project';
+import { skeletonDocument, updateEdits } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
-import { applyEdits, checksAfter, checksText, updatePlan } from '../src/templates/update.js';
+import { applyEdits, checksAfter, checksText, updatePlan, writesColumnMarks } from '../src/templates/update.js';
 import sabaoth from '../../format/fixtures/l-ancora-di-sabaoth.converted.md?raw';
 
 function kulthos(version: number, edit?: (d: AdventureTemplateInput) => void) {
@@ -47,5 +47,36 @@ describe('the update dialog', () => {
 
   it('has no checks for a campaign', () => {
     expect(checksAfter('## Premessa\n', templates.campagna, templates.campagna, [])).toBeNull();
+  });
+});
+
+// The third option (template-placement design decision A8).
+describe('the column marks option', () => {
+  const v4 = kulthos(4, (d) => {
+    d.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+  });
+  const options = { addSections: true, renameHeadings: true };
+
+  it('shows when a part that takes a column has no mark', () => {
+    expect(sabaoth).not.toContain('{');
+    expect(writesColumnMarks(sabaoth, v2, v4, options)).toBe(true);
+    expect(writesColumnMarks(sabaoth, v2, v4, { addSections: false, renameHeadings: false })).toBe(true);
+  });
+
+  it('hides when every part has its mark', () => {
+    const start = skeletonDocument('adventure', { title: 'Prova', system: '', campaignTitle: null, author: '', copyright: '', licence: '' }, v2);
+    expect(start).toContain('## Orologio {principale}');
+    expect(writesColumnMarks(start, v2, v4, options)).toBe(false);
+  });
+
+  it('writes the new version’s column on the parts without a mark and leaves the marks there', () => {
+    const text = sabaoth.replace('## Verità del mondo', '## Verità del mondo {laterale}');
+    const updated = applyEdits(text, updateEdits(text, v2, v4, { ...options, writeColumns: true }));
+    expect(updated).toContain('## Orologio {laterale}\n');
+    expect(updated).toContain('## Verità del mondo {laterale}\n');
+    expect(updated).toContain('## Da non perdere stasera {laterale}\n');
+    expect(updated).toContain('**Da non perdere qui** {laterale}\n');
+    expect(updated).toContain('**Cosa succede da sé** {principale}\n');
+    expect(applyEdits(text, updateEdits(text, v2, v4, options))).toBe(text);
   });
 });

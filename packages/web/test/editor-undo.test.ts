@@ -82,6 +82,19 @@ describe('the editor undo history and a template update', () => {
     view.destroy();
   });
 
+  it('writes the column marks in the same undo step', () => {
+    const { doc, text, undoManager, view } = project();
+    const before = text.toString();
+    const edits = updateEdits(before, v2, v3, { addSections: false, renameHeadings: false, writeColumns: true });
+    applyTemplateUpdate(doc, undoManager, edits, v3);
+    expect(text.toString()).toContain('## Verità del mondo {principale}');
+    expect(readMeta(doc).template).toEqual({ id: v3.id, version: 3 });
+    undoManager.undo();
+    expect(text.toString()).toBe(before);
+    expect(readMeta(doc).template).toEqual({ id: v2.id, version: 2 });
+    view.destroy();
+  });
+
   it('keeps other meta writes out of the history', () => {
     const { doc, text, undoManager, view } = project();
     setStatus(doc, 'complete');
