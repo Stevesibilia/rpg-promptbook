@@ -12,6 +12,7 @@ import {
   type Range,
   type TextEdit,
 } from 'promptbook-format';
+import { columnMarkEdits } from 'promptbook-project';
 import { analysisField, writableResult } from './analysis/field.js';
 
 // The part under the cursor that takes a column, for the palette's «Move to
@@ -146,3 +147,12 @@ export function columnEdit(target: ColumnTarget, to: Column): TextEdit {
   if (target.mark) return { from: target.mark.range.start.offset, to: target.mark.range.end.offset, insert };
   return { from: target.at, to: target.at, insert: ` ${insert}` };
 }
+
+// The edits that write every missing mark of the document from the template,
+// on the text as it is now; none in a campaign (write-column-marks D1).
+export function columnMarkEditsOf(state: EditorState): TextEdit[] {
+  const template = state.field(analysisField, false)?.template;
+  return template ? columnMarkEdits(state.doc.toString(), template) : [];
+}
+
+export const columnMarksMissing = (state: EditorState): boolean => columnMarkEditsOf(state).length > 0;

@@ -18,7 +18,7 @@ import type { Hiding } from './Checks.js';
 import { editorKeymap, keyLabel, shortcut, type ShortcutHandlers } from './cm/keymap.js';
 import { licenceHandler } from './cm/preview.js';
 import { hideHandler } from './cm/problems.js';
-import { columnEdit, columnTargetOf } from './columns.js';
+import { columnEdit, columnMarkEditsOf, columnTargetOf } from './columns.js';
 import { CommandPalette } from './CommandPalette.js';
 import { hidingActions } from './hiding.js';
 import { Editor } from './Editor.js';
@@ -253,6 +253,16 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
         const target = view && columnTargetOf(view.state);
         if (view && target && target.column !== action.to) {
           write(view, [columnEdit(target, action.to)], { userEvent: 'input.column' });
+        }
+        return;
+      }
+      case 'columns': {
+        // Read again on the text as it is now: one transaction, one undo
+        // step, and the selection follows the text.
+        const edits = view ? columnMarkEditsOf(view.state) : [];
+        if (view && edits.length) {
+          write(view, edits, { userEvent: 'input.column' });
+          view.focus();
         }
         return;
       }

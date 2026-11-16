@@ -16,14 +16,14 @@
 
 ## 2. promptbook-web
 
-- [ ] 2.1 `palette.ts`: `marksMissing` option, entry «Write column marks»,
+- [x] 2.1 `palette.ts`: `marksMissing` option, entry «Write column marks»,
       action kind `columns` (D2); unit tests for presence, absence and
       position.
-- [ ] 2.2 `EditorPage.tsx` and `CommandPalette.tsx`: compute `marksMissing`
+- [x] 2.2 `EditorPage.tsx` and `CommandPalette.tsx`: compute `marksMissing`
       when the palette opens; run the command as one transaction (D3).
-- [ ] 2.3 `TemplateUpdate.tsx`: option ticked by default (D5); update its
+- [x] 2.3 `TemplateUpdate.tsx`: option ticked by default (D5); update its
       unit tests.
-- [ ] 2.4 Syntax sheet or help text that lists the column commands, if one
+- [x] 2.4 Syntax sheet or help text that lists the column commands, if one
       does: add the new command.
 
 ## 3. e2e and docs

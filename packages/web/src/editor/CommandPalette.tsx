@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { EditorView } from '@codemirror/view';
 import { keyLabel } from './cm/keymap.js';
 import { useViewValue } from './InspectorSection.js';
-import { columnTargetOf } from './columns.js';
+import { columnMarksMissing, columnTargetOf } from './columns.js';
 import { outlineOf } from './outline.js';
 import { filterEntries, paletteEntries, type PaletteAction } from './palette.js';
 import type { UpdateSource } from './StatusBar.js';
@@ -32,9 +32,11 @@ export function CommandPalette({
   const items = useViewValue(view, updates, outlineOf, same);
   // Where the part under the cursor prints, for «Move to … column».
   const column = useViewValue(view, updates, readColumn, same);
+  // Whether a part has no mark, read once when the palette opens.
+  const marksMissing = useMemo(() => checked && view !== null && columnMarksMissing(view.state), [checked, view]);
   const entries = useMemo(
-    () => paletteEntries(items ?? [], { checked, printable, column: checked ? column : null }),
-    [items, checked, printable, column],
+    () => paletteEntries(items ?? [], { checked, printable, column: checked ? column : null, marksMissing }),
+    [items, checked, printable, column, marksMissing],
   );
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);

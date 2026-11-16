@@ -4,7 +4,7 @@ import { parseAdventure, templates, withColumn, type AdventureTemplate } from 'p
 import { describe, expect, it } from 'vitest';
 import { markdownWithTables } from '../src/editor/cm/language.js';
 import { focusedField, inlineItems, previewConfigOf, type PreviewItem } from '../src/editor/cm/preview.js';
-import { columnEdit, columnTarget, columnTargetOf } from '../src/editor/columns.js';
+import { columnEdit, columnMarkEditsOf, columnMarksMissing, columnTarget, columnTargetOf } from '../src/editor/columns.js';
 import { insertText, placeInsert } from '../src/editor/inserts.js';
 import { outlineOf } from '../src/editor/outline.js';
 import { paletteEntries } from '../src/editor/palette.js';
@@ -293,6 +293,45 @@ describe('the palette', () => {
     expect(entries(at('## Indizi'))).toEqual([]);
     expect(entries(at('Un porto'))).toEqual([]);
     expect(paletteEntries([], { checked: true, printable: true }).some((e) => e.action.kind === 'column')).toBe(false);
+  });
+});
+
+describe('the palette command that writes the column marks', () => {
+  const entries = (marksMissing: boolean, column: 'main' | 'side' | null = null) =>
+    paletteEntries([], { checked: true, printable: true, column, marksMissing }).map((e) => e.label);
+
+  it('is listed only while a mark is missing', () => {
+    expect(entries(false)).not.toContain('Write column marks');
+    expect(entries(true)).toContain('Write column marks');
+    const { state } = analysed(doc);
+    expect(columnMarksMissing(state)).toBe(true);
+    const marked = doc.replace('## Orologio', '## Orologio {principale}').replace("**Chi c'è**", "**Chi c'è** {laterale}");
+    expect(columnMarksMissing(analysed(marked).state)).toBe(false);
+  });
+
+  it('comes right after the move row, or in its place when there is none', () => {
+    const withMove = entries(true, 'main');
+    expect(withMove.indexOf('Write column marks')).toBe(withMove.indexOf('Move to side column') + 1);
+    const alone = entries(true);
+    expect(alone.indexOf('Write column marks')).toBe(alone.indexOf('Back to projects') + 1);
+    expect(paletteEntries([], { checked: true, printable: true, marksMissing: true }).find((e) => e.key === 'columns')?.action).toEqual({
+      kind: 'columns',
+    });
+  });
+
+  it('writes the template column after each unmarked part and leaves the marks', () => {
+    const { state } = analysed(doc);
+    const edits = columnMarkEditsOf(state);
+    const out = state.update({ changes: edits }).state.doc.toString();
+    expect(out).toContain('## Orologio {principale}\n');
+    expect(out).toContain("**Chi c'è** {laterale}\n");
+    expect(out).toContain('## Verità del mondo {latterale}\n');
+    expect(out).toContain('## Da non perdere stasera {laterale}\n');
+    expect(columnMarkEditsOf(analysed(out).state)).toEqual([]);
+  });
+
+  it('writes nothing in a campaign', () => {
+    expect(columnMarkEditsOf(campaign('## Premessa\n\nTesto.\n'))).toEqual([]);
   });
 });
 

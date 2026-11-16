@@ -65,8 +65,9 @@ function UpdateDialog({
   const plan = useMemo(() => updatePlan(from, to), [from, to]);
   const [addSections, setAddSections] = useState(plan.added.length > 0);
   const [renameHeadings, setRenameHeadings] = useState(plan.renamed.length > 0);
-  // Off by default: a mark freezes the part where the new version puts it.
-  const [writeColumns, setWriteColumns] = useState(false);
+  // On by default: the owner wants the placement visible in the text, and
+  // an update never changes a mark already there.
+  const [writeColumns, setWriteColumns] = useState(true);
   // The text as it is when the dialog opened, for the checks' preview; the
   // update itself reads it again.
   const [text] = useState(() => doc.getText('document').toString());
@@ -74,9 +75,7 @@ function UpdateDialog({
     () => writesColumnMarks(text, from, to, { addSections, renameHeadings }),
     [text, from, to, addSections, renameHeadings],
   );
-  // The option counts only while it is shown, and is unticked when it shows
-  // again.
-  if (!marksToWrite && writeColumns) setWriteColumns(false);
+  // The option counts only while it is shown, and shows again as it was left.
   const columns = writeColumns && marksToWrite;
   const after = useMemo(
     () => checksAfter(text, from, to, updateEdits(text, from, to, { addSections, renameHeadings, writeColumns: columns })),
