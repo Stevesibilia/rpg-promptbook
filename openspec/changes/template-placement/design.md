@@ -736,6 +736,25 @@ Brief A (format and project), accepted by the architect on 2026-11-16:
    mark.
 6. `column.ignored` quotes the mark as written, spaces included.
 
+Brief B (layout), accepted by the architect on 2026-11-16:
+
+1. `Position` gains an optional `x` (points from the left edge), recorded by
+   `pos()` in `avventura.typ`, so tests can tell the column a part printed
+   in. The PDF bytes do not change.
+2. Full width is tested by height (the same content with and without a side
+   box), since positions carry no width.
+3. «No mark in the PDF» is asserted on the layout input; the real PDF text
+   was checked with `pdftotext` on the proof builds.
+4. The layout leaves out every lone revelations label in the overview, not
+   only the starting document's, and a label that prints over a list without
+   revelation ids prints without its mark. `input.ts` mirrors the label
+   grammar with its own regular expression, because `parse/marks.ts` is not
+   exported.
+
+Known and left: when the first labelled list under the overview has no
+revelation ids and a later one has them, the first label's mark decides the
+later list's column.
+
 ## Open questions
 
 None. Two points the draft left open were settled by the architect on
