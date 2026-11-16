@@ -715,6 +715,27 @@ test/own-sections.test.ts -t "recorded bytes" --reporter=default` in
 - **The owner looks** at the PNGs and screenshots before the merge, and at
   the running stack for the editor.
 
+## Accepted departures
+
+Brief A (format and project), accepted by the architect on 2026-11-16:
+
+1. A2 said the first revelations label found is `model.revelationsLabel`. A
+   label with a list under it wins over an earlier lone label, so a stray
+   lone label cannot decide where the real list prints.
+2. A lone label counts only with no colon and nothing but an optional mark
+   after it: a lone `**Rivelazioni:**` gives no `revelationsLabel`.
+3. With `writeColumns`, a night section heading that the update adds also
+   gets its mark (A8 named only parts already in the text).
+4. `writeColumns` writes no mark after a revelations label that has a colon
+   or text after it, even with a list under it (the mark would not be read
+   and every later update would write it again), nor on a part the new
+   version renamed while the text keeps the old name. The palette command of
+   A9 follows the same rule: it is not offered on such a label.
+5. The mark grammar lives in `packages/format/src/parse/marks.ts`
+   (`headingMark`, `labelMark`). A brace escaped with a backslash is never a
+   mark.
+6. `column.ignored` quotes the mark as written, spaces included.
+
 ## Open questions
 
 None. Two points the draft left open were settled by the architect on
