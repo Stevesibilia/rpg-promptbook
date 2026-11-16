@@ -83,7 +83,9 @@ function bareLabel(text: string, range: Range): boolean {
   if (text.slice(end, newline).trim() !== '') return false;
   const after = text.indexOf('\n', newline + 1);
   const next = text.slice(newline + 1, after === -1 ? text.length : after);
-  return next.trim() === '' || /^ {0,3}([-*+]|\d+[.)])([ \t]|$)/.test(next);
+  // Only a bullet with text, or an ordered item numbered 1, ends a paragraph
+  // in CommonMark: any other line continues it, and the mark would be text.
+  return next.trim() === '' || /^ {0,3}([-*+]|1[.)])[ \t]+\S/.test(next);
 }
 
 // What the text will name a section or a field after the update's renames.

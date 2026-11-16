@@ -136,9 +136,9 @@ elsewhere is reported, not made.
 
 ## 13. Proof and hand-back of brief C
 
-- [ ] 13.1 Screenshots (1440 x 900) under the scratchpad: the Sections tab with a moved part and the sketch, light and dark; the «↳ Rivelazioni» row; the Scene fields tab; the built-in; the starting document with marks; the save dialog with a column change; the update dialog with the third option; the editor with marks off the active line, an unknown word with its warning, the palette showing the command; the syntax sheet's «Columns» group
-- [ ] 13.2 `npm run typecheck`, `npm test` (with `TEST_DATABASE_URL`), `npm run e2e`: literal results
-- [ ] 13.3 Hand back: results, screenshot paths, departures from the design and from the mockup, anything from «Risks» you met. Do not report tasks to Control Room: the architect does
+- [x] 13.1 Screenshots (1440 x 900) under the scratchpad: the Sections tab with a moved part and the sketch, light and dark; the «↳ Rivelazioni» row; the Scene fields tab; the built-in; the starting document with marks; the save dialog with a column change; the update dialog with the third option; the editor with marks off the active line, an unknown word with its warning, the palette showing the command; the syntax sheet's «Columns» group
+- [x] 13.2 `npm run typecheck`, `npm test` (with `TEST_DATABASE_URL`), `npm run e2e`: literal results
+- [x] 13.3 Hand back: results, screenshot paths, departures from the design and from the mockup, anything from «Risks» you met. Do not report tasks to Control Room: the architect does
 
 ## Risks
 

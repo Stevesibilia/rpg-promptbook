@@ -755,6 +755,32 @@ Known and left: when the first labelled list under the overview has no
 revelation ids and a later one has them, the first label's mark decides the
 later list's column.
 
+Brief C (web, server, e2e), accepted by the architect on 2026-11-16:
+
+1. The page sketches list the parts in print order (A5), not in the table's
+   order as the mockup drew them: the night side column starts with the
+   reminders.
+2. The palette's «Move to … column» comes after the other commands, so
+   Ctrl+K then Enter keeps doing what it did.
+3. The sketch's fixed chips are read from the template (the side boxes, the
+   read-aloud label, the header and main-column field labels), and an
+   overview left out drops its chip and the revelations.
+4. Row marks compare rows as JSON with sorted keys, so a switch set back
+   shows no change.
+5. The switch group's accessible name is «Column: <name>»; the syntax sheet
+   names the parts in the group's title.
+6. The e2e steps of task 12.3 live in `e2e/templates.spec.ts`.
+7. `packages/server/test/db/templates.test.ts` quoted the starting document
+   and was updated here: brief A had run without a database.
+8. The sketch's full-width row uses the class `sk-full`: the mockup's `full`
+   collides with the sign-in overlay's global class.
+
+Fixed by the architect at review: `bareLabel` in
+`packages/project/src/update.ts` took any numbered line or an empty bullet
+as the start of a list; only a bullet with text or an item numbered 1 ends
+a paragraph, as the web copy already had it. The two copies of
+`headingTextEnd` and `bareLabel` (project and web) are left as they are.
+
 ## Open questions
 
 None. Two points the draft left open were settled by the architect on
