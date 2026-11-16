@@ -71,8 +71,8 @@ elsewhere is reported, not made.
 
 ## 4. Proof and hand-back of brief A
 
-- [ ] 4.1 `npm run typecheck`, `npm test`: literal results. The four Sabaoth tests of 0.1 pass unchanged
-- [ ] 4.2 Push the branch. Hand back: the results; the exported names and signatures as built (briefs B and C code against them); every file touched outside `packages/format` and `packages/project`; departures from the design; anything from «Risks» you met
+- [x] 4.1 `npm run typecheck`, `npm test`: literal results. The four Sabaoth tests of 0.1 pass unchanged
+- [x] 4.2 Push the branch. Hand back: the results; the exported names and signatures as built (briefs B and C code against them); every file touched outside `packages/format` and `packages/project`; departures from the design; anything from «Risks» you met
 
 ## 5. Baseline of brief B
 
