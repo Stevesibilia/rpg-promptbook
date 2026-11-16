@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { parseAdventure, templates, type AdventureTemplate, type TemplateInput } from 'promptbook-format';
+import { columnMark, nightPartOf, parseAdventure, templateColumn, templates, type AdventureTemplate, type TemplateInput } from 'promptbook-format';
 import { defaultSettings, readDocument, readMeta, updateEdits } from 'promptbook-project';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -339,7 +339,8 @@ describe('creating a project from a template', () => {
     expect(readMeta(doc).template).toEqual({ id: v1.id, version: 2 });
     const text = readDocument(doc);
     expect(text.split('\n').filter((l) => l.startsWith('## '))).toEqual(
-      v2.body.sections.map((s) => `## ${s.heading ?? s.name}`),
+      // The night sections carry their column mark (template-placement A7).
+      v2.body.sections.map((s) => `## ${s.heading ?? s.name}${nightPartOf(s.role) ? ` ${columnMark(templateColumn(v2.body, nightPartOf(s.role)!))}` : ''}`),
     );
     expect(text).toContain('\nsistema: Kulthos\n');
     expect(await db.queryOne('select template_id, template_version, system from projects where id = $1', [project.id])).toEqual({

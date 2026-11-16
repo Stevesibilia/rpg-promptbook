@@ -468,3 +468,86 @@ describe('projects and templates', () => {
     expect(await errorOf(s, 'update_project_template', { projectId: 'nessuno' })).toMatchObject({ code: 'not_found' });
   });
 });
+
+// Columns through the connector (template-placement design decision A8).
+describe('columns in templates and updates', () => {
+  // A project on v1 whose «Orologio» heading has lost its mark.
+  async function unmarked(s: Setup, id: string) {
+    const project = await createProject(s, { category: 'adventure', title: 'Prova', template: { id, version: 1 } });
+    const read = await s.value('read_document', { projectId: project, target: 'Orologio' });
+    expect(read.text.startsWith('## Orologio {principale}')).toBe(true);
+    await s.value('replace_section', {
+      projectId: project,
+      target: 'Orologio',
+      hash: read.hash,
+      markdown: '## Orologio\n\n- La marea sale.',
+    });
+    return project;
+  }
+  const moveClock = (v1: AdventureTemplate) => {
+    const body = copyOf(v1);
+    body.sections.find((x) => x.role === 'clock')!.pdf = { column: 'side' };
+    return body;
+  };
+
+  it('saves a column and lists its change; refuses one on a section that takes none, with its path', async () => {
+    const s = await setup();
+    const { id, v1 } = await kulthos(s);
+    const refused = copyOf(v1);
+    refused.sections.find((x) => x.role === 'clues')!.pdf = { column: 'side' };
+    const error = await errorOf(s, 'save_template_version', { templateId: id, baseVersion: 1, body: refused });
+    expect(error).toMatchObject({ code: 'invalid_template' });
+    expect(error?.message).toContain('sections[');
+    expect(error?.message).toContain("only the night page's parts take a column");
+    expect(await rows(id)).toHaveLength(1);
+    const saved = await s.value('save_template_version', { templateId: id, baseVersion: 1, body: moveClock(v1) });
+    expect(saved.changes).toEqual([
+      { kind: 'changed', what: 'section', label: 'Orologio', detail: 'column', before: 'main', after: 'side' },
+    ]);
+    const v2 = (await s.value('get_template', { templateId: id })).template as AdventureTemplate;
+    expect(v2.sections.find((x) => x.role === 'clock')!.pdf).toEqual({ column: 'side' });
+  });
+
+  it('writes the marks with writeColumns, and leaves the marks already there', async () => {
+    const s = await setup();
+    const { id, v1 } = await kulthos(s);
+    const project = await unmarked(s, id);
+    const before = readDocument(await storedDoc(project));
+    await s.value('save_template_version', { templateId: id, baseVersion: 1, body: moveClock(v1) });
+    const updated = await s.value('update_project_template', { projectId: project, writeColumns: true });
+    expect(updated).toMatchObject({ edits: 1, snapshotId: expect.any(String), template: { from: 1, to: 2 } });
+    const text = readDocument(await storedDoc(project));
+    expect(text).toContain('## Orologio {laterale}\n');
+    expect(text).toBe(before.replace('## Orologio\n', '## Orologio {laterale}\n'));
+    expect(text).toContain('## Verità del mondo {principale}');
+    expect(readMeta(await storedDoc(project)).template).toEqual({ id, version: 2 });
+    const snapshot = await db.queryOne<{ kind: string; text: string }>('select kind, text from snapshots where id = $1', [
+      updated.snapshotId,
+    ]);
+    expect(snapshot).toEqual({ kind: 'claude', text: before });
+  });
+
+  it('leaves the text alone without writeColumns', async () => {
+    const s = await setup();
+    const { id, v1 } = await kulthos(s);
+    const project = await unmarked(s, id);
+    const before = readDocument(await storedDoc(project));
+    await s.value('save_template_version', { templateId: id, baseVersion: 1, body: moveClock(v1) });
+    const updated = await s.value('update_project_template', { projectId: project });
+    expect(updated).toMatchObject({ edits: 0, snapshotId: null, template: { from: 1, to: 2 } });
+    expect(readDocument(await storedDoc(project))).toBe(before);
+    expect(readMeta(await storedDoc(project)).template).toEqual({ id, version: 2 });
+  });
+
+  it('names the columns in save_template_version and writeColumns in update_project_template', async () => {
+    const s = await setup();
+    const tools = await s.list();
+    const save = tools.find((t) => t.name === 'save_template_version')!;
+    for (const part of ['`pdf.column`', '`column` on the scene fields', '`overview.column`', 'reminders, clock or truths', 'mustHave, happens, cast or clues']) {
+      expect(save.description).toContain(part);
+    }
+    const update = tools.find((t) => t.name === 'update_project_template')!;
+    expect(update.description).toContain('writeColumns');
+    expect(JSON.stringify(update.inputSchema)).toContain('writeColumns');
+  });
+});

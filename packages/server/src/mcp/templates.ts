@@ -108,6 +108,9 @@ const TEMPLATE_MOVED = () =>
 interface UpdateOptions {
   addSections: boolean;
   renameHeadings: boolean;
+  // The new version's column as a mark on each part without one
+  // (template-placement design decision A8).
+  writeColumns: boolean;
 }
 
 // Moves a project to its template's latest version (design decision 8): the
@@ -295,6 +298,7 @@ export function registerTemplateTools(kit: ToolKit): void {
       'Keep every key and every `uid`: unknown keys are dropped, and a row without its uid reads as removed and added again. Rows you add need no uid. ' +
       'Locked rows stay: sections and scene fields with a role, the front matter keys the app reads (titolo, sistema, licenza…) and keys with a role cannot be removed, roles cannot move or be added, and a locked key keeps its name; a section with a role can be renamed. ' +
       'PDF options (`pdf`): in adventure templates, `print` on any section but the appendix, `newPage` and `sideColumn` only on sections without a role; in campaign templates, `print` and `newPage` on any section but the appendix, never `sideColumn`. The appendix never prints. ' +
+      'Columns, adventure templates only: `pdf.column` (`main` or `side`) on the sections with the role reminders, clock or truths; `column` on the scene fields with the role mustHave, happens, cast or clues; `overview.column` for the revelations list. Absent means the default: reminders, revelations, mustHave and cast in the side column, the others in the main one. Any other section or field with a column is refused. A mark in the text, `{principale}` or `{laterale}` after the heading or the block field’s label, overrides the template for that part. ' +
       'The answer’s `changes` lists what changed in sections, scene fields, boxes, keys, limits, name and game system; tables, sheets, the appendix, references and ids are not compared, so read the template again to check them. ' +
       'Projects keep their version until update_project_template moves them.',
     { title: 'Save a template version', readOnly: false, idempotent: false },
@@ -338,16 +342,24 @@ export function registerTemplateTools(kit: ToolKit): void {
 
   tool(
     'update_project_template',
-    'Move a project to the latest version of its template, as the app’s update dialog does: an empty heading for each section the new version adds (addSections), and the headings and field labels it renames rewritten (renameHeadings). A snapshot of the text is kept first when the text changes; History’s Restore brings it back. Refused (template_up_to_date) when the project is on the latest version or on a built-in.',
+    'Move a project to the latest version of its template, as the app’s update dialog does: an empty heading for each section the new version adds (addSections), and the headings and field labels it renames rewritten (renameHeadings); with writeColumns, the new version’s column written as a mark (`{principale}` or `{laterale}`) after each heading and block field label that takes a column and has none. Marks already in the text never change, and a part without a mark follows the new version anyway. A snapshot of the text is kept first when the text changes; History’s Restore brings it back. Refused (template_up_to_date) when the project is on the latest version or on a built-in.',
     { title: 'Update a project’s template', readOnly: false, idempotent: true },
     {
       projectId: kit.schemas.projectId,
       addSections: z.boolean().default(true).describe('Add an empty heading for each new section.'),
       renameHeadings: z.boolean().default(true).describe('Rewrite renamed headings and field labels.'),
+      writeColumns: z
+        .boolean()
+        .default(false)
+        .describe('Write the new version’s column as a mark on each part that takes one and has none; this fixes those parts there for later versions.'),
     },
     async (args) => {
       const project = await kit.projectOf(args.projectId);
-      return updateProjectTemplate(kit, project, { addSections: args.addSections, renameHeadings: args.renameHeadings });
+      return updateProjectTemplate(kit, project, {
+        addSections: args.addSections,
+        renameHeadings: args.renameHeadings,
+        writeColumns: args.writeColumns,
+      });
     },
   );
 }

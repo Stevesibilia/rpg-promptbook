@@ -118,11 +118,11 @@ elsewhere is reported, not made.
 
 ## 11. Web and server: the update option and the connector (brief C)
 
-- [ ] 11.1 `templates/TemplateUpdate.tsx`, `templates/update.ts`: the third checkbox with the mockup's text, unticked, shown when the option would write at least one mark; the checks' preview and the update pass `writeColumns` (A8)
-- [ ] 11.2 `server/src/mcp/templates.ts`: `writeColumns` on `UpdateOptions` and on the `update_project_template` tool, default false, with its description; the `save_template_version` text names `pdf.column`, the fields' `column` and `overview.column` and who accepts them
-- [ ] 11.3 `server/src/mcp/tools.ts`: `fieldText` shows the mark on the block fields that take a column; `add_scene`'s description says the marks are optional and what they do; the instructions line about `replace_section` says to keep a heading's mark (A10)
-- [ ] 11.4 Tests: the dialog's checkbox shown and hidden, its edits, one undo step; server tests with `TEST_DATABASE_URL` set to a throwaway Postgres (without it `npm test` skips them): `update_project_template` with and without `writeColumns`, `save_template_version` with a column saved and with a refused one (the path in the error), `get_outline` and `read_document` targets without marks on a marked document, the `add_scene` description, a scene added with marked labels reports no error
-- [ ] 11.5 Commits `feat(web): column marks on a template update` and `feat(server): column marks through the connector`
+- [x] 11.1 `templates/TemplateUpdate.tsx`, `templates/update.ts`: the third checkbox with the mockup's text, unticked, shown when the option would write at least one mark; the checks' preview and the update pass `writeColumns` (A8)
+- [x] 11.2 `server/src/mcp/templates.ts`: `writeColumns` on `UpdateOptions` and on the `update_project_template` tool, default false, with its description; the `save_template_version` text names `pdf.column`, the fields' `column` and `overview.column` and who accepts them
+- [x] 11.3 `server/src/mcp/tools.ts`: `fieldText` shows the mark on the block fields that take a column; `add_scene`'s description says the marks are optional and what they do; the instructions line about `replace_section` says to keep a heading's mark (A10)
+- [x] 11.4 Tests: the dialog's checkbox shown and hidden, its edits, one undo step; server tests with `TEST_DATABASE_URL` set to a throwaway Postgres (without it `npm test` skips them): `update_project_template` with and without `writeColumns`, `save_template_version` with a column saved and with a refused one (the path in the error), `get_outline` and `read_document` targets without marks on a marked document, the `add_scene` description, a scene added with marked labels reports no error
+- [x] 11.5 Commits `feat(web): column marks on a template update` and `feat(server): column marks through the connector`
 
 ## 12. e2e and docs (brief C)
 
