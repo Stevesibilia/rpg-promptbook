@@ -282,3 +282,16 @@ describe('findTarget', () => {
     expect(found(text, 'il circolo', 'campaign')).toMatchObject({ kind: 'heading', level: 3, from: 11 });
   });
 });
+
+describe('targets of a heading with a column mark', () => {
+  const text = sabaoth.replace('\n## Orologio\n', '\n## Orologio {laterale}\n');
+  const line = text.indexOf('## Orologio {laterale}');
+
+  it('name the section without the mark and start at the heading line', () => {
+    expect(text).not.toBe(sabaoth);
+    const clock = targetsOf(text, templates.avventura).find((t) => t.kind === 'section' && t.target === 'Orologio');
+    expect(clock).toMatchObject({ title: 'Orologio', level: 2, from: line });
+    expect(textOf(text, clock!).startsWith('## Orologio {laterale}\n')).toBe(true);
+    expect(found(text, 'Orologio')).toMatchObject({ kind: 'section', title: 'Orologio', from: line });
+  });
+});

@@ -106,6 +106,12 @@ describe('updateEdits', () => {
     );
   });
 
+  it('without writeColumns gives the same edits as with it off', () => {
+    const options = { addSections: true, renameHeadings: true };
+    expect(updateEdits(sabaoth, v2, v3, options)).toEqual(updateEdits(sabaoth, v2, v3, { ...options, writeColumns: false }));
+    expect(updateEdits(sabaoth, v2, v3, options).some((e) => e.insert.includes('{'))).toBe(false);
+  });
+
   it('appends an added section at the end when it is the last one', () => {
     const definition = JSON.parse(JSON.stringify(templates.campagna)) as CampaignTemplateInput;
     definition.sections.push({ name: 'Epilogo', requirement: 'optional', uid: 'u1' });
@@ -114,5 +120,106 @@ describe('updateEdits', () => {
     expect(apply(text, updateEdits(text, templates.campagna, defineTemplate(definition), { addSections: true, renameHeadings: true }))).toBe(
       '## Premessa\n\nTesto.\n\n## Sessioni\n\n## Epilogo\n',
     );
+  });
+});
+
+describe('updateEdits with writeColumns', () => {
+  const options = { addSections: true, renameHeadings: true, writeColumns: true };
+  // v5 moves «Orologio» to the side column.
+  const v5 = own(5, (t) => {
+    t.sections.find((s) => s.role === 'clock')!.pdf = { column: 'side' };
+  });
+
+  const doc = (parts: Partial<Record<'reminders' | 'clock' | 'truths' | 'revelations' | 'mustHave' | 'cast', string>> = {}) =>
+    [
+      '---\ntitolo: Prova\n---\n',
+      '## La vicenda in breve\n\nTesto.\n',
+      `## A colpo d'occhio\n\nTesto.\n\n**Rivelazioni**${parts.revelations ?? ''}\n\n- **R1.** Vero. (I1)\n`,
+      `## Da non perdere stasera${parts.reminders ?? ''}\n\n- Uno.\n`,
+      `## Orologio${parts.clock ?? ''}\n\n- Due.\n`,
+      `## Verità del mondo${parts.truths ?? ''}\n\n- Tre.\n`,
+      `## Scene\n\n### S1. Prova\n\n**Luogo e momento:** qui.\n\n**Da non perdere qui**${parts.mustHave ?? ''}\n\n- Quattro.\n\n**Chi c'è**${parts.cast ?? ''}\n\n- Cinque.\n`,
+    ].join('\n');
+
+  it("writes the new version's column on every part without a mark", () => {
+    const text = doc();
+    expect(apply(text, updateEdits(text, v2, v5, options))).toBe(
+      doc({
+        revelations: ' {laterale}',
+        reminders: ' {laterale}',
+        clock: ' {laterale}',
+        truths: ' {principale}',
+        mustHave: ' {laterale}',
+        cast: ' {laterale}',
+      }),
+    );
+  });
+
+  it('leaves the marks in the text alone, an unknown word included', () => {
+    const text = doc({ clock: ' {principale}', truths: ' {latterale}', cast: ' {principale}' });
+    expect(apply(text, updateEdits(text, v2, v5, options))).toBe(
+      doc({
+        revelations: ' {laterale}',
+        reminders: ' {laterale}',
+        clock: ' {principale}',
+        truths: ' {latterale}',
+        mustHave: ' {laterale}',
+        cast: ' {principale}',
+      }),
+    );
+  });
+
+  it('writes the mark before a closing run of #', () => {
+    const text = doc({ clock: ' ##' });
+    expect(apply(text, updateEdits(text, v2, v5, options))).toContain('\n## Orologio {laterale} ##\n');
+  });
+
+  it('gives a renamed heading its mark after the new name, in one edit', () => {
+    const v6 = own(6, (t) => {
+      t.sections.find((s) => s.role === 'clock')!.name = 'Clessidra';
+      t.sceneFields.find((f) => f.role === 'cast')!.label = 'Presenti';
+    });
+    const text = doc();
+    const edits = updateEdits(text, v2, v6, options);
+    for (let i = 1; i < edits.length; i++) expect(edits[i]!.from).toBeGreaterThanOrEqual(edits[i - 1]!.to);
+    expect(edits.filter((e) => e.insert.includes('Clessidra'))).toEqual([expect.objectContaining({ insert: 'Clessidra {principale}' })]);
+    const out = apply(text, edits);
+    expect(out).toContain('\n## Clessidra {principale}\n');
+    expect(out).toContain('\n**Presenti** {laterale}\n');
+  });
+
+  it('writes no mark on an inline field of a column role', () => {
+    const text = doc().replace("**Chi c'è**\n\n- Cinque.", "**Chi c'è:** qualcuno.");
+    const out = apply(text, updateEdits(text, v2, v5, options));
+    expect(out).toContain("\n**Chi c'è:** qualcuno.\n");
+    expect(out).toContain('\n**Da non perdere qui** {laterale}\n');
+  });
+
+  it('writes no revelations mark when the text has no revelations label', () => {
+    const text = doc().replace('**Rivelazioni**\n\n- **R1.** Vero. (I1)\n', '');
+    const out = apply(text, updateEdits(text, v2, v5, options));
+    expect(out).not.toContain('Rivelazioni');
+    expect(out).toContain('\n## Orologio {laterale}\n');
+  });
+
+  it('writes a lone revelations label its mark', () => {
+    const text = doc().replace('**Rivelazioni**\n\n- **R1.** Vero. (I1)\n', '**Rivelazioni**\n');
+    expect(apply(text, updateEdits(text, v2, v5, options))).toContain('\n**Rivelazioni** {laterale}\n');
+  });
+
+  it('puts the mark of an empty heading before a section added after it', () => {
+    const from = own(2, (t) => {
+      t.sections = t.sections.filter((s) => s.role !== 'truths');
+    });
+    const text = '## Orologio\n\n## Scene\n';
+    expect(apply(text, updateEdits(text, from, v5, options))).toBe('## Orologio {laterale}\n\n## Verità del mondo {principale}\n\n## Scene\n');
+    expect(apply(text, updateEdits(text, from, v5, { ...options, writeColumns: false }))).toBe('## Orologio\n\n## Verità del mondo\n\n## Scene\n');
+  });
+
+  it('writes nothing in a campaign', () => {
+    const definition = JSON.parse(JSON.stringify(templates.campagna)) as CampaignTemplateInput;
+    definition.version = 2;
+    const text = '## Premessa\n\nTesto.\n\n## Sessioni\n';
+    expect(updateEdits(text, templates.campagna, defineTemplate(definition), options)).toEqual([]);
   });
 });

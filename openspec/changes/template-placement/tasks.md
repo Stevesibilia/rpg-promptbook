@@ -62,12 +62,12 @@ elsewhere is reported, not made.
 
 ## 3. Project: the starting document and the update option (brief A)
 
-- [ ] 3.1 `skeleton.ts`: the marks on the three section headings and on the first scene's block fields that take a column, and the revelations label with its mark under the overview's heading (A7); the campaign skeleton unchanged
-- [ ] 3.2 `update.ts`: `writeColumns?: boolean` on `UpdateOptions` (optional, so today's callers compile), the edits of A8, never overlapping a rename of the same heading or label; marks in the text never changed
-- [ ] 3.3 `targets.ts`: no code change expected; a test that `targetsOf` and `findTarget` name «Orologio» for `## Orologio {laterale}` and that the target's range still starts at the heading line
-- [ ] 3.4 Tests: `skeleton.test.ts:107-131` with the new exact text for the adventure and the one-shot, the campaign texts unchanged; the skeleton of a template that moves a part writes that column; the skeleton parses with no `column.` problem; `updateEdits` with `writeColumns` on a text with no mark, with some marks (left alone, an unknown word included), with a renamed heading that also gets its mark, with an inline field of a column role (no mark written), with and without a revelations label; without the option the edits are the same as before this change
-- [ ] 3.5 Run `npm test` for every workspace and update, in other packages' tests only, the expectations that quote the starting document; a test that writes its own document by hand keeps its text without marks. List each file touched
-- [ ] 3.6 Commit `feat(project): write the column marks`
+- [x] 3.1 `skeleton.ts`: the marks on the three section headings and on the first scene's block fields that take a column, and the revelations label with its mark under the overview's heading (A7); the campaign skeleton unchanged
+- [x] 3.2 `update.ts`: `writeColumns?: boolean` on `UpdateOptions` (optional, so today's callers compile), the edits of A8, never overlapping a rename of the same heading or label; marks in the text never changed
+- [x] 3.3 `targets.ts`: no code change expected; a test that `targetsOf` and `findTarget` name «Orologio» for `## Orologio {laterale}` and that the target's range still starts at the heading line
+- [x] 3.4 Tests: `skeleton.test.ts:107-131` with the new exact text for the adventure and the one-shot, the campaign texts unchanged; the skeleton of a template that moves a part writes that column; the skeleton parses with no `column.` problem; `updateEdits` with `writeColumns` on a text with no mark, with some marks (left alone, an unknown word included), with a renamed heading that also gets its mark, with an inline field of a column role (no mark written), with and without a revelations label; without the option the edits are the same as before this change
+- [x] 3.5 Run `npm test` for every workspace and update, in other packages' tests only, the expectations that quote the starting document; a test that writes its own document by hand keeps its text without marks. List each file touched
+- [x] 3.6 Commit `feat(project): write the column marks`
 
 ## 4. Proof and hand-back of brief A
 

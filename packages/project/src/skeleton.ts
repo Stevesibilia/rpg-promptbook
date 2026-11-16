@@ -1,4 +1,14 @@
-import { defaultTemplateRef, type AdventureTemplate, type Place, type Template } from 'promptbook-format';
+import {
+  columnMark,
+  defaultTemplateRef,
+  nightPartOf,
+  scenePartOf,
+  templateColumn,
+  type AdventureTemplate,
+  type Place,
+  type PlacedPart,
+  type Template,
+} from 'promptbook-format';
 import { stringify } from 'yaml';
 import type { Category } from './model.js';
 import { templateKindOf, templateOf } from './template.js';
@@ -57,22 +67,32 @@ function requiredCallouts(template: AdventureTemplate, place: Place): string[] {
     .map((c) => `> [!${c.meta ? `${c.type}|${c.meta}` : c.type}]\n> \n`);
 }
 
+// The column mark the template gives a part, with the space before it, as
+// the starting document writes it after a heading or a label: also when it
+// is the default (template-placement design decision A7).
+function markOf(template: AdventureTemplate, part: PlacedPart | null): string {
+  return part ? ` ${columnMark(templateColumn(template, part))}` : '';
+}
+
 // The first scene: its heading, the fields a scene needs or should have
 // (climax-only ones aside), the boxes a scene needs and the reactions table
-// with one empty row (template-editor design decision 9).
+// with one empty row (template-editor design decision 9). A block field the
+// scene page places carries its column mark.
 function firstScene(template: AdventureTemplate): string[] {
   const fields = template.sceneFields
     .filter((f) => f.requirement !== 'optional' && !f.climax)
-    .map((f) => (f.form === 'inline' ? `**${f.label}:** \n` : `**${f.label}**\n`));
+    .map((f) => (f.form === 'inline' ? `**${f.label}:** \n` : `**${f.label}**${markOf(template, scenePartOf(f.role))}\n`));
   const reactions = `| ${template.tables.reactions.firstHeader}… | ${REACTIONS_THEN} |\n| --- | --- |\n|  |  |\n`;
   return [`### ${template.ids.scene}1. ${FIRST_SCENE}\n`, ...fields, ...requiredCallouts(template, 'scene'), reactions];
 }
 
 // The prep document a new project starts with, from its template: every
 // section in order, empty; for an adventure or a one-shot, the boxes the
-// strong start needs and one scene with its parts. A campaign's skeleton has
-// no checks. The template is the category's latest built-in when not given
-// (avventura@1, campagna@2); one of the other kind is refused.
+// strong start needs and one scene with its parts, and a column mark on each
+// night section and on the revelations label under the overview. A
+// campaign's skeleton has no checks and no marks. The template is the
+// category's latest built-in when not given (avventura@1, campagna@2); one of
+// the other kind is refused.
 export function skeletonDocument(
   category: Category,
   input: SkeletonInput,
@@ -82,8 +102,12 @@ export function skeletonDocument(
     throw new Error(`A ${category} cannot start from the ${template.kind} template ${template.id}@${template.version}`);
   }
   const blocks = template.sections.flatMap((section) => {
-    const heading = `## ${section.heading ?? section.name}\n`;
-    if (template.kind !== 'adventure') return [heading];
+    const title = section.heading ?? section.name;
+    if (template.kind !== 'adventure') return [`## ${title}\n`];
+    const heading = `## ${title}${markOf(template, nightPartOf(section.role))}\n`;
+    if (section.role === 'overview') {
+      return [heading, `**${template.overview.revelations}**${markOf(template, 'revelations')}\n`];
+    }
     if (section.role === 'scenes') return [heading, ...firstScene(template)];
     if (section.role === 'strongStart') return [heading, ...requiredCallouts(template, 'strongStart')];
     return [heading];

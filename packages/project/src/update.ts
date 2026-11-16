@@ -1,6 +1,14 @@
 import {
+  columnMark,
+  nightPartOf,
   parseAdventure,
+  scenePartOf,
   templateChanges,
+  templateColumn,
+  type AdventureTemplate,
+  type Model,
+  type PlacedPart,
+  type Range,
   type SectionDefinition,
   type Template,
   type TextEdit,
@@ -12,6 +20,10 @@ export interface UpdateOptions {
   addSections: boolean;
   // Rewrite the headings and bold labels the new version renames.
   renameHeadings: boolean;
+  // Write the new version's column as a mark on each part that takes one and
+  // has no mark in the text (template-placement design decision A8). Marks
+  // already written are never changed. Off when absent.
+  writeColumns?: boolean;
 }
 
 // A ## heading of the document and the template section it names.
@@ -50,6 +62,37 @@ const lineAt = (text: string, from: number) => {
   return text.slice(from, end === -1 ? text.length : end);
 };
 
+// Where a ## heading's text ends on its line: before the trailing spaces and
+// a closing run of #, where a mark goes.
+function headingTextEnd(text: string, range: Range): number {
+  const from = range.start.offset;
+  const newline = text.indexOf('\n', from);
+  let line = text.slice(from, Math.min(range.end.offset, newline === -1 ? text.length : newline)).trimEnd();
+  const closing = /[ \t]+#+$/.exec(line);
+  if (closing) line = line.slice(0, closing.index).trimEnd();
+  return from + line.length;
+}
+
+// The mark of the new version's column for each part of the text that takes
+// one and has none, as an insert at the end of its heading or label. A part
+// whose section or field the new version no longer has gets none.
+function columnInserts(model: Model, text: string, from: AdventureTemplate, to: AdventureTemplate): TextEdit[] {
+  const out: TextEdit[] = [];
+  const add = (at: number, part: PlacedPart) => out.push({ from: at, to: at, insert: ` ${columnMark(templateColumn(to, part))}` });
+  for (const section of model.sections) {
+    const part = nightPartOf(section.role);
+    if (part && !section.mark && to.sections.some((s) => s.role === part)) add(headingTextEnd(text, section.headingRange), part);
+  }
+  const label = model.revelationsLabel;
+  if (label && !label.mark) add(label.labelRange.end.offset, 'revelations');
+  for (const field of model.scenes.flatMap((scene) => scene.fields)) {
+    if (field.form !== 'block' || field.mark) continue;
+    const part = scenePartOf(from.sceneFields.find((f) => f.label === field.label)?.role);
+    if (part && to.sceneFields.some((f) => f.role === part)) add(field.labelRange.end.offset, part);
+  }
+  return out;
+}
+
 // Replaces the first `before` in the range with `after`, if it is there.
 function rewrite(text: string, from: number, to: number, before: string, after: string): TextEdit | null {
   const at = text.slice(from, to).indexOf(before);
@@ -60,12 +103,21 @@ function rewrite(text: string, from: number, to: number, before: string, after: 
 // (template-editor design decision 10): an empty `## Heading` for each added
 // section, after the previous section of `to` the text holds, and the new
 // name for each renamed section heading and scene field label the parser
-// finds. Moved sections and fields are left where they are: only the rules
-// change. The edits do not overlap and are in text order.
+// finds; with `writeColumns`, the new version's column mark on each part
+// without one. Moved sections and fields are left where they are: only the
+// rules change. The edits do not overlap and are in text order.
 export function updateEdits(text: string, from: Template, to: Template, options: UpdateOptions): TextEdit[] {
   const changes = templateChanges(from, to);
   const edits: TextEdit[] = [];
   const present = presentSections(text, from);
+  const adventures = from.kind === 'adventure' && to.kind === 'adventure' ? { from, to } : null;
+  let parsed: Model | undefined;
+  const model = (template: AdventureTemplate) => (parsed ??= parseAdventure(text, { template }).model);
+  // Marks go on headings of the new version's sections that the update adds.
+  const addedMark = (section: SectionDefinition) => {
+    const part = options.writeColumns && adventures ? nightPartOf(section.role) : null;
+    return part && adventures ? ` ${columnMark(templateColumn(adventures.to, part))}` : '';
+  };
 
   // The section of `to` each section of `from` became.
   const renamedSection = new Map<string, SectionDefinition>();
@@ -89,7 +141,7 @@ export function updateEdits(text: string, from: Template, to: Template, options:
         : rewrite(text, section.from, section.from + line.length, old.name, now.name);
       if (edit) edits.push(edit);
     }
-    if (from.kind === 'adventure' && to.kind === 'adventure') {
+    if (adventures) {
       const renamedField = new Map<string, string>();
       for (const change of changes) {
         if (change.what === 'field' && change.detail === 'renamed' && change.before !== undefined) {
@@ -97,8 +149,7 @@ export function updateEdits(text: string, from: Template, to: Template, options:
         }
       }
       if (renamedField.size) {
-        const { model } = parseAdventure(text, { template: from });
-        for (const field of model.scenes.flatMap((scene) => scene.fields)) {
+        for (const field of model(adventures.from).scenes.flatMap((scene) => scene.fields)) {
           const now = renamedField.get(field.label);
           if (now === undefined) continue;
           const edit = rewrite(text, field.labelRange.start.offset, field.labelRange.end.offset, field.label, now);
@@ -126,7 +177,7 @@ export function updateEdits(text: string, from: Template, to: Template, options:
       const before = at === undefined && first !== undefined;
       const offset = at ?? first ?? text.length;
       const insert = inserts.get(offset) ?? { before, headings: [] };
-      insert.headings.push(`## ${section.heading ?? section.name}`);
+      insert.headings.push(`## ${section.heading ?? section.name}${addedMark(section)}`);
       inserts.set(offset, insert);
     });
     for (const [offset, { before, headings }] of inserts) {
@@ -136,6 +187,18 @@ export function updateEdits(text: string, from: Template, to: Template, options:
       else if (offset === text.length) insert = `${!text ? '' : text.endsWith('\n') ? '\n' : '\n\n'}${block}\n`;
       else insert = `\n\n${block}`;
       edits.push({ from: offset, to: offset, insert });
+    }
+  }
+
+  if (options.writeColumns && adventures) {
+    for (const mark of columnInserts(model(adventures.from), text, adventures.from, adventures.to)) {
+      // A renamed heading gets its mark after the new name, in the same edit;
+      // a section added right after an empty heading comes after its mark.
+      const rename = edits.find((e) => e.to === mark.from && e.from < e.to);
+      const added = edits.find((e) => e.from === mark.from && e.to === mark.from);
+      if (rename) rename.insert += mark.insert;
+      else if (added) added.insert = mark.insert + added.insert;
+      else edits.push(mark);
     }
   }
 

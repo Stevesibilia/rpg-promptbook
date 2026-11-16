@@ -1,4 +1,4 @@
-import { defineTemplate, parseAdventure, templates, type AdventureTemplateInput } from 'promptbook-format';
+import { defineTemplate, parseAdventure, templates, withColumn, type AdventureTemplateInput } from 'promptbook-format';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { defaultSettings, readTodo, skeletonDocument, templateOf } from '../src/index.js';
@@ -41,10 +41,17 @@ describe('skeleton documents', () => {
     });
     expect(forbidden(text)).toEqual([]);
     const headings = text.split('\n').filter((line) => line.startsWith('#'));
+    // The night sections carry their column marks.
+    const marks: Record<string, string> = {
+      'Da non perdere stasera': ' {laterale}',
+      Orologio: ' {principale}',
+      'Verità del mondo': ' {principale}',
+    };
+    const heading = (s: { name: string; heading?: string | undefined }) => `## ${s.heading ?? s.name}${marks[s.name] ?? ''}`;
     expect(headings).toEqual([
-      ...templates.avventura.sections.slice(0, 10).map((s) => `## ${s.heading ?? s.name}`),
+      ...templates.avventura.sections.slice(0, 10).map(heading),
       '### S1. Prima scena',
-      ...templates.avventura.sections.slice(10).map((s) => `## ${s.heading ?? s.name}`),
+      ...templates.avventura.sections.slice(10).map(heading),
     ]);
     expect(headings.at(-1)).toBe('## Appendice: immagini e musica');
   });
@@ -103,12 +110,14 @@ describe('skeleton documents', () => {
   // The starting documents of template-editor design decision 9: the
   // campaign's is v2's headings (campaign-pdf design decision 2); an adventure's first scene holds
   // its required and recommended fields, the boxes a scene needs and an
-  // empty reactions table, and the strong start the boxes it needs.
+  // empty reactions table, and the strong start the boxes it needs. The
+  // night sections, the revelations label and the block fields the scene
+  // page places carry their column marks (template-placement A7).
   it('writes the starting documents from the built-in templates', () => {
     const input = { title: 'Il ballo', system: 'Kulthos', campaignTitle: 'Blacksad', author: 'A', copyright: '© C', licence: 'CC-BY-4.0' };
     const oneShot = { ...input, campaignTitle: null, system: '' };
     const sections =
-      "## La vicenda in breve\n\n## Antefatto\n\n## A colpo d'occhio\n\n## Da non perdere stasera\n\n## Orologio\n\n## Verità del mondo\n\n## Inizio forte\n\n> [!leggi]\n> \n\n## Mappa delle scene\n\n## Regole della notte\n\n## Scene\n\n### S1. Prima scena\n\n**Luogo e momento:** \n\n**In gioco:** \n\n**Da non perdere qui**\n\n**Cosa succede da sé**\n\n**Indizi qui**\n\n**Se deragliano:** \n\n> [!leggi]\n> \n\n| Se i PG… | Allora… |\n| --- | --- |\n|  |  |\n\n## Indizi\n\n## PNG\n\n## Schede\n\n## Prima della sessione\n\n## Appendice: immagini e musica\n";
+      "## La vicenda in breve\n\n## Antefatto\n\n## A colpo d'occhio\n\n**Rivelazioni** {laterale}\n\n## Da non perdere stasera {laterale}\n\n## Orologio {principale}\n\n## Verità del mondo {principale}\n\n## Inizio forte\n\n> [!leggi]\n> \n\n## Mappa delle scene\n\n## Regole della notte\n\n## Scene\n\n### S1. Prima scena\n\n**Luogo e momento:** \n\n**In gioco:** \n\n**Da non perdere qui** {laterale}\n\n**Cosa succede da sé** {principale}\n\n**Indizi qui** {principale}\n\n**Se deragliano:** \n\n> [!leggi]\n> \n\n| Se i PG… | Allora… |\n| --- | --- |\n|  |  |\n\n## Indizi\n\n## PNG\n\n## Schede\n\n## Prima della sessione\n\n## Appendice: immagini e musica\n";
     const expected = {
       campaign:
         '---\ntitolo: Il ballo\nsistema: Kulthos\nformato: campagna\nautore: A\ncopyright: © C\nlicenza: CC-BY-4.0\n---\n\n## Premessa\n\n## Verità del mondo\n\n## Fronti\n\n## Fazioni\n\n## PNG ricorrenti\n\n## PG e agganci\n\n## Archi\n\n## Finali possibili\n\n## Fili aperti\n\n## Temi e motivi\n\n## Prima della campagna\n\n## Aggiornamenti\n\n## Appendice: stile visivo e sonoro\n',
@@ -164,9 +173,49 @@ describe('skeleton documents', () => {
       uid: 'u2',
     });
     const text = skeletonDocument('adventure', { ...settings, title: 'Prova', system: '', campaignTitle: null }, defineTemplate(definition));
-    expect(text).toContain('\n## Verità del mondo\n\n## Atmosfera\n\n## Apertura\n\n> [!leggi]\n> \n\n> [!mappa]\n> \n\n## Mappa delle scene\n');
-    expect(text).toContain('\n**Cosa succede da sé**\n\n**Prove e regole:** \n\n**Se deragliano:** \n');
+    expect(text).toContain('\n## Verità del mondo {principale}\n\n## Atmosfera\n\n## Apertura\n\n> [!leggi]\n> \n\n> [!mappa]\n> \n\n## Mappa delle scene\n');
+    expect(text).toContain('\n**Cosa succede da sé** {principale}\n\n**Prove e regole:** \n\n**Se deragliano:** \n');
     expect(text).not.toContain('Indizi qui');
+  });
+
+  it('writes the column a template sets for each part, as a mark', () => {
+    const moved = withColumn(withColumn(withColumn(templates.avventura, 'clock', 'side'), 'revelations', 'main'), 'mustHave', 'main');
+    const text = skeletonDocument('adventure', { ...settings, title: 'Prova', system: '', campaignTitle: null }, moved);
+    expect(text).toContain("\n## A colpo d'occhio\n\n**Rivelazioni** {principale}\n\n## Da non perdere stasera {laterale}\n\n## Orologio {laterale}\n");
+    expect(text).toContain('\n**Da non perdere qui** {principale}\n\n**Cosa succede da sé** {principale}\n');
+    const { model } = parseAdventure(text, { template: moved });
+    expect(model.sections.find((s) => s.role === 'clock')?.mark?.column).toBe('side');
+    expect(model.revelationsLabel?.mark?.column).toBe('main');
+  });
+
+  it('gives an inline field of a placed role no mark', () => {
+    const definition = JSON.parse(JSON.stringify(templates.avventura)) as AdventureTemplateInput;
+    definition.sceneFields.find((f) => f.role === 'happens')!.form = 'inline';
+    const text = skeletonDocument('adventure', { ...settings, title: 'Prova', system: '', campaignTitle: null }, defineTemplate(definition));
+    expect(text).toContain('\n**Cosa succede da sé:** \n');
+  });
+
+  it('parses its starting documents with their marks and no column problem', () => {
+    const input = { ...settings, title: 'Prova', system: '', campaignTitle: null };
+    for (const category of ['adventure', 'one-shot'] as const) {
+      const text = skeletonDocument(category, input);
+      const { model, problems } = parseAdventure(text, { template: templates.avventura });
+      expect(problems.filter((p) => p.code.startsWith('column.'))).toEqual([]);
+      expect(model.sections.filter((s) => s.mark).map((s) => [s.name, s.mark?.column])).toEqual([
+        ['Da non perdere stasera', 'side'],
+        ['Orologio', 'main'],
+        ['Verità del mondo', 'main'],
+      ]);
+      expect(model.scenes[0]?.fields.filter((f) => f.mark).map((f) => [f.label, f.mark?.column])).toEqual([
+        ['Da non perdere qui', 'side'],
+        ['Cosa succede da sé', 'main'],
+        ['Indizi qui', 'main'],
+      ]);
+      expect(model.revelationsLabel?.mark?.column).toBe('side');
+      expect(model.revelations).toEqual([]);
+      expect(problems.filter((p) => p.code === 'content.unplaced')).toEqual([]);
+    }
+    expect(skeletonDocument('campaign', input)).not.toContain('{');
   });
 
   it("names the template's game system unless the settings name one", () => {
