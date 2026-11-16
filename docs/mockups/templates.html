@@ -210,8 +210,8 @@ code { font: .92em var(--mono); }
 .rr.added { box-shadow: inset 3px 0 0 var(--primary); }
 .rr input, .rr select { width: 100%; min-width: 0; padding: 4px 7px; font-size: 13.5px; }
 .rr input:disabled, .rr select:disabled { background: transparent; border-color: transparent; color: var(--text); opacity: 1; }
-.g-sec { grid-template-columns: 44px minmax(0, 1fr) 118px 112px 150px 30px; }
-.g-fld { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 70px 30px; }
+.g-sec { grid-template-columns: 44px minmax(0, 1fr) 118px 112px 196px 30px; }
+.g-fld { grid-template-columns: 44px minmax(0, 1fr) 84px 112px 58px 132px 30px; }
 .g-box { grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.3fr) 82px 30px; }
 .g-key { grid-template-columns: 44px minmax(0, 1fr) 96px 118px 30px; }
 .mv { display: flex; flex-direction: column; }
@@ -225,6 +225,27 @@ code { font: .92em var(--mono); }
 .tg.on { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); background: color-mix(in srgb, var(--primary) 9%, transparent); }
 .tg.fixed { border-style: dashed; cursor: default; }
 .tg:disabled { opacity: .55; }
+
+/* NEW (#63): the column a part prints in, the mark that carries it in the text, and the page sketch */
+.col { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.col button { font: 500 11.5px var(--font); padding: 1px 8px; color: var(--faint); }
+.col button.on { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); font-weight: 600; }
+.col button:disabled { cursor: default; }
+.rr.subrow input { padding-left: 24px; }
+.pm { font: 500 12px var(--mono); color: var(--primary); margin-left: 7px; white-space: nowrap; }
+.pm.bad { color: var(--amber); text-decoration: underline wavy; text-underline-offset: 3px; }
+.l.active { background: var(--hover); border-radius: 3px; }
+.l .why { display: block; font: 12.5px/18px var(--font); color: var(--amber); padding: 0 0 4px; }
+.sk { margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px 12px; }
+.sk h4 { font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; }
+.sk .pg { display: grid; grid-template-columns: minmax(0, 1fr) 36%; gap: 6px 8px; max-width: 440px; }
+.sk .full { grid-column: 1 / -1; }
+.sk .c { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sk .cap { font: 600 10px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.sk .p { font: 500 11.5px/15px var(--font); padding: 3px 7px; border-radius: 4px; border: 1px solid var(--border); color: var(--text); overflow-wrap: anywhere; }
+.sk .p.box { background: color-mix(in srgb, var(--amber) 11%, transparent); }
+.sk .p.fx { border-style: dashed; color: var(--faint); }
+.sk .none { font: italic 11.5px var(--font); color: var(--faint); }
 .del { color: var(--faint); padding: 2px 6px; border-radius: 4px; }
 .del:hover:not(:disabled) { color: var(--danger); background: var(--hover); }
 .places { display: flex; flex-wrap: wrap; gap: 3px; }
@@ -316,6 +337,7 @@ code { font: .92em var(--mono); }
   <button data-state="7">7 · Save version</button>
   <button data-state="8">8 · Project update</button>
   <button data-state="9">9 · New project</button>
+  <button data-state="10">10 · Marks in the text</button>
   <span class="sep"></span>
   <button id="mReset">Reset data</button>
   <button id="mTheme">Light / dark</button>
@@ -364,15 +386,17 @@ const LOCK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5"
    role keeps its place in the PDF; a section without one is the user's own. */
 const ROLE = {
   synopsis: ['Synopsis', 'Cover'], backstory: ['Backstory', 'Cover'], overview: ['Overview', 'Night page'],
-  reminders: ['Reminders', 'Night page, side'], clock: ['Clock', 'Night page'], truths: ['Truths', 'Night page'],
+  reminders: ['Reminders', 'Night page'], clock: ['Clock', 'Night page'], truths: ['Truths', 'Night page'],
   strongStart: ['Strong start', 'Start page'], sceneMap: ['Scene map', 'Start page'], rules: ['Rules', 'Own page, side boxes'],
   scenes: ['Scenes', 'A page per scene'], clues: ['Clues', 'References'], npcs: ['NPCs', 'References'],
   sheets: ['Sheets', 'References'], before: ['Before the session', 'References'], appendix: ['Appendix', 'Not printed'],
   cast: ['Cast', ''], clueField: ['Clues', ''],
 };
 let uid = 0;
-const S = (name, req, role) => ({ id: 's' + (++uid), name, req, role, newPage: true, side: false, inPdf: role !== 'appendix' });
-const F = (label, form, req, climax, role) => ({ id: 'f' + (++uid), label, form, req, climax: !!climax, role: role || null });
+const NIGHT_COL = { reminders: 'side', clock: 'main', truths: 'main' };
+const MARK = { main: 'principale', side: 'laterale' };
+const S = (name, req, role) => ({ id: 's' + (++uid), name, req, role, newPage: true, side: false, inPdf: role !== 'appendix', col: NIGHT_COL[role] || null });
+const F = (label, form, req, climax, role, col, fix) => ({ id: 'f' + (++uid), label, form, req, climax: !!climax, role: role || null, col: col || null, fix: fix || 'Under both columns' });
 const B = (type, label, column, places, min, title) => ({ id: 'b' + (++uid), type, label, column, places, min, title });
 const K = (key, type, req) => ({ id: 'k' + (++uid), key, type, req });
 
@@ -384,9 +408,10 @@ const AVV_SECTIONS = () => [
   S('Prima della sessione', 'optional', 'before'), S('Appendice: immagini e musica', 'required', 'appendix'),
 ];
 const AVV_FIELDS = () => [
-  F('Luogo e momento', 'inline', 'required'), F('In gioco', 'inline', 'required'), F('Da non perdere qui', 'block', 'required'),
-  F('Cosa succede da sé', 'block', 'required'), F("Chi c'è", 'block', 'optional', false, 'cast'), F('Indizi qui', 'block', 'recommended', false, 'clueField'),
-  F('Prove e regole', 'inline', 'optional'), F('Se deragliano', 'inline', 'required'),
+  F('Luogo e momento', 'inline', 'required', false, null, null, 'Scene header'), F('In gioco', 'inline', 'required', false, null, null, 'Scene header'),
+  F('Da non perdere qui', 'block', 'required', false, null, 'side'),
+  F('Cosa succede da sé', 'block', 'required', false, null, 'main'), F("Chi c'è", 'block', 'optional', false, 'cast', 'side'), F('Indizi qui', 'block', 'recommended', false, 'clueField', 'main'),
+  F('Prove e regole', 'inline', 'optional', false, null, null, 'Framed, main column'), F('Se deragliano', 'inline', 'required', false, null, null, 'End of main column'),
   F('Regole della situazione', 'block', 'optional', true), F('Cosa decide la notte', 'inline', 'optional', true),
 ];
 const AVV_BOXES = () => [
@@ -407,7 +432,7 @@ const CAMP_SECTIONS = () => ['Premessa', 'Fronti', 'PNG ricorrenti', 'Fili apert
 function seed() {
   uid = 0;
   const avv = { id: 'avventura', name: 'Avventura', cat: 'adventure', builtin: true, version: 1, used: 4, def: false, system: 'Kulthos',
-    sections: AVV_SECTIONS(), fields: AVV_FIELDS(), boxes: AVV_BOXES(), keys: AVV_KEYS(), limits: AVV_LIMITS() };
+    sections: AVV_SECTIONS(), fields: AVV_FIELDS(), boxes: AVV_BOXES(), keys: AVV_KEYS(), limits: AVV_LIMITS(), rev: { name: 'Rivelazioni', col: 'side' } };
   const kul = { ...clone(avv), id: 'kulthos', name: 'Avventura Kulthos', builtin: false, version: 2, used: 3, def: true, from: 'Avventura' };
   const dnd = { ...clone(avv), id: 'dnd', name: 'One-shot D&D 5e', builtin: false, version: 1, used: 0, def: false, from: 'Avventura', system: 'D&D 5e' };
   const camp = { id: 'campagna', name: 'Campagna', cat: 'campaign', builtin: true, version: 1, used: 1, def: false, system: '',
@@ -444,6 +469,7 @@ function changes(a = saved, b = draft) {
       if (o.req !== x.req) out.push(['c', `${what} «${x[key]}» now ${x.req}`]);
       if (kind === 'sec' && (o.newPage !== x.newPage || o.side !== x.side || o.inPdf !== x.inPdf)) out.push(['c', `PDF options of «${x[key]}»`]);
       if (kind === 'fld' && o.form !== x.form) out.push(['c', `${what} «${x[key]}» now ${x.form}`]);
+      if (o.col !== x.col) out.push(['c', `«${x[key]}» prints in the ${x.col} column`]);
     }
     for (const o of a[list]) if (!after.has(o.id)) out.push(['r', `${what} «${o[key]}»`]);
   };
@@ -451,6 +477,7 @@ function changes(a = saved, b = draft) {
   diff('fields', 'label', 'Scene field', 'fld');
   diff('boxes', 'label', 'Box');
   diff('keys', 'key', 'Front matter key');
+  if (a.rev && b.rev && a.rev.col !== b.rev.col) out.push(['c', `«${b.rev.name}» prints in the ${b.rev.col} column`]);
   return out;
 }
 const changedIds = () => {
@@ -541,33 +568,39 @@ function renderEditorPane() {
   const mv = (list, i) => ro ? '<span></span>' : `<span class="mv"><button data-up="${list}:${i}" aria-label="Move up" ${i ? '' : 'disabled'}>▲</button><button data-dn="${list}:${i}" aria-label="Move down" ${i < draft[list].length - 1 ? '' : 'disabled'}>▼</button></span>`;
   const tabs = [['sections', 'Sections', draft.sections.length], ...(camp ? [] : [['fields', 'Scene fields', draft.fields.length], ['boxes', 'Boxes', draft.boxes.length]]),
     ['keys', 'Front matter', draft.keys.length], ...(camp ? [] : [['limits', 'Limits and style', '']])];
+  const colCtl = (key, val) => `<span class="col" role="group" aria-label="Column">${['main', 'side'].map(c => `<button class="${val === c ? 'on' : ''}" data-col="${key}:${c}" aria-pressed="${val === c}" ${dis}>${c === 'main' ? 'Main' : 'Side'}</button>`).join('')}</span>`;
   let body = '';
   if (tab === 'sections') {
     body = `<div class="rows"><div class="rh g-sec"><span></span><span>Heading</span><span>Needed</span><span>Used for</span><span>${camp ? '' : 'In the PDF'}</span><span></span></div>
       ${draft.sections.map((s, i) => {
         const r = s.role ? ROLE[s.role] : null;
         const pdf = camp ? '' : r
-          ? `<span class="pdf"><span class="tg fixed" title="This section's place in the PDF is set by the layout">${r[1]}</span>${s.role === 'appendix' ? '' : `<button class="tg${s.inPdf ? ' on' : ''}" data-tog="${i}:inPdf" ${dis}>${s.inPdf ? 'Printed' : 'Left out'}</button>`}</span>`
+          ? `<span class="pdf"><span class="tg fixed" title="This section's page in the PDF is set by the layout">${r[1]}</span>${s.col ? colCtl('sections:' + i, s.col) : ''}${s.role === 'appendix' ? '' : `<button class="tg${s.inPdf ? ' on' : ''}" data-tog="${i}:inPdf" ${dis}>${s.inPdf ? 'Printed' : 'Left out'}</button>`}</span>`
           : `<span class="pdf"><button class="tg${s.inPdf ? ' on' : ''}" data-tog="${i}:inPdf" ${dis}>${s.inPdf ? 'Printed' : 'Left out'}</button>${s.inPdf ? `<button class="tg${s.newPage ? ' on' : ''}" data-tog="${i}:newPage" ${dis}>New page</button><button class="tg${s.side ? ' on' : ''}" data-tog="${i}:side" ${dis}>Side column</button>` : ''}</span>`;
         return `<div class="rr g-sec${mark(s.id)}">${mv('sections', i)}
           <input value="${esc(s.name)}" data-name="sections:${i}" aria-label="Heading" ${dis}>
           ${sel(s.req, REQ, `data-req="sections:${i}" aria-label="Needed" ${dis}`)}
           <span class="role${r ? '' : ' custom'}" title="${r ? 'The checks and the PDF find this section by its role, whatever its heading says' : 'Your own section: checked for presence only'}">${r ? LOCK + r[0] : 'Your own'}</span>
           ${pdf}
-          ${ro ? '<span></span>' : `<button class="del" data-del="sections:${i}" aria-label="Remove" title="${r ? 'Needed by the checks and the PDF: set it optional instead' : 'Remove this section'}" ${r ? 'disabled' : ''}>✕</button>`}</div>`;
+          ${ro ? '<span></span>' : `<button class="del" data-del="sections:${i}" aria-label="Remove" title="${r ? 'Needed by the checks and the PDF: set it optional instead' : 'Remove this section'}" ${r ? 'disabled' : ''}>✕</button>`}</div>${s.role === 'overview' && draft.rev ? `<div class="rr g-sec subrow"><span></span>
+          <input value="↳ ${esc(draft.rev.name)}" aria-label="Revelations label" disabled>
+          <span class="role">its list</span>
+          <span class="role" title="The list of revelations inside this section">${LOCK}Revelations</span>
+          <span class="pdf"><span class="tg fixed">Night page</span>${colCtl('rev', draft.rev.col)}</span><span></span></div>` : ''}`;
       }).join('')}
       ${ro ? '' : `<form class="add" id="addForm"><input id="addIn" placeholder="+ Add a section, e.g. Atmosfera" aria-label="New section"><button class="tb line">Add</button></form>`}</div>
-      <p class="sub">${camp ? 'Campaigns have no PDF yet; their sections are checked for presence only.' : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}</p>`;
+      <p class="sub">${camp ? 'Campaigns have no PDF yet; their sections are checked for presence only.' : 'Renaming a section with a role keeps it working: the checks and the PDF follow the role. Sections you add print in document order, with the options you set.'}</p>${camp ? '' : sketch('night')}`;
   } else if (tab === 'fields') {
-    body = `<div class="rows"><div class="rh g-fld"><span></span><span>Bold label in a scene</span><span>Form</span><span>Needed</span><span>Climax</span><span></span></div>
+    body = `<div class="rows"><div class="rh g-fld"><span></span><span>Bold label in a scene</span><span>Form</span><span>Needed</span><span>Climax</span><span>In the PDF</span><span></span></div>
       ${draft.fields.map((f, i) => `<div class="rr g-fld${mark(f.id)}">${mv('fields', i)}
         <input value="${esc(f.label)}" data-name="fields:${i}" aria-label="Label" ${dis}>
         ${sel(f.form, ['inline', 'block'], `data-form="${i}" aria-label="Form" ${dis}`)}
         ${sel(f.req, REQ, `data-req="fields:${i}" aria-label="Needed" ${dis}`)}
         <label class="role"><input type="checkbox" ${f.climax ? 'checked' : ''} data-climax="${i}" ${dis} style="width:auto"> only</label>
+        <span class="pdf">${f.col ? colCtl('fields:' + i, f.col) : `<span class="tg fixed" title="This field's place on the scene page is set by the layout">${f.fix}</span>`}</span>
         ${ro ? '<span></span>' : `<button class="del" data-del="fields:${i}" aria-label="Remove" ${f.role ? 'disabled title="Used by the side column"' : ''}>✕</button>`}</div>`).join('')}
       ${ro ? '' : `<form class="add" id="addForm"><input id="addIn" placeholder="+ Add a scene field, e.g. Atmosfera" aria-label="New field"><button class="tb line">Add</button></form>`}</div>
-      <p class="sub"><b>Inline</b>: <code>**Label:** text</code> on one line. <b>Block</b>: <code>**Label**</code> then a list or a table. <b>Climax only</b>: expected in the last scene, allowed in any.</p>`;
+      <p class="sub"><b>Inline</b>: <code>**Label:** text</code> on one line. <b>Block</b>: <code>**Label**</code> then a list or a table. <b>Climax only</b>: expected in the last scene, allowed in any.</p>${sketch('scene')}`;
   } else if (tab === 'boxes') {
     body = `<div class="rows"><div class="rh g-box"><span>Box</span><span>Column</span><span>Allowed in</span><span>Per place</span><span></span></div>
       ${draft.boxes.map((b, i) => `<div class="rr g-box${mark(b.id)}">
@@ -615,6 +648,31 @@ function renderEditorPane() {
   wireEditor();
 }
 
+/* #63: the mark a part carries in the text, and a sketch of the page it prints on */
+const pm = c => c ? `<span class="pm">{${MARK[c]}}</span>` : '';
+function sketch(kind) {
+  const p = (t, c = '') => `<div class="p ${c}">${esc(t)}</div>`;
+  const colOf = (list, c) => list.filter(x => x.col === c);
+  let top, main, side, bottom = '';
+  if (kind === 'night') {
+    const ov = draft.sections.find(s => s.role === 'overview');
+    const parts = [...(draft.rev ? [{ name: draft.rev.name, col: draft.rev.col }] : []), ...draft.sections.filter(s => s.col && s.inPdf)];
+    top = p(ov ? ov.name : "A colpo d'occhio", 'fx');
+    main = colOf(parts, 'main').map(x => p(x.name)).join('');
+    side = colOf(parts, 'side').map(x => p(x.name, 'box')).join('') + p('[!riquadro|laterale] boxes', 'fx');
+  } else {
+    const f = draft.fields.filter(x => x.col);
+    top = p('Title · Luogo e momento · In gioco', 'fx');
+    main = p('Da leggere', 'fx') + colOf(f, 'main').map(x => p(x.label)).join('') + p('Boxes, Prove e regole, reactions, Se deragliano', 'fx');
+    side = colOf(f, 'side').map(x => p(x.label, 'box')).join('') + p('Threat sheets', 'fx') + p('[!riquadro|laterale] boxes', 'fx');
+    bottom = `<div class="full">${p('Climax fields and other labels', 'fx')}</div>`;
+  }
+  return `<div class="sk" aria-label="Page sketch"><h4>${kind === 'night' ? 'Night page' : 'Scene page'} · where each part prints</h4>
+    <div class="pg"><div class="full">${top}</div>
+      <div class="c"><span class="cap">Main column</span>${main || '<span class="none">nothing</span>'}</div>
+      <div class="c"><span class="cap">Side column · 58 mm</span>${side}</div>${bottom}</div></div>`;
+}
+
 /* The starting document the template creates, as the editor shows it */
 function preview() {
   const { ids, added } = changedIds();
@@ -626,11 +684,12 @@ function preview() {
   const boxLines = where => lead.filter(b => b.places.includes(where)).map(b => `<div class="callout leggi${cls(b.id)}"><div class="ct"><span class="mk">&gt; [!${esc(b.type)}]</span> ${esc(b.label)}</div><div class="tx">&nbsp;</div></div>`).join('');
   const lines = draft.sections.map(s => {
     const out = s.role === 'appendix' || (!camp && !s.inPdf) ? `<span class="out">not in the PDF</span>` : '';
-    let h = `<div class="l h2${cls(s.id)}"><span class="mk">## </span>${esc(s.name)}${s.req === 'optional' ? '<span class="out">optional</span>' : ''}${out}</div>`;
+    let h = `<div class="l h2${cls(s.id)}"><span class="mk">## </span>${esc(s.name)}${pm(s.col)}${s.req === 'optional' ? '<span class="out">optional</span>' : ''}${out}</div>`;
+    if (s.role === 'overview' && draft.rev) h += `<div class="l"><span class="fl">**${esc(draft.rev.name)}**</span>${pm(draft.rev.col)}</div>`;
     if (s.role === 'strongStart') h += boxLines('Inizio forte');
     if (s.role === 'scenes') {
       h += `<div class="l h3"><span class="mk">### </span><span class="sid">S1.</span> Prima scena</div>`;
-      h += draft.fields.filter(f => f.req !== 'optional' && !f.climax).map(f => `<div class="l${cls(f.id)}"><span class="fl">**${esc(f.label)}${f.form === 'inline' ? ':' : ''}**</span></div>`).join('');
+      h += draft.fields.filter(f => f.req !== 'optional' && !f.climax).map(f => `<div class="l${cls(f.id)}"><span class="fl">**${esc(f.label)}${f.form === 'inline' ? ':' : ''}**</span>${pm(f.col)}</div>`).join('');
       h += boxLines('scenes');
       h += `<div class="l tbl">| Se i PG | Allora |</div>`;
     }
@@ -657,6 +716,11 @@ function wireEditor() {
   $$('[data-form]').forEach(s => s.onchange = () => { draft.fields[+s.dataset.form].form = s.value; renderEditorPane(); });
   $$('[data-climax]').forEach(c => c.onchange = () => { draft.fields[+c.dataset.climax].climax = c.checked; renderEditorPane(); });
   $$('[data-tog]').forEach(b => b.onclick = () => { const [i, k] = b.dataset.tog.split(':'); draft.sections[+i][k] = !draft.sections[+i][k]; renderEditorPane(); });
+  $$('[data-col]').forEach(b => b.onclick = () => {
+    const [l, i, c] = b.dataset.col.split(':');
+    if (l === 'rev') draft.rev.col = i; else draft[l][+i].col = c;
+    renderEditorPane();
+  });
   const move = (s, d) => { const [l, i] = at(s); const a = draft[l]; [a[i], a[i + d]] = [a[i + d], a[i]]; renderEditorPane(); };
   $$('[data-up]').forEach(b => b.onclick = () => move(b.dataset.up, -1));
   $$('[data-dn]').forEach(b => b.onclick = () => move(b.dataset.dn, 1));
@@ -709,6 +773,7 @@ function openUpdate() {
      ${chgList(ch)}
      <label class="chk"><input type="checkbox" checked> <span>Add the new sections' headings to the document<small>«## Atmosfera» after «Verità del mondo», empty</small></span></label>
      <label class="chk"><input type="checkbox" checked> <span>Rename the headings that changed<small>«## Inizio forte» becomes «## Apertura»</small></span></label>
+     <label class="chk"><input type="checkbox"> <span>Write the column marks where the text has none<small>e.g. «## Orologio {principale}»; marks you wrote stay as they are</small></span></label>
      <p>After the update: <b style="color:var(--amber)">1 new warning</b>, «Prove e regole» missing in S2. Undo puts the document back.</p>`,
     `<button class="tb line" id="dCancel">Not now</button><button class="tb primary" id="dUpd">Update to v3</button>`);
   $('#dCancel').onclick = closeDialog;
@@ -740,6 +805,29 @@ function renderDoc() {
     <div class="l h2"><span class="mk">## </span>Inizio forte</div>
     <div class="callout leggi"><div class="ct"><span class="mk">&gt; [!leggi]</span> Da leggere</div><div class="tx">La terra trema ancora, piano, come un cane che sogna.</div></div>`;
 }
+/* 10 · #63: the column marks in a document */
+function renderMarks() {
+  const h2 = (t, m, x = '') => `<div class="l h2${x}"><span class="mk">## </span>${t}${m}</div>`;
+  const li = t => `<div class="l li">- ${t}</div>`;
+  $('#ed').innerHTML = `${h2("A colpo d’occhio", '')}
+    <div class="l">Messina, tre settimane dopo il terremoto. Il porto è l’unica cosa che funziona.</div>
+    <div class="l"><b>Rivelazioni</b>${pm('main')}</div>
+    ${li('<span class="sid" style="font:600 13px var(--mono);color:var(--primary)">R1.</span> L’ancora non è mai stata recuperata.')}
+    ${li('<span class="sid" style="font:600 13px var(--mono);color:var(--primary)">R2.</span> Il capitano ha mentito sul carico.')}
+    ${h2('Da non perdere stasera', pm('side'))}
+    ${li('La campana del molo suona da sola a mezzanotte.')}
+    ${h2('Orologio', '<span class="pm">{principale}</span><span class="mk">▏</span>', ' active')}
+    ${li('☐☐☐☐ La marea sale.')}
+    ${h2('Verità del mondo', '<span class="pm bad">{latterale}</span>')}
+    <div class="l"><span class="why">Unknown column «latterale»: write principale or laterale. Until then this part prints where the template says.</span></div>
+    ${li('La città dorme sotto le macerie del 1908.')}
+    <div class="l h3"><span class="mk">### </span><span class="sid">S1.</span> Il molo dei pescatori</div>
+    <div class="l"><b>Luogo e momento:</b> Molo vecchio, alba.</div>
+    <div class="l"><b>Da non perdere qui</b>${pm('main')}</div>
+    ${li('Le reti tagliate di netto.')}
+    <div class="l"><b>Chi c’è</b>${pm('side')}</div>
+    ${li('Nunzio, pescatore, non dorme da tre notti.')}`;
+}
 function renderProjects() {
   $('#setBody').innerHTML = `<h2>Kulthos</h2><p class="lead">Campaign · 3 adventures</p>
     <div class="card"><b>L’Ancora di Sabaoth</b> · <span class="muted">Adventure · Avventura Kulthos v2</span></div>
@@ -762,12 +850,15 @@ const NOTES = {
   3: ['Your template: sections', [
     'Opens with three demo edits: «Atmosfera» added (green bar), «Inizio forte» renamed «Apertura» (amber), and on Scene fields «Prove e regole» made required.',
     'Type in a heading, change «Needed», move rows with ▲▼, add a section: the preview follows.',
-    '<b>PDF controls</b>: sections with a role keep their place (dashed tag) and can only be left out; your own sections get <b>Printed / Left out</b>, <b>New page</b> and <b>Side column</b> (for <code>[!riquadro|laterale]</code>).',
+    '<b>New (#63)</b>: the night-page parts get a <b>Main / Side</b> switch: «Da non perdere stasera», «Orologio», «Verità del mondo» and the «Rivelazioni» list (the indented row under «A colpo d\'occhio»). The built-in keeps today\'s places. The sketch under the table follows the switches.',
+    'The starting document on the right carries each part\'s column as a mark, <code>{laterale}</code> or <code>{principale}</code>.',
+    '<b>PDF controls</b>: sections with a role keep their page (dashed tag) and can only be left out; your own sections get <b>Printed / Left out</b>, <b>New page</b> and <b>Side column</b> (for <code>[!riquadro|laterale]</code>).',
     'Sections with a role can\'t be removed (set them optional instead).',
     'The save bar counts the changes; saving makes a new version.']],
   4: ['Scene fields', [
     'Bold labels inside a scene, in order. <b>Inline</b> or <b>block</b>, required / recommended / optional, and <b>climax only</b>.',
     'Required fields appear empty in the starting document\'s first scene.',
+    '<b>New (#63)</b>: «In the PDF» column. The four block fields the scene page lays out get <b>Main / Side</b>; the others keep the place the layout gives them (dashed tag). The mark follows the label in the starting document and in every scene added later.',
     '«Chi c\'è» and «Indizi qui» feed the scene page\'s side column, so they can be renamed but not removed.']],
   5: ['Boxes', [
     'The callout types: column, places they\'re allowed in, how many per place, title.',
@@ -784,7 +875,15 @@ const NOTES = {
   8: ['A project on an older version', [
     'The top bar shows the template and «v3 available»; click it.',
     'Updating changes the rules. The text changes only where ticked: add the new sections\' headings, rename the changed ones. One undo step.',
+    '<b>New (#63)</b>: a third, unticked option writes the column marks on parts that have none. Marks already in the text are never changed by an update.',
     'The dialog says what the checks will report after the update. Checks never block, so updating is always allowed.']],
+  10: ['Marks in the text', [
+    'A new project\'s text carries the template\'s columns as marks after the heading or the bold label. To move a part, change the word: <code>{laterale}</code> = side column, <code>{principale}</code> = main column.',
+    'A mark on a scene field moves it in that scene only. Here S1 prints «Da non perdere qui» in the main column.',
+    'A part with <b>no mark</b> prints where the template says, so documents written before this change print as they do today.',
+    'A word the app does not know gets a warning and changes nothing (checks never block).',
+    'The mark stays visible off the active line: it is short and it is a setting you want to see. Palette: «Move to side column» / «Move to main column» writes the mark for the part under the cursor.',
+    'Nothing moves by itself: a side box that does not fit still goes to the next page until you move it.']],
   9: ['New project', [
     'The template list follows the category: Adventure and One-shot share the adventure templates, Campaign has its own.',
     'The category\'s default is preselected, with its version.']],
@@ -798,7 +897,7 @@ function setState(n) {
     $$('.mock [data-state]').forEach(b => b.classList.toggle('on', +b.dataset.state === n));
     anno(n);
   }
-  view = state === 8 ? 'editor' : state === 9 ? 'projects' : 'settings';
+  view = state === 8 || state === 10 ? 'editor' : state === 9 ? 'projects' : 'settings';
   renderChrome();
   $('.pane').classList.toggle('wide', state !== 1 && view === 'settings');
   if (n === 1) { draft = saved = null; renderList(); return; }
@@ -808,6 +907,7 @@ function setState(n) {
   if (n === 5) { if (!draft || draft.id !== 'kulthos') demoDraft(); tab = 'boxes'; }
   if (n === 6) { open('lunga'); tab = 'sections'; }
   if (n === 7) { if (!draft || draft.id !== 'kulthos') demoDraft(); tab = 'sections'; }
+  if (state === 10) { renderMarks(); return; }
   if (view === 'editor') { renderDoc(); openUpdate(); return; }
   if (view === 'projects') { renderProjects(); openNew(); return; }
   renderEditorPane();
