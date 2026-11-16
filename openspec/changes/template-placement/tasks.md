@@ -94,9 +94,9 @@ elsewhere is reported, not made.
 
 ## 8. Proof and hand-back of brief B
 
-- [ ] 8.1 PNGs under the scratchpad, rendered in a container, of the five cases of design.md «How it is verified for real»: the fixture by default, with marks, with a template that moves parts, an all-main night page, and the «Fair Play» case rebuilt with invented text (a long overview and a long «Rivelazioni» list), once with the default (the lonely box page) and once with `**Rivelazioni** {principale}` (no lonely box page)
-- [ ] 8.2 `npm run typecheck`, `npm test`: literal results; the four Sabaoth hashes on the branch equal 0.1
-- [ ] 8.3 Hand back: results, the hash pairs, PNG paths, the page counts of the two «Fair Play» builds, departures from the design, anything from «Risks» you met. Do not report tasks to Control Room: the architect does
+- [x] 8.1 PNGs under the scratchpad, rendered in a container, of the five cases of design.md «How it is verified for real»: the fixture by default, with marks, with a template that moves parts, an all-main night page, and the «Fair Play» case rebuilt with invented text (a long overview and a long «Rivelazioni» list), once with the default (the lonely box page) and once with `**Rivelazioni** {principale}` (no lonely box page)
+- [x] 8.2 `npm run typecheck`, `npm test`: literal results; the four Sabaoth hashes on the branch equal 0.1
+- [x] 8.3 Hand back: results, the hash pairs, PNG paths, the page counts of the two «Fair Play» builds, departures from the design, anything from «Risks» you met. Do not report tasks to Control Room: the architect does
 
 ## 9. Web: the template editor (brief C)
 
