@@ -7,6 +7,7 @@ import type { Place, Template, TemplateChange } from 'promptbook-format';
 const what: Record<TemplateChange['what'], string> = {
   section: 'Section',
   field: 'Scene field',
+  revelations: 'Revelations list',
   box: 'Box',
   key: 'Front matter key',
   limits: 'Limit',

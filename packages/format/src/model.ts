@@ -145,6 +145,17 @@ export interface Meta {
   licence: { text: string; spdx: boolean } | null;
 }
 
+// A column mark written in the text: `{laterale}` after a ## heading or after
+// a block field's bold label.
+export interface ColumnMark {
+  // The word as written, without the braces, trimmed.
+  word: string;
+  // Null when the word is not one of the two the format knows.
+  column: 'main' | 'side' | null;
+  // The braces and what is between them.
+  range: Range;
+}
+
 export interface Section {
   // The template's name for a known section, the heading text otherwise.
   id: string;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { nightPartOf, scenePartOf } from './placement.js';
 
 // A template definition is data: every label the parser and the checks match
 // against comes from here, never from code. Roles are the English names the
@@ -45,6 +46,8 @@ const metaKeySchema = z.object({
   uid: z.string().min(1).optional(),
 });
 
+const columnSchema = z.enum(['main', 'side']);
+
 const sectionSchema = z.object({
   name: label,
   // The full heading when it says more than the name, as in
@@ -61,6 +64,10 @@ const sectionSchema = z.object({
       print: z.boolean().optional(),
       newPage: z.boolean().optional(),
       sideColumn: z.boolean().optional(),
+      // The column of a night-page section of an adventure (the roles
+      // reminders, clock and truths); absent reads as its default (see
+      // placement.ts). A mark in the text overrides it.
+      column: columnSchema.optional(),
     })
     .optional(),
 });
@@ -86,6 +93,9 @@ const sceneFieldSchema = z.object({
   climax: z.boolean(),
   role: sceneFieldRoleSchema.optional(),
   uid: z.string().min(1).optional(),
+  // The column the scene page prints the field in, for the roles mustHave,
+  // happens, cast and clues; absent reads as its default (see placement.ts).
+  column: columnSchema.optional(),
 });
 
 const calloutSchema = z.object({
@@ -137,7 +147,9 @@ const adventureSchema = z
     callouts: z.array(calloutSchema),
     references: z.object({ marker: label }),
     assets: z.object({ scheme: label }),
-    overview: z.object({ revelations: label }),
+    // The label of the revelations list, and the column the list prints in;
+    // absent reads as its default, the side column.
+    overview: z.object({ revelations: label, column: columnSchema.optional() }),
     tables: z.object({
       reactions: z.object({ firstHeader: label, requirement: requirementSchema }),
       sceneMap: z.object({ id: label }),
@@ -194,8 +206,13 @@ const adventureSchema = z
     }
     template.sections.forEach((section, index) => {
       const { pdf } = section;
-      if (!pdf || !section.role) return;
+      if (!pdf) return;
       const at = ['sections', index, 'pdf'];
+      // Before the return for own sections: they take no column either.
+      if (pdf.column !== undefined && !nightPartOf(section.role)) {
+        ctx.addIssue({ code: 'custom', path: [...at, 'column'], message: "only the night page's parts take a column" });
+      }
+      if (!section.role) return;
       if (section.role === 'appendix') {
         ctx.addIssue({ code: 'custom', path: at, message: 'the appendix is never printed' });
         return;
@@ -204,6 +221,15 @@ const adventureSchema = z
         if (pdf[key] !== undefined) {
           ctx.addIssue({ code: 'custom', path: [...at, key], message: 'only your own sections take this option' });
         }
+      }
+    });
+    template.sceneFields.forEach((field, index) => {
+      if (field.column !== undefined && !scenePartOf(field.role)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sceneFields', index, 'column'],
+          message: 'only the fields the scene page lays out take a column',
+        });
       }
     });
   });
@@ -231,6 +257,9 @@ const campaignSchema = z
       const { pdf } = section;
       if (!pdf) return;
       const at = ['sections', index, 'pdf'];
+      if (pdf.column !== undefined) {
+        ctx.addIssue({ code: 'custom', path: [...at, 'column'], message: 'campaigns have no columns' });
+      }
       if (section.role === 'appendix') {
         ctx.addIssue({ code: 'custom', path: at, message: 'the appendix is never printed' });
         return;

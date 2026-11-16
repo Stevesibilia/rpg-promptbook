@@ -43,6 +43,23 @@ export {
 } from './template/locks.js';
 export { sectionPdf, withPdf, type SectionPdf, type SectionPdfPatch } from './template/pdf.js';
 export {
+  COLUMN_WORDS,
+  columnMark,
+  columnOf,
+  columnOfWord,
+  DEFAULT_COLUMN,
+  NIGHT_PARTS,
+  nightPartOf,
+  SCENE_PARTS,
+  scenePartOf,
+  templateColumn,
+  withColumn,
+  type Column,
+  type NightPart,
+  type PlacedPart,
+  type ScenePart,
+} from './template/placement.js';
+export {
   builtinSystems,
   defineSystems,
   findKind,

@@ -36,7 +36,7 @@ elsewhere is reported, not made.
 
 ## 0. Baseline (brief A)
 
-- [ ] 0.1 Before any change, run the four «prints Sabaoth with the recorded bytes» tests of `packages/layout/test/own-sections.test.ts` (`npx vitest run test/own-sections.test.ts -t "recorded bytes" --reporter=default` in `packages/layout`) and confirm each SHA-256 and size equals the values below, which are the ones at `own-sections.test.ts:111-114`; tick only when they do
+- [x] 0.1 Before any change, run the four «prints Sabaoth with the recorded bytes» tests of `packages/layout/test/own-sections.test.ts` (`npx vitest run test/own-sections.test.ts -t "recorded bytes" --reporter=default` in `packages/layout`) and confirm each SHA-256 and size equals the values below, which are the ones at `own-sections.test.ts:111-114`; tick only when they do
   - `defaultLayoutOptions`: 302113 bytes, `42adc6e28813cb30fb2e983c7a5d31bfc46e69a602437bf4d154b06014357318`
   - `inkSaver`: 298454 bytes, `e785911a3083f997691b678fbde6e81f96b5427d550a4b1afbffc715d71fd52a`
   - `pregenerated: false`: 288029 bytes, `842e47e98588059b2c6d404139e8d8219010ac93dbd2c7a92c57edb5a34be7a2`
@@ -44,12 +44,12 @@ elsewhere is reported, not made.
 
 ## 1. Format: column settings on templates (brief A)
 
-- [ ] 1.1 `template/schema.ts`: `column` on `sectionSchema.pdf`, on `sceneFieldSchema` and on `overview`; the three refusals with their paths and messages (A4). The refusal on sections must also reach own sections, which the `superRefine` skips today (`:197`)
-- [ ] 1.2 New `template/placement.ts` with the types, constants and functions of A4 (`COLUMN_WORDS`, `NIGHT_PARTS`, `SCENE_PARTS`, `DEFAULT_COLUMN`, `columnOfWord`, `columnMark`, `nightPartOf`, `scenePartOf`, `templateColumn`, `columnOf`, `withColumn`); exported from `index.ts`. `ColumnMark` is declared in `model.ts` (group 2 fills it in the parser; declare the type here so `columnOf` compiles)
-- [ ] 1.3 `template/pdf.ts`: `withPdf` keeps `pdf.column`; `sectionPdf` unchanged (A4)
-- [ ] 1.4 `template/changes.ts`: `what` gains `'revelations'`; `sections()` and `fields()` report a `'column'` change when `templateColumn` differs; `templateChanges` compares the revelations' column (A8). `packages/web/src/templates/changes.ts`: add `revelations: 'Revelations list'` to the `what` record so the workspace still compiles (brief C words the rest)
-- [ ] 1.5 Tests: `avventura@1` validates unchanged and has no column key in its JSON; `templateColumn` gives the eight defaults; each refusal with its path (a role section that is not a night part, an own section, a campaign section, a field with another role, a field without a role); `withColumn` stores only what differs and removes the key when set back, for a section, a field and the revelations; `withPdf` after `withColumn` keeps the column and `withColumn` keeps `print`; `columnOf` with a known mark, an unknown mark, no mark; a column change of a section, a field and the revelations in `templateChanges`, and no `'pdf'` change with it
-- [ ] 1.6 Commit `feat(format): column settings on templates`
+- [x] 1.1 `template/schema.ts`: `column` on `sectionSchema.pdf`, on `sceneFieldSchema` and on `overview`; the three refusals with their paths and messages (A4). The refusal on sections must also reach own sections, which the `superRefine` skips today (`:197`)
+- [x] 1.2 New `template/placement.ts` with the types, constants and functions of A4 (`COLUMN_WORDS`, `NIGHT_PARTS`, `SCENE_PARTS`, `DEFAULT_COLUMN`, `columnOfWord`, `columnMark`, `nightPartOf`, `scenePartOf`, `templateColumn`, `columnOf`, `withColumn`); exported from `index.ts`. `ColumnMark` is declared in `model.ts` (group 2 fills it in the parser; declare the type here so `columnOf` compiles)
+- [x] 1.3 `template/pdf.ts`: `withPdf` keeps `pdf.column`; `sectionPdf` unchanged (A4)
+- [x] 1.4 `template/changes.ts`: `what` gains `'revelations'`; `sections()` and `fields()` report a `'column'` change when `templateColumn` differs; `templateChanges` compares the revelations' column (A8). `packages/web/src/templates/changes.ts`: add `revelations: 'Revelations list'` to the `what` record so the workspace still compiles (brief C words the rest)
+- [x] 1.5 Tests: `avventura@1` validates unchanged and has no column key in its JSON; `templateColumn` gives the eight defaults; each refusal with its path (a role section that is not a night part, an own section, a campaign section, a field with another role, a field without a role); `withColumn` stores only what differs and removes the key when set back, for a section, a field and the revelations; `withPdf` after `withColumn` keeps the column and `withColumn` keeps `print`; `columnOf` with a known mark, an unknown mark, no mark; a column change of a section, a field and the revelations in `templateChanges`, and no `'pdf'` change with it
+- [x] 1.6 Commit `feat(format): column settings on templates`
 
 ## 2. Format: column marks in the text (brief A)
 
