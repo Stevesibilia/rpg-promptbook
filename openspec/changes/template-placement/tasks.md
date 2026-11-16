@@ -76,13 +76,13 @@ elsewhere is reported, not made.
 
 ## 5. Baseline of brief B
 
-- [ ] 5.1 First, before any edit, with brief A's commits in: the four Sabaoth tests of 0.1 pass in `packages/layout`. If one fails, stop and report: the cause is in the contract, not in the layout
+- [x] 5.1 First, before any edit, with brief A's commits in: the four Sabaoth tests of 0.1 pass in `packages/layout`. If one fails, stop and report: the cause is in the contract, not in the layout
 
 ## 6. Layout: the placement in the input (brief B)
 
-- [ ] 6.1 `src/input.ts`: `night.main` and `night.side`, `main` and `side` on `LayoutScene`, each from `columnOf` with the part's mark, in the orders of A5 and A6; null parts in neither list; `night.revelations.from` as A6 says; a lone revelations label (no list under it) left out of the overview's blocks (A7); the comments on `LayoutScene` that say «The side column» and «The main column» corrected
-- [ ] 6.2 Tests in `test/input.test.ts`: Sabaoth gives `night.main` `['clock', 'truths']`, `night.side` `['reminders', 'revelations']`, and for a scene with all four fields `main` `['happens', 'clues']`, `side` `['mustHave', 'cast']`; a mark moves one night section each way; `**Rivelazioni** {principale}` moves the revelations; a mark on a field moves it in that scene and not in the next; a template with columns set moves parts with no mark in the text; a mark beats the template; an unknown word leaves the template's column; a section left out or missing is in neither list; the starting document's lone `**Rivelazioni** {laterale}` is not among the overview's blocks and `night.revelations` is null; the side order with the clock and the truths both on the side (reminders, then text order); text order in the main column
-- [ ] 6.3 Commit `feat(layout): placement of the night and scene parts in the input`. The Typst file still reads the old keys, so the PDF is unchanged: run the four Sabaoth tests
+- [x] 6.1 `src/input.ts`: `night.main` and `night.side`, `main` and `side` on `LayoutScene`, each from `columnOf` with the part's mark, in the orders of A5 and A6; null parts in neither list; `night.revelations.from` as A6 says; a lone revelations label (no list under it) left out of the overview's blocks (A7); the comments on `LayoutScene` that say «The side column» and «The main column» corrected
+- [x] 6.2 Tests in `test/input.test.ts`: Sabaoth gives `night.main` `['clock', 'truths']`, `night.side` `['reminders', 'revelations']`, and for a scene with all four fields `main` `['happens', 'clues']`, `side` `['mustHave', 'cast']`; a mark moves one night section each way; `**Rivelazioni** {principale}` moves the revelations; a mark on a field moves it in that scene and not in the next; a template with columns set moves parts with no mark in the text; a mark beats the template; an unknown word leaves the template's column; a section left out or missing is in neither list; the starting document's lone `**Rivelazioni** {laterale}` is not among the overview's blocks and `night.revelations` is null; the side order with the clock and the truths both on the side (reminders, then text order); text order in the main column
+- [x] 6.3 Commit `feat(layout): placement of the night and scene parts in the input`. The Typst file still reads the old keys, so the PDF is unchanged: run the four Sabaoth tests
 
 ## 7. Layout: the Typst template renders by name (brief B)
 
