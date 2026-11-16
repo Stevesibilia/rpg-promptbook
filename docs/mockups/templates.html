@@ -773,7 +773,7 @@ function openUpdate() {
      ${chgList(ch)}
      <label class="chk"><input type="checkbox" checked> <span>Add the new sections' headings to the document<small>«## Atmosfera» after «Verità del mondo», empty</small></span></label>
      <label class="chk"><input type="checkbox" checked> <span>Rename the headings that changed<small>«## Inizio forte» becomes «## Apertura»</small></span></label>
-     <label class="chk"><input type="checkbox"> <span>Write the column marks where the text has none<small>e.g. «## Orologio {principale}»; marks you wrote stay as they are</small></span></label>
+     <label class="chk"><input type="checkbox" checked> <span>Write the column marks where the text has none<small>e.g. «## Orologio {principale}»; marks you wrote stay as they are</small></span></label>
      <p>After the update: <b style="color:var(--amber)">1 new warning</b>, «Prove e regole» missing in S2. Undo puts the document back.</p>`,
     `<button class="tb line" id="dCancel">Not now</button><button class="tb primary" id="dUpd">Update to v3</button>`);
   $('#dCancel').onclick = closeDialog;
@@ -875,14 +875,14 @@ const NOTES = {
   8: ['A project on an older version', [
     'The top bar shows the template and «v3 available»; click it.',
     'Updating changes the rules. The text changes only where ticked: add the new sections\' headings, rename the changed ones. One undo step.',
-    '<b>New (#63)</b>: a third, unticked option writes the column marks on parts that have none. Marks already in the text are never changed by an update.',
+    '<b>New (#63, #65)</b>: a third option, ticked by default, writes the column marks on parts that have none. Marks already in the text are never changed by an update.',
     'The dialog says what the checks will report after the update. Checks never block, so updating is always allowed.']],
   10: ['Marks in the text', [
     'A new project\'s text carries the template\'s columns as marks after the heading or the bold label. To move a part, change the word: <code>{laterale}</code> = side column, <code>{principale}</code> = main column.',
     'A mark on a scene field moves it in that scene only. Here S1 prints «Da non perdere qui» in the main column.',
     'A part with <b>no mark</b> prints where the template says, so documents written before this change print as they do today.',
     'A word the app does not know gets a warning and changes nothing (checks never block).',
-    'The mark stays visible off the active line: it is short and it is a setting you want to see. Palette: «Move to side column» / «Move to main column» writes the mark for the part under the cursor.',
+    'The mark stays visible off the active line: it is short and it is a setting you want to see. Palette: «Move to side column» / «Move to main column» writes the mark for the part under the cursor. «Write column marks» (#65) writes every missing mark of the document at once, from the template; it is listed only while a mark is missing.',
     'Nothing moves by itself: a side box that does not fit still goes to the next page until you move it.']],
   9: ['New project', [
     'The template list follows the category: Adventure and One-shot share the adventure templates, Campaign has its own.',

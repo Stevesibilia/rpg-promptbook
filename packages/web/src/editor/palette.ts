@@ -17,7 +17,10 @@ export type PaletteAction =
   | { kind: 'projects' }
   // The part under the cursor to the other column (template-placement design
   // decision A9).
-  | { kind: 'column'; to: Column };
+  | { kind: 'column'; to: Column }
+  // Every missing column mark of the document, from the template
+  // (write-column-marks design decision D2).
+  | { kind: 'columns' };
 
 export interface PaletteEntry {
   // Unique in the list, stable while the outline stays the same.
@@ -34,10 +37,16 @@ export interface PaletteEntry {
 // under the cursor prints, null when the cursor is in no part that takes a
 // column: the move to the other column comes after the other commands, so
 // the first row stays the same, and is not listed at all
-// without such a part (the palette has no disabled rows).
+// without such a part (the palette has no disabled rows). `marksMissing` lists
+// «Write column marks» right after it, or in its place.
 export function paletteEntries(
   items: readonly OutlineItem[],
-  { checked, printable, column = null }: { checked: boolean; printable: boolean; column?: Column | null },
+  {
+    checked,
+    printable,
+    column = null,
+    marksMissing = false,
+  }: { checked: boolean; printable: boolean; column?: Column | null; marksMissing?: boolean },
 ): PaletteEntry[] {
   const fromTable = (id: Exclude<ShortcutId, 'palette' | 'escape'>): PaletteEntry => ({
     key: `cmd:${id}`,
@@ -53,6 +62,9 @@ export function paletteEntries(
             ? { key: 'column', label: 'Move to side column', keys: null, action: { kind: 'column', to: 'side' } }
             : { key: 'column', label: 'Move to main column', keys: null, action: { kind: 'column', to: 'main' } },
         ];
+  const write: PaletteEntry[] = marksMissing
+    ? [{ key: 'columns', label: 'Write column marks', keys: null, action: { kind: 'columns' } }]
+    : [];
   return [
     fromTable('outline'),
     fromTable('inspector'),
@@ -74,6 +86,7 @@ export function paletteEntries(
     { key: 'licence', label: 'Choose licence…', keys: null, action: { kind: 'licence' } },
     { key: 'projects', label: 'Back to projects', keys: null, action: { kind: 'projects' } },
     ...move,
+    ...write,
     ...items.map((item): PaletteEntry => ({
       key: `go:${item.key}`,
       label: `Go to ${item.id ? `${item.id} ` : ''}${item.name}`,
