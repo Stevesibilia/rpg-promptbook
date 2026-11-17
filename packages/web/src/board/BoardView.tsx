@@ -191,6 +191,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     rows,
     named,
     shown,
+    files: board.files,
     marks: intakeState.marks,
     toast: showToast,
     openViewer: (promptId, fileId) => setViewing({ promptId, fileId }),

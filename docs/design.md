@@ -477,6 +477,17 @@ the prep document:
   project, made on the first Generate. The panel, the badges and the viewer
   say which provider made an image; the viewer links an Atelier image to
   Atelier, and the spending splits each project's cost by provider.
+- **Reference images** (#57, the OpenSpec change `reference-images`): the
+  Generate panel takes up to 3 images already on the same project's board,
+  in any category, the chosen ones listed first, so a character keeps the
+  same face from scene to scene. A prompt remembers its references in the
+  project, synced like its text, and its card names them. They travel with
+  the prompt: through OpenRouter as input images, through Atelier as Atelier
+  images, uploaded there first when they did not come from Atelier. A
+  generated image records its references and the viewer names them. A
+  reference whose image leaves the board drops off the prompt, and the
+  panel says how many did. Claude passes references to `generate_image`
+  with the ids `get_board` lists.
 
 ### Intake by filename
 
