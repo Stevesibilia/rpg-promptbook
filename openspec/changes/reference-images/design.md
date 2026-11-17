@@ -172,4 +172,29 @@ starts. Any change to these goes through the architect.
 
 ## Accepted departures
 
-None yet.
+- D5: `GenerationRun.references` is the resolved list (`ReferenceFile[]`:
+  file id, sha256, mime, size, Atelier id), not ids; `GenerationInput` is as
+  written. A given list is written to the prompt before the byte checks, so
+  a list refused as not synced, wrong type or too large stays remembered.
+- D6: the refusals carry the codes `reference_missing`,
+  `reference_not_synced`, `reference_type`, `reference_too_large`.
+  Duplicates in a list are dropped, not refused. An unreadable reference
+  (also a read error) fails the job with the not-synced sentence.
+- D1: `refs` is one value written whole, so two devices that each add a
+  reference while offline keep only the last write.
+- D8: the retry runs only on Atelier's not-found refusal. A stale
+  `atelierImageId` stays on the file, so each later job with that reference
+  pays one refused start and one upload.
+- D12: at three picks the grid stays open with the others disabled, as the
+  spec says; the mockup closed it. The grid lists images on prompts only; a
+  reference left in the Unmatched tray stays valid and is named by its file
+  name. The words «+ Add an image», «Sent with the prompt and kept on this
+  prompt for next time.» and «No images on this board yet.» come from the
+  mockup.
+- D21, D22: the fakes serve three test-only routes, `GET /api/v1/__last` on
+  both and `DELETE /api/v1/__images/:id` on Atelier, read by the e2e specs
+  through `compose exec`.
+- Brief A's first commit added the new fields to four test helpers in
+  `packages/web/test`, to keep the root typecheck green.
+- `packages/web/src/platform/hooks.ts`: `useStore` passes a server snapshot,
+  so the panel's static-markup tests can draw thumbnails.

@@ -35,5 +35,5 @@
 
 ## 5. Proof (each brief for its part)
 
-- [ ] 5.1 Typecheck, package tests (server with `TEST_DATABASE_URL`), e2e,
+- [x] 5.1 Typecheck, package tests (server with `TEST_DATABASE_URL`), e2e,
       in containers. Sabaoth's four PDF hashes stay as they are.
