@@ -3,9 +3,11 @@ import type { FastifyBaseLogger } from 'fastify';
 import {
   GenerationBusy,
   migrateImagePrompts,
+  readFiles,
   readGenerationJobs,
   readImagePrompts,
   sentPrompt,
+  setPromptReferences,
   startGenerationJob,
   type Author,
   type ImageModelKey,
@@ -17,13 +19,14 @@ import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { AppError } from '../errors.js';
 import type { BlobStore } from '../files/blobs.js';
-import { hasRoom, quotaReached } from '../files/store.js';
+import { hasRoom, linkedFile, quotaReached } from '../files/store.js';
 import { openLiveDocument } from '../live.js';
 import { getProject } from '../projects.js';
 import { NOT_FOUND } from '../routes/projects.js';
 import { getSettings } from '../routes/settings.js';
 import type { Sync } from '../sync.js';
-import { runGenerationJob } from './jobs.js';
+import { runGenerationJob, type ReferenceFile } from './jobs.js';
+import { IMAGE_ERRORS } from './openrouter.js';
 import { readSecret } from './secrets.js';
 
 // One way to start a generation (connector-board-images design decision 2):
@@ -87,6 +90,10 @@ export interface GenerationInput {
   model: ImageModelKey;
   count: number;
   shape: ImageShape;
+  // The reference images' file ids (reference-images design decision 5):
+  // null for the prompt's remembered ones; a list, also an empty one, is
+  // sent as given and remembered on the prompt.
+  references: string[] | null;
   // Who the images are marked as added by (connector-board-images D5).
   addedBy: Author;
 }
@@ -96,6 +103,8 @@ export interface StartedGeneration {
   provider: ImageProvider;
   // When the job started, as written on the document.
   startedAt: string;
+  // The file ids sent as reference images, in order.
+  references: string[];
   // The run's end; it never rejects.
   done: Promise<void>;
 }
@@ -127,6 +136,37 @@ export function serverKeyOf(config: Config): Buffer {
 // The account's file quota in bytes.
 export const quotaBytesOf = (config: Config) => config.filesQuotaGb * GIB;
 
+// D6: a reference's bytes must be on the server, a PNG, JPEG or WebP, at
+// most 20 MB each and 30 MB together.
+const MB = 1024 * 1024;
+export const MAX_REFERENCE_BYTES = 20 * MB;
+export const MAX_REFERENCES_BYTES = 30 * MB;
+const REFERENCE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+const refusal = (code: string, message: string) => new AppError(400, code, message);
+
+// The references' files as the server holds them, checked (D6); nothing is
+// read yet, the job reads the bytes (D7).
+async function referenceFiles(
+  db: Db,
+  blobs: BlobStore,
+  projectId: string,
+  references: readonly { id: string; sha256: string; atelierImageId: string | null }[],
+): Promise<ReferenceFile[]> {
+  const files: ReferenceFile[] = [];
+  for (const ref of references) {
+    const linked = await linkedFile(db, projectId, ref.sha256);
+    if (!linked || !(await blobs.has(ref.sha256))) throw refusal('reference_not_synced', IMAGE_ERRORS.referenceNotSynced);
+    if (!REFERENCE_TYPES.has(linked.mime)) throw refusal('reference_type', IMAGE_ERRORS.referenceType);
+    files.push({ fileId: ref.id, sha256: ref.sha256, mime: linked.mime, size: linked.size, atelierImageId: ref.atelierImageId });
+  }
+  const total = files.reduce((sum, f) => sum + f.size, 0);
+  if (files.some((f) => f.size > MAX_REFERENCE_BYTES) || total > MAX_REFERENCES_BYTES) {
+    throw refusal('reference_too_large', IMAGE_ERRORS.referenceSize);
+  }
+  return files;
+}
+
 // The user's project, not in the bin.
 export async function ownProject(db: Db, userId: string, id: string) {
   const project = await getProject(db, userId, id);
@@ -157,7 +197,7 @@ export async function startImageGeneration(starter: ImageStarter, input: Generat
   const jobId = randomUUID();
   let startedAt = '';
   const live = await openLiveDocument(sync, id, userId);
-  let run: { prompt: string; label: string };
+  let run: { prompt: string; label: string; references: ReferenceFile[] };
   let reserved = false;
   try {
     const found = await live.transact((doc) => {
@@ -166,8 +206,21 @@ export async function startImageGeneration(starter: ImageStarter, input: Generat
       const prompt = prompts.find((p) => p.id === promptId);
       if (!prompt) throw new AppError(404, 'prompt_not_found', 'No image prompt with that id.');
       if (sentPrompt(prompt.prompt).text === '') throw new AppError(400, 'prompt_empty', 'The prompt has no text to send.');
-      return { prompt: prompt.prompt, label: labelOf(prompt, prompts) };
+      // D5: a list given is used as it is and remembered on the prompt; one
+      // naming a file that is not an image of the project is refused first.
+      const images = new Map(readFiles(doc).flatMap((f) => (f.kind === 'image' ? [[f.id, f] as const] : [])));
+      let ids = prompt.references;
+      if (input.references !== null) {
+        if (input.references.some((ref) => !images.has(ref))) throw refusal('reference_missing', IMAGE_ERRORS.referenceGone);
+        ids = setPromptReferences(doc, promptId, input.references, input.addedBy);
+      }
+      const references = ids.map((ref) => {
+        const file = images.get(ref)!;
+        return { id: file.id, sha256: file.sha256, atelierImageId: file.atelierImageId };
+      });
+      return { prompt: prompt.prompt, label: labelOf(prompt, prompts), references };
     });
+    const references = await referenceFiles(db, blobs, id, found.references);
     const running = () => readGenerationJobs(live.doc).some((j) => j.promptId === promptId && j.finishedAt === null);
     if (running()) throw busy();
     // 6b. Counted with the requests between this check and their start,
@@ -190,13 +243,14 @@ export async function startImageGeneration(starter: ImageStarter, input: Generat
           count: input.count,
           by: userId,
           startedAt,
+          references: references.map((r) => r.fileId),
         });
       } catch (error) {
         if (error instanceof GenerationBusy) throw busy();
         throw error;
       }
     });
-    run = found;
+    run = { ...found, references };
   } finally {
     await live.close();
     if (reserved) {
@@ -234,11 +288,12 @@ export async function startImageGeneration(starter: ImageStarter, input: Generat
       atelierUrl: config.atelierUrl,
       projectTitle: project.title,
       addedBy: input.addedBy,
+      references: run.references,
       stop: controller.signal,
     },
   )
     .catch((error: unknown) => log.error({ jobId, err: error }, 'A generation job failed'))
     .finally(() => runs.delete(jobId));
   runs.set(jobId, { done, userId, provider, stop: (reason) => controller.abort(reason) });
-  return { jobId, provider, startedAt, done };
+  return { jobId, provider, startedAt, references: run.references.map((r) => r.fileId), done };
 }

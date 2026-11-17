@@ -11,15 +11,15 @@
 
 ## 2. Server (brief A)
 
-- [ ] 2.1 Generate body and `startImageGeneration`: resolve, refuse, write
+- [x] 2.1 Generate body and `startImageGeneration`: resolve, refuse, write
       to the prompt (D5, D6); tests for each refusal and for `null` against
       a list.
-- [ ] 2.2 OpenRouter client and job (D7), fake (D21), tests.
-- [ ] 2.3 Atelier client `uploadImage`, job, retry (D8), both fakes (D22),
+- [x] 2.2 OpenRouter client and job (D7), fake (D21), tests.
+- [x] 2.3 Atelier client `uploadImage`, job, retry (D8), both fakes (D22),
       tests.
-- [ ] 2.4 `land()` and the job record the references (D9); migration 010
+- [x] 2.4 `land()` and the job record the references (D9); migration 010
       (D10).
-- [ ] 2.5 Connector: `get_board` and `generate_image` (D19, D20), tests.
+- [x] 2.5 Connector: `get_board` and `generate_image` (D19, D20), tests.
 
 ## 3. Web (brief B)
 

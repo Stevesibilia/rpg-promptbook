@@ -61,6 +61,7 @@ describe('migrations', () => {
       '007_document_templates.sql',
       '008_image_generation.sql',
       '009_atelier.sql',
+      '010_reference_images.sql',
     ]);
 
     const user = await findUserByUsername(old, 'steve');
@@ -183,5 +184,18 @@ describe('migrations', () => {
     await expect(collection()).rejects.toMatchObject({ code: '23505' });
     await old.query('delete from projects where id = $1', [project!.id]);
     expect(await old.query('select 1 from atelier_collections')).toEqual([]);
+  });
+
+  it('010 reads older generations as made without references, and refuses a negative count', async () => {
+    const user = await findUserByUsername(old, 'steve');
+    const generation = (count?: number) =>
+      old.query<{ reference_count: number }>(
+        `insert into image_generations (user_id, prompt_id, model, ok${count !== undefined ? ', reference_count' : ''})
+         values ($1, 'p', 'gpt', true${count !== undefined ? ', $2' : ''}) returning reference_count`,
+        count !== undefined ? [user!.id, count] : [user!.id],
+      );
+    expect(await generation()).toEqual([{ reference_count: 0 }]);
+    expect(await generation(3)).toEqual([{ reference_count: 3 }]);
+    await expect(generation(-1)).rejects.toMatchObject({ code: '23514' });
   });
 });

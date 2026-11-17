@@ -9,6 +9,7 @@ import {
   imageModelKeys,
   LIMITS,
   matchKey,
+  MAX_REFERENCES,
   migratedView,
   migrateImagePrompts,
   readDocumentBoard,
@@ -84,6 +85,10 @@ const itemOut = (row: PromptRow, jobs: Jobs) => {
     status: row.status,
     files: row.images.length,
     chosen: row.images.find((f) => f.id === row.chosen)?.name ?? null,
+    // reference-images design decision 19: its images by id, and the ids
+    // of its reference images.
+    images: row.images.map((f) => ({ id: f.id, name: f.name, chosen: f.id === row.chosen, generated: f.generatedModel !== null })),
+    references: prompt.references,
     generating: own.some((j) => j.finishedAt === null),
     generationError: own.filter((j) => j.finishedAt !== null && j.error !== null).at(-1)?.error ?? null,
   };
@@ -364,7 +369,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'generate_image',
-    'Generate 1 to 4 images on an image prompt, through the image provider the user chose in Settings (Atelier or OpenRouter), as the board’s Generate button does. This spends the user’s money: generate when the user asks for images, not to try a prompt out. Model, count and shape default to the user’s settings and the prompt’s own ratio. The call waits up to waitSeconds for the images; when it answers state running, read get_board later: the prompt says generating until the job ends, then its files count has grown or generationError says why not. The images land on the prompt as received.',
+    'Generate 1 to 4 images on an image prompt, through the image provider the user chose in Settings (Atelier or OpenRouter), as the board’s Generate button does. This spends the user’s money: generate when the user asks for images, not to try a prompt out. Model, count and shape default to the user’s settings and the prompt’s own ratio. The call waits up to waitSeconds for the images; when it answers state running, read get_board later: the prompt says generating until the job ends, then its files count has grown or generationError says why not. The images land on the prompt as received. To keep a character or a place the same, pass up to 3 reference images in references: image ids from get_board (each prompt’s images[].id, any prompt of this project); a list you pass is remembered on the prompt and sent again when references is left out.',
     { title: 'Generate images', readOnly: false, idempotent: false, openWorld: true },
     {
       projectId,
@@ -376,6 +381,13 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         .optional()
         .describe('16:9, 3:2, 1:1 or 2:3; from the prompt’s --ar, or its category’s default, when left out.'),
       waitSeconds: z.number().min(0).max(50).optional().describe('How long to wait for the images, 0 to 50 seconds; 45 when left out.'),
+      references: z
+        .array(z.string().min(1).max(200))
+        .max(MAX_REFERENCES)
+        .optional()
+        .describe(
+          'Up to 3 reference images, to keep a face or a place the same: ids from the images of any prompt in get_board (images[].id), in this project. Left out, the prompt’s own references (references in get_board) are sent. Given, also an empty list, they are sent and remembered on the prompt.',
+        ),
     },
     async (args) => {
       try {
@@ -395,6 +407,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     count?: number | undefined;
     shape?: ImageShape | undefined;
     waitSeconds?: number | undefined;
+    references?: string[] | undefined;
   }) {
     const project = boardable(await projectOf(args.projectId));
     const prompt = readImagePrompts(migratedView(await docOf(project))).find((p) => p.id === args.promptId);
@@ -410,6 +423,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       model,
       count,
       shape,
+      references: args.references ?? null,
       addedBy: 'claude',
     });
     let timer: NodeJS.Timeout | undefined;
@@ -430,6 +444,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       model,
       count,
       shape,
+      references: started.references,
       state: finished ? 'finished' : 'running',
       images,
       failed: job?.failed ?? 0,
