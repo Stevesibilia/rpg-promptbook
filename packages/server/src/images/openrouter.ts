@@ -73,9 +73,9 @@ export interface ImageRequest {
   model: string;
   prompt: string;
   aspectRatio: string;
-  // The reference images (reference-images design decision 7), sent as
-  // input references, each a data URL; none is [].
-  references: { mime: string; bytes: Buffer }[];
+  // The reference images (reference-images design decision 7), each a
+  // data URL, sent as input references; none is [].
+  references: string[];
 }
 
 export type ImageResult = { ok: true; bytes: Buffer; cost: number | null } | { ok: false; error: string };
@@ -142,10 +142,7 @@ export async function generateImage(
         // the real API; only when there is one.
         ...(request.references.length > 0
           ? {
-              input_references: request.references.map((ref) => ({
-                type: 'image_url',
-                image_url: { url: `data:${ref.mime};base64,${ref.bytes.toString('base64')}` },
-              })),
+              input_references: request.references.map((url) => ({ type: 'image_url', image_url: { url } })),
             }
           : {}),
       }),

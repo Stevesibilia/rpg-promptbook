@@ -40,6 +40,8 @@ const SENTENCES = {
   tooManyRunning: 'Three generations are already running. Wait for one to finish.',
   noCollection: 'Choose a collection that exists.',
   invalidToken: 'The API token is missing, unknown, revoked or expired.',
+  // ATELIER_REFERENCE_NOT_FOUND in packages/server/src/images/atelier.ts:
+  // the server retries on this sentence only.
   referenceNotFound: 'A reference image was not found. Remove it and try again.',
   wrongType: 'Only PNG, JPEG or WebP images can be references.',
   tooLarge: 'A reference image can be at most 20 MB.',

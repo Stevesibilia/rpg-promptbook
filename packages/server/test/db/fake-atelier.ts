@@ -2,11 +2,13 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { crc32, deflateSync } from 'node:zlib';
+import { ATELIER_REFERENCE_NOT_FOUND } from '../../src/images/atelier.js';
 
 // A fake Atelier for the tests, the end-to-end stack and the owner's preview
 // (atelier-image-provider design decision 15), shaped like Atelier's
-// /api/v1 as its v0.8.0 plan describes it (contract D1). Built-ins only and
-// erasable TypeScript only, so Node runs it with its types stripped.
+// /api/v1 as its v0.8.0 plan describes it (contract D1). Erasable
+// TypeScript only; besides built-ins it imports only the reference
+// sentence from the Atelier client, which e2e/atelier/serve.mjs copies.
 //
 // Tokens, as bearer tokens:
 //   atl_pat_good   write, named "promptbook", expires 2027-11-12
@@ -102,7 +104,7 @@ export const ATELIER_SENTENCES = {
   tooManyRunning: 'Three generations are already running. Wait for one to finish.',
   noCollection: 'Choose a collection that exists.',
   invalidToken: 'The API token is missing, unknown, revoked or expired.',
-  referenceNotFound: 'A reference image was not found. Remove it and try again.',
+  referenceNotFound: ATELIER_REFERENCE_NOT_FOUND,
   wrongType: 'Only PNG, JPEG or WebP images can be references.',
   tooLarge: 'A reference image can be at most 20 MB.',
 } as const;

@@ -27,6 +27,11 @@ export class AtelierError extends Error {
   }
 }
 
+// Atelier's refusal of a reference id it does not have, with field
+// referenceIds (reference-images design decision 8): the one refusal of the
+// references that an upload can mend. The fakes answer it too.
+export const ATELIER_REFERENCE_NOT_FOUND = 'A reference image was not found. Remove it and try again.';
+
 export const ATELIER_ERRORS = {
   unreachable: 'Atelier did not answer.',
   refused: (status: number) => `Atelier refused the request (${status}).`,

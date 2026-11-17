@@ -27,6 +27,7 @@ import { getProject } from '../projects.js';
 import type { Sync } from '../sync.js';
 import {
   ATELIER_ERRORS,
+  ATELIER_REFERENCE_NOT_FOUND,
   AtelierError,
   downloadImage,
   ensureCollection,
@@ -36,7 +37,7 @@ import {
   type AtelierImage,
   type GenerationState,
 } from './atelier.js';
-import { generateImage, IMAGE_ERRORS, type ImageRequest } from './openrouter.js';
+import { generateImage, IMAGE_ERRORS } from './openrouter.js';
 
 // One generation job (board-image-generation design decision 9): `count`
 // OpenRouter calls at once, each image stored, linked, measured and added to
@@ -333,7 +334,7 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     return { ok: false, error: sentence, billed: cost !== null || mayBeBilled };
   }
 
-  async function one(inputs: ImageRequest['references']): Promise<Outcome> {
+  async function one(inputs: string[]): Promise<Outcome> {
     let cost: number | null = null;
     let sha256 = '';
     try {
@@ -410,6 +411,21 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     return id;
   }
 
+  // A reference's bytes for the job. Bytes the store no longer has, or
+  // cannot read, fail the image with the reference sentence before any
+  // provider is asked (reference-images design decisions 7 and 8).
+  async function referenceBytes(ref: ReferenceFile): Promise<Buffer> {
+    let bytes: Buffer | null;
+    try {
+      bytes = await readReference(deps.blobs, ref);
+    } catch (error) {
+      log.error({ jobId: run.jobId, err: error }, 'Could not read a reference image');
+      bytes = null;
+    }
+    if (bytes === null) throw new ImageFailed(IMAGE_ERRORS.referenceNotSynced);
+    return bytes;
+  }
+
   // reference-images design decision 8: each reference as an Atelier image,
   // the one it came from when it has one, else its bytes uploaded, each
   // file at most once per job. `upload` uploads every file, the ones from
@@ -424,8 +440,7 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       }
       let id = uploaded.get(ref.fileId);
       if (id === undefined) {
-        const bytes = await readReference(deps.blobs, ref);
-        if (bytes === null) throw new ImageFailed(IMAGE_ERRORS.referenceNotSynced);
+        const bytes = await referenceBytes(ref);
         id = await uploadImage(run.atelierUrl!, run.key, { bytes, mime: ref.mime }, { signal: run.stop });
         uploaded.set(ref.fileId, id);
       }
@@ -435,8 +450,9 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
   }
 
   // D10, step 1: the generation started; a collection Atelier no longer has
-  // is made again, once; refused reference ids, when some came from Atelier
-  // (deleted there since), are uploaded and sent again, once (D8).
+  // is made again, once; when Atelier does not find a reference id that came
+  // from it (deleted there since), every file is uploaded and sent again,
+  // once (D8). Any other refusal of the references is shown at once.
   async function start(): Promise<string> {
     const body = (collectionId: string, refs: string[]) => ({
       prompt: text,
@@ -447,17 +463,19 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
       ...(refs.length > 0 ? { referenceIds: refs } : {}),
     });
     let refs = await referenceIds(false);
+    let collectionId = await collection(false);
     let freshCollection = false;
     let uploadedAll = !run.references.some((r) => r.atelierImageId !== null);
     for (;;) {
       try {
-        return (await startGeneration(run.atelierUrl!, run.key, body(await collection(freshCollection), refs), { signal: run.stop })).id;
+        return (await startGeneration(run.atelierUrl!, run.key, body(collectionId, refs), { signal: run.stop })).id;
       } catch (error) {
         if (!(error instanceof AtelierError) || error.status !== 400) throw error;
         if (error.field === 'collectionId' && !freshCollection) {
           await db.query('delete from atelier_collections where user_id = $1 and project_id = $2', [run.userId, run.projectId]);
+          collectionId = await collection(true);
           freshCollection = true;
-        } else if (error.field === 'referenceIds' && !uploadedAll) {
+        } else if (error.field === 'referenceIds' && error.message === ATELIER_REFERENCE_NOT_FOUND && !uploadedAll) {
           refs = await referenceIds(true);
           uploadedAll = true;
         } else {
@@ -549,18 +567,19 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
   }
 
   // D7: the references' bytes, read once for every call of the job. Bytes
-  // gone since the start fail every image, nothing asked of OpenRouter.
+  // gone since the start, or unreadable, fail every image, nothing asked of
+  // OpenRouter.
   async function viaOpenRouter(): Promise<Outcome[]> {
-    const inputs: ImageRequest['references'] = [];
-    for (const ref of run.references) {
-      const bytes = await readReference(deps.blobs, ref);
-      if (bytes === null) {
-        first = IMAGE_ERRORS.referenceNotSynced;
-        const outcomes: Outcome[] = [];
-        for (let i = 0; i < run.count; i++) outcomes.push(await failImage(IMAGE_ERRORS.referenceNotSynced, null));
-        return outcomes;
-      }
-      inputs.push({ mime: ref.mime, bytes });
+    // The data URLs, built once and sent by every call.
+    const inputs: string[] = [];
+    try {
+      for (const ref of run.references) inputs.push(`data:${ref.mime};base64,${(await referenceBytes(ref)).toString('base64')}`);
+    } catch (error) {
+      if (!(error instanceof ImageFailed)) throw error;
+      first = error.message;
+      const outcomes: Outcome[] = [];
+      for (let i = 0; i < run.count; i++) outcomes.push(await failImage(error.message, null));
+      return outcomes;
     }
     return Promise.all(
       Array.from({ length: run.count }, () =>

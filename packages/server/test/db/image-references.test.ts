@@ -12,12 +12,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type * as Y from 'yjs';
 import type { User } from '../../src/accounts/users.js';
+import { openBlobStore, type BlobStore } from '../../src/files/blobs.js';
 import { IMAGE_ERRORS } from '../../src/images/openrouter.js';
 import { setDocumentText, withLiveDocument } from '../../src/live.js';
 import { loadProjectDoc } from '../../src/projects.js';
 import { ATELIER_SENTENCES, FAKE_ATELIER_TOKENS, startFakeAtelier, type FakeAtelier } from './fake-atelier.js';
 import { jpeg, png, startFakeOpenRouter, type FakeOpenRouter } from './fake-openrouter.js';
-import { db, ORIGIN, signedIn, startApp, steve } from './helpers.js';
+import { db, ORIGIN, signedIn, startApp, steve, tempDataDir } from './helpers.js';
 
 // Reference images sent with a generation (reference-images D5 to D10, D21,
 // D22), through the fake OpenRouter and the fake Atelier.
@@ -48,9 +49,29 @@ interface Setup {
   npc: string;
 }
 
-async function setup(provider: 'openrouter' | 'atelier' = 'openrouter'): Promise<Setup> {
+// A file store whose get fails, as a disk error would, for the hashes in
+// `failing`; everything else goes to the real store in `dataDir`.
+async function failingStore(dataDir: string, failing: Set<string>): Promise<BlobStore> {
+  const real = await openBlobStore(dataDir);
+  return new Proxy(real, {
+    get(target, name) {
+      if (name === 'get') {
+        return (sha256: string, range?: { start: number; end: number }) =>
+          failing.has(sha256) ? Promise.reject(new Error('EIO: i/o error, read')) : target.get(sha256, range);
+      }
+      const value = Reflect.get(target, name) as unknown;
+      return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+}
+
+async function setup(provider: 'openrouter' | 'atelier' = 'openrouter', failing: Set<string> | null = null): Promise<Setup> {
   const user = await steve();
-  const app = await startApp({ openRouterBaseUrl: openRouter.baseUrl, atelierUrl: atelier.url }, { atelierPollMs: 10 });
+  const dataDir = tempDataDir();
+  const app = await startApp(
+    { openRouterBaseUrl: openRouter.baseUrl, atelierUrl: atelier.url, dataDir },
+    { atelierPollMs: 10, ...(failing ? { blobs: await failingStore(dataDir, failing) } : {}) },
+  );
   const headers = { cookie: `pb_session=${await signedIn(app)}`, origin: ORIGIN };
   const created = await app.inject({ method: 'POST', url: '/api/projects', headers, payload: { category: 'adventure', title: 'Il faro spento' } });
   const id = created.json().project.id as string;
@@ -92,19 +113,24 @@ async function boardImage(
   s: Setup,
   promptId: string | null,
   bytes: Buffer,
-  { upload = true, mime = 'image/png', extra = {} }: { upload?: boolean; mime?: string; extra?: Partial<NewFile> } = {},
+  {
+    upload = true,
+    mime = 'image/png',
+    extra = {},
+    project = s.id,
+  }: { upload?: boolean; mime?: string; extra?: Partial<NewFile>; project?: string } = {},
 ): Promise<string> {
   const sha256 = sha(bytes);
   if (upload) {
     const put = await s.app.inject({
       method: 'PUT',
-      url: `/api/projects/${s.id}/files/${sha256}`,
+      url: `/api/projects/${project}/files/${sha256}`,
       headers: { ...s.headers, 'content-type': 'application/octet-stream' },
       payload: bytes,
     });
     expect(put.statusCode, put.body).toBe(201);
   }
-  return withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+  return withLiveDocument(s.app.sync, project, s.user.id, (doc) => {
     const file: NewFile = {
       sha256,
       thumbSha256: null,
@@ -263,7 +289,24 @@ describe('the references’ refusals (D6)', () => {
         },
       ]).added[0]!.id,
     );
-    for (const ref of ['nope', track]) await expectRefused(s, { references: [ref] }, 'reference_missing', IMAGE_ERRORS.referenceGone);
+    // An image of another project of the same account, its bytes there.
+    const other = (await s.app.inject({ method: 'POST', url: '/api/projects', headers: s.headers, payload: { category: 'one-shot', title: 'Altrove' } })).json()
+      .project.id as string;
+    const elsewhere = await boardImage(s, null, png(120, 120, 912), { project: other });
+    for (const ref of ['nope', track, elsewhere]) {
+      await expectRefused(s, { references: [ref] }, 'reference_missing', IMAGE_ERRORS.referenceGone);
+    }
+  });
+
+  it('refuses an image of this board whose bytes are linked only to another project', async () => {
+    const s = await setup();
+    const other = (await s.app.inject({ method: 'POST', url: '/api/projects', headers: s.headers, payload: { category: 'one-shot', title: 'Altrove' } })).json()
+      .project.id as string;
+    const bytes = png(120, 120, 913);
+    await boardImage(s, null, bytes, { project: other });
+    // The same bytes listed on this board, never sent to this project.
+    const copied = await boardImage(s, s.npc, bytes, { upload: false });
+    await expectRefused(s, { references: [copied] }, 'reference_not_synced', IMAGE_ERRORS.referenceNotSynced);
   });
 
   it('refuses an image whose bytes have not reached the server, and leaves the remembered list as it was', async () => {
@@ -367,23 +410,48 @@ describe('references through Atelier (D8)', () => {
     expect(await generatedOn(s, s.scene)).toEqual([]);
   });
 
-  it('starts again once with the files uploaded on any refusal of reference ids that came from Atelier', async () => {
+  it('shows any other refusal of the references at once, uploading nothing', async () => {
     const s = await setup('atelier');
     const bytes = png(120, 120, 924);
     const atelierId = atelier.addImage(bytes);
     const ref = await boardImage(s, s.npc, bytes, { extra: { atelierImageId: atelierId } });
     // A first job makes the collection, so the next job's first call is its start.
     await generated(s, s.scene, { count: 1 });
-    const refusal = { error: 'invalid_request', message: 'GPT Image 2.6 Sunburst takes at most 2 reference images.', field: 'referenceIds' };
-    atelier.answerNext(400, refusal);
-    const calls = atelier.calls.length;
-    const response = await generate(s, s.scene, { count: 1, references: [ref] });
-    expect(response.statusCode).toBe(202);
-    await s.app.generationRuns.get(response.json().jobId)?.done;
-    const after = atelier.calls.slice(calls).map((c) => c.path);
-    expect(after.slice(0, 3)).toEqual(['/api/v1/generations', '/api/v1/uploads', '/api/v1/generations']);
-    expect(atelier.uploads()).toBe(1);
+    for (const message of ['GPT Image 2.6 Sunburst takes at most 2 reference images.', 'GPT Image 2.6 Sunburst takes no reference images.']) {
+      atelier.answerNext(400, { error: 'invalid_request', message, field: 'referenceIds' });
+      const calls = atelier.calls.length;
+      const response = await generate(s, s.scene, { count: 1, references: [ref] });
+      expect(response.statusCode).toBe(202);
+      await s.app.generationRuns.get(response.json().jobId)?.done;
+      expect(atelier.calls.slice(calls).map((c) => c.path)).toEqual(['/api/v1/generations']);
+      expect(readGenerationJobs(await stored(s.id))[0]!.error).toBe(`Atelier refused: ${message} Nothing was charged.`);
+    }
+    expect(atelier.uploads()).toBe(0);
   });
+});
+
+describe('a reference the file store cannot read', () => {
+  // The job ends with the reference sentence on both paths, nothing asked of
+  // the provider, and the prompt is free for the next job.
+  for (const provider of ['openrouter', 'atelier'] as const) {
+    it(`fails every image through ${provider}, nothing charged, the job finished`, async () => {
+      const failing = new Set<string>();
+      const s = await setup(provider, failing);
+      const bytes = png(120, 120, 940);
+      const ref = await boardImage(s, s.npc, bytes);
+      failing.add(sha(bytes));
+      await generated(s, s.scene, { count: 2, references: [ref] });
+      const [job] = readGenerationJobs(await stored(s.id));
+      expect(job).toMatchObject({ failed: 2, done: 0, error: `${IMAGE_ERRORS.referenceNotSynced} Nothing was charged.` });
+      expect(job!.finishedAt).not.toBeNull();
+      expect(imageCalls()).toEqual([]);
+      expect(atelier.calls.filter((c) => c.path === '/api/v1/uploads' || c.path === '/api/v1/generations')).toEqual([]);
+      // Readable again: the next job runs.
+      failing.clear();
+      await generated(s, s.scene, { count: 1, references: [ref] });
+      expect(await generatedOn(s, s.scene)).toHaveLength(1);
+    });
+  }
 });
 
 describe('the fakes’ test routes (D21, D22)', () => {
