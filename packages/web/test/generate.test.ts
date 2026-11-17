@@ -59,6 +59,7 @@ const file = (patch: Partial<FileEntry> = {}): FileEntry => ({
   cost: 0.041,
   generatedVia: 'openrouter',
   atelierImageId: null,
+  references: null,
   ...patch,
 });
 
@@ -74,6 +75,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   by: 'u1',
   error: null,
   finishedAt: null,
+  references: [],
   ...patch,
 });
 

@@ -29,6 +29,8 @@ const entry = (patch: Partial<ImagePromptEntry> = {}): ImagePromptEntry => ({
   at: '',
   order: 0,
   chosenFileId: null,
+  references: [],
+  missingReferences: 0,
   ...patch,
 });
 
@@ -61,6 +63,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   by: 'u1',
   error: null,
   finishedAt: null,
+  references: [],
   ...patch,
 });
 

@@ -13,6 +13,7 @@ import {
   duplicateTitles,
   fileHashes,
   LIMITS,
+  MAX_REFERENCES,
   namedPrompts,
   readBoard,
   readDocumentBoard,
@@ -23,6 +24,7 @@ import {
   setFileThumb,
   setFirstScenePrompt,
   setMusicPrompt,
+  setPromptReferences,
   unmatchedFiles,
   updateImagePrompt,
   type NewFile,
@@ -187,6 +189,8 @@ describe('image prompts', () => {
       at: AT,
       order: 1,
       chosenFileId: null,
+      references: [],
+      missingReferences: 0,
     });
     expect(anselmo).toMatchObject({ category: 'npc', sceneId: null, name: 'Padre Anselmo', order: 1 });
     expect(readImagePrompts(doc).map((p) => p.id).sort()).toEqual([s1.id, anselmo.id, pc.id, letter.id].sort());
@@ -942,5 +946,163 @@ describe('generated images (board-image-generation D9, D12)', () => {
     const [img] = addFiles(doc, [image(12, { thumbSha256: null })]).added;
     expect(() => setFileThumb(doc, img!.id, 'ABC')).toThrow(/thumbSha256/);
     expect(readFiles(doc).every((f) => f.thumbSha256 === null)).toBe(true);
+  });
+});
+
+describe('reference images (reference-images D1 to D3)', () => {
+  const generated = (n: number, promptId: string, overrides: Partial<NewFile> = {}) =>
+    image(n, { thumbSha256: null, promptId, matchedBy: 'generated', generatedModel: 'gpt', cost: 0.041, ...overrides });
+  // A board with a scene prompt, an NPC prompt and their images, plus a track.
+  function board() {
+    const doc = project({ document: APPENDIX });
+    const p = scene(doc, 'S2', 'a ruined office');
+    const anselmo = npc(doc, 'Padre Anselmo', 'portrait of an old priest');
+    const [a, b, c, d] = addFiles(doc, [
+      image(1, { promptId: anselmo.id }),
+      image(2, { promptId: p.id }),
+      image(3, { promptId: anselmo.id }),
+      image(4),
+    ]).added;
+    const [audio] = addFiles(doc, [track(5)]).added;
+    return { doc, p, anselmo, ids: [a!.id, b!.id, c!.id, d!.id], track: audio!.id };
+  }
+  const refsOf = (doc: Y.Doc, id: string) => readImagePrompts(doc).find((p) => p.id === id)!;
+
+  it('remembers the references in one transaction under the flat key refs, in the order given', () => {
+    const { doc, p, ids } = board();
+    let transactions = 0;
+    doc.on('afterTransaction', () => transactions++);
+    expect(setPromptReferences(doc, p.id, [ids[2]!, ids[0]!], 'user')).toEqual([ids[2], ids[0]]);
+    expect(transactions).toBe(1);
+    expect(promptsMap(doc).get(`${p.id}/refs`)).toEqual([ids[2], ids[0]]);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [ids[2], ids[0]], missingReferences: 0 });
+    // A new prompt has none.
+    expect(refsOf(doc, readImagePrompts(doc).find((q) => q.name === 'Padre Anselmo')!.id)).toMatchObject({
+      references: [],
+      missingReferences: 0,
+    });
+  });
+
+  it('takes an image of the same prompt, an unmatched image and an image of any category', () => {
+    const { doc, p, ids } = board();
+    // ids[1] is the prompt's own image, ids[3] waits in the tray, ids[0] is an NPC's.
+    expect(setPromptReferences(doc, p.id, [ids[1]!, ids[3]!, ids[0]!], 'claude')).toEqual([ids[1], ids[3], ids[0]]);
+  });
+
+  it(`stores each id once, only image files of the project, the first ${MAX_REFERENCES}`, () => {
+    const { doc, p, ids, track: trackId } = board();
+    expect(MAX_REFERENCES).toBe(3);
+    const stored = setPromptReferences(doc, p.id, [ids[0]!, ids[0]!, 'gone', trackId, ids[1]!, ids[2]!, ids[3]!], 'user');
+    expect(stored).toEqual([ids[0], ids[1], ids[2]]);
+    expect(promptsMap(doc).get(`${p.id}/refs`)).toEqual(stored);
+  });
+
+  it('deletes the key on an empty list, or one with no valid id, and writes nothing when unchanged', () => {
+    const { doc, p, ids } = board();
+    setPromptReferences(doc, p.id, [ids[0]!], 'user');
+    let transactions = 0;
+    let changed = 0;
+    doc.on('afterTransaction', (tr: Y.Transaction) => {
+      transactions++;
+      if (tr.changed.size > 0) changed++;
+    });
+    setPromptReferences(doc, p.id, [ids[0]!], 'user');
+    expect([transactions, changed]).toEqual([1, 0]);
+    expect(setPromptReferences(doc, p.id, [], 'user')).toEqual([]);
+    expect(promptsMap(doc).has(`${p.id}/refs`)).toBe(false);
+    setPromptReferences(doc, p.id, [ids[0]!], 'user');
+    expect(setPromptReferences(doc, p.id, ['gone'], 'user')).toEqual([]);
+    expect(promptsMap(doc).has(`${p.id}/refs`)).toBe(false);
+  });
+
+  it('drops a reference whose file is removed, counts it as missing, and cleans it on the next write', () => {
+    const { doc, p, ids } = board();
+    setPromptReferences(doc, p.id, [ids[0]!, ids[1]!], 'user');
+    removeFile(doc, ids[0]!);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [ids[1]], missingReferences: 1 });
+    // The stored list keeps it until a write.
+    expect(promptsMap(doc).get(`${p.id}/refs`)).toEqual([ids[0], ids[1]]);
+    setPromptReferences(doc, p.id, [...refsOf(doc, p.id).references, ids[2]!], 'user');
+    expect(promptsMap(doc).get(`${p.id}/refs`)).toEqual([ids[1], ids[2]]);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [ids[1], ids[2]], missingReferences: 0 });
+  });
+
+  it('reads hostile stored values: not a list, non-ids, duplicates, more than the cap', () => {
+    const { doc, p, ids } = board();
+    const key = `${p.id}/refs`;
+    promptsMap(doc).set(key, 'nonsense');
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [], missingReferences: 0 });
+    promptsMap(doc).set(key, [42, null, '', 'a/b', ids[0]!, ids[0]!, 'gone', 'gone']);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [ids[0]], missingReferences: 1 });
+    promptsMap(doc).set(key, [ids[3]!, ids[2]!, ids[1]!, ids[0]!]);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [ids[3], ids[2], ids[1]], missingReferences: 0 });
+  });
+
+  it('refuses a bad prompt, a removed one, a list that is not one, an unknown author', () => {
+    const { doc, p, ids } = board();
+    expect(() => setPromptReferences(doc, 'nope', [ids[0]!], 'user')).toThrow(/No image prompt nope/);
+    expect(() => setPromptReferences(doc, 'a/b', [ids[0]!], 'user')).toThrow(/promptId/);
+    expect(() => setPromptReferences(doc, p.id, 'x' as unknown as string[], 'user')).toThrow(/references/);
+    expect(() => setPromptReferences(doc, p.id, [7 as unknown as string], 'user')).toThrow(/references/);
+    expect(() => setPromptReferences(doc, p.id, [ids[0]!], 'robot' as 'user')).toThrow(/by/);
+    removeImagePrompt(doc, p.id);
+    expect(() => setPromptReferences(doc, p.id, [ids[0]!], 'user')).toThrow(/No image prompt/);
+  });
+
+  it('syncs to another replica and goes with its prompt', () => {
+    const { doc, p, ids } = board();
+    const other = replica(doc);
+    setPromptReferences(doc, p.id, [ids[0]!], 'user');
+    sync(doc, other);
+    expect(refsOf(other, p.id).references).toEqual([ids[0]]);
+    removeImagePrompt(other, p.id);
+    expect(promptsMap(other).has(`${p.id}/refs`)).toBe(false);
+  });
+
+  it('records the references of a generated image, in its map only when there are some', () => {
+    const { doc, p, ids } = board();
+    const { added } = addFiles(doc, [generated(10, p.id, { references: [ids[0]!, ids[2]!] }), generated(11, p.id, { references: [] }), generated(12, p.id)]);
+    expect(added.map((f) => f.references)).toEqual([[ids[0], ids[2]], null, null]);
+    const read = (n: number) => readFiles(doc).find((f) => f.sha256 === hash(n))!;
+    expect([read(10).references, read(11).references, read(12).references]).toEqual([[ids[0], ids[2]], null, null]);
+    const item = (n: number) =>
+      doc
+        .getArray<Y.Map<unknown>>('files')
+        .toArray()
+        .find((i) => i.get('sha256') === hash(n))!;
+    expect(item(10).get('references')).toEqual([ids[0], ids[2]]);
+    expect(item(11).has('references')).toBe(false);
+    expect(item(12).has('references')).toBe(false);
+    // Not filtered against the files: the viewer counts the ones removed.
+    removeFile(doc, ids[0]!);
+    expect(read(10).references).toEqual([ids[0], ids[2]]);
+  });
+
+  it('reads an older file, or one not generated, without references', () => {
+    const { doc } = board();
+    v06File(doc, { id: 'old', sha256: hash(20), kind: 'image', sceneId: 'S1' });
+    expect(readFiles(doc).every((f) => f.references === null)).toBe(true);
+    // A value on a file that was not generated, or a hostile one, reads as null or is cleaned.
+    const items = doc.getArray<Y.Map<unknown>>('files').toArray();
+    items[0]!.set('references', ['x']);
+    expect(readFiles(doc).find((f) => f.id === items[0]!.get('id'))!.references).toBeNull();
+    const { added } = addFiles(doc, [generated(21, null as unknown as string)]);
+    const gen = items.length;
+    const genItem = doc.getArray<Y.Map<unknown>>('files').get(gen);
+    genItem.set('references', [1, 'a', 'a', 'b', 'c', 'd']);
+    expect(readFiles(doc).find((f) => f.id === added[0]!.id)!.references).toEqual(['a', 'b', 'c']);
+    genItem.set('references', 'a');
+    expect(readFiles(doc).find((f) => f.id === added[0]!.id)!.references).toBeNull();
+  });
+
+  it('refuses references on a file not generated, more than the cap, duplicates, bad ids', () => {
+    const { doc, p } = board();
+    expect(() => addFiles(doc, [image(30, { references: ['a'] })])).toThrow(/references: only a generated image/);
+    expect(() => addFiles(doc, [generated(31, p.id, { references: ['a', 'b', 'c', 'd'] })])).toThrow(/references: at most 3/);
+    expect(() => addFiles(doc, [generated(32, p.id, { references: ['a', 'a'] })])).toThrow(/references/);
+    expect(() => addFiles(doc, [generated(33, p.id, { references: ['a/b'] })])).toThrow(/references/);
+    expect(() => addFiles(doc, [generated(34, p.id, { references: 'a' as unknown as string[] })])).toThrow(/references/);
+    // An empty list on a file not generated is the same as none.
+    expect(addFiles(doc, [image(35, { references: [] })]).added[0]!.references).toBeNull();
   });
 });

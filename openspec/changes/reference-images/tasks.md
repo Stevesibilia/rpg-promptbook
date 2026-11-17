@@ -2,11 +2,11 @@
 
 ## 1. Model (brief A, first commit, pushed alone)
 
-- [ ] 1.1 `promptbook-project`: `MAX_REFERENCES`, prompt part `refs`,
+- [x] 1.1 `promptbook-project`: `MAX_REFERENCES`, prompt part `refs`,
       `ImagePromptEntry.references` and `missingReferences`,
       `setPromptReferences` (D1, D2); tests for validation, order,
       duplicates, the cap, cleaning on write, a deleted file.
-- [ ] 1.2 `FileEntry.references` and `GenerationJob.references` (D3, D4),
+- [x] 1.2 `FileEntry.references` and `GenerationJob.references` (D3, D4),
       with tests for older data without them.
 
 ## 2. Server (brief A)
