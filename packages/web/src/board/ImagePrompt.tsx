@@ -19,6 +19,7 @@ import {
 import { panelShape } from './generate.js';
 import { FileImage, Provenance, StatusChip } from './parts.js';
 import { ImagePromptEditor } from './PromptEditor.js';
+import { ReferencesLine } from './ReferencePicker.js';
 import { promptLabel, shapeOf, type ShownPrompt } from './summary.js';
 
 // One image prompt of a scene's stack (screen 1): «Prompt 2», its status and
@@ -179,6 +180,7 @@ export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
   return (
     <>
       {box}
+      {!editing && <ReferencesLine entry={entry} />}
       {panel && (
         <div className="gpop-at">
           <GeneratePanel prompt={prompt} button={generateButton} />

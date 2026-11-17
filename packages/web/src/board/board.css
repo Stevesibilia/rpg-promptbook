@@ -1626,6 +1626,134 @@
   color: var(--muted);
   font-size: 12.5px;
 }
+/* References (reference-images design decisions 12 to 16, mockup screens
+   11 and 12). With the grid open the panel sits in the flow, so its prompt's
+   block and card grow instead of cutting it (D18). */
+.board .gpop-at:has(.refgrid) {
+  height: auto;
+}
+.board .gpop:has(.refgrid) {
+  position: relative;
+  top: auto;
+  margin: 4px 0 8px auto;
+}
+.board .refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+.board .ref,
+.board .refgrid [role='option'] {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.25;
+  min-width: 0;
+}
+.board .ref {
+  width: 74px;
+  position: relative;
+}
+.board .rl {
+  overflow-wrap: anywhere;
+}
+.board .rimg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.board .ref .rx {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.board .ref .rx:hover {
+  border-color: var(--primary);
+}
+.board .refadd {
+  width: 74px;
+  aspect-ratio: 1;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: 12px var(--font);
+  cursor: pointer;
+}
+.board .refadd:hover,
+.board .refadd[aria-expanded='true'] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.board .refgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 8px;
+  max-height: 196px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  margin-top: 8px;
+}
+.board .refgrid [role='option'] {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: var(--font);
+}
+.board .refgrid [role='option']:focus-visible {
+  outline: none;
+}
+.board .refgrid [role='option']:focus-visible .rimg {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.board .refgrid [role='option'].on .rimg {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.board .refgrid [role='option'][aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+.board .refgrid .ck {
+  color: var(--primary);
+}
+.board .refnote,
+.board .refline {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.board .refline {
+  margin: 4px 2px 0;
+}
+.board .refgone {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--amber);
+}
 .board .gfoot {
   display: flex;
   align-items: center;

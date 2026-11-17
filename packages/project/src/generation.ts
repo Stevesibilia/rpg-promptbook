@@ -1,5 +1,6 @@
 import type * as Y from 'yjs';
 import { isImageModelKey, type ImageModelKey } from './images.js';
+import { MAX_REFERENCES } from './board.js';
 import { isIsoDateTime } from './model.js';
 import { record } from './doc.js';
 import { isImageProvider, type ImageProvider } from './providers.js';
@@ -28,6 +29,9 @@ export interface GenerationJob {
   // Design decision 10's plain words; null while running or when none.
   error: string | null;
   finishedAt: string | null;
+  // The file ids sent as reference images (reference-images design decision
+  // 4); a job written before references reads [].
+  references: string[];
 }
 
 // A job not finished this long after it started is stale: the server that
@@ -47,6 +51,11 @@ const count = (value: unknown): number | null =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
+
+const isFileId = (value: unknown): value is string => typeof value === 'string' && value !== '' && !value.includes('/');
+
+const referenceList = (value: unknown): string[] =>
+  Array.isArray(value) ? [...new Set(value.filter(isFileId))].slice(0, MAX_REFERENCES) : [];
 
 // Nothing another client wrote is trusted: a value that is not a whole job
 // reads as none.
@@ -73,6 +82,7 @@ function toJob(id: string, value: unknown): GenerationJob | null {
     by,
     error: text(r.error),
     finishedAt,
+    references: referenceList(r.references),
   };
 }
 
@@ -123,6 +133,8 @@ export interface GenerationStart {
   count: number;
   by: string;
   startedAt: string;
+  // None when not given.
+  references?: readonly string[];
 }
 
 // Starts a job on a prompt. Throws GenerationBusy while a running job that is
@@ -135,7 +147,16 @@ export function startGenerationJob(doc: Y.Doc, start: GenerationStart, now: Date
   if (!isIsoDateTime(start.startedAt)) throw new Error('startedAt: must be an ISO date-time');
   const provider = start.provider ?? 'openrouter';
   if (!isImageProvider(provider)) throw new Error(`provider: unknown provider "${String(provider)}"`);
-  const job: GenerationJob = { ...start, provider, done: 0, failed: 0, error: null, finishedAt: null };
+  const references = start.references ?? [];
+  if (
+    !Array.isArray(references) ||
+    !references.every(isFileId) ||
+    new Set(references).size !== references.length ||
+    references.length > MAX_REFERENCES
+  ) {
+    throw new Error(`references: at most ${MAX_REFERENCES} distinct file ids`);
+  }
+  const job: GenerationJob = { ...start, provider, references: [...references], done: 0, failed: 0, error: null, finishedAt: null };
   doc.transact(() => {
     sweep(doc, now);
     const map = jobsOf(doc);

@@ -72,7 +72,7 @@ export async function startApp(
   overrides: Partial<Config> = {},
   options: Pick<
     AppOptions,
-    'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs' | 'atelierPollMs' | 'atelierWatchMs'
+    'oidcDiscoveryOptions' | 'logger' | 'generationTimeoutMs' | 'generationCloseWaitMs' | 'atelierPollMs' | 'atelierWatchMs' | 'blobs'
   > = {},
 ): Promise<FastifyInstance> {
   const app = await buildApp({ config: testConfig(overrides), db, ...options });

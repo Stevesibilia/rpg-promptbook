@@ -30,6 +30,7 @@ import {
   throughLine,
   type GenerateChoice,
 } from './generate.js';
+import { ReferencesBlock } from './ReferencePicker.js';
 import type { ShownPrompt } from './summary.js';
 import { lastChoiceOf, loadGenerationStatus, rememberChoice, type Refused } from './useGeneration.js';
 
@@ -213,13 +214,19 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
     setRefused(null);
   };
   const view = sentView(text);
-  const price = priceLine(choice, estimates);
+  const price = priceLine(choice, estimates, entry.references.length);
 
   async function go() {
     if (busy) return;
     setBusy(true);
     setRefused(null);
-    const answer = await gen.start(entry.id, { model: choice.model, count: choice.count, shape }, provider);
+    // The references as the prompt holds them now (D5): always sent, so the
+    // server never falls back to an older list.
+    const answer = await gen.start(
+      entry.id,
+      { model: choice.model, count: choice.count, shape, references: [...entry.references] },
+      provider,
+    );
     if (!live.current) return;
     setBusy(false);
     if (!answer) return onDone();
@@ -288,6 +295,7 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
           </div>
         </div>
       </div>
+      <ReferencesBlock entry={entry} />
       <details open={view.open}>
         <summary>{view.summary}</summary>
         <div className="sent">
@@ -308,7 +316,7 @@ function PanelBody({ prompt, text, onDone }: { prompt: ShownPrompt; text: string
       </details>
       <div className="gfoot">
         <span className="est">
-          About <b>{price.amount}</b> · 1K
+          About <b>{price.amount}</b> · 1K{price.extra}
         </span>
         <button className="tb sm line" onClick={onDone}>
           Cancel

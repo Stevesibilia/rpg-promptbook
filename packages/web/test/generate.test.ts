@@ -59,6 +59,7 @@ const file = (patch: Partial<FileEntry> = {}): FileEntry => ({
   cost: 0.041,
   generatedVia: 'openrouter',
   atelierImageId: null,
+  references: null,
   ...patch,
 });
 
@@ -74,6 +75,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   by: 'u1',
   error: null,
   finishedAt: null,
+  references: [],
   ...patch,
 });
 
@@ -95,7 +97,7 @@ describe('the Generate panel', () => {
   it("gives each model's estimate and time, and the price of the batch at 1K", () => {
     expect(modelLine('gpt')).toBe('≈ $0.04 · 53 s per image');
     expect(modelLine('nb')).toBe('≈ $0.04 · 17 s per image');
-    expect(priceLine({ model: 'gpt', count: 2 })).toEqual({ amount: '$0.08', text: 'About $0.08 · 1K' });
+    expect(priceLine({ model: 'gpt', count: 2 })).toEqual({ amount: '$0.08', extra: '', text: 'About $0.08 · 1K' });
     expect(priceLine({ model: 'nb', count: 4 }).text).toBe('About $0.15 · 1K');
     expect(priceLine({ model: 'gpt', count: 1 }).text).toBe('About $0.04 · 1K');
   });
