@@ -23,10 +23,10 @@
 
 ## 3. Web (brief B)
 
-- [ ] 3.1 References block and picker in `GeneratePanel` (D12 to D15, D18),
+- [x] 3.1 References block and picker in `GeneratePanel` (D12 to D15, D18),
       with unit tests for the pure parts (ordering, labels, disabled rules).
-- [ ] 3.2 Prompt card line (D16) and viewer row (D17).
-- [ ] 3.3 `api.ts`: `GenerateBody.references`; `useGeneration` passes it.
+- [x] 3.2 Prompt card line (D16) and viewer row (D17).
+- [x] 3.3 `api.ts`: `GenerateBody.references`; `useGeneration` passes it.
 
 ## 4. e2e and docs (brief B)
 

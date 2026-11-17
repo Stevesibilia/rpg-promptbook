@@ -22,6 +22,9 @@ export interface BoardContextValue {
   rows: BoardRow[];
   named: Named;
   shown: ReadonlyMap<string, ShownPrompt>;
+  // Every file of the project, the Unmatched tray's included: a reference
+  // image left there is named by its file name.
+  files: readonly FileEntry[];
   marks: ReadonlySet<string>;
   toast(message: string): void;
   openViewer(promptId: string, fileId: string): void;
