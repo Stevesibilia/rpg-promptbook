@@ -31,7 +31,7 @@
 ## 4. e2e and docs (brief B)
 
 - [ ] 4.1 e2e specs (D23).
-- [ ] 4.2 `docs/design.md`: references in the board section.
+- [x] 4.2 `docs/design.md`: references in the board section.
 
 ## 5. Proof (each brief for its part)
 
