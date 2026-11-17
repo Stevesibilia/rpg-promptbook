@@ -475,6 +475,11 @@ describe('a board from before image categories', () => {
         status: 'chosen',
         files: 2,
         chosen: 'steve_2.png',
+        images: [
+          { id: 'i1', name: 'steve_1.png', chosen: false, generated: false },
+          { id: 'i2', name: 'steve_2.png', chosen: true, generated: false },
+        ],
+        references: [],
         generating: false,
         generationError: null,
       },

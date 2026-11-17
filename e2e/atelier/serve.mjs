@@ -13,7 +13,15 @@
 //
 //   FAKE_ATELIER_PORT      the port to listen on, inside the container
 //   FAKE_ATELIER_DELAY_MS  the time between two images of a generation
-import { randomUUID } from 'node:crypto';
+//
+// Reference images (reference-images design decision 22): POST /uploads
+// takes a raw PNG, JPEG or WebP of at most 20 MB and answers the image, the
+// one already there for the same bytes; a generation's referenceIds must be
+// known image ids, at most 4, and are echoed. For the tests only, without a
+// token: GET /api/v1/__last answers {"referenceIds": [...], "uploads": n},
+// the ids of the last POST /generations and the uploads since the start;
+// DELETE /api/v1/__images/<id> forgets an image, as one deleted in Atelier.
+import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { crc32, deflateSync } from 'node:zlib';
 
@@ -32,7 +40,14 @@ const SENTENCES = {
   tooManyRunning: 'Three generations are already running. Wait for one to finish.',
   noCollection: 'Choose a collection that exists.',
   invalidToken: 'The API token is missing, unknown, revoked or expired.',
+  referenceNotFound: 'A reference image was not found. Remove it and try again.',
+  wrongType: 'Only PNG, JPEG or WebP images can be references.',
+  tooLarge: 'A reference image can be at most 20 MB.',
 };
+
+const UPLOAD_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const MAX_REFERENCES = 4;
 
 const MODELS = {
   'openai/gpt-image-2.6-sunburst': { name: 'GPT Image 2.6 Sunburst', estCostUsd: 0.083, costUsd: 0.08 },
@@ -93,16 +108,22 @@ function send(res, status, body) {
 const failure = (res, status, error, message, field) =>
   send(res, status, field === undefined ? { error, message } : { error, message, field });
 
-async function readBody(req) {
+async function readRaw(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
-  if (chunks.length === 0) return null;
+  return Buffer.concat(chunks);
+}
+
+function parse(raw) {
+  if (raw.length === 0) return null;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return JSON.parse(raw.toString('utf8'));
   } catch {
     return null;
   }
 }
+
+const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 const round = (value) => Math.round(value * 1e6) / 1e6;
 
@@ -110,6 +131,8 @@ const collections = [];
 const generations = [];
 const files = new Map();
 let made = 0;
+let lastReferenceIds = [];
+let uploads = 0;
 // This month's spend before the tests' images, as GET /spend answers it.
 let spent = 4.12;
 
@@ -121,7 +144,7 @@ const generationJson = (g) => ({
   aspectRatio: g.aspectRatio,
   resolution: '1K',
   count: g.count,
-  referenceIds: [],
+  referenceIds: g.referenceIds,
   collectionId: g.collectionId,
   status: g.status,
   error: g.error,
@@ -155,7 +178,17 @@ function run(g, n) {
 
 async function handle(req, res) {
   const path = new URL(req.url ?? '/', 'http://fake').pathname;
-  const body = req.method === 'POST' ? await readBody(req) : null;
+  // The tests' own routes: no token.
+  if (req.method === 'GET' && path === '/api/v1/__last') return send(res, 200, { referenceIds: lastReferenceIds, uploads });
+  const forget = /^\/api\/v1\/__images\/([^/]+)$/.exec(path);
+  if (req.method === 'DELETE' && forget) {
+    files.delete(forget[1]);
+    res.writeHead(204);
+    return void res.end();
+  }
+  const raw = req.method === 'POST' ? await readRaw(req) : Buffer.alloc(0);
+  const upload = req.method === 'POST' && path === '/api/v1/uploads';
+  const body = req.method === 'POST' && !upload ? parse(raw) : null;
   const header = req.headers.authorization;
   const token = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
   const holder = token !== null && Object.hasOwn(TOKENS, token) ? TOKENS[token] : null;
@@ -225,6 +258,18 @@ async function handle(req, res) {
   }
 
   if (req.method === 'POST' && !holder.write) return failure(res, 403, 'insufficient_scope', 'This token is read only.');
+  if (upload) {
+    const type = (req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+    if (!UPLOAD_TYPES.includes(type) || raw.length === 0) return failure(res, 415, 'unsupported_type', SENTENCES.wrongType);
+    if (raw.length > MAX_UPLOAD_BYTES) return failure(res, 413, 'too_large', SENTENCES.tooLarge);
+    uploads += 1;
+    const hash = sha256(raw);
+    const same = [...files].find(([, f]) => sha256(f.bytes) === hash);
+    if (same) return send(res, 200, { id: same[0], mime: same[1].mime, origin: 'uploaded', url: `/api/v1/images/${same[0]}/file` });
+    const id = randomUUID();
+    files.set(id, { bytes: raw, mime: type });
+    return send(res, 201, { id, mime: type, origin: 'uploaded', url: `/api/v1/images/${id}/file` });
+  }
   const asked = body && typeof body === 'object' ? body : {};
   if (req.method === 'POST' && path === '/api/v1/collections') {
     const name = typeof asked.name === 'string' ? asked.name.trim() : '';
@@ -253,6 +298,20 @@ async function handle(req, res) {
     ) {
       return failure(res, 400, 'invalid_request', 'The generation is not one Atelier can make.');
     }
+    // As Atelier: uuids, each once, at most the model's references, all of
+    // them images it has.
+    const askedRefs = asked.referenceIds ?? [];
+    lastReferenceIds = Array.isArray(askedRefs) ? askedRefs.filter((id) => typeof id === 'string') : [];
+    if (!Array.isArray(askedRefs) || !askedRefs.every((id) => typeof id === 'string' && UUID.test(id))) {
+      return failure(res, 400, 'invalid_request', 'The reference images are not valid.', 'referenceIds');
+    }
+    const referenceIds = [...new Set(askedRefs)];
+    if (referenceIds.length > MAX_REFERENCES) {
+      return failure(res, 400, 'invalid_request', `${MODELS[model].name} takes at most ${MAX_REFERENCES} reference images.`, 'referenceIds');
+    }
+    if (referenceIds.some((id) => !files.has(id))) {
+      return failure(res, 400, 'invalid_request', SENTENCES.referenceNotFound, 'referenceIds');
+    }
     const collectionId = asked.collectionId;
     if (
       collectionId !== undefined &&
@@ -271,6 +330,7 @@ async function handle(req, res) {
       aspectRatio: asked.aspectRatio,
       count,
       collectionId: typeof collectionId === 'string' ? collectionId : '',
+      referenceIds,
       status: 'running',
       error: null,
       images: [],
