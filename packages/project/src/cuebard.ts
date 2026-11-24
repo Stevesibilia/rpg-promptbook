@@ -14,6 +14,7 @@ import { sha256Hex } from './sha256.js';
 
 export const CUEBARD_FOLDERS = {
   scene: 'Scenes',
+  general: 'General',
   pc: 'PCs',
   npc: 'NPCs',
   handout: 'Handouts',
@@ -170,7 +171,7 @@ const sceneLabel = (sceneId: string, title: string) => {
 };
 const promptName = (row: PromptRow) => clip(row.prompt.name?.trim() ?? '', LIMITS.name) || 'Untitled';
 const fileLabel = (file: FileEntry) => clip(file.name, LIMITS.fileName);
-const NAMED_LABEL = { pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
+const NAMED_LABEL = { general: 'General', pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
 
 // What D1 picks: per prompt its chosen image, else all of them, oldest
 // first; per scene its chosen track, else all of them.
@@ -308,7 +309,7 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
   const missing = opts.missing ?? new Set<string>();
   const warnings: CuebardWarning[] = [];
   const entries: CuebardEntry[] = [];
-  const images: Record<ImageCategory, number> = { scene: 0, pc: 0, npc: 0, handout: 0 };
+  const images: Record<ImageCategory, number> = { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 };
   const visualMedia: Record<string, unknown>[] = [];
   let tracks = 0;
   let picks = 0;

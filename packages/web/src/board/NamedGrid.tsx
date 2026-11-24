@@ -15,7 +15,12 @@ import {
   type Filter,
 } from './summary.js';
 
-const icons: Record<NamedCategory, typeof PersonIcon> = { pc: PersonIcon, npc: PeopleIcon, handout: HandoutIcon };
+const icons: Record<NamedCategory, typeof PersonIcon> = {
+  general: HandoutIcon,
+  pc: PersonIcon,
+  npc: PeopleIcon,
+  handout: HandoutIcon,
+};
 
 // The summary line of the PCs, NPCs or Handouts tab: «4 PCs · 1 chosen, 1
 // received, 2 wanted», and the filters; none for an empty tab.

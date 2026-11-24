@@ -47,6 +47,8 @@ export function targetsOf(doc: Y.Doc, sceneIds: readonly string[]): MatchTargets
       ...namedCategories.flatMap((category) => prompts.filter((p) => p.category === category)),
     ].map((p) => ({ id: p.id, prompt: p.prompt })),
     scenes: sceneIds.map((sceneId) => ({ sceneId, title: board.get(sceneId)?.music?.title ?? null })),
+    // General music joins with the General tab (general-board-items, brief B).
+    music: [],
   };
 }
 
@@ -69,7 +71,7 @@ function toPrompt(doc: Y.Doc, sceneIds: readonly string[], fileId: string, promp
 
 function toScene(doc: Y.Doc, fileId: string, sceneId: string): boolean {
   if (fileNow(doc, fileId)?.kind !== 'audio') return false;
-  assignTrack(doc, fileId, sceneId, 'hand');
+  assignTrack(doc, fileId, { sceneId }, 'hand');
   return true;
 }
 
@@ -134,7 +136,7 @@ export function matchAgain(doc: Y.Doc, sceneIds: readonly string[]): string[] {
       if (placed) continue;
       const match = matchFile(file.name, file.kind, targets);
       if ('promptId' in match) assignImage(doc, file.id, match.promptId, match.matchedBy);
-      else if ('sceneId' in match) assignTrack(doc, file.id, match.sceneId, match.matchedBy);
+      else if ('sceneId' in match) assignTrack(doc, file.id, { sceneId: match.sceneId }, match.matchedBy);
       else continue;
       assigned.push(file.id);
     }

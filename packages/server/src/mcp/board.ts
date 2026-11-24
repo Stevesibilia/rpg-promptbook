@@ -57,7 +57,7 @@ import type { ToolKit } from './tools.js';
 // categories, in its transaction; get_board reads a migrated view and never
 // writes.
 
-const SINGULAR: Record<ImageCategory, string> = { scene: 'Scene', pc: 'PC', npc: 'NPC', handout: 'Handout' };
+const SINGULAR: Record<ImageCategory, string> = { scene: 'Scene', general: 'General', pc: 'PC', npc: 'NPC', handout: 'Handout' };
 
 // «S1 · prompt 2», «NPC · Padre Anselmo».
 const labelOf = ({ prompt, number }: PromptRow) =>

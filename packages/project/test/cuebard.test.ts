@@ -233,7 +233,7 @@ describe('cuebardPack', () => {
     expect(pack.summary).toEqual({
       groups: 3,
       tracks: 3,
-      images: { scene: 5, pc: 2, npc: 0, handout: 1 },
+      images: { scene: 5, general: 0, pc: 2, npc: 0, handout: 1 },
       bytes: 4008 + 4009 + 4011 + 1002 + 1005 + 1006 + 1007 + 1012 + 1013 + 1014 + 1015,
       empty: false,
       warnings: [

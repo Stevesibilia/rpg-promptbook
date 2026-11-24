@@ -44,7 +44,7 @@ export function savedToast(kind: 'web' | 'desktop', offered: string, saved: Cueb
   return `Saved ${name}. ${files} left out; the pack's left-out.txt lists them.`;
 }
 
-const NAMED = { pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
+const NAMED = { general: 'General', pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
 
 function WarningLine({ warning: w }: { warning: CuebardWarning }) {
   switch (w.kind) {

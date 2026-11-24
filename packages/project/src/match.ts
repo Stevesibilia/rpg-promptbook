@@ -1,7 +1,8 @@
 // Intake by filename (asset-board design decision 10, image-categories
-// design decision 3): a Midjourney image finds the prompt, in any category,
-// that starts with the words in its name, a Suno track the scene whose music
-// title is its name. Pure, so the observed names are the tests.
+// design decision 3, general-board-items design decision 4): a Midjourney
+// image finds the prompt, in any category, that starts with the words in its
+// name, a Suno track the scene or the General music prompt whose title is its
+// name. Pure, so the observed names are the tests.
 
 // What a name is compared by: accents, case, spaces and punctuation do not
 // count. Midjourney drops apostrophes and turns the rest into underscores, so
@@ -61,8 +62,8 @@ export function parseSuno(name: string): SunoName | null {
 }
 
 // What a file is matched against (image-categories design decision 3): the
-// image prompts of every category with their text, and the scenes with their
-// music title.
+// image prompts of every category with their text, the scenes with their
+// music title, and the General music prompts.
 export interface MatchPrompt {
   id: string;
   prompt: string;
@@ -74,14 +75,21 @@ export interface MatchScene {
   title: string | null;
 }
 
+export interface MatchMusic {
+  musicId: string;
+  title: string;
+}
+
 export interface MatchTargets {
   prompts: readonly MatchPrompt[];
   scenes: readonly MatchScene[];
+  music: readonly MatchMusic[];
 }
 
 export type MatchResult =
   | { promptId: string; matchedBy: 'prompt' }
   | { sceneId: string; matchedBy: 'title' }
+  | { musicId: string; matchedBy: 'title' }
   // candidates: the prompt ids when two or more match, else none.
   | { reason: string; candidates: string[] };
 
@@ -107,23 +115,31 @@ function matchImage(words: string[], targets: readonly MatchPrompt[]): MatchResu
   return { reason: `No prompt starts with "${quoted}".`, candidates: [] };
 }
 
-function matchTrack(title: string, scenes: readonly MatchScene[]): MatchResult {
+// Scenes and General music prompts together: a title held by two of them,
+// of either kind, matches neither.
+function matchTrack(title: string, scenes: readonly MatchScene[], music: readonly MatchMusic[]): MatchResult {
   const key = matchKey(title);
-  const found = key === '' ? [] : scenes.filter((s) => s.title !== null && matchKey(s.title) === key);
-  if (found.length === 1) return { sceneId: found[0]!.sceneId, matchedBy: 'title' };
-  if (found.length > 1) return { reason: `Several scenes have the track title "${title}".`, candidates: [] };
+  const found: ({ sceneId: string } | { musicId: string })[] =
+    key === ''
+      ? []
+      : [
+          ...scenes.flatMap((s) => (s.title !== null && matchKey(s.title) === key ? [{ sceneId: s.sceneId }] : [])),
+          ...music.flatMap((m) => (matchKey(m.title) === key ? [{ musicId: m.musicId }] : [])),
+        ];
+  if (found.length === 1) return { ...found[0]!, matchedBy: 'title' };
+  if (found.length > 1) return { reason: `Several music prompts have the track title "${title}".`, candidates: [] };
   return { reason: `No track title "${title}".`, candidates: [] };
 }
 
-// The prompt an image belongs to, or the scene a track belongs to, by its
-// name; or why it has none.
+// The prompt an image belongs to, or the scene or General music prompt a
+// track belongs to, by its name; or why it has none.
 export function matchFile(name: string, kind: 'image' | 'audio', targets: MatchTargets): MatchResult {
   if (kind === 'image') {
     const parsed = parseMidjourney(name);
     if (parsed) return matchImage(parsed.words, targets.prompts);
   } else {
     const parsed = parseSuno(name);
-    if (parsed) return matchTrack(parsed.title, targets.scenes);
+    if (parsed) return matchTrack(parsed.title, targets.scenes, targets.music);
   }
   return { reason: 'Not a Midjourney or Suno name.', candidates: [] };
 }
@@ -133,15 +149,22 @@ interface TargetPrompt {
 }
 
 // What files are matched against on a board: the prompts it shows with a
-// text, scenes first in row order, then PCs, NPCs and handouts; and its
-// scenes. Scene prompts whose scene has no row are not shown, so never
-// matched (design decision 4).
+// text, scenes first in row order, then General, PCs, NPCs and handouts; its
+// scenes; and its General music prompts. Scene prompts whose scene has no
+// row are not shown, so never matched (design decision 4).
 export function matchTargets(board: {
   rows: readonly { sceneId: string; prompts: readonly TargetPrompt[]; music: { title: string } | null }[];
-  named: { pc: readonly TargetPrompt[]; npc: readonly TargetPrompt[]; handout: readonly TargetPrompt[] };
-}): { prompts: MatchPrompt[]; scenes: MatchScene[] } {
+  named: {
+    general: readonly TargetPrompt[];
+    pc: readonly TargetPrompt[];
+    npc: readonly TargetPrompt[];
+    handout: readonly TargetPrompt[];
+  };
+  music: readonly { prompt: { id: string; title: string } }[];
+}): { prompts: MatchPrompt[]; scenes: MatchScene[]; music: MatchMusic[] } {
   const shown = [
     ...board.rows.flatMap((row) => row.prompts),
+    ...board.named.general,
     ...board.named.pc,
     ...board.named.npc,
     ...board.named.handout,
@@ -149,5 +172,6 @@ export function matchTargets(board: {
   return {
     prompts: shown.flatMap(({ prompt }) => (prompt.prompt.trim() === '' ? [] : [{ id: prompt.id, prompt: prompt.prompt }])),
     scenes: board.rows.map((row) => ({ sceneId: row.sceneId, title: row.music?.title ?? null })),
+    music: board.music.map(({ prompt }) => ({ musicId: prompt.id, title: prompt.title })),
   };
 }

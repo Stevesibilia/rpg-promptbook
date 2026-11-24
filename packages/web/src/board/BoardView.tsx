@@ -175,6 +175,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   // shown, so a filter never hides what it points at.
   const goTo = (place: ResultPlace) => {
     setFilter('all');
+    if (place.category === 'general') return;
     if (place.category !== 'scene') return setTab(tabOf[place.category]);
     if (tab === 'scenes') {
       scrollTo.current = null;

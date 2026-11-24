@@ -44,7 +44,13 @@ export function tally(statuses: readonly HalfStatus[]): HalfCounts {
 export const tabs = ['scenes', 'pcs', 'npcs', 'handouts'] as const;
 export type Tab = (typeof tabs)[number];
 
-export const tabOf: Record<ImageCategory, Tab> = { scene: 'scenes', pc: 'pcs', npc: 'npcs', handout: 'handouts' };
+// General has no tab yet (general-board-items, brief B).
+export const tabOf: Record<Exclude<ImageCategory, 'general'>, Tab> = {
+  scene: 'scenes',
+  pc: 'pcs',
+  npc: 'npcs',
+  handout: 'handouts',
+};
 export const categoryOf: Record<Tab, ImageCategory> = { scenes: 'scene', pcs: 'pc', npcs: 'npc', handouts: 'handout' };
 
 export const tabParam = (value: string | null): Tab =>
@@ -67,6 +73,14 @@ export interface NamedText extends CategoryText {
 
 export const categoryText: Record<'scene', CategoryText> & Record<NamedCategory, NamedText> = {
   scene: { tab: 'Scenes', one: 'Scene', add: 'Add image prompt' },
+  general: {
+    tab: 'General',
+    one: 'General',
+    add: 'Add image',
+    empty: 'Nothing general yet',
+    what: 'Images and music for the whole adventure, not tied to a scene: establishing shots, a cover, a main theme, ambience, combat music.',
+    example: 'Messina dopo il terremoto',
+  },
   pc: {
     tab: 'PCs',
     one: 'PC',
@@ -93,8 +107,10 @@ export const categoryText: Record<'scene', CategoryText> & Record<NamedCategory,
   },
 };
 
-// «New NPC»: the name of a pc, npc or handout left without one.
-export const newName = (category: NamedCategory): string => `New ${categoryText[category].one}`;
+// «New NPC»: the name of a pc, npc or handout left without one; «New image»
+// for a General image (general-board-items design decision 1).
+export const newName = (category: NamedCategory): string =>
+  category === 'general' ? 'New image' : `New ${categoryText[category].one}`;
 
 // A prompt as the board shows it: its row, and its scene's id and title for
 // a scene prompt.
@@ -104,6 +120,7 @@ export interface ShownPrompt {
 }
 
 export interface Named {
+  general: PromptRow[];
   pc: PromptRow[];
   npc: PromptRow[];
   handout: PromptRow[];

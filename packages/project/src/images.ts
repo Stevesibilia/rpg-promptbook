@@ -70,8 +70,11 @@ export const isImageShape = (value: unknown): value is ImageShape =>
 
 export type ShapeSource = 'prompt' | 'nearest' | 'category';
 
+// A General image with no --ar is taken as an establishing shot, like a
+// scene's (general-board-items design decision 6).
 const categoryShapes: Record<ImageCategory, ImageShape> = {
   scene: '16:9',
+  general: '16:9',
   pc: '2:3',
   npc: '2:3',
   handout: '1:1',

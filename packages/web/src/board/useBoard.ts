@@ -111,8 +111,9 @@ export function trayFiles(
   prompts: readonly ImagePromptEntry[],
   files: readonly FileEntry[],
 ): TrayFile[] {
-  const targets = matchTargets({ rows, named });
-  return unmatchedFiles(appendix, prompts, files).map(({ file, reason }): TrayFile => {
+  // General music joins with the General tab (general-board-items, brief B).
+  const targets = matchTargets({ rows, named, music: [] });
+  return unmatchedFiles(appendix, prompts, files, []).map(({ file, reason }): TrayFile => {
     if (reason !== null) return { file, reason, candidates: [] };
     const match = matchFile(file.name, file.kind, targets);
     return 'reason' in match

@@ -8,11 +8,11 @@ Assisted-by: <agent>/<model-id>
 
 ## 1. Model and matching (brief A)
 
-- [ ] 1.1 `packages/project/src/board.ts`, `model.ts`, `doc.ts`: the `general` category in `imageCategories` and `namedCategories` (D1); the `musicPrompts` map, `MusicPromptEntry`, `readMusicPrompts`, `addMusicPrompt`, `updateMusicPrompt`, `removeMusicPrompt`, `chooseGeneralTrack`, `CAPS.musicPrompts` (D2); `FileEntry.musicId`, `NewFile.musicId`, `assignTrack` with `{ sceneId } | { musicId } | null`, `unchoose`, `addFiles`, `removeFile` (D3); exported from `index.ts`
-- [ ] 1.2 Rows and tray (D5): `MusicCardRow`, `generalMusic`, `readDocumentBoard`'s `music`, `unmatchedFiles` for a removed music prompt's tracks, `duplicateTitles` over scenes and General
-- [ ] 1.3 `match.ts` (D4): `MatchTargets.music`, the `{ musicId }` result, the new reason for a shared title, `matchTargets`
-- [ ] 1.4 Unit tests of D11 under `packages/project` for 1.1 to 1.3, including the two-Y.Doc edit-and-remove convergence
-- [ ] 1.5 Callers adapted mechanically so the workspace stays green: the web board compiles on the new types and shows nothing new yet
+- [x] 1.1 `packages/project/src/board.ts`, `model.ts`, `doc.ts`: the `general` category in `imageCategories` and `namedCategories` (D1); the `musicPrompts` map, `MusicPromptEntry`, `readMusicPrompts`, `addMusicPrompt`, `updateMusicPrompt`, `removeMusicPrompt`, `chooseGeneralTrack`, `CAPS.musicPrompts` (D2); `FileEntry.musicId`, `NewFile.musicId`, `assignTrack` with `{ sceneId } | { musicId } | null`, `unchoose`, `addFiles`, `removeFile` (D3); exported from `index.ts`
+- [x] 1.2 Rows and tray (D5): `MusicCardRow`, `generalMusic`, `readDocumentBoard`'s `music`, `unmatchedFiles` for a removed music prompt's tracks, `duplicateTitles` over scenes and General
+- [x] 1.3 `match.ts` (D4): `MatchTargets.music`, the `{ musicId }` result, the new reason for a shared title, `matchTargets`
+- [x] 1.4 Unit tests of D11 under `packages/project` for 1.1 to 1.3, including the two-Y.Doc edit-and-remove convergence
+- [x] 1.5 Callers adapted mechanically so the workspace stays green: the web board compiles on the new types and shows nothing new yet
 
 ## 2. Connector, CueBard, Markdown export (brief A)
 

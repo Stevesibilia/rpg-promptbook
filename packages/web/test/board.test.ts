@@ -402,7 +402,7 @@ describe('the tray', () => {
     const s6 = setFirstScenePrompt(doc, 'S6', 'a lighthouse at night', 'claude');
     addFiles(doc, [image(`steve_a_lighthouse_at_night_${uuid}_0.png`, 50, s6.id)]);
     const files = readFiles(doc);
-    expect(trayFiles([], [], { pc: [], npc: [], handout: [] }, readImagePrompts(doc), files)).toMatchObject([
+    expect(trayFiles([], [], { general: [], pc: [], npc: [], handout: [] }, readImagePrompts(doc), files)).toMatchObject([
       { reason: 'Scene S6 is not in the appendix.', candidates: [] },
     ]);
   });

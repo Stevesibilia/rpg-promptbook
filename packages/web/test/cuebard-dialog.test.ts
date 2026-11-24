@@ -10,7 +10,7 @@ import { cuebardState, CuebardSummaryView, savedToast, TOO_LARGE, type CuebardSt
 const summary = (patch: Partial<CuebardSummary> = {}): CuebardSummary => ({
   groups: 6,
   tracks: 5,
-  images: { scene: 8, pc: 4, npc: 3, handout: 2 },
+  images: { scene: 8, general: 0, pc: 4, npc: 3, handout: 2 },
   bytes: 1_000_000,
   empty: false,
   warnings: [],
@@ -79,7 +79,7 @@ describe('the CueBard dialog', () => {
   });
 
   it('says there is nothing to export when nothing is picked', () => {
-    const empty = summary({ groups: 3, tracks: 0, images: { scene: 0, pc: 0, npc: 0, handout: 0 }, bytes: 0, empty: true });
+    const empty = summary({ groups: 3, tracks: 0, images: { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 }, bytes: 0, empty: true });
     expect(cuebardState(empty, 0)).toBe('empty');
     expect(text(empty).split('\n')).toEqual([
       'A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.',
