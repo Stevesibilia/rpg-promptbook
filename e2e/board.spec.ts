@@ -33,6 +33,7 @@ const NINA = 'Portrait of an old Sicilian fisherwoman singing, black shawl, salt
 const ROSALIA = 'Portrait of a young Sicilian nurse in 1908, white apron stained with dust --ar 2:3 --v 8.1';
 const LETTER = 'A handwritten letter on yellowed paper, 1908, Italian cursive in brown ink --ar 3:4 --v 8.1';
 const TURI = 'Portrait of a barefoot Sicilian boy in 1908, oversized flat cap, a bucket of seawater --ar 2:3 --v 8.1';
+const GENERAL_IMAGE = 'Panorama of Messina in ruins after the 1908 earthquake, smoke over the harbour --ar 16:9 --v 8.1';
 const LYRICS = '[Intro: low drone]\n[Instrumental]\n[Outro: fade out]\n[End]';
 
 const file = (name: string, buffer: Buffer) => ({
@@ -52,7 +53,8 @@ async function typeDocument(page: Page, id: string, text: string): Promise<void>
 const sceneRow = (page: Page, sceneId: string) => page.locator(`#row-${sceneId}`);
 const toast = (page: Page) => page.locator('.toast');
 const tab = (page: Page, name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
-// A PC's, an NPC's or a handout's card on the tab shown.
+// A General image's or music prompt's, a PC's, an NPC's or a handout's card
+// on the tab shown.
 const card = (page: Page, name: string) =>
   page.locator('[role=tabpanel]:not([hidden]) .ent', { has: page.locator('.enm', { hasText: new RegExp(`^${name}$`) }) });
 const block = (page: Page, sceneId: string, n: number) => sceneRow(page, sceneId).locator('.ip').nth(n - 1);
@@ -233,7 +235,7 @@ test('Claude writes prompts in every category, the drop finds each file its prom
   await tray.getByRole('button', { name: 'Match again' }).click();
   await expect(toast(page)).toHaveText('1 file found its prompt.');
   await expect(block(page, 'S5', 1).locator('.th-i img')).toHaveCount(1);
-  await tray.getByLabel('Assign untitled track.wav to a scene').selectOption('S2');
+  await tray.getByLabel('Assign untitled track.wav to a scene or music prompt').selectOption('scene:S2');
   await expect(toast(page)).toHaveText("Assigned to S2 · L'ambulatorio di Salvi.");
   await expect(sceneRow(page, 'S2').locator('.trk-r')).toHaveCount(1);
 
@@ -251,8 +253,8 @@ test('Claude writes prompts in every category, the drop finds each file its prom
   await expect(block(page, 'S1', 1).locator('.st')).toHaveText('Wanted');
   const s1Tracks = sceneRow(page, 'S1').locator('.trk-r');
   await sceneRow(page, 'S1').getByRole('button', { name: 'More for take 2' }).click();
-  await page.getByRole('menuitem', { name: 'Move to another scene…' }).click();
-  await sceneRow(page, 'S1').getByLabel('Move to another scene').selectOption('S4');
+  await page.getByRole('menuitem', { name: 'Move to another scene or music…' }).click();
+  await sceneRow(page, 'S1').getByLabel('Move to another scene or music').selectOption('scene:S4');
   await expect(toast(page)).toHaveText('Moved to S4 · Torre Faro e la canzone.');
   await expect(sceneRow(page, 'S4').locator('.trk-r')).toHaveCount(1);
   await sceneRow(page, 'S1').getByRole('button', { name: 'More for take 1' }).click();
@@ -297,6 +299,120 @@ test('Claude writes prompts in every category, the drop finds each file its prom
   expect(under('unmatched').some((n) => n.endsWith(`/${lamp.name}`))).toBe(true);
   const original = under('scenes/S1/1')[0]!;
   expect(Buffer.from(zip[original]!).equals(removed.buffer)).toBe(true);
+});
+
+test('General images and music: added by hand, found by filename, chosen, removed and assigned back', async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+  const { id, title } = await createProject(page.request, 'Sabaoth generale');
+  await typeDocument(page, id, sabaoth);
+  await expect(page.locator('.ol li .id', { hasText: /^S5$/ }).first()).toBeVisible();
+
+  // The empty tab, kept on reload.
+  await page.goto(`/projects/${id}/board?tab=general`);
+  await expect(tab(page, 'General')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab(page, 'General')).toHaveText('General0none yet');
+  await expect(page.getByRole('heading', { name: 'Nothing general yet' })).toBeVisible();
+  await expect(page.getByText(`ask for "the general images and music of «${title}»"`, { exact: false })).toBeVisible();
+  await page.reload();
+  await expect(tab(page, 'General')).toHaveAttribute('aria-selected', 'true');
+
+  // A General image by hand.
+  await page.getByRole('button', { name: 'Add image' }).click();
+  await page.getByLabel('Name').fill('Messina dopo il terremoto');
+  await page.getByLabel('Midjourney prompt for the new General image').fill(GENERAL_IMAGE);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(toast(page)).toHaveText('Added General · Messina dopo il terremoto. Copy it into Midjourney.');
+  await expect(card(page, 'Messina dopo il terremoto').locator('.st')).toHaveText('Wanted');
+
+  // A music prompt by hand: no title refused, then Add.
+  await page.getByRole('button', { name: 'Add music prompt' }).click();
+  const adding = page.locator('.ent', { has: page.locator('.enm', { hasText: 'New music prompt' }) });
+  await expect(adding.getByLabel('Title')).toBeFocused();
+  await expect(adding.getByLabel('Title')).toHaveAttribute('placeholder', 'Tema di Sabaoth');
+  await adding.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(toast(page)).toHaveText('Write the title first: it is how its tracks find it.');
+  await adding.getByLabel('Title').fill('Tema di Sabaoth');
+  await adding.getByLabel('Style').fill('dark orchestral main theme, slow, low strings, distant choir');
+  await adding.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(toast(page)).toHaveText('Added General · Tema di Sabaoth. Copy it into Suno.');
+  const tema = card(page, 'Tema di Sabaoth');
+  await expect(tema.locator('.st')).toHaveText('Wanted');
+  await expect(tema).toContainText("The download's filename. Used to match tracks.");
+  await expect(tema).toContainText('No tracks yet. Drop Suno\'s downloads anywhere on the board.');
+  await expect(tab(page, 'General')).toHaveText('General22 wanted');
+  await expect(page.locator('.sumline')).toContainText('1 image: 0 chosen, 0 received, 1 wanted·1 music: 0 chosen, 0 received, 1 wanted');
+  await expect(page.locator('.status')).toContainText('5 scenes · 1 image prompt · 1 general music');
+
+  // The drop: two images and two takes find them by filename.
+  await tab(page, 'Scenes').click();
+  await page
+    .locator('.board input[type=file]')
+    .setInputFiles([
+      ...[0, 1].map((n) => file(midjourneyName(GENERAL_IMAGE, n), png())),
+      file(sunoName('Tema di Sabaoth'), wav()),
+      file(sunoName('tema di sabaoth', 1), wav()),
+    ]);
+  const result = page.locator('.info.good');
+  await expect(result).toContainText('4 files added: 4 matched, 0 to assign.', { timeout: 30_000 });
+  await expect(result).toContainText('General · Messina dopo il terremoto: 2 images · General · Tema di Sabaoth: 2 tracks.');
+  await expect(tab(page, 'General').locator('.nd')).toHaveCount(1);
+  await result.getByRole('button', { name: 'General · Tema di Sabaoth' }).click();
+  await expect(page).toHaveURL(/\?tab=general$/);
+  await expect(card(page, 'Messina dopo il terremoto').locator('.th-i img')).toHaveCount(2);
+  const takes = tema.locator('.trk-r');
+  await expect(takes).toHaveCount(2);
+  await expect(tema.locator('.st')).toHaveText('Received');
+
+  // Choose the second take.
+  await takes.nth(1).getByRole('button', { name: 'Choose' }).click();
+  await expect(takes.nth(1)).toHaveClass(/chosen/);
+  await expect(tema.locator('.st')).toHaveText('Chosen');
+  await expect(takes.nth(0).getByRole('button', { name: 'Choose' })).toBeVisible();
+  await expect(page.locator('.gsec').nth(1).locator('.hsum')).toHaveText('1 music prompt · 1 chosen');
+
+  // Removing the music prompt: its takes wait in the tray.
+  await tema.getByRole('button', { name: 'Remove General · Tema di Sabaoth' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Remove this music prompt?' });
+  await expect(confirm).toContainText('General · Tema di Sabaoth leaves the board.');
+  await expect(confirm).toContainText(
+    'Its 2 tracks move to Unmatched, where you can assign them to a scene or another music prompt.',
+  );
+  await confirm.getByRole('button', { name: 'Remove' }).click();
+  await expect(toast(page)).toHaveText('Music prompt removed. 2 tracks in Unmatched.');
+  await expect(tema).toHaveCount(0);
+  const tray = page.getByRole('region', { name: 'Unmatched' });
+  await expect(tray).toContainText('2 files');
+  await expect(tray).toContainText('Tema di Sabaoth.wavTrack · 0:01 · Its prompt was removed.');
+
+  // Another music prompt, and a take assigned to it from the tray.
+  await page.getByRole('button', { name: 'Add music prompt' }).click();
+  await adding.getByLabel('Title').fill('La scossa');
+  await adding.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(toast(page)).toHaveText('Added General · La scossa. Copy it into Suno.');
+  const assign = tray.getByLabel('Assign Tema di Sabaoth.wav to a scene or music prompt');
+  await expect(assign.locator('optgroup')).toHaveText([/^S1 · La casa che cede/, 'La scossa']);
+  await expect(assign.locator('optgroup').nth(1)).toHaveAttribute('label', 'General');
+  await assign.selectOption({ label: 'La scossa' });
+  await expect(toast(page)).toHaveText('Assigned to General · La scossa.');
+  const scossa = card(page, 'La scossa');
+  await expect(scossa.locator('.trk-r')).toHaveCount(1);
+  await expect(scossa.locator('.trk-r .newdot')).toHaveCount(1);
+  await expect(tray).toContainText('1 file');
+
+  // The track menu moves it to a scene and back.
+  await scossa.getByRole('button', { name: 'More for take 1' }).click();
+  await page.getByRole('menuitem', { name: 'Move to another scene or music…' }).click();
+  await scossa.getByLabel('Move to another scene or music').selectOption('scene:S2');
+  await expect(toast(page)).toHaveText("Moved to S2 · L'ambulatorio di Salvi.");
+  await expect(scossa.locator('.trk-r')).toHaveCount(0);
+  await tab(page, 'Scenes').click();
+  await sceneRow(page, 'S2').getByRole('button', { name: 'More for take 1' }).click();
+  await page.getByRole('menuitem', { name: 'Move to another scene or music…' }).click();
+  await sceneRow(page, 'S2').getByLabel('Move to another scene or music').selectOption({ label: 'La scossa' });
+  await expect(toast(page)).toHaveText('Moved to General · La scossa.');
+  await tab(page, 'General').click();
+  await expect(scossa.locator('.trk-r')).toHaveCount(1);
 });
 
 test('a document with no appendix: PCs work, and the board adds the appendix', async ({ page }) => {
@@ -359,6 +475,9 @@ test('Export for CueBard: the summary, then the pack with the chosen files and n
   await claude.tool('add_image_prompt', { projectId: id, category: 'scene', sceneId: 'S1', prompt: S1_LAMP });
   await claude.tool('add_image_prompt', { projectId: id, category: 'npc', name: 'Padre Anselmo', prompt: ANSELMO });
   await claude.tool('add_image_prompt', { projectId: id, category: 'npc', name: "Za' Nina", prompt: NINA });
+  await claude.tool('add_image_prompt', { projectId: id, category: 'general', name: 'Copertina', prompt: GENERAL_IMAGE });
+  await claude.tool('add_music_prompt', { projectId: id, title: 'Tema di Sabaoth', style: 'dark orchestral, slow', lyrics: LYRICS });
+  await claude.tool('add_music_prompt', { projectId: id, title: 'La scossa', style: 'tense percussive', lyrics: LYRICS });
 
   await page.goto(`/projects/${id}/board`);
   const s1 = [1, 2].map((n) => file(midjourneyName(S1_IMAGE, n), png()));
@@ -368,10 +487,12 @@ test('Export for CueBard: the summary, then the pack with the chosen files and n
   const s1Tracks = [file(sunoName('La casa che cede'), wav()), file(sunoName('La casa che cede', 1), wav())];
   const s3Track = file(sunoName('Il cordone'), wav());
   const untitled = file(sunoName('untitled track'), wav());
+  const cover = file(midjourneyName(GENERAL_IMAGE, 0), png());
+  const temaTracks = [file(sunoName('Tema di Sabaoth'), wav()), file(sunoName('Tema di Sabaoth', 1), wav())];
   await page
     .locator('.board input[type=file]')
-    .setInputFiles([...s1, lamp, s3, anselmo, ...s1Tracks, s3Track, untitled]);
-  await expect(page.locator('.info.good')).toContainText('9 files added: 8 matched, 1 to assign.', { timeout: 30_000 });
+    .setInputFiles([...s1, lamp, s3, anselmo, ...s1Tracks, s3Track, untitled, cover, ...temaTracks]);
+  await expect(page.locator('.info.good')).toContainText('12 files added: 11 matched, 1 to assign.', { timeout: 30_000 });
 
   // S1's second image of prompt 1 and its second take are chosen.
   const p1Thumbs = block(page, 'S1', 1).locator('.th-i');
@@ -388,16 +509,22 @@ test('Export for CueBard: the summary, then the pack with the chosen files and n
   await expect(takes.nth(1)).toHaveClass(/chosen/);
   const chosenTrack = (await takes.nth(1).locator('.fn').getAttribute('title'))!;
   const otherTrack = (await takes.nth(0).locator('.fn').getAttribute('title'))!;
+  // Tema di Sabaoth's second take is chosen.
+  await tab(page, 'General').click();
+  const temaTakes = card(page, 'Tema di Sabaoth').locator('.trk-r');
+  await temaTakes.nth(1).getByRole('button', { name: 'Choose' }).click();
+  await expect(temaTakes.nth(1)).toHaveClass(/chosen/);
   await expect(syncPill(page)).toHaveAttribute('data-state', 'synced');
 
-  // The summary: five cue groups, the chosen take and S3's, the images by
-  // folder, a warning per gap.
+  // The summary: five scene groups and General, the chosen takes and S3's,
+  // the images by folder, a warning per gap.
   await page.getByRole('button', { name: 'Export for CueBard…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Export for CueBard' });
-  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·2 tracks');
-  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 3·PCs 0·NPCs 1·Handouts 0 images');
+  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·General·3 tracks');
+  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 3·General 1·PCs 0·NPCs 1·Handouts 0 images');
   await expect(dialog.locator('.xwarn li')).toContainText([
     "S2. L'ambulatorio di Salvi has no track: its cue group is empty.",
+    'General music "La scossa" has no track.',
     'NPC "Za\' Nina" has no image.',
   ]);
   await expect(dialog).toContainText(`Your browser downloads ${title}.cbpack`);
@@ -416,13 +543,25 @@ test('Export for CueBard: the summary, then the pack with the chosen files and n
   const zip = unzipSync(bytes);
   const names = Object.keys(zip);
   const project = JSON.parse(strFromU8(zip[`${title}.cuebard`]!));
-  expect(project.items.map((g: { displayName: string }) => g.displayName.slice(0, 2))).toEqual(['S1', 'S2', 'S3', 'S4', 'S5']);
+  expect(project.items.map((g: { displayName: string }) => g.displayName.slice(0, 2))).toEqual([
+    'S1',
+    'S2',
+    'S3',
+    'S4',
+    'S5',
+    'Ge',
+  ]);
+  // The group General: Tema di Sabaoth's chosen take alone.
+  expect(project.items.at(-1).displayName).toBe('General');
+  expect(names).toContain(`media/${temaTracks[1]!.name}`);
+  expect(names).not.toContain(`media/${temaTracks[0]!.name}`);
   // The chosen take alone for S1, the chosen image alone for its prompt 1.
   expect(names).toContain(`media/${chosenTrack}`);
   expect(names).not.toContain(`media/${otherTrack}`);
   expect(names).toContain(`media/${s3Track.name}`);
   const visuals = names.filter((n) => n.startsWith('media/visuals/'));
-  expect(visuals).toHaveLength(4);
+  expect(visuals).toHaveLength(5);
+  expect(visuals.some((n) => n.endsWith(`_${cover.name}`))).toBe(true);
   expect(visuals.filter((n) => s1.some((f) => n.endsWith(`_${f.name}`)))).toHaveLength(1);
   expect(visuals.some((n) => n.endsWith(`_${chosenImage}`))).toBe(true);
   // The tray's track is not in the pack.
@@ -435,7 +574,7 @@ test('Export for CueBard: the summary, then the pack with the chosen files and n
   const panel = page.getByTestId('panel');
   await panel.locator('summary', { hasText: 'Actions' }).click();
   await panel.getByRole('button', { name: 'Export for CueBard…' }).click();
-  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·2 tracks');
+  await expect(dialog.locator('.xsum')).toContainText('Cue groups5 scenes·General·3 tracks');
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
 });

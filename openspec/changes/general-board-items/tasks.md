@@ -31,8 +31,8 @@ Assisted-by: <agent>/<model-id>
 
 ## 4. End-to-end tests, docs and preview
 
-- [ ] 4.1 `e2e/board.spec.ts`, `e2e/connector.spec.ts`, `e2e/media.ts` (D11)
-- [ ] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
-- [ ] 4.3 Docs: README (General images and music, the three new connector tools); `docs/design.md` (Asset board: General; CueBard export: the General group and folder); Prettier on the Markdown files touched
-- [ ] 4.4 Owner preview: a local compose stack from the branch with a seeded adventure, General images and music with files, and the URLs, login and pages for the owner; stop and wait for the owner's go
-- [ ] 4.5 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back
+- [x] 4.1 `e2e/board.spec.ts`, `e2e/connector.spec.ts`, `e2e/media.ts` (D11)
+- [x] 4.2 The whole e2e suite green, once normally and once with `E2E_CPU_THROTTLE=3`
+- [x] 4.3 Docs: README (General images and music, the three new connector tools); `docs/design.md` (Asset board: General; CueBard export: the General group and folder); Prettier on the Markdown files touched
+- [x] 4.4 Owner preview: a local compose stack from the branch with a seeded adventure, General images and music with files, and the URLs, login and pages for the owner; stop and wait for the owner's go
+- [x] 4.5 Checks (`npm run typecheck`, `npm test`, `npm run e2e`) and hand-back
