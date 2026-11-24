@@ -379,6 +379,22 @@ Nothing of its own: the board, intake and the offline CueBard pack use
   further per-category records; snapshots are text-only and never touch the
   board maps.
 
+## Review of brief B (accepted departures)
+
+- **D9:** the duplicate-title note on a scene row and a General card reads
+  «Title used twice: another scene or General music prompt has this title,
+  so its tracks cannot match. Give each its own title.». A project at
+  `CAPS.musicPrompts` toasts «The project holds 100 music prompts, the most
+  it can.». The result line lists General images before General music. A
+  new General image's prompt field has no «portrait of …» placeholder.
+- **D11:** the web tests went into the existing `board.test.ts`,
+  `board-intake.test.ts` and `cuebard-dialog.test.ts`; `e2e/media.ts` was
+  unchanged (its helpers take any prompt and title); the connector e2e step
+  joined the first connector test, reusing its token and page.
+- Proven: e2e 66/66 normal and 66/66 with `E2E_CPU_THROTTLE=3`; the desktop
+  e2e project runs in CI only. The owner approved the LAN preview on
+  2026-11-24.
+
 ## Migration Plan
 
 None: the new map and field start empty; existing boards read as today.
