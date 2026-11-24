@@ -9,6 +9,7 @@ import { cuebardState, CuebardSummaryView, savedToast, TOO_LARGE, type CuebardSt
 
 const summary = (patch: Partial<CuebardSummary> = {}): CuebardSummary => ({
   groups: 6,
+  general: false,
   tracks: 5,
   images: { scene: 8, general: 0, pc: 4, npc: 3, handout: 2 },
   bytes: 1_000_000,

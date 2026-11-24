@@ -220,6 +220,10 @@ and `get_board` lists them. «Match again» uses the same targets.
   `musicId`; the dialog writes «General music "<title>" has no track.» and
   «General "<title>": the length of "<file>" is unknown, so it is left
   out.». A General music prompt with no track does not add an empty group.
+  The summary carries `general: boolean` (the General group is exported;
+  `groups` stays the total), and a General warning is
+  `{ kind: 'no-track' | 'no-duration', musicId, label }` (plus `fileId`,
+  `fileName` for `no-duration`), `label` being the prompt's title.
 - The summary's `groups` counts the scene groups plus the General group;
   the dialog's Cue groups line reads «6 scenes · General · 9 tracks», or
   «6 scenes · no General group · 7 tracks»; Visual folders lists General

@@ -155,7 +155,7 @@ describe('the endpoint', () => {
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 
-  it('lists the 30 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
+  it('lists the 33 tools with JSON schemas, descriptions and annotations, in both protocol eras', async () => {
     const s = await setup();
     for (const era of ['modern', 'legacy'] as const) {
       const tools = await mcpListTools(s.app, s.tokens.access_token, era);
@@ -166,7 +166,7 @@ describe('the endpoint', () => {
         // generate_image spends money and makes images at a provider
         // (connector-board-images design decision 12).
         expect(tool.annotations?.openWorldHint, tool.name).toBe(tool.name === 'generate_image');
-        expect(tool.annotations?.destructiveHint, tool.name).toBe(['replace_section', 'remove_image_prompt', 'delete_template'].includes(tool.name));
+        expect(tool.annotations?.destructiveHint, tool.name).toBe(['replace_section', 'remove_image_prompt', 'remove_music_prompt', 'delete_template'].includes(tool.name));
       }
     }
     const tools = await mcpListTools(s.app, s.tokens.access_token);
@@ -187,7 +187,7 @@ describe('the endpoint', () => {
         'read_document',
       ].sort(),
     );
-    expect(TOOL_NAMES).toHaveLength(30);
+    expect(TOOL_NAMES).toHaveLength(33);
     expect(tools.find((t) => t.name === 'generate_image')!.annotations).toMatchObject({
       readOnlyHint: false,
       idempotentHint: false,
@@ -201,11 +201,12 @@ describe('the endpoint', () => {
       openWorldHint: false,
     });
     expect(tools.find((t) => t.name === 'generate_image')!.description).toContain('spends the user’s money');
-    // The two tools that delete something: an image prompt, never a file, and
-    // a template no project uses.
+    // The three tools that delete something: an image prompt and a General
+    // music prompt, never a file, and a template no project uses.
     expect(tools.map((t) => t.name).filter((name) => /delete|remove|seed|tick/.test(name)).sort()).toEqual([
       'delete_template',
       'remove_image_prompt',
+      'remove_music_prompt',
     ]);
     for (const name of ['list_projects', 'get_project', 'get_brainstorm_log']) {
       expect(tools.find((t) => t.name === name)!.description).toContain('read its brainstorm log first');

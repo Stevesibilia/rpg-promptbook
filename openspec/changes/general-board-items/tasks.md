@@ -16,11 +16,11 @@ Assisted-by: <agent>/<model-id>
 
 ## 2. Connector, CueBard, Markdown export (brief A)
 
-- [ ] 2.1 `server/src/mcp/board.ts`, `tools.ts`, `images/start.ts` (D6): `general` in `add_image_prompt`, `get_board`'s `general.music`, `add_music_prompt`, `update_music_prompt`, `remove_music_prompt` with schemas, annotations, descriptions and errors, `TOOL_NAMES` (33), `INSTRUCTIONS`, `SINGULAR`
-- [ ] 2.2 Db tests in `mcp-board.test.ts` and the tools-list count in `mcp.test.ts` (D11)
-- [ ] 2.3 `cuebard.ts` (D7): the General folder and group, names, warnings, summary; `cuebard.test.ts`
-- [ ] 2.4 `export.ts` (D8): `board.md`'s General part and folders; `export.test.ts`
-- [ ] 2.5 Checks: `npm run typecheck`, `npm test` (server db tests with `TEST_DATABASE_URL`); hand-back of brief A with corrections and departures
+- [x] 2.1 `server/src/mcp/board.ts`, `tools.ts`, `images/start.ts` (D6): `general` in `add_image_prompt`, `get_board`'s `general.music`, `add_music_prompt`, `update_music_prompt`, `remove_music_prompt` with schemas, annotations, descriptions and errors, `TOOL_NAMES` (33), `INSTRUCTIONS`, `SINGULAR`
+- [x] 2.2 Db tests in `mcp-board.test.ts` and the tools-list count in `mcp.test.ts` (D11)
+- [x] 2.3 `cuebard.ts` (D7): the General folder and group, names, warnings, summary; `cuebard.test.ts`
+- [x] 2.4 `export.ts` (D8): `board.md`'s General part and folders; `export.test.ts`
+- [x] 2.5 Checks: `npm run typecheck`, `npm test` (server db tests with `TEST_DATABASE_URL`); hand-back of brief A with corrections and departures
 
 ## 3. Web board (brief B)
 
