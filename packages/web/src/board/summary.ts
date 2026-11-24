@@ -2,8 +2,10 @@ import {
   halfStatuses,
   imageCategories,
   type BoardRow,
+  type FileEntry,
   type HalfStatus,
   type ImageCategory,
+  type MusicCardRow,
   type NamedCategory,
   type PromptRow,
 } from 'promptbook-project';
@@ -41,17 +43,23 @@ export function tally(statuses: readonly HalfStatus[]): HalfCounts {
 
 // The tabs, in order, and what each says. The address holds the tab as
 // `?tab=pcs`; Scenes has none.
-export const tabs = ['scenes', 'pcs', 'npcs', 'handouts'] as const;
+export const tabs = ['scenes', 'general', 'pcs', 'npcs', 'handouts'] as const;
 export type Tab = (typeof tabs)[number];
 
-// General has no tab yet (general-board-items, brief B).
-export const tabOf: Record<Exclude<ImageCategory, 'general'>, Tab> = {
+export const tabOf: Record<ImageCategory, Tab> = {
   scene: 'scenes',
+  general: 'general',
   pc: 'pcs',
   npc: 'npcs',
   handout: 'handouts',
 };
-export const categoryOf: Record<Tab, ImageCategory> = { scenes: 'scene', pcs: 'pc', npcs: 'npc', handouts: 'handout' };
+export const categoryOf: Record<Tab, ImageCategory> = {
+  scenes: 'scene',
+  general: 'general',
+  pcs: 'pc',
+  npcs: 'npc',
+  handouts: 'handout',
+};
 
 export const tabParam = (value: string | null): Tab =>
   value !== null && (tabs as readonly string[]).includes(value) ? (value as Tab) : 'scenes';
@@ -127,13 +135,13 @@ export interface Named {
 }
 
 // Every prompt the board shows, by id: the scenes' in row order, then the
-// PCs, the NPCs and the handouts.
+// General images, the PCs, the NPCs and the handouts.
 export function shownPrompts(rows: readonly BoardRow[], named: Named): Map<string, ShownPrompt> {
   const shown = new Map<string, ShownPrompt>();
   for (const row of rows) {
     for (const p of row.prompts) shown.set(p.prompt.id, { row: p, scene: { sceneId: row.sceneId, title: row.title } });
   }
-  for (const category of ['pc', 'npc', 'handout'] as const) {
+  for (const category of ['general', 'pc', 'npc', 'handout'] as const) {
     for (const p of named[category]) shown.set(p.prompt.id, { row: p, scene: null });
   }
   return shown;
@@ -142,7 +150,7 @@ export function shownPrompts(rows: readonly BoardRow[], named: Named): Map<strin
 const nameOf = (p: PromptRow) => p.prompt.name || newName(p.prompt.category as NamedCategory);
 
 // «S1 · prompt 2», long «S1 · La casa che cede · prompt 2»; «NPC · Padre
-// Anselmo».
+// Anselmo», «General · Copertina».
 export function promptLabel({ row, scene }: ShownPrompt, long = false): string {
   if (scene) return `${scene.sceneId}${long ? ` · ${scene.title}` : ''} · prompt ${row.number}`;
   return `${categoryText[row.prompt.category].one} · ${nameOf(row)}`;
@@ -196,6 +204,80 @@ export function promptGroups(
   return groups;
 }
 
+// Who a track belongs to on the board (general-board-items design decision
+// 3): a scene's music half or a General music prompt, with what the track
+// rows, the track menu and the confirm need. `key` holds the board's editor
+// and confirm marks: the scene id, so a scene row stays shown, or
+// «music:<id>».
+export interface TrackOwner {
+  target: { sceneId: string } | { musicId: string };
+  key: string;
+  // «S3 · L'ordine di Donato», «General · Tra le macerie».
+  label: string;
+  tracks: readonly FileEntry[];
+  chosen: string | null;
+}
+
+// «General · Tra le macerie».
+export const musicLabel = (card: Pick<MusicCardRow, 'prompt'>): string => `General · ${card.prompt.title}`;
+
+export const sceneOwner = (row: BoardRow): TrackOwner => ({
+  target: { sceneId: row.sceneId },
+  key: row.sceneId,
+  label: sceneLabel(row),
+  tracks: row.tracks,
+  chosen: row.chosenTrack,
+});
+
+export const musicOwner = (card: MusicCardRow): TrackOwner => ({
+  target: { musicId: card.prompt.id },
+  key: `music:${card.prompt.id}`,
+  label: musicLabel(card),
+  tracks: card.tracks,
+  chosen: card.prompt.chosenTrack,
+});
+
+// Where a track can go from the tray or the track menu: the scenes, then
+// the General music prompts. `value` names it in a select.
+export interface TrackPlace {
+  value: string;
+  target: { sceneId: string } | { musicId: string };
+  // In a toast: «S4 · Torre Faro e la canzone», «General · La scossa».
+  label: string;
+  // In a select, under its group: «S4 · Torre Faro e la canzone», «La scossa».
+  menu: string;
+}
+
+const placeValue = (target: TrackPlace['target']) =>
+  'sceneId' in target ? `scene:${target.sceneId}` : `music:${target.musicId}`;
+
+export function trackPlaces(rows: readonly BoardRow[], music: readonly MusicCardRow[]): TrackPlace[] {
+  return [
+    ...rows.map((row) => ({ value: placeValue({ sceneId: row.sceneId }), target: { sceneId: row.sceneId }, label: sceneLabel(row), menu: sceneLabel(row) })),
+    ...music.map((card) => ({
+      value: placeValue({ musicId: card.prompt.id }),
+      target: { musicId: card.prompt.id },
+      label: musicLabel(card),
+      menu: card.prompt.title,
+    })),
+  ];
+}
+
+// «Assign to scene or music…» and «Move to another scene or music…»: the
+// groups Scenes and General, the track's own owner left out. Empty groups
+// are left out.
+export function trackGroups(places: readonly TrackPlace[], except: TrackOwner['target'] | null = null): OptionGroup[] {
+  const skip = except && placeValue(except);
+  const of = (scene: boolean) =>
+    places
+      .filter((p) => 'sceneId' in p.target === scene && p.value !== skip)
+      .map((p) => ({ value: p.value, label: p.menu }));
+  return [
+    { label: 'Scenes', options: of(true) },
+    { label: 'General', options: of(false) },
+  ].filter((g) => g.options.length > 0);
+}
+
 // «A and B», «A, B and C».
 export function joinAnd(items: readonly string[]): string {
   if (items.length <= 1) return items.join('');
@@ -241,6 +323,35 @@ export function cardFilterCounts(prompts: readonly Pick<PromptRow, 'status'>[]):
   return { all: prompts.length, ...counts };
 }
 
+// On the General tab: the images and the music prompts, each counted by
+// state; a filter keeps the cards of either section in its state.
+export interface GeneralSummary {
+  images: number;
+  imageCounts: HalfCounts;
+  music: number;
+  musicCounts: HalfCounts;
+  filters: Record<Filter, number>;
+}
+
+export function summarizeGeneral(
+  images: readonly Pick<PromptRow, 'status'>[],
+  music: readonly Pick<MusicCardRow, 'status'>[],
+): GeneralSummary {
+  return {
+    images: images.length,
+    imageCounts: tally(images.map((p) => p.status)),
+    music: music.length,
+    musicCounts: tally(music.map((m) => m.status)),
+    filters: cardFilterCounts([...images, ...music]),
+  };
+}
+
+// «3 images · 1 chosen», «1 music prompt · 0 chosen».
+export function sectionLine(items: readonly { status: HalfStatus }[], one: string, many: string): string {
+  const chosen = items.filter((p) => p.status === 'chosen').length;
+  return `${items.length} ${items.length === 1 ? one : many} · ${chosen} chosen`;
+}
+
 // What dims under a filter: a block or half not in its state.
 export const dims = (status: HalfStatus, filter: Filter): boolean => filter !== 'all' && status !== filter;
 
@@ -253,6 +364,21 @@ export function tabLine(prompts: readonly Pick<PromptRow, 'status'>[]): { line: 
     n === 0 ? 'none yet' : c.wanted ? `${c.wanted} wanted` : c.received ? `${c.received} received` : 'all chosen';
   const title = `${n} image ${n === 1 ? 'prompt' : 'prompts'}: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`;
   return { line, title, wanted: c.wanted > 0 };
+}
+
+// The General tab's: its images and music prompts together, the title «3
+// images and 3 music prompts: 2 chosen, 2 received, 2 wanted».
+export function generalTabLine(
+  images: readonly Pick<PromptRow, 'status'>[],
+  music: readonly Pick<MusicCardRow, 'status'>[],
+): { line: string; title: string; wanted: boolean; count: number } {
+  const both = [...images, ...music];
+  const { line, wanted } = tabLine(both);
+  const c = tally(both.map((p) => p.status));
+  const title =
+    `${images.length} ${images.length === 1 ? 'image' : 'images'} and ${music.length} music ` +
+    `${music.length === 1 ? 'prompt' : 'prompts'}: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`;
+  return { line, title, wanted, count: both.length };
 }
 
 // «3 prompts · 1 chosen», «No prompts».

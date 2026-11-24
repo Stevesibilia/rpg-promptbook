@@ -7,6 +7,7 @@ import {
   parseSuno,
   readFiles,
   readImagePrompts,
+  readMusicPrompts,
   sniff,
   SNIFF_BYTES,
   type FileEntry,
@@ -68,14 +69,19 @@ export interface SceneCount {
   tracks: number;
 }
 
-// The images of one PC, NPC or handout, named as it was at the drop.
+// The images of one General image, PC, NPC or handout, or the tracks of
+// one General music prompt, named as it was at the drop.
 export interface NamedCount {
+  // The image prompt's id, or the General music prompt's.
   promptId: string;
   category: NamedCategory;
+  // A General music prompt's tracks: after the General images.
+  music: boolean;
   name: string;
   // Its order in its category, for the result line.
   order: number;
   images: number;
+  tracks: number;
 }
 
 export interface IntakeResult {
@@ -85,7 +91,8 @@ export interface IntakeResult {
   // Per scene, its images (all its prompts) and tracks; in the appendix's
   // order once the batch ends.
   scenes: SceneCount[];
-  // Per PC, NPC or handout; by category and order once the batch ends.
+  // Per General image, General music prompt, PC, NPC or handout; by
+  // category, images before music, and order once the batch ends.
   named: NamedCount[];
   alreadyHere: number;
   skipped: number;
@@ -283,9 +290,12 @@ export class Intake {
       return i === -1 ? Infinity : i;
     };
     const scenes = [...this.result.scenes].sort((a, b) => order(a.sceneId) - order(b.sceneId));
-    const categories: readonly string[] = ['pc', 'npc', 'handout'];
+    const categories: readonly string[] = ['general', 'pc', 'npc', 'handout'];
     const named = [...this.result.named].sort(
-      (a, b) => categories.indexOf(a.category) - categories.indexOf(b.category) || a.order - b.order,
+      (a, b) =>
+        categories.indexOf(a.category) - categories.indexOf(b.category) ||
+        Number(a.music) - Number(b.music) ||
+        a.order - b.order,
     );
     this.set({ working: false, result: { ...this.result, scenes, named } });
   }
@@ -394,6 +404,7 @@ export class Intake {
       height: kind === 'image' ? probed.height : null,
       duration: kind === 'audio' ? probed.duration : null,
       sceneId: 'sceneId' in match ? match.sceneId : null,
+      ...('musicId' in match ? { musicId: match.musicId } : {}),
       promptId: 'promptId' in match ? match.promptId : null,
       matchedBy: 'matchedBy' in match ? match.matchedBy : null,
       addedBy: 'user',
@@ -425,7 +436,7 @@ export class Intake {
     }
     const file = added[0]!;
     this.result.added += 1;
-    if (file.sceneId === null && file.promptId === null) this.result.toAssign += 1;
+    if (file.sceneId === null && file.promptId === null && file.musicId === null) this.result.toAssign += 1;
     else {
       this.result.matched += 1;
       // Counted per scene, whichever of its prompts, or per named prompt.
@@ -439,10 +450,34 @@ export class Intake {
       } else if (prompt && prompt.category !== 'scene') {
         let named = this.result.named.find((n) => n.promptId === prompt.id);
         if (!named) {
-          named = { promptId: prompt.id, category: prompt.category, name: prompt.name ?? '', order: prompt.order, images: 0 };
+          named = {
+            promptId: prompt.id,
+            category: prompt.category,
+            music: false,
+            name: prompt.name ?? '',
+            order: prompt.order,
+            images: 0,
+            tracks: 0,
+          };
           this.result.named.push(named);
         }
         named.images += 1;
+      } else if (file.musicId !== null) {
+        const music = readMusicPrompts(doc).find((m) => m.id === file.musicId);
+        let named = this.result.named.find((n) => n.promptId === file.musicId);
+        if (!named) {
+          named = {
+            promptId: file.musicId,
+            category: 'general',
+            music: true,
+            name: music?.title ?? '',
+            order: music?.order ?? 0,
+            images: 0,
+            tracks: 0,
+          };
+          this.result.named.push(named);
+        }
+        named.tracks += 1;
       }
     }
     this.set({ marks: new Set([...this.state.marks, file.id]) });
@@ -452,7 +487,8 @@ export class Intake {
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 // One place of the result line: «S3: 4 images, 2 tracks», «NPCs · Padre
-// Anselmo: 4 images»; its label links to its tab.
+// Anselmo: 4 images», «General · Tra le macerie: 1 track»; its label links
+// to its tab.
 export interface ResultPlace {
   // Its scene or prompt id.
   key: string;
@@ -481,8 +517,11 @@ export function resultLine(result: IntakeResult): { head: string; places: Result
     })),
     ...result.named.map((n) => ({
       key: n.promptId,
-      label: `${categoryText[n.category].tab} · ${n.name || newName(n.category)}`,
-      counts: plural(n.images, 'image', 'images'),
+      label: `${categoryText[n.category].tab} · ${n.name || (n.music ? 'New music prompt' : newName(n.category))}`,
+      counts: [
+        ...(n.images ? [plural(n.images, 'image', 'images')] : []),
+        ...(n.tracks ? [plural(n.tracks, 'track', 'tracks')] : []),
+      ].join(', '),
       sceneId: null,
       category: n.category,
     })),

@@ -24,10 +24,10 @@ Assisted-by: <agent>/<model-id>
 
 ## 3. Web board (brief B)
 
-- [ ] 3.1 `summary.ts`, `useBoard.ts`, `actions.ts`, `intake.ts` (D9): the General tab, counts, filters, add, edit, remove, choose, assign and move for General images and music, intake and Match again with General targets, the result line; web unit tests of D11
-- [ ] 3.2 `CategoryTabs`, `BoardView`, new `GeneralView` and music card, `PromptEditor` (Add image, Add music prompt), the empty General tab, the header lead, the status bar
-- [ ] 3.3 `Tray`, `Viewer`, the track menu, `MatchHelp`, `ClaudeCard`, `export/CuebardDialog.tsx` (D7's lines and warnings), narrow windows
-- [ ] 3.4 Checks: `npm run typecheck`, `npm test`; screenshots of screens 1a, 5, 5b, 7c and 10 for the architect
+- [x] 3.1 `summary.ts`, `useBoard.ts`, `actions.ts`, `intake.ts` (D9): the General tab, counts, filters, add, edit, remove, choose, assign and move for General images and music, intake and Match again with General targets, the result line; web unit tests of D11
+- [x] 3.2 `CategoryTabs`, `BoardView`, new `GeneralView` and music card, `PromptEditor` (Add image, Add music prompt), the empty General tab, the header lead, the status bar
+- [x] 3.3 `Tray`, `Viewer`, the track menu, `MatchHelp`, `ClaudeCard`, `export/CuebardDialog.tsx` (D7's lines and warnings), narrow windows
+- [x] 3.4 Checks: `npm run typecheck`, `npm test`; screenshots of screens 1a, 5, 5b, 7c and 10 for the architect
 
 ## 4. End-to-end tests, docs and preview
 

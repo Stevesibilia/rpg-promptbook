@@ -3,6 +3,7 @@ import type { AppendixRow, Model } from 'promptbook-format';
 import {
   adventureTemplateOf,
   boardRows,
+  generalMusic,
   matchFile,
   matchTargets,
   migrateImagePrompts,
@@ -12,11 +13,14 @@ import {
   readFiles,
   readImagePrompts,
   readMeta,
+  readMusicPrompts,
   unmatchedFiles,
   type BoardEntry,
   type BoardRow,
   type FileEntry,
   type ImagePromptEntry,
+  type MusicCardRow,
+  type MusicPromptEntry,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { connectWorker, createAnalysisClient, type Connect } from '../editor/analysis/client.js';
@@ -47,8 +51,10 @@ export interface Board {
   parsed: Parsed | null;
   // One per scene of the appendix, with its image prompts.
   rows: BoardRow[];
-  // The PCs, the NPCs and the handouts.
+  // The General images, the PCs, the NPCs and the handouts.
   named: Named;
+  // The General music prompts, in order.
+  music: MusicCardRow[];
   // Every prompt shown, by id, for labels and menus.
   shown: Map<string, ShownPrompt>;
   tray: TrayFile[];
@@ -64,24 +70,33 @@ interface Read {
   files: FileEntry[];
   board: Map<string, BoardEntry>;
   prompts: ImagePromptEntry[];
+  music: MusicPromptEntry[];
 }
 
 function useFilesAndBoard(doc: Y.Doc): Read {
-  const read = (): Read => ({ files: readFiles(doc), board: readBoard(doc), prompts: readImagePrompts(doc) });
+  const read = (): Read => ({
+    files: readFiles(doc),
+    board: readBoard(doc),
+    prompts: readImagePrompts(doc),
+    music: readMusicPrompts(doc),
+  });
   const [value, setValue] = useState(read);
   useEffect(() => {
     const files = doc.getArray('files');
     const board = doc.getMap('board');
     const prompts = doc.getMap('imagePrompts');
+    const music = doc.getMap('musicPrompts');
     const update = () => setValue(read());
     update();
     files.observeDeep(update);
     board.observe(update);
     prompts.observe(update);
+    music.observe(update);
     return () => {
       files.unobserveDeep(update);
       board.unobserve(update);
       prompts.unobserve(update);
+      music.unobserve(update);
     };
   }, [doc]);
   return value;
@@ -110,10 +125,16 @@ export function trayFiles(
   named: Named,
   prompts: readonly ImagePromptEntry[],
   files: readonly FileEntry[],
+  // The General music prompts as cards.
+  music: readonly MusicCardRow[] = [],
 ): TrayFile[] {
-  // General music joins with the General tab (general-board-items, brief B).
-  const targets = matchTargets({ rows, named, music: [] });
-  return unmatchedFiles(appendix, prompts, files, []).map(({ file, reason }): TrayFile => {
+  const targets = matchTargets({ rows, named, music });
+  return unmatchedFiles(
+    appendix,
+    prompts,
+    files,
+    music.map((m) => m.prompt),
+  ).map(({ file, reason }): TrayFile => {
     if (reason !== null) return { file, reason, candidates: [] };
     const match = matchFile(file.name, file.kind, targets);
     return 'reason' in match
@@ -126,7 +147,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const read = useFilesAndBoard(doc);
   useMigration(doc, read);
-  const { files, board, prompts } = read;
+  const { files, board, prompts, music: musicPrompts } = read;
   // Callers of parseNow waiting for the text they asked for.
   const waiting = useRef<{ resolve(p: Parsed): void }[]>([]);
   const client = useRef<ReturnType<typeof createAnalysisClient<string>> | null>(null);
@@ -168,14 +189,15 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   }, [doc, connect]);
 
   const rows = useMemo(
-    () => (parsed ? boardRows(parsed.model.appendix, board, prompts, files) : []),
-    [parsed, board, prompts, files],
+    () => (parsed ? boardRows(parsed.model.appendix, board, prompts, files, musicPrompts) : []),
+    [parsed, board, prompts, files, musicPrompts],
   );
   const named = useMemo(() => namedPrompts(prompts, files), [prompts, files]);
+  const music = useMemo(() => generalMusic(musicPrompts, files, rows), [musicPrompts, files, rows]);
   const shown = useMemo(() => shownPrompts(rows, named), [rows, named]);
   const tray = useMemo(
-    () => (parsed ? trayFiles(parsed.model.appendix, rows, named, prompts, files) : []),
-    [parsed, prompts, files, rows, named],
+    () => (parsed ? trayFiles(parsed.model.appendix, rows, named, prompts, files, music) : []),
+    [parsed, prompts, files, rows, named, music],
   );
 
   const parseNow = () =>
@@ -186,5 +208,5 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
       client.current?.flush();
     });
 
-  return { parsed, rows, named, shown, tray, files, parseNow };
+  return { parsed, rows, named, music, shown, tray, files, parseNow };
 }

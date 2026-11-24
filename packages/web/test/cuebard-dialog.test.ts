@@ -41,15 +41,17 @@ function text(s: CuebardSummary, { state, desktop = false }: { state?: CuebardSt
 describe('the CueBard dialog', () => {
   it('shows the cue groups and the visual folders, the rule, and where the pack is built', () => {
     expect(text(summary()).split('\n')).toEqual([
-      'A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.',
+      'A CueBard project: one cue group per scene, with its tracks, then one group General for the music of the whole adventure, and the images in five visual folders.',
       'Cue groups',
-      '*6* scenes·*5* tracks',
+      '*6* scenes·no General group·*5* tracks',
       'Visual folders',
-      'Scenes *8*·PCs *4*·NPCs *3*·Handouts *2* images',
-      'Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. The Unmatched tray stays out.',
+      'Scenes *8*·General *0*·PCs *4*·NPCs *3*·Handouts *2* images',
+      'Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. General images are not linked to a track. The Unmatched tray stays out.',
       "Your browser downloads L'Ancora di Sabaoth.cbpack",
     ]);
-    expect(text(summary({ groups: 1, tracks: 1 }))).toContain('*1* scene·*1* track');
+    expect(text(summary({ groups: 1, tracks: 1 }))).toContain('*1* scene·no General group·*1* track');
+    // The General group counts in groups, not among the scenes.
+    expect(text(summary({ groups: 7, general: true, tracks: 9 }))).toContain('*6* scenes·General·*9* tracks');
     expect(text(summary(), { desktop: true })).toMatch(/\nBuilt on this device, works offline\.$/);
   });
 
@@ -63,18 +65,24 @@ describe('the CueBard dialog', () => {
           { kind: 'no-image', category: 'npc', label: 'NPC "Za\' Nina"', number: null, name: "Za' Nina" },
           { kind: 'no-image', category: 'handout', label: 'Handout "Lettera"', number: null, name: 'Lettera' },
           { kind: 'missing', fileId: 'f2', fileName: 'altrove.png', label: 'PC "Rosalia"' },
+          { kind: 'no-image', category: 'general', label: 'General "Copertina"', number: null, name: 'Copertina' },
+          { kind: 'no-track', musicId: 'm1', label: 'La scossa' },
+          { kind: 'no-duration', musicId: 'm2', label: 'Tra le macerie', fileId: 'f3', fileName: 'tra le macerie.mp3' },
         ],
       }),
     ).split('\n');
-    const start = lines.indexOf('6 warnings');
+    const start = lines.indexOf('9 warnings');
     expect(start).toBeGreaterThan(0);
-    expect(lines.slice(start + 1, start + 7)).toEqual([
+    expect(lines.slice(start + 1, start + 10)).toEqual([
       '*S1. La casa che cede*, prompt 2, has no image.',
       '*S3. Il cordone*: the length of "Il cordone.mp3" is not recorded; the export reads it from the file, or leaves the track out.',
       '*S4. Torre Faro e la canzone* has no track: its cue group is empty.',
       'NPC *"Za\' Nina"* has no image.',
       'Handout *"Lettera"* has no image.',
       '*PC "Rosalia"*: "altrove.png" is not available, so it is left out.',
+      'General *"Copertina"* has no image.',
+      'General music *"La scossa"* has no track.',
+      'General *"Tra le macerie"*: the length of "tra le macerie.mp3" is unknown, so it is left out.',
     ]);
     expect(text(summary({ warnings: [{ kind: 'no-track', sceneId: 'S4', label: 'S4. X' }] }))).toContain('\n1 warning\n');
   });
@@ -83,7 +91,7 @@ describe('the CueBard dialog', () => {
     const empty = summary({ groups: 3, tracks: 0, images: { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 }, bytes: 0, empty: true });
     expect(cuebardState(empty, 0)).toBe('empty');
     expect(text(empty).split('\n')).toEqual([
-      'A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.',
+      'A CueBard project: one cue group per scene, with its tracks, then one group General for the music of the whole adventure, and the images in five visual folders.',
       'Nothing to export yet: add files to the board first.',
     ]);
   });

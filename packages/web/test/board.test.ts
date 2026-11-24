@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
   assignImage,
   boardRows,
+  generalMusic,
   namedPrompts,
   readBoard,
   readFiles,
   readImagePrompts,
+  readMusicPrompts,
   removeImagePrompt,
   setFirstScenePrompt,
   setMusicPrompt,
@@ -16,17 +19,23 @@ import {
 import type { AppendixRow } from 'promptbook-format';
 import * as Y from 'yjs';
 import {
+  addMusic,
   addPrompt,
   assignImageFromTray,
+  assignTrackFromTray,
+  EMPTY_TITLE,
   imageQuestion,
   matchAgain,
   matchAgainToast,
   moveImage,
   moveTrack,
+  musicQuestion,
   promptQuestion,
   removeFromBoard,
   removeFromTray,
+  removeMusic,
   removePrompt,
+  saveMusic,
   savePrompt,
   toggleImage,
   toggleTrack,
@@ -39,20 +48,28 @@ import {
   dims,
   duration,
   firstWords,
+  generalTabLine,
   joinAnd,
   keepsRow,
   menuLabel,
+  musicOwner,
+  newName,
   promptGroups,
   promptLabel,
   rowFilterCounts,
+  sceneOwner,
+  sectionLine,
   shapeOf,
   shortName,
   shownPrompts,
   stackLine,
+  summarizeGeneral,
   summarizeScenes,
   tabLabel,
   tabLine,
   tabParam,
+  trackGroups,
+  trackPlaces,
 } from '../src/board/summary.js';
 import { trayFiles } from '../src/board/useBoard.js';
 
@@ -114,6 +131,7 @@ describe('summary and filters', () => {
 
   it('reads the tab from the address', () => {
     expect(tabParam('npcs')).toBe('npcs');
+    expect(tabParam('general')).toBe('general');
     expect(tabParam(null)).toBe('scenes');
     expect(tabParam('nope')).toBe('scenes');
   });
@@ -194,7 +212,8 @@ function board() {
   const named = () => namedPrompts(readImagePrompts(doc), readFiles(doc));
   const shown = () => shownPrompts(rows(), named());
   const tray = () => trayFiles(scenes, rows(), named(), readImagePrompts(doc), readFiles(doc));
-  return { doc, rows, named, shown, tray, ids: { s3: s3.id, s4a: s4a.id, s4b: s4b.id, nina: nina.id, turi: turi.id, letter: letter.id } };
+  const places = () => trackPlaces(rows(), []);
+  return { doc, rows, named, shown, tray, places, ids: { s3: s3.id, s4a: s4a.id, s4b: s4b.id, nina: nina.id, turi: turi.id, letter: letter.id } };
 }
 
 describe('labels', () => {
@@ -236,12 +255,12 @@ describe('labels', () => {
 
 describe('the track menu', () => {
   it('moves a take to another scene, unchoosing it, and says where', () => {
-    const { doc, rows } = board();
+    const { doc, rows, places } = board();
     // Added in one call, so ordered by id: found by name.
     const second = rows()[0]!.tracks.find((t) => t.name === 'ordini del re (1).mp3')!;
-    expect(toggleTrack(doc, 'S3', second.id)).toBe(true);
+    expect(toggleTrack(doc, { sceneId: 'S3' }, second.id)).toBe(true);
     expect(rows()[0]!.musicStatus).toBe('chosen');
-    expect(moveTrack(doc, rows(), second.id, 'S4')).toBe('Moved to S4 · Torre Faro e la canzone.');
+    expect(moveTrack(doc, places(), second.id, 'scene:S4')).toBe('Moved to S4 · Torre Faro e la canzone.');
     const [s3, s4] = rows();
     expect(s3!.tracks.map((t) => t.name)).toEqual(['ordini del re.mp3']);
     expect(s3!.chosenTrack).toBeNull();
@@ -251,7 +270,7 @@ describe('the track menu', () => {
   it('asks before removing a take, then removes it', () => {
     const { doc, rows } = board();
     const second = rows()[0]!.tracks[1]!;
-    expect(trackQuestion(rows()[0]!, second)).toEqual({
+    expect(trackQuestion(sceneOwner(rows()[0]!), second)).toEqual({
       title: 'Remove this track?',
       text: "Take 2 leaves S3 · L'ordine di Donato.",
     });
@@ -260,21 +279,21 @@ describe('the track menu', () => {
   });
 
   it('does nothing for a take removed meanwhile (another tab, Claude)', () => {
-    const { doc, rows } = board();
+    const { doc, rows, places } = board();
     const first = rows()[0]!.tracks[0]!;
-    const drawn = rows();
+    const drawn = places();
     removeFromBoard(doc, first);
     expect(removeFromBoard(doc, first)).toBeNull();
-    expect(moveTrack(doc, drawn, first.id, 'S4')).toBeNull();
-    expect(toggleTrack(doc, 'S3', first.id)).toBeNull();
+    expect(moveTrack(doc, drawn, first.id, 'scene:S4')).toBeNull();
+    expect(toggleTrack(doc, { sceneId: 'S3' }, first.id)).toBeNull();
   });
 
   it('toggles the choice as the document has it now', () => {
     const { doc, rows } = board();
     const first = rows()[0]!.tracks[0]!;
-    toggleTrack(doc, 'S3', first.id);
+    toggleTrack(doc, { sceneId: 'S3' }, first.id);
     // A row drawn before: the badge still unchooses.
-    expect(toggleTrack(doc, 'S3', first.id)).toBe(false);
+    expect(toggleTrack(doc, { sceneId: 'S3' }, first.id)).toBe(false);
     expect(rows()[0]!.chosenTrack).toBeNull();
   });
 });
@@ -470,6 +489,216 @@ describe('matching help', () => {
   it('writes a prompt as Midjourney names it', () => {
     expect(midjourneyWords("ruined doctor's office in 1908 Messina, anatomical drawings")).toBe(
       'ruined_doctors_office_in_1908_Messina',
+    );
+  });
+});
+
+// General images and music (general-board-items design decision 9).
+
+function generalBoard() {
+  const base = board();
+  const { doc } = base;
+  const messina = addImagePrompt(
+    doc,
+    { category: 'general', name: 'Messina dopo il terremoto', prompt: 'panorama of Messina in ruins after the 1908 earthquake' },
+    'claude',
+  );
+  const copertina = addImagePrompt(doc, { category: 'general', name: 'Copertina', prompt: 'an ancient bronze anchor rising' }, 'user');
+  const tema = addMusicPrompt(doc, { title: 'Tema di Sabaoth', style: 'dark orchestral', lyrics: '[End]' }, 'claude');
+  const macerie = addMusicPrompt(doc, { title: 'Tra le macerie', style: 'dark ambient', lyrics: '[End]' }, 'claude');
+  const scossa = addMusicPrompt(doc, { title: 'La scossa', style: 'tense percussive', lyrics: '[End]' }, 'user');
+  addFiles(doc, [
+    { ...track('tema di sabaoth.mp3', 'S3', 60), sceneId: null, musicId: tema.id },
+    { ...track('tema di sabaoth (1).mp3', 'S3', 61), sceneId: null, musicId: tema.id },
+    { ...track('tra le macerie.mp3', 'S3', 62), sceneId: null, musicId: macerie.id },
+    { ...track('untitled track.mp3', 'S3', 63), sceneId: null, matchedBy: null },
+  ]);
+  addFiles(doc, [0, 1].map((i) => image(`steve_panorama_of_messina_in_ruins_${uuid}_${i}.png`, 70 + i, messina.id)));
+  const scenes = appendix([
+    ['S3', "L'ordine di Donato"],
+    ['S4', 'Torre Faro e la canzone'],
+  ]);
+  const rows = () => boardRows(scenes, readBoard(doc), readImagePrompts(doc), readFiles(doc), readMusicPrompts(doc));
+  const music = () => generalMusic(readMusicPrompts(doc), readFiles(doc), rows());
+  const named = () => namedPrompts(readImagePrompts(doc), readFiles(doc));
+  const shown = () => shownPrompts(rows(), named());
+  const tray = () => trayFiles(scenes, rows(), named(), readImagePrompts(doc), readFiles(doc), music());
+  const places = () => trackPlaces(rows(), music());
+  const card = (id: string) => music().find((m) => m.prompt.id === id)!;
+  return {
+    doc,
+    rows,
+    music,
+    named,
+    shown,
+    tray,
+    places,
+    card,
+    ids: { ...base.ids, messina: messina.id, copertina: copertina.id, tema: tema.id, macerie: macerie.id, scossa: scossa.id },
+  };
+}
+
+describe('the General tab', () => {
+  it('counts images and music prompts together, and each by state', () => {
+    const { doc, named, music, card, ids } = generalBoard();
+    toggleTrack(doc, { musicId: ids.tema }, card(ids.tema).tracks[1]!.id);
+    const images = named().general;
+    expect(images.map((p) => p.status)).toEqual(['received', 'wanted']);
+    expect(music().map((m) => m.status)).toEqual(['chosen', 'received', 'wanted']);
+    const sum = summarizeGeneral(images, music());
+    expect(sum).toEqual({
+      images: 2,
+      imageCounts: { chosen: 0, received: 1, wanted: 1 },
+      music: 3,
+      musicCounts: { chosen: 1, received: 1, wanted: 1 },
+      filters: { all: 5, chosen: 1, received: 2, wanted: 2 },
+    });
+    expect(generalTabLine(images, music())).toEqual({
+      line: '2 wanted',
+      title: '2 images and 3 music prompts: 1 chosen, 2 received, 2 wanted',
+      wanted: true,
+      count: 5,
+    });
+    expect(generalTabLine([], []).line).toBe('none yet');
+    expect(sectionLine(images, 'image', 'images')).toBe('2 images · 0 chosen');
+    expect(sectionLine(music(), 'music prompt', 'music prompts')).toBe('3 music prompts · 1 chosen');
+    expect(sectionLine(music().slice(0, 1), 'music prompt', 'music prompts')).toBe('1 music prompt · 1 chosen');
+  });
+
+  it('names a General image and lists it after the scenes', () => {
+    const { shown, ids } = generalBoard();
+    const messina = shown().get(ids.messina)!;
+    expect(promptLabel(messina)).toBe('General · Messina dopo il terremoto');
+    expect(tabLabel(messina)).toBe('General · Messina dopo il terremoto');
+    expect(promptGroups(shown()).map((g) => g.label)).toEqual(['Scenes', 'General', 'NPCs', 'Handouts']);
+    expect(newName('general')).toBe('New image');
+  });
+
+  it('adds a General image, an empty name becoming «New image»', () => {
+    const doc = new Y.Doc();
+    expect(addPrompt(doc, { category: 'general', name: 'Messina dopo il terremoto' }, 'panorama of Messina')).toEqual({
+      added: true,
+      said: 'Added General · Messina dopo il terremoto. Copy it into Midjourney.',
+    });
+    expect(addPrompt(doc, { category: 'general', name: '' }, 'a cover').said).toBe(
+      'Added General · New image. Copy it into Midjourney.',
+    );
+    expect(readImagePrompts(doc).map((p) => [p.category, p.name])).toEqual([
+      ['general', 'Messina dopo il terremoto'],
+      ['general', 'New image'],
+    ]);
+  });
+
+  it('adds a music prompt as the user, refusing an empty title', () => {
+    const doc = new Y.Doc();
+    expect(addMusic(doc, { title: '  ', style: 'x', lyrics: '' })).toEqual({ added: false, said: EMPTY_TITLE });
+    expect(readMusicPrompts(doc)).toEqual([]);
+    expect(addMusic(doc, { title: 'La scossa', style: 'tense', lyrics: '[End]' })).toEqual({
+      added: true,
+      said: 'Added General · La scossa. Copy it into Suno.',
+    });
+    expect(readMusicPrompts(doc)).toMatchObject([{ title: 'La scossa', by: 'user' }]);
+  });
+
+  it('retitles a music prompt, keeping its tracks', () => {
+    const { doc, card, ids } = generalBoard();
+    expect(saveMusic(doc, ids.macerie, { title: 'Tra le rovine', style: 'dark ambient', lyrics: '[End]' })).toBe(true);
+    expect(card(ids.macerie)).toMatchObject({ prompt: { title: 'Tra le rovine', by: 'user' }, status: 'received' });
+    removeMusic(doc, ids.macerie);
+    expect(saveMusic(doc, ids.macerie, { title: 'Again', style: '', lyrics: '' })).toBe(false);
+  });
+
+  it('asks before removing a music prompt, then sends its tracks to Unmatched', () => {
+    const { doc, card, tray, ids } = generalBoard();
+    expect(musicQuestion(card(ids.tema))).toEqual({
+      title: 'Remove this music prompt?',
+      text: 'General · Tema di Sabaoth leaves the board.',
+      note: 'Its 2 tracks move to Unmatched, where you can assign them to a scene or another music prompt.',
+    });
+    expect(musicQuestion(card(ids.scossa)).note).toBe('It has no tracks yet.');
+    expect(removeMusic(doc, ids.tema)).toBe('Music prompt removed. 2 tracks in Unmatched.');
+    expect(removeMusic(doc, ids.tema)).toBeNull();
+    expect(removeMusic(doc, ids.scossa)).toBe('Music prompt removed.');
+    // Added in one call, so ordered by id: sorted by name.
+    expect(tray().map((t) => [t.file.name, t.reason]).sort()).toEqual([
+      ['tema di sabaoth (1).mp3', 'Its prompt was removed.'],
+      ['tema di sabaoth.mp3', 'Its prompt was removed.'],
+      ['untitled track.mp3', 'No track title "untitled track".'],
+    ]);
+  });
+
+  it('chooses one track per General music prompt', () => {
+    const { doc, card, ids } = generalBoard();
+    const [first, second] = card(ids.tema).tracks;
+    expect(toggleTrack(doc, { musicId: ids.tema }, second!.id)).toBe(true);
+    expect(card(ids.tema)).toMatchObject({ status: 'chosen', prompt: { chosenTrack: second!.id } });
+    expect(toggleTrack(doc, { musicId: ids.tema }, first!.id)).toBe(true);
+    expect(card(ids.tema).prompt.chosenTrack).toBe(first!.id);
+    expect(toggleTrack(doc, { musicId: ids.tema }, first!.id)).toBe(false);
+    // Not this prompt's: nothing.
+    expect(toggleTrack(doc, { musicId: ids.macerie }, first!.id)).toBeNull();
+    expect(toggleTrack(doc, { sceneId: 'S3' }, first!.id)).toBeNull();
+  });
+
+  it('moves a track between scenes and General music, unchoosing it, and says where', () => {
+    const { doc, rows, card, places, ids } = generalBoard();
+    const s3 = rows()[0]!.tracks.find((t) => t.name === 'ordini del re.mp3')!;
+    expect(trackGroups(places(), sceneOwner(rows()[0]!).target)).toEqual([
+      { label: 'Scenes', options: [{ value: 'scene:S4', label: 'S4 · Torre Faro e la canzone' }] },
+      {
+        label: 'General',
+        options: [
+          { value: `music:${ids.tema}`, label: 'Tema di Sabaoth' },
+          { value: `music:${ids.macerie}`, label: 'Tra le macerie' },
+          { value: `music:${ids.scossa}`, label: 'La scossa' },
+        ],
+      },
+    ]);
+    expect(moveTrack(doc, places(), s3.id, `music:${ids.macerie}`)).toBe('Moved to General · Tra le macerie.');
+    expect(card(ids.macerie).tracks.map((t) => t.name).sort()).toEqual(['ordini del re.mp3', 'tra le macerie.mp3']);
+    const take = card(ids.tema).tracks[0]!;
+    toggleTrack(doc, { musicId: ids.tema }, take.id);
+    expect(moveTrack(doc, places(), take.id, 'scene:S4')).toBe('Moved to S4 · Torre Faro e la canzone.');
+    expect(card(ids.tema).prompt.chosenTrack).toBeNull();
+    expect(rows()[1]!.tracks.map((t) => t.name)).toEqual([take.name]);
+    expect(trackQuestion(musicOwner(card(ids.macerie)), card(ids.macerie).tracks[1]!)).toEqual({
+      title: 'Remove this track?',
+      text: 'Take 2 leaves General · Tra le macerie.',
+    });
+    // A music prompt removed meanwhile: nothing.
+    const drawn = places();
+    removeMusic(doc, ids.scossa);
+    expect(moveTrack(doc, drawn, take.id, `music:${ids.scossa}`)).toBeNull();
+  });
+
+  it('assigns a track from the tray to a General music prompt', () => {
+    const { doc, tray, places, card, ids } = generalBoard();
+    const untitled = tray().find((t) => t.file.name === 'untitled track.mp3')!.file;
+    expect(assignTrackFromTray(doc, places(), untitled.id, `music:${ids.scossa}`)).toBe('Assigned to General · La scossa.');
+    expect(card(ids.scossa).tracks).toMatchObject([{ name: 'untitled track.mp3', matchedBy: 'hand' }]);
+    expect(tray()).toEqual([]);
+    // Placed now: the tray's Remove does nothing.
+    expect(removeFromTray(doc, ['S3', 'S4'], untitled.id)).toBeNull();
+  });
+
+  it('matches again against General music titles', () => {
+    const { doc, card, tray, ids } = generalBoard();
+    addFiles(doc, [{ ...track('la scossa (1).mp3', 'S3', 80), sceneId: null, matchedBy: null }]);
+    expect(tray().map((t) => t.reason)).toContain('');
+    const assigned = matchAgain(doc, ['S3', 'S4']);
+    expect(assigned).toHaveLength(1);
+    expect(card(ids.scossa).tracks).toMatchObject([{ name: 'la scossa (1).mp3', matchedBy: 'title' }]);
+  });
+
+  it('leaves a title shared by a scene and a General prompt in Unmatched, warning on both', () => {
+    const { doc, rows, music, tray, ids } = generalBoard();
+    setMusicPrompt(doc, 'S4', { title: 'La scossa', style: '', lyrics: '' }, 'user');
+    addFiles(doc, [{ ...track('la scossa.mp3', 'S3', 81), sceneId: null, matchedBy: null }]);
+    expect(rows()[1]!.duplicateTitle).toBe(true);
+    expect(music().find((m) => m.prompt.id === ids.scossa)!.duplicateTitle).toBe(true);
+    expect(matchAgain(doc, ['S3', 'S4'])).toEqual([]);
+    expect(tray().find((t) => t.file.name === 'la scossa.mp3')!.reason).toBe(
+      'Several music prompts have the track title "la scossa".',
     );
   });
 });

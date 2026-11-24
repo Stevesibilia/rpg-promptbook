@@ -3,17 +3,18 @@ import { ActionSelect } from './ActionSelect.js';
 import { assignImageFromTray, assignTrackFromTray, matchAgain, matchAgainToast, removeFromTray } from './actions.js';
 import { useBoardContext } from './context.js';
 import { FileImage } from './parts.js';
-import { duration, joinAnd, promptGroups, promptLabel, sceneLabel } from './summary.js';
+import { duration, joinAnd, promptGroups, promptLabel, trackGroups, trackPlaces } from './summary.js';
 import type { TrayFile } from './useBoard.js';
 
 // Unmatched (screen 5): pinned above the tab's content while the board
-// scrolls, on every tab. A file leaves it by being assigned to a prompt or a
-// scene, or removed at once. An image whose name matches several prompts
+// scrolls, on every tab. A file leaves it by being assigned to a prompt, a
+// scene or a General music prompt, or removed at once. An image whose name matches several prompts
 // names them, and its menu lists them first.
 export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
-  const { doc, projectId, rows, shown, toast, mark } = useBoardContext();
+  const { doc, projectId, rows, music, shown, toast, mark } = useBoardContext();
   if (files.length === 0) return null;
   const sceneIds = rows.map((r) => r.sceneId);
+  const places = trackPlaces(rows, music);
   return (
     <section className="card tray" aria-label="Unmatched">
       <div className="th">
@@ -85,11 +86,11 @@ export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
                   />
                 ) : (
                   <ActionSelect
-                    label={`Assign ${file.name} to a scene`}
-                    placeholder="Assign to scene…"
-                    options={rows.map((r) => ({ value: r.sceneId, label: sceneLabel(r) }))}
+                    label={`Assign ${file.name} to a scene or music prompt`}
+                    placeholder="Assign to scene or music…"
+                    options={trackGroups(places)}
                     onPick={(to) => {
-                      const said = assignTrackFromTray(doc, rows, file.id, to);
+                      const said = assignTrackFromTray(doc, places, file.id, to);
                       if (said) {
                         mark(file.id);
                         toast(said);
