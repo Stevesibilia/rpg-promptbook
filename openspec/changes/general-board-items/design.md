@@ -86,8 +86,11 @@ always current.
 
 ### D2. General music prompts in their own map (architect's)
 
-A new Y.Map `musicPrompts`, flat keys as for image prompts, so that two
-edits of different fields merge and a removal wins over a late edit:
+A new Y.Map `musicPrompts`, flat keys as for image prompts, so that an edit,
+a choice and a removal merge and a removal wins over a late edit. The
+title, style and lyrics are one value, as a scene's music is: two edits of
+the same prompt at once keep the later one (corrected at the review of
+brief A):
 
 | Key            | Value                                                                      |
 | -------------- | -------------------------------------------------------------------------- |
@@ -344,7 +347,37 @@ Nothing of its own: the board, intake and the offline CueBard pack use
 - **A title shared by a scene and a General prompt** sends its tracks to the
   tray. The warning on both and the connector's warning make it visible.
 - **The General cue group key** must not collide with a scene's uuid key;
-  D7 asks for the check.
+  D7 asks for the check. Checked in brief A: a scene id matches
+  `^<prefix>\d+$` (format `sceneHeading`, prefix set by the template), so
+  `general` can never be one.
+
+## Review of brief A (accepted departures)
+
+- **D3:** the reader returns `musicId` null for an image and whenever
+  `sceneId` is set, so every reader sees one owner; the raw key stays in the
+  map. `assignTrack` keeps `sceneId: null` stored and deletes `musicId` when
+  the target is not a General prompt. `musicId` is written to a file's map
+  only when set, as the generated fields are.
+- **D1:** a General image with no `--ar` defaults to 16:9 (`categoryShapes`
+  in `images.ts`).
+- **D6:** `get_board` answers `general: { images, music }`, between the
+  scenes and the PCs. `add_music_prompt` past `CAPS.musicPrompts` answers 409
+  `board_full` «The board holds 100 General music prompts, the most it
+  takes.». The duplicate-title warning of `set_scene_prompts` and
+  `add_music_prompt` names scenes and «General «title»» and ends «Give each
+  scene and each General music prompt its own title.».
+- **D7:** a campaign gets no General group even with music prompts (a
+  campaign has no cue groups; `campaign-board` lifts that). Warnings come in
+  the order scenes, General images, General music, PCs, NPCs, Handouts; a
+  missing General file is labelled `General "<title>"`, and `left-out.txt`
+  writes `General "<title>": <file> (length unknown)`. `cuebardFiles` lists
+  scene tracks, General tracks, scene images, General images, then PCs, NPCs
+  and Handouts.
+- **Corrections to "The code today":** `images/start.ts` has no label map
+  (its `labelOf` slugs the name), so it needed nothing; `images.ts`
+  `categoryShapes`, web `NamedGrid` `icons` and `CuebardDialog` `NAMED` are
+  further per-category records; snapshots are text-only and never touch the
+  board maps.
 
 ## Migration Plan
 
