@@ -275,8 +275,8 @@ test('offline: Export for CueBard builds the pack on this computer', async () =>
   await page.getByRole('button', { name: 'Export for CueBard…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Export for CueBard' });
   await expect(dialog).toContainText('Built on this device, works offline.');
-  await expect(dialog.locator('.xsum')).toContainText(/Cue groups\d+ scenes?·0 tracks/);
-  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 2·PCs 0·NPCs 0·Handouts 0 images');
+  await expect(dialog.locator('.xsum')).toContainText(/Cue groups\d+ scenes?·no General group·0 tracks/);
+  await expect(dialog.locator('.xsum')).toContainText('Visual foldersScenes 2·General 0·PCs 0·NPCs 0·Handouts 0 images');
   await expect(dialog.locator('.xwarn')).toContainText('S1. Il molo has no track: its cue group is empty.');
   await expect(dialog.locator('.xwarn')).toContainText('NPC "Zu Peppe" has no image.');
 

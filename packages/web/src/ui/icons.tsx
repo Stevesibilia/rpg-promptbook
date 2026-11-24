@@ -159,6 +159,17 @@ export const HandoutIcon = icon(
     <path d="M14 3v5h5M9 12h6M9 16h4" />
   </>,
 );
+// General: a picture, a note and lines, for the whole adventure.
+export const GeneralIcon = icon(
+  <>
+    <rect x="3" y="4" width="11" height="9" rx="1.5" />
+    <path d="M3 11l3-2.5 3 2 2-1.5 3 2" />
+    <path d="M19 8v9" />
+    <circle cx="17" cy="17" r="2" />
+    <path d="M19 8l2.5-1" />
+    <path d="M4 17h8M4 20h6" />
+  </>,
+);
 export const SparkIcon = icon(
   <>
     <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />

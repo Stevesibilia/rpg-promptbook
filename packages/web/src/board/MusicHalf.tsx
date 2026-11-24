@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoardRow, FileEntry } from 'promptbook-project';
+import { setMusicPrompt, type BoardRow, type FileEntry, type MusicPrompt } from 'promptbook-project';
 import { Confirm } from '../ui/Confirm.js';
 import { DropIcon, EditIcon, MusicIcon } from '../ui/icons.js';
 import { ActionSelect } from './ActionSelect.js';
@@ -10,7 +10,7 @@ import { CopyButton } from './CopyButton.js';
 import { localTitle, useLocalFiles } from './device.js';
 import { Provenance, SourceLine, StatusChip } from './parts.js';
 import { MusicPromptEditor } from './PromptEditor.js';
-import { duration, sceneLabel } from './summary.js';
+import { duration, sceneOwner, trackGroups, trackPlaces, type TrackOwner } from './summary.js';
 
 // The Music · Suno half of a row (screen 1).
 export function MusicHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
@@ -22,66 +22,24 @@ export function MusicHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
     hold(`${row.sceneId}/music`, on);
   };
   useEffect(() => () => hold(`${row.sceneId}/music`, false), [hold, row.sceneId]);
-  const title = useRef<HTMLSpanElement>(null);
-  const style = useRef<HTMLSpanElement>(null);
-  const lyrics = useRef<HTMLSpanElement>(null);
   const { music } = row;
 
   let prompt;
   if (editing) {
     prompt = (
       <MusicPromptEditor
-        doc={doc}
-        sceneId={row.sceneId}
+        idPrefix={`ed-${row.sceneId}`}
         current={music}
-        onDone={(saved) => {
+        onSave={(next) => {
+          setMusicPrompt(doc, row.sceneId, next, 'user');
           setEditing(false);
-          if (saved) toast('Saved.');
+          toast('Saved.');
         }}
+        onCancel={() => setEditing(false)}
       />
     );
   } else if (music) {
-    prompt = (
-      <div className="pbox">
-        <div className="parts3">
-          <span className="pl">Title</span>
-          <span className="pv title">
-            <span ref={title}>{music.title}</span>
-            <small>The download's filename. Used to match tracks.</small>
-          </span>
-          <span className="pc">
-            <CopyButton text={music.title} source={title} onFallback={toast} />
-          </span>
-          <span className="pl">Style</span>
-          <span className="pv" ref={style}>
-            {music.style}
-          </span>
-          <span className="pc">
-            <CopyButton text={music.style} source={style} onFallback={toast} />
-          </span>
-          <span className="pl">Lyrics</span>
-          <span className="pv lyr" ref={lyrics}>
-            {music.lyrics.split('\n').map((line, i) => (
-              <Fragment key={i}>
-                {i > 0 && ' '}
-                <span>{line}</span>
-              </Fragment>
-            ))}
-          </span>
-          <span className="pc">
-            <CopyButton text={music.lyrics} source={lyrics} onFallback={toast} />
-          </span>
-        </div>
-        <div className="fixed">Instrumental: ON · Weirdness: low · Style Influence: strong</div>
-        <div className="pfoot">
-          <Provenance by={music.by} at={music.at} />
-          <button className="tb sm" onClick={() => setEditing(true)}>
-            <EditIcon />
-            Edit
-          </button>
-        </div>
-      </div>
-    );
+    prompt = <MusicPromptBox music={music} onEdit={() => setEditing(true)} />;
   } else {
     prompt = (
       <div className="noprompt">
@@ -105,18 +63,79 @@ export function MusicHalf({ row, dim }: { row: BoardRow; dim: boolean }) {
       </div>
       <SourceLine label="mood" text={row.mood} projectId={projectId} sceneId={row.sceneId} />
       {prompt}
-      {row.tracks.length > 0 ? (
-        <div className="tracks">
-          {row.tracks.map((file, i) => (
-            <Track key={file.id} row={row} file={file} take={i + 1} />
+      <Tracks owner={sceneOwner(row)} prompted={music !== null} />
+    </div>
+  );
+}
+
+// A Suno prompt as the board shows it: Title, Style and Lyrics with Copy,
+// Suno's fixed settings, who wrote it, and Edit. A scene's music half and a
+// General music card share it.
+export function MusicPromptBox({ music, onEdit }: { music: MusicPrompt; onEdit(): void }) {
+  const { toast } = useBoardContext();
+  const title = useRef<HTMLSpanElement>(null);
+  const style = useRef<HTMLSpanElement>(null);
+  const lyrics = useRef<HTMLSpanElement>(null);
+  return (
+    <div className="pbox">
+      <div className="parts3">
+        <span className="pl">Title</span>
+        <span className="pv title">
+          <span ref={title}>{music.title}</span>
+          <small>The download's filename. Used to match tracks.</small>
+        </span>
+        <span className="pc">
+          <CopyButton text={music.title} source={title} onFallback={toast} />
+        </span>
+        <span className="pl">Style</span>
+        <span className="pv" ref={style}>
+          {music.style}
+        </span>
+        <span className="pc">
+          <CopyButton text={music.style} source={style} onFallback={toast} />
+        </span>
+        <span className="pl">Lyrics</span>
+        <span className="pv lyr" ref={lyrics}>
+          {music.lyrics.split('\n').map((line, i) => (
+            <Fragment key={i}>
+              {i > 0 && ' '}
+              <span>{line}</span>
+            </Fragment>
           ))}
-        </div>
-      ) : music ? (
-        <div className="empty-drop">
-          <DropIcon className="ic" />
-          <span>No tracks yet. Drop Suno's downloads anywhere on the board.</span>
-        </div>
-      ) : null}
+        </span>
+        <span className="pc">
+          <CopyButton text={music.lyrics} source={lyrics} onFallback={toast} />
+        </span>
+      </div>
+      <div className="fixed">Instrumental: ON · Weirdness: low · Style Influence: strong</div>
+      <div className="pfoot">
+        <Provenance by={music.by} at={music.at} />
+        <button className="tb sm" onClick={onEdit}>
+          <EditIcon />
+          Edit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// The tracks of a scene or a General music prompt, oldest first; with none,
+// where they come from once there is a prompt.
+export function Tracks({ owner, prompted }: { owner: TrackOwner; prompted: boolean }) {
+  if (owner.tracks.length > 0) {
+    return (
+      <div className="tracks">
+        {owner.tracks.map((file, i) => (
+          <Track key={file.id} owner={owner} file={file} take={i + 1} />
+        ))}
+      </div>
+    );
+  }
+  if (!prompted) return null;
+  return (
+    <div className="empty-drop">
+      <DropIcon className="ic" />
+      <span>No tracks yet. Drop Suno's downloads anywhere on the board.</span>
     </div>
   );
 }
@@ -132,10 +151,10 @@ const PauseIcon = () => (
   </svg>
 );
 
-function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: number }) {
+function Track({ owner, file, take }: { owner: TrackOwner; file: FileEntry; take: number }) {
   const { doc, projectId, marks, player } = useBoardContext();
   const local = useLocalFiles(projectId);
-  const chosen = row.chosenTrack === file.id;
+  const chosen = owner.chosen === file.id;
   const loaded = player.current === file.id;
   const playing = loaded && player.playing;
   const length = loaded && player.duration ? player.duration : file.duration;
@@ -161,15 +180,15 @@ function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: numb
       </span>
       <span className="dur">{loaded && player.time > 0 ? duration(player.time) : duration(length)}</span>
       {chosen ? (
-        <button className="chosen-tag" title="Click to unchoose" onClick={() => toggleTrack(doc, row.sceneId, file.id)}>
+        <button className="chosen-tag" title="Click to unchoose" onClick={() => toggleTrack(doc, owner.target, file.id)}>
           ✓ Chosen
         </button>
       ) : (
-        <button className="tb sm line" onClick={() => toggleTrack(doc, row.sceneId, file.id)}>
+        <button className="tb sm line" onClick={() => toggleTrack(doc, owner.target, file.id)}>
           Choose
         </button>
       )}
-      <TrackMenu row={row} file={file} />
+      <TrackMenu owner={owner} file={file} />
       {loaded && length ? (
         <input
           className="seek"
@@ -186,18 +205,18 @@ function Track({ row, file, take }: { row: BoardRow; file: FileEntry; take: numb
   );
 }
 
-// «⋯»: Move to another scene… and Remove, the image viewer's actions
-// (asset-board design decision 12).
-export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
-  const { doc, rows, toast, player, setEditing: hold } = useBoardContext();
+// «⋯»: Move to another scene or music… and Remove, the image viewer's
+// actions (asset-board design decision 12).
+export function TrackMenu({ owner, file }: { owner: TrackOwner; file: FileEntry }) {
+  const { doc, rows, music, toast, player, setEditing: hold } = useBoardContext();
   const [open, setOpen] = useState<'menu' | 'move' | null>(null);
   // While it asks, a change of status does not filter the row away.
   const [confirm, setConfirmHere] = useState(false);
   const setConfirm = (on: boolean) => {
     setConfirmHere(on);
-    hold(`${row.sceneId}/track`, on);
+    hold(`${owner.key}/track`, on);
   };
-  useEffect(() => () => hold(`${row.sceneId}/track`, false), [hold, row.sceneId]);
+  useEffect(() => () => hold(`${owner.key}/track`, false), [hold, owner.key]);
   const box = useRef<HTMLSpanElement>(null);
 
   // Esc or a click outside closes it.
@@ -217,13 +236,14 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
     };
   }, [open]);
 
-  const question = trackQuestion(row, file);
+  const question = trackQuestion(owner, file);
+  const places = open === 'move' ? trackPlaces(rows, music) : [];
   return (
     <span className="more" ref={box}>
       <button
         className="tb sm"
         title="More"
-        aria-label={`More for take ${row.tracks.indexOf(file) + 1}`}
+        aria-label={`More for take ${owner.tracks.indexOf(file) + 1}`}
         aria-haspopup="menu"
         aria-expanded={open !== null}
         onClick={() => setOpen((o) => (o ? null : 'menu'))}
@@ -235,7 +255,7 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
           {open === 'menu' ? (
             <>
               <button role="menuitem" onClick={() => setOpen('move')}>
-                Move to another scene…
+                Move to another scene or music…
               </button>
               <button
                 role="menuitem"
@@ -250,16 +270,14 @@ export function TrackMenu({ row, file }: { row: BoardRow; file: FileEntry }) {
             </>
           ) : (
             <ActionSelect
-              label="Move to another scene"
-              placeholder="Move to another scene…"
+              label="Move to another scene or music"
+              placeholder="Move to another scene or music…"
               autoFocus
-              options={rows
-                .filter((r) => r.sceneId !== row.sceneId)
-                .map((r) => ({ value: r.sceneId, label: sceneLabel(r) }))}
+              options={trackGroups(places, owner.target)}
               onPick={(to) => {
                 setOpen(null);
                 if (player.current === file.id) player.stop();
-                const said = moveTrack(doc, rows, file.id, to);
+                const said = moveTrack(doc, places, file.id, to);
                 if (said) toast(said);
               }}
             />

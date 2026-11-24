@@ -13,7 +13,9 @@ import { strFromU8, unzipSync } from 'fflate';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
   checkCuebardPack,
+  chooseGeneralTrack,
   cuebardUuid,
   readFiles,
   setMusicPrompt,
@@ -139,6 +141,57 @@ const anna = async (s: Setup) => {
 };
 
 describe('the CueBard pack', () => {
+  it('holds the group General after the scenes and the visual folder General, with no link (general-board-items D7)', async () => {
+    const s = await setup();
+    const bytes = { tema1: wav(8000 * 2), tema2: wav(8000 * 3), macerie: mp3(), messina: png(), copertina: png(4097) };
+    const hashes = Object.fromEntries(
+      await Promise.all(Object.entries(bytes).map(async ([key, b]) => [key, await upload(s, s.project, b)] as const)),
+    ) as Record<keyof typeof bytes, string>;
+    const general = (hash: string, name: string, musicId: string, duration: number | null, mime: string, size: number): NewFile => ({
+      ...track(hash, name, null, duration, mime, size),
+      musicId,
+      matchedBy: 'title',
+    });
+    await withLiveDocument(s.app.sync, s.project, s.userId, (doc) => {
+      const theme = addMusicPrompt(doc, { title: 'Tema di Sabaoth', style: 'dark orchestral', lyrics: '[End]' }, 'claude').id;
+      const ruins = addMusicPrompt(doc, { title: 'Tra le macerie', style: 'ambient', lyrics: '[End]' }, 'claude').id;
+      addMusicPrompt(doc, { title: 'La scossa', style: 'drums', lyrics: '[End]' }, 'claude');
+      const city = addImagePrompt(doc, { category: 'general', name: 'Messina dopo il terremoto', prompt: 'ruins' }, 'claude').id;
+      const cover = addImagePrompt(doc, { category: 'general', name: 'Copertina', prompt: 'a cover' }, 'claude').id;
+      const { added } = addFiles(doc, [
+        general(hashes.tema1, 'tema di sabaoth.wav', theme, null, 'audio/wav', bytes.tema1.length),
+        general(hashes.tema2, 'tema di sabaoth (1).wav', theme, null, 'audio/wav', bytes.tema2.length),
+        general(hashes.macerie, 'tra le macerie.mp3', ruins, 61, 'audio/mpeg', bytes.macerie.length),
+        image(hashes.messina, 'messina.png', city),
+        image(hashes.copertina, 'copertina.png', cover),
+      ]);
+      chooseGeneralTrack(doc, theme, added[1]!.id);
+    });
+    const { bytes: pack, zip } = await packOf(s, s.project);
+    if (process.env.CUEBARD_GENERAL_PACK_OUT) writeFileSync(process.env.CUEBARD_GENERAL_PACK_OUT, pack);
+    expect(checkCuebardPack(pack)).toEqual([]);
+    const file = projectFile(zip);
+    expect(file.items.map((g: { displayName: string; index: number[] }) => [g.displayName, g.index])).toEqual([
+      ['S1. La casa che cede', [0]],
+      ['S2. Il molo', [1]],
+      ['S3. La torre', [2]],
+      ['General', [3]],
+    ]);
+    expect(file.items[3].uuid).toBe(cuebardUuid(s.project, 'group', 'general'));
+    expect(file.items[3].children.map((c: { displayName: string; index: number[]; outPoint: number }) => [c.displayName, c.index, c.outPoint])).toEqual([
+      ['Tema di Sabaoth', [3, 0], 3],
+      ['Tra le macerie', [3, 1], 61],
+    ]);
+    expect(file.visualFolders).toEqual(['General']);
+    expect(file.visualMedia.map((v: { displayName: string; folder: string; linkedCueUuid?: string }) => [v.displayName, v.folder, v.linkedCueUuid])).toEqual([
+      ['Messina dopo il terremoto', 'General', undefined],
+      ['Copertina', 'General', undefined],
+    ]);
+    expect(Object.keys(zip).filter((k) => k.startsWith('media/') && !k.startsWith('media/visuals/')).sort()).toEqual(
+      ['media/tema di sabaoth (1).wav', 'media/tra le macerie.mp3'].sort(),
+    );
+  });
+
   it('holds the project file, the picked tracks and images, a length read from a WAV, and lists what it left out', async () => {
     const s = await setup();
     const other = await anna(s);

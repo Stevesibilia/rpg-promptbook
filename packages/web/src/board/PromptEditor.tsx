@@ -1,8 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { LIMITS, setMusicPrompt, type MusicPrompt, type NamedCategory } from 'promptbook-project';
+import { LIMITS, type MusicInput, type MusicPrompt, type NamedCategory } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { addPrompt, EMPTY_PROMPT, savePrompt } from './actions.js';
-import type { Adding } from './context.js';
+import type { ImageAdding } from './context.js';
 import { categoryText, promptLabel, type ShownPrompt } from './summary.js';
 
 // Screen 7: a prompt edited in place. Save overwrites it as the user's, dated
@@ -112,8 +112,8 @@ export function ImagePromptEditor({
 }
 
 // The Add editor (screen 7b): nothing is written before Add. A scene's
-// «New prompt» block holds the text area; a PC's, an NPC's or a handout's
-// card holds Name, focused, and Prompt.
+// «New prompt» block holds the text area; a General image's, a PC's, an
+// NPC's or a handout's card holds Name, focused, and Prompt.
 export function AddPromptEditor({
   doc,
   adding,
@@ -122,7 +122,7 @@ export function AddPromptEditor({
   onDone,
 }: {
   doc: Y.Doc;
-  adding: Adding;
+  adding: ImageAdding;
   // A scene prompt's number once added.
   number?: number;
   onToast(message: string): void;
@@ -163,11 +163,17 @@ export function AddPromptEditor({
       aria-label={
         adding.category === 'scene'
           ? `Midjourney prompt for ${adding.sceneId} · prompt ${number}`
-          : `Midjourney prompt for the new ${categoryText[adding.category].one}`
+          : `Midjourney prompt for the new ${adding.category === 'general' ? 'General image' : categoryText[adding.category].one}`
       }
       autoFocus={!named}
       maxLength={LIMITS.imagePrompt}
-      placeholder={adding.category === 'scene' ? `A Midjourney prompt for ${adding.sceneId}…` : 'portrait of …'}
+      placeholder={
+        adding.category === 'scene'
+          ? `A Midjourney prompt for ${adding.sceneId}…`
+          : adding.category === 'general'
+            ? undefined
+            : 'portrait of …'
+      }
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
     />
@@ -205,44 +211,55 @@ export function AddPromptEditor({
   );
 }
 
+// A Suno prompt's editor: Title, Style and Lyrics, for a scene's music half
+// or a General music prompt, new (Add) or not (Save). A scene's empty title
+// keeps the one before and waits for one when there was none; a General
+// prompt's empty title is refused with `onEmptyTitle`, its tracks' only way
+// to find it (general-board-items design decision 9).
 export function MusicPromptEditor({
-  doc,
-  sceneId,
+  idPrefix,
   current,
-  onDone,
+  action = 'Save',
+  titlePlaceholder,
+  onEmptyTitle,
+  onSave,
+  onCancel,
 }: {
-  doc: Y.Doc;
-  sceneId: string;
-  current: MusicPrompt | null;
-  onDone(saved: boolean): void;
+  // The fields' ids: «ed-S3», «ed-music-<id>», «add-music».
+  idPrefix: string;
+  current: Pick<MusicPrompt, 'title' | 'style' | 'lyrics' | 'at'> | null;
+  action?: 'Save' | 'Add';
+  titlePlaceholder?: string;
+  onEmptyTitle?(): void;
+  onSave(next: MusicInput): void;
+  onCancel(): void;
 }) {
   const base = useRef(current);
   const [title, setTitle] = useState(current?.title ?? '');
   const [style, setStyle] = useState(current?.style ?? '');
   const [lyrics, setLyrics] = useState(current ? current.lyrics : LYRICS_TEMPLATE);
   const changed = (base.current?.at ?? null) !== (current?.at ?? null);
-  const id = (part: string) => `ed-${sceneId}-${part}`;
+  const id = (part: string) => `${idPrefix}-${part}`;
 
   const titleInput = useRef<HTMLInputElement>(null);
-  // A track needs its title, which names the download and matches it: with
-  // none typed and none before, Save waits for one.
+  // A track needs its title, which names the download and matches it.
   const save = () => {
+    const typed = title.trim();
     const next = {
-      title: (title.trim() || current?.title || '').slice(0, LIMITS.trackTitle),
+      title: (onEmptyTitle ? typed : typed || current?.title || '').slice(0, LIMITS.trackTitle),
       style: style.trim().slice(0, LIMITS.style),
       lyrics: lyrics.slice(0, LIMITS.lyrics),
     };
     if (!next.title) {
+      onEmptyTitle?.();
       titleInput.current?.focus();
       return;
     }
-    setMusicPrompt(doc, sceneId, next, 'user');
-    onDone(true);
+    onSave(next);
   };
-  const cancel = () => onDone(false);
 
   return (
-    <div className="editbox" onKeyDown={keys(save, cancel)}>
+    <div className="editbox" onKeyDown={keys(save, onCancel)}>
       <div className="eg">
         <label htmlFor={id('t')}>Title</label>
         <input
@@ -250,6 +267,7 @@ export function MusicPromptEditor({
           ref={titleInput}
           autoFocus
           maxLength={LIMITS.trackTitle}
+          placeholder={titlePlaceholder}
           value={title}
           onChange={(e) => setTitle(e.target.value.replace(/[\r\n]/g, ' '))}
         />
@@ -261,11 +279,11 @@ export function MusicPromptEditor({
       {changed && <div className="changed">{CHANGED}</div>}
       <div className="pfoot">
         <span className="hint">Suno names the download after the title.</span>
-        <button className="tb sm line" onClick={cancel}>
+        <button className="tb sm line" onClick={onCancel}>
           Cancel
         </button>
         <button className="tb sm primary" onClick={save}>
-          Save
+          {action}
         </button>
       </div>
     </div>

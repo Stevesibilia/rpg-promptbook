@@ -9,14 +9,17 @@ import { adventureTemplateOf } from './template.js';
 
 // The images and music board (asset-board design decisions 1 and 2): the
 // music prompts and choices per scene in the `board` map, the image prompts
-// in four categories in the `imagePrompts` map (image-categories design
-// decision 1), the images and tracks in the `files` array. Rows and statuses
-// are derived, never stored.
+// in five categories in the `imagePrompts` map (image-categories design
+// decision 1, general-board-items design decision 1), the General music
+// prompts in the `musicPrompts` map (general-board-items design decision 2),
+// the images and tracks in the `files` array. Rows and statuses are derived,
+// never stored.
 
 type Item = Y.Map<unknown>;
 
 const boardOf = (doc: Y.Doc) => doc.getMap<unknown>('board');
 const promptsOf = (doc: Y.Doc) => doc.getMap<unknown>('imagePrompts');
+const musicOf = (doc: Y.Doc) => doc.getMap<unknown>('musicPrompts');
 const filesOf = (doc: Y.Doc) => doc.getArray<Item>('files');
 
 export const fileKinds = ['image', 'audio'] as const;
@@ -27,19 +30,22 @@ export type FileKind = (typeof fileKinds)[number];
 export const matchedBy = ['prompt', 'title', 'hand', 'generated'] as const;
 export type MatchedBy = (typeof matchedBy)[number];
 
-export const imageCategories = ['scene', 'pc', 'npc', 'handout'] as const;
+// 'general': images of the whole adventure, tied to no scene
+// (general-board-items design decision 1). An older client reads a prompt of
+// a category it does not know as no prompt, and never writes its keys.
+export const imageCategories = ['scene', 'general', 'pc', 'npc', 'handout'] as const;
 export type ImageCategory = (typeof imageCategories)[number];
 
 // The categories whose prompts have a name and no scene.
 export type NamedCategory = Exclude<ImageCategory, 'scene'>;
-export const namedCategories = ['pc', 'npc', 'handout'] as const satisfies readonly NamedCategory[];
+export const namedCategories = ['general', 'pc', 'npc', 'handout'] as const satisfies readonly NamedCategory[];
 
 export interface ImagePromptEntry {
   id: string;
   category: ImageCategory;
   // Set for a scene prompt, null for the others.
   sceneId: string | null;
-  // Set for a pc, npc or handout prompt, null for a scene prompt.
+  // Set for a general, pc, npc or handout prompt, null for a scene prompt.
   name: string | null;
   // '' for a migrated prompt that had images and no text.
   prompt: string;
@@ -58,6 +64,21 @@ export interface MusicPrompt {
   by: Author;
   // ISO date-time.
   at: string;
+}
+
+// A General music prompt (general-board-items design decision 2): a Suno
+// prompt of the whole adventure, tied to no scene.
+export interface MusicPromptEntry {
+  id: string;
+  title: string;
+  style: string;
+  lyrics: string;
+  by: Author;
+  // ISO date-time; '' when unknown.
+  at: string;
+  order: number;
+  // A track of this prompt; null when none is chosen.
+  chosenTrack: string | null;
 }
 
 export interface BoardEntry {
@@ -82,9 +103,14 @@ export interface FileEntry {
   height: number | null;
   // Seconds; null for an image.
   duration: number | null;
-  // A track's scene; always null for an image. Null: waiting in the
-  // Unmatched tray.
+  // A track's scene; always null for an image. Null with a null musicId:
+  // waiting in the Unmatched tray.
   sceneId: string | null;
+  // A track's General music prompt (general-board-items design decision 3);
+  // always null for an image, and null when sceneId is set: a track with
+  // both, which an older client writes by assigning a General track to a
+  // scene, is the scene's.
+  musicId: string | null;
   // An image's prompt; always null for a track. Null: waiting in the
   // Unmatched tray.
   promptId: string | null;
@@ -107,9 +133,14 @@ export interface FileEntry {
   atelierImageId: string | null;
 }
 
-// The generated fields are optional: the map holds them only when set.
-export type NewFile = Omit<FileEntry, 'id' | 'addedAt' | 'generatedModel' | 'cost' | 'generatedVia' | 'atelierImageId'> & {
+// The generated fields and musicId are optional: the map holds them only
+// when set.
+export type NewFile = Omit<
+  FileEntry,
+  'id' | 'addedAt' | 'musicId' | 'generatedModel' | 'cost' | 'generatedVia' | 'atelierImageId'
+> & {
   addedAt?: string;
+  musicId?: string | null;
   generatedModel?: ImageModelKey | null;
   cost?: number | null;
   generatedVia?: ImageProvider | null;
@@ -141,6 +172,10 @@ function checkScene(sceneId: string): void {
 
 function checkPromptId(promptId: string): void {
   if (!isId(promptId)) throw new Error(`promptId: "${promptId}" is not a prompt id`);
+}
+
+function checkMusicId(musicId: string): void {
+  if (!isId(musicId)) throw new Error(`musicId: "${musicId}" is not a music prompt id`);
 }
 
 function checkName(name: string): void {
@@ -194,6 +229,8 @@ function toFile(item: Item): FileEntry {
     image && (generatedVia === 'atelier' || generatedModel === null) && isUuid(item.get('atelierImageId'))
       ? (item.get('atelierImageId') as string)
       : null;
+  const sceneId = image ? null : nullableStr(item.get('sceneId'));
+  const musicId = image || sceneId !== null ? null : item.get('musicId');
   return {
     id: item.get('id') as string,
     sha256: item.get('sha256') as string,
@@ -205,7 +242,8 @@ function toFile(item: Item): FileEntry {
     width: image ? num(item.get('width')) : null,
     height: image ? num(item.get('height')) : null,
     duration: image ? null : num(item.get('duration')),
-    sceneId: image ? null : nullableStr(item.get('sceneId')),
+    sceneId,
+    musicId: isId(musicId) ? musicId : null,
     promptId: image ? promptIdOf(item) : null,
     matchedBy: typeof matched === 'string' && (matchedBy as readonly string[]).includes(matched) ? (matched as MatchedBy) : null,
     addedAt: str(item.get('addedAt')),
@@ -384,7 +422,7 @@ export interface ImagePromptInput {
   category: ImageCategory;
   // A scene prompt's scene; left out for the others.
   sceneId?: string | null;
-  // A pc, npc or handout prompt's name; left out for a scene prompt.
+  // A general, pc, npc or handout prompt's name; left out for a scene prompt.
   name?: string | null;
   prompt: string;
 }
@@ -415,7 +453,9 @@ export function addImagePrompt(doc: Y.Doc, input: ImagePromptInput, by: Author, 
   if (input.category === 'scene') {
     if (input.sceneId === undefined || input.sceneId === null) throw new Error('sceneId: is required for a scene prompt');
     checkScene(input.sceneId);
-    if (input.name !== undefined && input.name !== null) throw new Error('name: only a pc, npc or handout prompt has one');
+    if (input.name !== undefined && input.name !== null) {
+      throw new Error('name: only a general, pc, npc or handout prompt has one');
+    }
   } else {
     if (input.sceneId !== undefined && input.sceneId !== null) throw new Error('sceneId: only a scene prompt has one');
     if (input.name === undefined || input.name === null) throw new Error('name: is required');
@@ -432,7 +472,7 @@ export function addImagePrompt(doc: Y.Doc, input: ImagePromptInput, by: Author, 
 
 export interface ImagePromptPatch {
   prompt?: string;
-  // Only for a pc, npc or handout prompt.
+  // Only for a general, pc, npc or handout prompt.
   name?: string;
 }
 
@@ -525,6 +565,147 @@ export function setMusicPrompt(doc: Y.Doc, sceneId: string, music: MusicInput, b
   });
 }
 
+// General music prompts (general-board-items design decision 2), under flat
+// keys "<id>/<part>" as image prompts are, so that two edits of different
+// parts merge and a removal wins over a late edit.
+
+const MUSIC_KEY = /^([^/]+)\/(music|order|chosen|removed)$/;
+type MusicPart = 'music' | 'order' | 'chosen' | 'removed';
+
+const musicKey = (id: string, part: MusicPart) => `${id}/${part}`;
+
+// The music value of a prompt that exists: a title, one line.
+function toGeneralMusic(value: unknown): MusicPrompt | null {
+  const music = toMusic(value);
+  return music && music.title.trim() !== '' ? music : null;
+}
+
+const byMusicOrder = (a: MusicPromptEntry, b: MusicPromptEntry): number =>
+  a.order !== b.order ? a.order - b.order : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+
+// Every music prompt that exists, past the cap too, ordered by order then id:
+// a valid music value with a title and no `removed`. Keys of any other id
+// are left alone and never shown.
+function allMusicPrompts(doc: Y.Doc, files: readonly FileEntry[]): MusicPromptEntry[] {
+  const parts = new Map<string, Partial<Record<MusicPart, unknown>>>();
+  for (const [key, value] of musicOf(doc).entries()) {
+    const match = MUSIC_KEY.exec(key);
+    if (!match) continue;
+    const entry = parts.get(match[1]!) ?? {};
+    entry[match[2] as MusicPart] = value;
+    parts.set(match[1]!, entry);
+  }
+  const prompts: MusicPromptEntry[] = [];
+  for (const [id, p] of parts) {
+    const music = toGeneralMusic(p.music);
+    if (!music || 'removed' in p) continue;
+    const chosen = p.chosen;
+    prompts.push({
+      id,
+      ...music,
+      order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : 0,
+      chosenTrack: files.some((f) => f.id === chosen && f.kind === 'audio' && f.musicId === id) ? (chosen as string) : null,
+    });
+  }
+  return prompts.sort(byMusicOrder);
+}
+
+// The first CAPS.musicPrompts General music prompts, ordered by order then
+// id. A chosen id that names no track of the prompt reads as null.
+export function readMusicPrompts(doc: Y.Doc): MusicPromptEntry[] {
+  return allMusicPrompts(doc, readFiles(doc)).slice(0, CAPS.musicPrompts);
+}
+
+// A music prompt's value, while the prompt exists.
+const liveMusic = (doc: Y.Doc, id: string): MusicPrompt | null =>
+  isId(id) && !musicOf(doc).has(musicKey(id, 'removed')) ? toGeneralMusic(musicOf(doc).get(musicKey(id, 'music'))) : null;
+
+function checkMusicTexts(music: Partial<MusicInput>): void {
+  if (music.title !== undefined) {
+    checkText('title', music.title, LIMITS.trackTitle, { required: true });
+    if (music.title.trim() === '') throw new Error('title: is required');
+    if (/[\r\n]/.test(music.title)) throw new Error('title: must be one line');
+  }
+  if (music.style !== undefined) checkText('style', music.style, LIMITS.style);
+  if (music.lyrics !== undefined) checkText('lyrics', music.lyrics, LIMITS.lyrics);
+}
+
+// Appends a General music prompt: 1 + the largest order present.
+export function addMusicPrompt(doc: Y.Doc, music: MusicInput, by: Author, at: string = nowIso()): MusicPromptEntry {
+  checkMusicTexts(music);
+  checkAt(at);
+  const { title, style, lyrics } = music;
+  const author = oneOf(authors, by, 'user');
+  let entry!: MusicPromptEntry;
+  doc.transact(() => {
+    const prompts = allMusicPrompts(doc, readFiles(doc));
+    if (prompts.length >= CAPS.musicPrompts) throw new Error(`musicPrompts: at most ${CAPS.musicPrompts} items`);
+    const order = 1 + Math.max(0, ...prompts.map((p) => p.order));
+    const id = randomId();
+    const map = musicOf(doc);
+    map.set(musicKey(id, 'music'), { title, style, lyrics, by: author, at });
+    map.set(musicKey(id, 'order'), order);
+    entry = { id, title, style, lyrics, by: author, at, order, chosenTrack: null };
+  });
+  return entry;
+}
+
+// Overwrites any of the three texts, as `by`, dated `at`; an empty title is
+// refused.
+export function updateMusicPrompt(
+  doc: Y.Doc,
+  id: string,
+  patch: Partial<MusicInput>,
+  by: Author,
+  at: string = nowIso(),
+): void {
+  if (patch.title === undefined && patch.style === undefined && patch.lyrics === undefined) {
+    throw new Error('Send title, style, lyrics or several');
+  }
+  checkMusicTexts(patch);
+  checkAt(at);
+  doc.transact(() => {
+    const music = liveMusic(doc, id);
+    if (!music) throw new Error(`No music prompt ${id}`);
+    musicOf(doc).set(musicKey(id, 'music'), {
+      title: patch.title ?? music.title,
+      style: patch.style ?? music.style,
+      lyrics: patch.lyrics ?? music.lyrics,
+      by: oneOf(authors, by, 'user'),
+      at,
+    });
+  });
+}
+
+// Takes a General music prompt off the board: its id gets `removed`, a key
+// only this writer writes and nothing clears, and its other keys go. Its
+// tracks are not written: they wait in the Unmatched tray as a removed
+// prompt's. Removed ids do not count toward CAPS.musicPrompts.
+export function removeMusicPrompt(doc: Y.Doc, id: string): { tracks: number } {
+  let tracks = 0;
+  doc.transact(() => {
+    if (!liveMusic(doc, id)) throw new Error(`No music prompt ${id}`);
+    tracks = readFiles(doc).filter((f) => f.kind === 'audio' && f.musicId === id).length;
+    const map = musicOf(doc);
+    map.set(musicKey(id, 'removed'), true);
+    for (const key of [...map.keys()]) if (key.startsWith(`${id}/`) && key !== musicKey(id, 'removed')) map.delete(key);
+  });
+  return { tracks };
+}
+
+// Chooses a track of the General music prompt, or none with null.
+export function chooseGeneralTrack(doc: Y.Doc, id: string, fileId: string | null): void {
+  checkMusicId(id);
+  doc.transact(() => {
+    if (!liveMusic(doc, id)) throw new Error(`No music prompt ${id}`);
+    if (fileId !== null) {
+      const file = readFiles(doc).find((f) => f.id === fileId);
+      if (!file || file.kind !== 'audio' || file.musicId !== id) throw new Error(`No track ${fileId} in ${id}`);
+    }
+    musicOf(doc).set(musicKey(id, 'chosen'), fileId);
+  });
+}
+
 function checkNewFile(file: NewFile, i: number): void {
   const field = `files[${i}]`;
   if (!isSha256(file.sha256)) throw new Error(`${field}.sha256: must be 64 lower-case hex digits`);
@@ -534,12 +715,18 @@ function checkNewFile(file: NewFile, i: number): void {
   if (!(fileKinds as readonly string[]).includes(file.kind)) throw new Error(`${field}.kind: unknown kind "${file.kind}"`);
   checkText(`${field}.name`, file.name, LIMITS.fileName, { required: true });
   if (!Number.isSafeInteger(file.size) || file.size < 0) throw new Error(`${field}.size: must be a whole number of bytes`);
+  const musicId = file.musicId ?? null;
   if (file.kind === 'image') {
     if (file.sceneId !== null) throw new Error(`${field}.sceneId: an image belongs to a prompt, not a scene`);
+    if (musicId !== null) throw new Error(`${field}.musicId: an image belongs to a prompt, not a music prompt`);
     if (file.promptId !== null) checkPromptId(file.promptId);
   } else {
     if (file.promptId !== null) throw new Error(`${field}.promptId: a track belongs to a scene, not a prompt`);
+    if (file.sceneId !== null && musicId !== null) {
+      throw new Error(`${field}: a track belongs to a scene or to a music prompt, not both`);
+    }
     if (file.sceneId !== null) checkScene(file.sceneId);
+    if (musicId !== null) checkMusicId(musicId);
   }
   const model = file.generatedModel ?? null;
   const cost = file.cost ?? null;
@@ -582,7 +769,8 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
     const now = nowIso();
     const items = fresh.map((file) => {
       const image = file.kind === 'image';
-      const target = image ? file.promptId : file.sceneId;
+      const musicId = image ? null : (file.musicId ?? null);
+      const target = image ? file.promptId : (file.sceneId ?? musicId);
       const entry: FileEntry = {
         id: randomId(),
         sha256: file.sha256,
@@ -595,6 +783,7 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         height: image ? file.height : null,
         duration: image ? null : file.duration,
         sceneId: image ? null : file.sceneId,
+        musicId,
         promptId: image ? file.promptId : null,
         matchedBy: target === null ? null : file.matchedBy,
         addedAt: file.addedAt ?? now,
@@ -607,13 +796,15 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         atelierImageId: file.atelierImageId ?? null,
       };
       added.push(entry);
-      // The generated fields go in the map only when set, so every other
-      // file's map stays as it was. generatedVia is written only when given,
-      // so an OpenRouter image's map is the one it was before Atelier.
-      const { generatedModel, cost, generatedVia: _via, atelierImageId, ...stored } = entry;
+      // The generated fields and musicId go in the map only when set, so
+      // every other file's map stays as it was. generatedVia is written only
+      // when given, so an OpenRouter image's map is the one it was before
+      // Atelier.
+      const { generatedModel, cost, generatedVia: _via, atelierImageId, musicId: _music, ...stored } = entry;
       const via = file.generatedVia ?? null;
       return mapOf({
         ...stored,
+        ...(musicId !== null ? { musicId } : {}),
         ...(generatedModel !== null ? { generatedModel } : {}),
         ...(cost !== null ? { cost } : {}),
         ...(via !== null ? { generatedVia: via } : {}),
@@ -648,15 +839,22 @@ function findFile(doc: Y.Doc, fileId: string): { item: Item; index: number } | n
   return index === -1 ? null : { item: items[index]!, index };
 }
 
-// Clears the choice the file holds in its prompt or scene, if any. A prompt
-// that is gone is not written: its keys stay gone.
+// Clears the choice the file holds in its prompt, scene or General music
+// prompt, if any. A prompt that is gone is not written: its keys stay gone.
 function unchoose(doc: Y.Doc, item: Item): void {
   const fileId = item.get('id');
   if (item.get('kind') === 'audio') {
     const sceneId = item.get('sceneId');
-    if (!isId(sceneId)) return;
-    const key = keyOf(sceneId, 'chosenTrack');
-    if (boardOf(doc).get(key) === fileId) boardOf(doc).set(key, null);
+    if (isId(sceneId)) {
+      const key = keyOf(sceneId, 'chosenTrack');
+      if (boardOf(doc).get(key) === fileId) boardOf(doc).set(key, null);
+    }
+    // Both, for a track an older client assigned to a scene while it was
+    // chosen in its General music prompt.
+    const musicId = item.get('musicId');
+    if (isId(musicId) && liveMusic(doc, musicId) && musicOf(doc).get(musicKey(musicId, 'chosen')) === fileId) {
+      musicOf(doc).set(musicKey(musicId, 'chosen'), null);
+    }
     return;
   }
   const promptId = promptIdOf(item);
@@ -688,17 +886,31 @@ export function assignImage(doc: Y.Doc, fileId: string, promptId: string | null,
   });
 }
 
-// Moves a track to a scene, or to the Unmatched tray with null. A track
-// chosen in its old scene is unchosen there.
-export function assignTrack(doc: Y.Doc, fileId: string, sceneId: string | null, matched: MatchedBy = 'hand'): void {
+// Where a track goes: a scene, a General music prompt, or the Unmatched tray
+// with null.
+export type TrackTarget = { sceneId: string } | { musicId: string } | null;
+
+// Moves a track to a scene, a General music prompt or the Unmatched tray
+// (general-board-items design decision 3): the one owner is written, the
+// other cleared (sceneId kept as null, as files are stored, musicId
+// deleted). A track chosen in its old owner is unchosen there.
+export function assignTrack(doc: Y.Doc, fileId: string, target: TrackTarget, matched: MatchedBy = 'hand'): void {
+  const sceneId = target !== null && 'sceneId' in target ? target.sceneId : null;
+  const musicId = target !== null && 'musicId' in target ? target.musicId : null;
   if (sceneId !== null) checkScene(sceneId);
+  if (musicId !== null) checkMusicId(musicId);
   doc.transact(() => {
     const { item } = findKind(doc, fileId, 'audio');
-    if (item.get('sceneId') !== sceneId) {
-      unchoose(doc, item);
-      item.set('sceneId', sceneId);
+    if (musicId !== null && !liveMusic(doc, musicId)) throw new Error(`No music prompt ${musicId}`);
+    const owner = toFile(item);
+    if (owner.sceneId !== sceneId || owner.musicId !== musicId) unchoose(doc, item);
+    if (item.get('sceneId') !== sceneId) item.set('sceneId', sceneId);
+    if (musicId !== null) {
+      if (item.get('musicId') !== musicId) item.set('musicId', musicId);
+    } else if (item.has('musicId')) {
+      item.delete('musicId');
     }
-    const by = sceneId === null ? null : matched;
+    const by = target === null ? null : matched;
     if (item.get('matchedBy') !== by) item.set('matchedBy', by);
   });
 }
@@ -768,7 +980,20 @@ export interface BoardRow {
   tracks: FileEntry[];
   chosenTrack: string | null;
   musicStatus: HalfStatus;
-  // Another row's music title has the same match key, so tracks cannot match.
+  // Another row's or a General music prompt's title has the same match key,
+  // so tracks cannot match.
+  duplicateTitle: boolean;
+}
+
+// A General music prompt as the board shows it (general-board-items design
+// decision 5).
+export interface MusicCardRow {
+  prompt: MusicPromptEntry;
+  // Its tracks, oldest first.
+  tracks: FileEntry[];
+  status: HalfStatus;
+  // A scene's or another General music prompt's title has the same match
+  // key, so tracks cannot match.
   duplicateTitle: boolean;
 }
 
@@ -793,6 +1018,8 @@ export function boardRows(
   board: ReadonlyMap<string, BoardEntry>,
   prompts: readonly ImagePromptEntry[],
   files: readonly FileEntry[],
+  // The General music prompts, whose titles count for duplicateTitle.
+  music: readonly Pick<MusicPromptEntry, 'title'>[] = [],
 ): BoardRow[] {
   const seen = new Set<string>();
   const rows: BoardRow[] = [];
@@ -815,12 +1042,33 @@ export function boardRows(
       duplicateTitle: false,
     });
   }
-  const shared = new Set(duplicateTitles(rows).map(matchKey));
+  const shared = new Set(duplicateTitles(rows, music).map(matchKey));
   for (const row of rows) row.duplicateTitle = row.music !== null && shared.has(matchKey(row.music.title));
   return rows;
 }
 
-// The PCs, the NPCs and the handouts, each in order.
+// The General music prompts as cards, in order: each with its tracks (those
+// naming it and no scene), oldest first, and its status.
+export function generalMusic(
+  prompts: readonly MusicPromptEntry[],
+  files: readonly FileEntry[],
+  // The scene rows, whose titles count for duplicateTitle.
+  rows: readonly Pick<BoardRow, 'music'>[] = [],
+): MusicCardRow[] {
+  const shared = new Set(duplicateTitles(rows, prompts).map(matchKey));
+  return prompts.map((prompt) => {
+    const tracks = files.filter((f) => f.kind === 'audio' && f.sceneId === null && f.musicId === prompt.id);
+    const chosen = tracks.some((f) => f.id === prompt.chosenTrack) ? prompt.chosenTrack : null;
+    return {
+      prompt: { ...prompt, chosenTrack: chosen },
+      tracks,
+      status: statusOf(tracks, chosen),
+      duplicateTitle: shared.has(matchKey(prompt.title)),
+    };
+  });
+}
+
+// The General images, the PCs, the NPCs and the handouts, each in order.
 export function namedPrompts(
   prompts: readonly ImagePromptEntry[],
   files: readonly FileEntry[],
@@ -830,20 +1078,24 @@ export function namedPrompts(
       prompts.filter((p) => p.category === category),
       files,
     );
-  return { pc: of('pc'), npc: of('npc'), handout: of('handout') };
+  return { general: of('general'), pc: of('pc'), npc: of('npc'), handout: of('handout') };
 }
 
-// The music titles whose match key two rows or more share, each once, as the
-// first of those rows writes it.
-export function duplicateTitles(rows: readonly Pick<BoardRow, 'music'>[]): string[] {
+// The music titles whose match key two or more share, among the scene rows
+// and the General music prompts, each once, as the first of them writes it
+// (scenes first).
+export function duplicateTitles(
+  rows: readonly Pick<BoardRow, 'music'>[],
+  music: readonly Pick<MusicPromptEntry, 'title'>[] = [],
+): string[] {
   const byKey = new Map<string, { title: string; count: number }>();
-  for (const row of rows) {
-    if (!row.music) continue;
-    const key = matchKey(row.music.title);
+  const titles = [...rows.flatMap((row) => (row.music ? [row.music.title] : [])), ...music.map((m) => m.title)];
+  for (const title of titles) {
+    const key = matchKey(title);
     if (key === '') continue;
     const found = byKey.get(key);
     if (found) found.count++;
-    else byKey.set(key, { title: row.music.title, count: 1 });
+    else byKey.set(key, { title, count: 1 });
   }
   return [...byKey.values()].filter((t) => t.count > 1).map((t) => t.title);
 }
@@ -857,20 +1109,25 @@ export interface UnmatchedFile {
 }
 
 // The Unmatched tray, so that no file is ever hidden, oldest first: tracks
-// with no scene or a scene not in the appendix; images with no prompt, whose
+// with no scene and no General music prompt, a scene not in the appendix or
+// a General music prompt that was removed; images with no prompt, whose
 // prompt was removed, or whose scene prompt's scene is not in the appendix.
 export function unmatchedFiles(
   appendix: readonly AppendixRow[],
   prompts: readonly ImagePromptEntry[],
   files: readonly FileEntry[],
+  // The General music prompts that exist.
+  music: readonly Pick<MusicPromptEntry, 'id'>[],
 ): UnmatchedFile[] {
   const scenes = new Set(appendix.flatMap((row) => (row.sceneId === null ? [] : [row.sceneId])));
   const byId = new Map(prompts.map((p) => [p.id, p]));
+  const musicIds = new Set(music.map((m) => m.id));
   const outside = (sceneId: string): UnmatchedFile['reason'] => `Scene ${sceneId} is not in the appendix.`;
   return files.flatMap((file): UnmatchedFile[] => {
     if (file.kind === 'audio') {
-      if (file.sceneId === null) return [{ file, reason: null }];
-      return scenes.has(file.sceneId) ? [] : [{ file, reason: outside(file.sceneId) }];
+      if (file.sceneId !== null) return scenes.has(file.sceneId) ? [] : [{ file, reason: outside(file.sceneId) }];
+      if (file.musicId !== null) return musicIds.has(file.musicId) ? [] : [{ file, reason: 'Its prompt was removed.' }];
+      return [{ file, reason: null }];
     }
     if (file.promptId === null) return [{ file, reason: null }];
     const prompt = byId.get(file.promptId);
@@ -883,6 +1140,8 @@ export function unmatchedFiles(
 export interface DocumentBoard {
   rows: BoardRow[];
   named: Record<NamedCategory, PromptRow[]>;
+  // The General music prompts, in order.
+  music: MusicCardRow[];
   // Scene prompts whose scene has no row in the appendix: kept, not shown.
   outsideAppendix: PromptRow[];
   // The files of the Unmatched tray.
@@ -897,18 +1156,20 @@ export interface DocumentBoard {
 export function readDocumentBoard(doc: Y.Doc, templates: readonly Template[] = []): DocumentBoard {
   const files = readFiles(doc);
   const prompts = readImagePrompts(doc);
+  const music = readMusicPrompts(doc);
   const meta = readMeta(doc);
   const appendix =
     meta.category === 'campaign'
       ? []
       : parseAdventure(readDocument(doc), { template: adventureTemplateOf(meta, templates) }).model.appendix;
-  const rows = boardRows(appendix, readBoard(doc), prompts, files);
+  const rows = boardRows(appendix, readBoard(doc), prompts, files, music);
   const shown = new Set(rows.map((r) => r.sceneId));
   const hidden = [...new Set(prompts.flatMap((p) => (p.sceneId !== null && !shown.has(p.sceneId) ? [p.sceneId] : [])))];
   return {
     rows,
     named: namedPrompts(prompts, files),
+    music: generalMusic(music, files, rows),
     outsideAppendix: hidden.flatMap((sceneId) => promptRows(scenePrompts(prompts, sceneId), files)),
-    unmatched: unmatchedFiles(appendix, prompts, files),
+    unmatched: unmatchedFiles(appendix, prompts, files, music),
   };
 }

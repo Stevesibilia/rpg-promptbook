@@ -93,20 +93,25 @@ folder export needs the server.
 ## Images and music
 
 Each adventure and one-shot has a board, **Images and music** in the rail,
-with image prompts in four categories, one tab each:
+with five tabs:
 
 - **Scenes:** one row per scene of the appendix "Appendice: immagini e
   musica" at the end of the prep document, with its `visual:` and `mood:`
   lines; any number of Midjourney prompts per scene (one shot each), and one
   Suno prompt (title, style, lyrics). A document without the appendix gets
   one from the board's **Add the appendix**.
+- **General:** images and music for the whole adventure, tied to no scene:
+  any number of named Midjourney prompts (an establishing shot, a cover) and
+  any number of Suno prompts (a main theme, ambience, combat music), each
+  with its own tracks.
 - **PCs**, **NPCs** and **Handouts:** project-wide lists, each item a name
   and a Midjourney prompt. They work without the appendix.
 
 Every prompt has Copy. Claude writes them through the connector ("write the
 image and music prompts for the board of …, with portraits of the PCs and
-NPCs and the handouts"); you can add, edit or remove any of them by hand.
-Each tab shows how many prompts it has and how many still want images.
+NPCs, the handouts, and general images and music"); you can add, edit or
+remove any of them by hand. Each tab shows how many prompts it has and how
+many still want files.
 
 Generate in Midjourney and Suno, then drop the whole Downloads batch anywhere
 on the board, or use **Add files…**. Each file finds its prompt by its name,
@@ -115,29 +120,36 @@ whatever the tab:
 - a Midjourney image by the prompt's first words, which Midjourney puts in
   the file name;
 - a Suno track by its title, the file name Suno gives it (a second take ends
-  in "(1)").
+  in "(1)"), the title of a scene's music or of a General music prompt. A
+  title used twice, in scenes or General, warns on both, and its tracks wait
+  in the tray.
 
 Files that match nothing wait in the Unmatched tray: assign them by hand, or
 press **Match again** once their prompt or title is written. An image whose
 name matches two prompts (they start with the same words) waits there too,
 marked "matches 2 prompts", with those prompts first in its menu: start each
-prompt differently to avoid it. Removing a prompt sends its images to the
-tray; no file is deleted. Choose one image per prompt and one track per
-scene; the viewer and each track's menu move or remove a file. The project's
-export holds `board.md` with the prompts, and the files in
-`files/scenes/<scene>/<prompt number>/`, `files/scenes/<scene>/music/`,
-`files/pcs/<name>/`, `files/npcs/<name>/`, `files/handouts/<name>/` and
-`files/unmatched/`.
+prompt differently to avoid it. Removing a prompt sends its images, or a
+General music prompt its tracks, to the tray; no file is deleted. Choose one
+image per prompt and one track per scene or General music prompt; the viewer
+and each track's menu move or remove a file, a track to a scene or to a
+General music prompt. The project's export holds `board.md` with the
+prompts, and the files in `files/scenes/<scene>/<prompt number>/`,
+`files/scenes/<scene>/music/`, `files/general/images/<name>/`,
+`files/general/music/<title>/`, `files/pcs/<name>/`, `files/npcs/<name>/`,
+`files/handouts/<name>/` and `files/unmatched/`.
 
 **Export for CueBard…**, in the board's header and in a project's Actions on
 the projects screen, makes a CueBard pack, `<title>.cbpack`, that CueBard's
 Import project opens as it is: one cue group per scene of the appendix, in
-its order, with the scene's tracks looping; the images in the visual folders
-Scenes, PCs, NPCs and Handouts, each scene's images linked to its first
-track. Each prompt and scene gives its chosen file, or every matched file
-when nothing is chosen; the Unmatched tray stays out, and so does the prep's
-text. Before exporting, the dialog counts what goes in and warns about each
-gap: a scene with no track, a prompt with no image, a track whose length the
+its order, with the scene's tracks looping, then one cue group General with
+the tracks of the General music prompts (left out when it has none); the
+images in the visual folders Scenes, General, PCs, NPCs and Handouts, each
+scene's images linked to its first track, General images linked to none.
+Each prompt and scene gives its chosen file, or every matched file when
+nothing is chosen; the Unmatched tray stays out, and so does the prep's text.
+Before exporting, the dialog counts what goes in and warns about each gap: a
+scene or a General music prompt with no track, a prompt with no image, a
+track whose length the
 board did not record (read from the file at export; a track whose length
 cannot be read is left out). Anything left out is listed in the pack's
 `left-out.txt`. The browser downloads the pack from the server; the desktop
@@ -217,8 +229,9 @@ a brainstorm, Claude reads and writes your projects: the prep document one
 section at a time, the to-do list, the inspiration items, research notes, the
 brainstorm log, and the board's prompts (`get_board`; `add_image_prompt`,
 `update_image_prompt` and `remove_image_prompt` for the image prompts of every
-category; `set_scene_prompts` for a scene's music and first image prompt, one
-scene at a time). A new chat about a project starts by reading its
+category, General included; `set_scene_prompts` for a scene's music and first
+image prompt, one scene at a time; `add_music_prompt`, `update_music_prompt`
+and `remove_music_prompt` for the General music prompts). A new chat about a project starts by reading its
 brainstorm log.
 
 Claude can also put images on the board. `generate_image` generates 1 to 4
@@ -249,8 +262,9 @@ The page asks which access to give:
   log entries, writes the board's prompts, generates or attaches board
   images, and changes your document templates. It never ticks a to-do item, never rewrites the seed, and
   deletes nothing except an image prompt with `remove_image_prompt`, whose
-  images move to the Unmatched tray, and a template no project uses with
-  `delete_template`.
+  images move to the Unmatched tray, a General music prompt with
+  `remove_music_prompt`, whose tracks move there too, and a template no
+  project uses with `delete_template`.
 
 Settings → Connected apps lists every app you allowed, with its access and
 when it was last used. **Revoke** cuts it off at once; to use it again,

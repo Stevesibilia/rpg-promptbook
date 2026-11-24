@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
   readFiles,
   readImagePrompts,
   setFirstScenePrompt,
@@ -139,6 +140,34 @@ describe('intake', () => {
     const line = resultLine(result);
     expect(placesText(line.places)).toBe('S1: 2 images · PCs · Rosalia: 1 image · NPCs · Padre Anselmo: 2 images.');
     expect(line.places.map((p) => p.category)).toEqual(['scene', 'pc', 'npc']);
+  });
+
+  it('matches General images and music, and names them after the scenes and before the PCs', async () => {
+    const { doc, intake, done } = setup();
+    const macerie = addMusicPrompt(doc, { title: 'Tra le macerie', style: 'dark ambient', lyrics: '[End]' }, 'claude');
+    const copertina = addImagePrompt(
+      doc,
+      { category: 'general', name: 'Copertina', prompt: 'an ancient bronze anchor rising from a stormy sea' },
+      'claude',
+    );
+    addImagePrompt(doc, { category: 'pc', name: 'Rosalia', prompt: 'portrait of a young Sicilian nurse' }, 'claude');
+    intake.add([
+      file('tra le macerie (1).mp3', mp3(20), 'audio/mpeg'),
+      file('cinque e venti.mp3', mp3(21), 'audio/mpeg'),
+      file(`steve_portrait_of_a_young_Sicilian_nurse_${UUID}_0.png`, png(22), 'image/png'),
+      ...[0, 1, 2, 3].map((n) => file(`steve_an_ancient_bronze_anchor_rising_${UUID}_${n}.png`, png(30 + n), 'image/png')),
+    ]);
+    await done();
+    const byName = new Map(readFiles(doc).map((f) => [f.name, f]));
+    expect(byName.get('tra le macerie (1).mp3')).toMatchObject({ sceneId: null, musicId: macerie.id, matchedBy: 'title' });
+    expect(byName.get(`steve_an_ancient_bronze_anchor_rising_${UUID}_2.png`)).toMatchObject({ promptId: copertina.id });
+    const result = intake.state.result!;
+    expect(result).toMatchObject({ added: 7, matched: 7, toAssign: 0 });
+    const line = resultLine(result);
+    expect(placesText(line.places)).toBe(
+      'S1: 1 track · General · Copertina: 4 images · General · Tra le macerie: 1 track · PCs · Rosalia: 1 image.',
+    );
+    expect(line.places.map((p) => p.category)).toEqual(['scene', 'general', 'general', 'pc']);
   });
 
   it('skips what is not an image or a track, by type and extension, then by its bytes', async () => {

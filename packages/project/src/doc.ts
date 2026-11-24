@@ -105,6 +105,20 @@ import { isTemplateRef, readTemplateRef, templateKindOf } from './template.js';
 //          stays until dismissed. A job not finished 15 minutes after it
 //          started is stale: readers leave it out, the next writer removes it.
 //
+// and, from the general-board-items change (its design decisions 1 to 3),
+// read and written by board.ts:
+//   imagePrompts  the category "general" in "<id>/def", named like a pc's.
+//   musicPrompts  Y.Map, keys "<musicId>/<part>", plain JSON values set whole:
+//            "<id>/music"   { title, style, lyrics, by, at }   title required
+//            "<id>/order"   number                          absent reads as 0
+//            "<id>/chosen"  file id | null
+//            "<id>/removed" true                            written only by removal; never cleared
+//          Flat keys for the same reason as the image prompts'. An older
+//          client leaves the map untouched.
+//   files  one more field, on a track of a General music prompt only:
+//          musicId; absent on every other file. A track with a sceneId is
+//          the scene's, whatever musicId it holds.
+//
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the
 // moved item. Changing one key merges like any other field.

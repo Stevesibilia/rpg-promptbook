@@ -44,12 +44,18 @@ export function savedToast(kind: 'web' | 'desktop', offered: string, saved: Cueb
   return `Saved ${name}. ${files} left out; the pack's left-out.txt lists them.`;
 }
 
-const NAMED = { pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
+const NAMED = { general: 'General', pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
 
+// A General music prompt's warnings carry its id and its bare title
+// (general-board-items design decision 7).
 function WarningLine({ warning: w }: { warning: CuebardWarning }) {
   switch (w.kind) {
     case 'no-track':
-      return (
+      return 'musicId' in w ? (
+        <>
+          General music <b>"{w.label}"</b> has no track.
+        </>
+      ) : (
         <>
           <b>{w.label}</b> has no track: its cue group is empty.
         </>
@@ -66,7 +72,11 @@ function WarningLine({ warning: w }: { warning: CuebardWarning }) {
         </>
       );
     case 'no-duration':
-      return (
+      return 'musicId' in w ? (
+        <>
+          General <b>"{w.label}"</b>: the length of "{w.fileName}" is unknown, so it is left out.
+        </>
+      ) : (
         <>
           <b>{w.label}</b>: the length of "{w.fileName}" is not recorded; the export reads it from the file, or
           leaves the track out.
@@ -96,7 +106,12 @@ export function CuebardSummaryView({
   fileName: string;
   desktop: boolean;
 }) {
-  const lead = <p>A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.</p>;
+  const lead = (
+    <p>
+      A CueBard project: one cue group per scene, with its tracks, then one group General for the music of the whole
+      adventure, and the images in five visual folders.
+    </p>
+  );
   if (state === 'empty') {
     return (
       <>
@@ -107,27 +122,33 @@ export function CuebardSummaryView({
   }
   const sep = <span className="sep">·</span>;
   const { images, warnings } = summary;
+  // `groups` counts the group General too.
+  const { general } = summary;
+  const scenes = summary.groups - (general ? 1 : 0);
   return (
     <>
       {lead}
       <dl className="xsum">
         <dt>Cue groups</dt>
         <dd>
-          <b>{summary.groups}</b> {plural(summary.groups, 'scene', 'scenes')}
+          <b>{scenes}</b> {plural(scenes, 'scene', 'scenes')}
+          {sep}
+          {general ? 'General' : <span className="hint">no General group</span>}
           {sep}
           <b>{summary.tracks}</b> {plural(summary.tracks, 'track', 'tracks')}
         </dd>
         <dt>Visual folders</dt>
         <dd>
           Scenes <b>{images.scene}</b>
+          {sep}General <b>{images.general}</b>
           {sep}PCs <b>{images.pc}</b>
           {sep}NPCs <b>{images.npc}</b>
           {sep}Handouts <b>{images.handout}</b> <span className="hint">images</span>
         </dd>
       </dl>
       <p className="m">
-        Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. The Unmatched tray
-        stays out.
+        Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. General images are
+        not linked to a track. The Unmatched tray stays out.
       </p>
       {warnings.length > 0 && (
         <div className="xwarn">

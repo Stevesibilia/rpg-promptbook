@@ -1,8 +1,10 @@
 import {
   addImagePrompt,
+  addMusicPrompt,
   assignImage,
   assignTrack,
   CAPS,
+  chooseGeneralTrack,
   chooseImage,
   chooseTrack,
   matchFile,
@@ -10,34 +12,44 @@ import {
   readBoard,
   readFiles,
   readImagePrompts,
+  readMusicPrompts,
   removeFile,
   removeImagePrompt,
+  removeMusicPrompt,
   updateImagePrompt,
-  type BoardRow,
+  updateMusicPrompt,
   type FileEntry,
   type MatchTargets,
+  type MusicCardRow,
+  type MusicInput,
   type NamedCategory,
+  type TrackTarget,
 } from 'promptbook-project';
 import type * as Y from 'yjs';
-import { categoryText, newName, promptLabel, sceneLabel, shortName, tabLabel, type ShownPrompt } from './summary.js';
+import {
+  categoryText,
+  musicLabel,
+  newName,
+  promptLabel,
+  shortName,
+  tabLabel,
+  type ShownPrompt,
+  type TrackOwner,
+  type TrackPlace,
+} from './summary.js';
 
 // What the prompt blocks and cards, the viewer, the track menu and the tray
 // do, with the toast each says. The document may have changed since the
 // board was drawn (Claude, another tab): an action on a file or a prompt
 // that is gone or moved does nothing and says nothing, rather than throwing.
 
-const label = (rows: readonly BoardRow[], sceneId: string) => {
-  const row = rows.find((r) => r.sceneId === sceneId);
-  return row ? sceneLabel(row) : sceneId;
-};
-
 // The file as the document holds it now.
 const fileNow = (doc: Y.Doc, fileId: string) => readFiles(doc).find((f) => f.id === fileId);
 
 // What files are matched against as the document holds them now, read
 // afresh rather than from the rows drawn: the image prompts with a text of
-// the given scenes, in their order, then of the PCs, NPCs and handouts; and
-// the scenes' music titles.
+// the given scenes, in their order, then of the General images, PCs, NPCs
+// and handouts; the scenes' music titles; and the General music prompts.
 export function targetsOf(doc: Y.Doc, sceneIds: readonly string[]): MatchTargets {
   const prompts = readImagePrompts(doc).filter((p) => p.prompt.trim() !== '');
   const board = readBoard(doc);
@@ -47,7 +59,19 @@ export function targetsOf(doc: Y.Doc, sceneIds: readonly string[]): MatchTargets
       ...namedCategories.flatMap((category) => prompts.filter((p) => p.category === category)),
     ].map((p) => ({ id: p.id, prompt: p.prompt })),
     scenes: sceneIds.map((sceneId) => ({ sceneId, title: board.get(sceneId)?.music?.title ?? null })),
+    music: readMusicPrompts(doc).map((m) => ({ musicId: m.id, title: m.title })),
   };
+}
+
+// The General music prompts that exist now, by id.
+const liveMusicIds = (doc: Y.Doc) => new Set(readMusicPrompts(doc).map((m) => m.id));
+
+// A track has its place on the board: a scene of the appendix, or a General
+// music prompt that exists (a scene's wins when both are set, design
+// decision 3).
+function trackPlaced(file: FileEntry, sceneIds: readonly string[], music: ReadonlySet<string>): boolean {
+  if (file.sceneId !== null) return sceneIds.includes(file.sceneId);
+  return file.musicId !== null && music.has(file.musicId);
 }
 
 // A prompt the board shows as the document holds it now: not removed, and
@@ -67,10 +91,16 @@ function toPrompt(doc: Y.Doc, sceneIds: readonly string[], fileId: string, promp
   }
 }
 
-function toScene(doc: Y.Doc, fileId: string, sceneId: string): boolean {
+// A track to a scene or a General music prompt; false when the track is
+// gone or the music prompt was removed meanwhile.
+function toOwner(doc: Y.Doc, fileId: string, target: Exclude<TrackTarget, null>): boolean {
   if (fileNow(doc, fileId)?.kind !== 'audio') return false;
-  assignTrack(doc, fileId, sceneId, 'hand');
-  return true;
+  try {
+    assignTrack(doc, fileId, target, 'hand');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // The viewer: «Moved to NPC · Turi.»; null when the image or the prompt is
@@ -87,10 +117,12 @@ export function moveImage(
   return `Moved to ${promptLabel(to)}.`;
 }
 
-// The track menu: «Moved to S4 · Torre Faro e la canzone.».
-export function moveTrack(doc: Y.Doc, rows: readonly BoardRow[], fileId: string, sceneId: string): string | null {
-  if (!toScene(doc, fileId, sceneId)) return null;
-  return `Moved to ${label(rows, sceneId)}.`;
+// The track menu: «Moved to S4 · Torre Faro e la canzone.», «Moved to
+// General · Tra le macerie.»; `to` is a place's value.
+export function moveTrack(doc: Y.Doc, places: readonly TrackPlace[], fileId: string, to: string): string | null {
+  const place = places.find((p) => p.value === to);
+  if (!place || !toOwner(doc, fileId, place.target)) return null;
+  return `Moved to ${place.label}.`;
 }
 
 // From the tray: «Assigned to NPCs · Za' Nina.».
@@ -106,19 +138,28 @@ export function assignImageFromTray(
   return `Assigned to ${tabLabel(to)}.`;
 }
 
-// From the tray: «Assigned to S3 · L'ordine di Donato.».
-export function assignTrackFromTray(doc: Y.Doc, rows: readonly BoardRow[], fileId: string, sceneId: string): string | null {
-  if (!toScene(doc, fileId, sceneId)) return null;
-  return `Assigned to ${label(rows, sceneId)}.`;
+// From the tray: «Assigned to S3 · L'ordine di Donato.», «Assigned to
+// General · La scossa.».
+export function assignTrackFromTray(
+  doc: Y.Doc,
+  places: readonly TrackPlace[],
+  fileId: string,
+  to: string,
+): string | null {
+  const place = places.find((p) => p.value === to);
+  if (!place || !toOwner(doc, fileId, place.target)) return null;
+  return `Assigned to ${place.label}.`;
 }
 
 // Match again (the tray): every file in the tray matched against the prompts
 // and titles as the document holds them now, in every category; those that
-// match exactly one prompt or scene are assigned to it, in one transaction.
+// match exactly one prompt, scene or General music prompt are assigned to
+// it, in one transaction.
 // The ids of the files assigned.
 export function matchAgain(doc: Y.Doc, sceneIds: readonly string[]): string[] {
   const scenes = new Set(sceneIds);
   const targets = targetsOf(doc, sceneIds);
+  const music = new Set(targets.music.map((m) => m.musicId));
   const shown = new Set(
     readImagePrompts(doc)
       .filter((p) => p.sceneId === null || scenes.has(p.sceneId))
@@ -130,11 +171,12 @@ export function matchAgain(doc: Y.Doc, sceneIds: readonly string[]): string[] {
       const placed =
         file.kind === 'image'
           ? file.promptId !== null && shown.has(file.promptId)
-          : file.sceneId !== null && scenes.has(file.sceneId);
+          : trackPlaced(file, sceneIds, music);
       if (placed) continue;
       const match = matchFile(file.name, file.kind, targets);
       if ('promptId' in match) assignImage(doc, file.id, match.promptId, match.matchedBy);
-      else if ('sceneId' in match) assignTrack(doc, file.id, match.sceneId, match.matchedBy);
+      else if ('sceneId' in match) assignTrack(doc, file.id, { sceneId: match.sceneId }, match.matchedBy);
+      else if ('musicId' in match) assignTrack(doc, file.id, { musicId: match.musicId }, match.matchedBy);
       else continue;
       assigned.push(file.id);
     }
@@ -156,11 +198,11 @@ export function imageQuestion(prompt: ShownPrompt, file: FileEntry): { title: st
   return { title: 'Remove this image?', text: `Image ${n} leaves ${promptLabel(prompt, true)}.` };
 }
 
-// The confirm before a track leaves its scene: «Remove this track?», «Take
-// 2 leaves S3 · L'ordine di Donato.».
-export function trackQuestion(row: BoardRow, file: FileEntry): { title: string; text: string } {
-  const n = row.tracks.findIndex((f) => f.id === file.id) + 1;
-  return { title: 'Remove this track?', text: `Take ${n} leaves ${sceneLabel(row)}.` };
+// The confirm before a track leaves its scene or General music prompt:
+// «Remove this track?», «Take 2 leaves S3 · L'ordine di Donato.».
+export function trackQuestion(owner: TrackOwner, file: FileEntry): { title: string; text: string } {
+  const n = owner.tracks.findIndex((f) => f.id === file.id) + 1;
+  return { title: 'Remove this track?', text: `Take ${n} leaves ${owner.label}.` };
 }
 
 export const REMOVE_NOTE = 'The file in your Downloads folder is not touched.';
@@ -173,7 +215,7 @@ export function removeFromTray(doc: Y.Doc, sceneIds: readonly string[], fileId: 
   const waiting =
     file.kind === 'image'
       ? file.promptId === null || !shownNow(doc, sceneIds, file.promptId)
-      : file.sceneId === null || !sceneIds.includes(file.sceneId);
+      : !trackPlaced(file, sceneIds, liveMusicIds(doc));
   if (!waiting) return null;
   removeFile(doc, fileId);
   return `Removed ${shortName(file.name)}.`;
@@ -202,12 +244,21 @@ export function toggleImage(doc: Y.Doc, promptId: string, fileId: string): boole
   return chosen !== fileId;
 }
 
-// The same for a track and its scene.
-export function toggleTrack(doc: Y.Doc, sceneId: string, fileId: string): boolean | null {
-  if (fileNow(doc, fileId)?.sceneId !== sceneId) return null;
-  const chosen = readBoard(doc).get(sceneId)?.chosenTrack ?? null;
+// The same for a track and its scene or General music prompt.
+export function toggleTrack(doc: Y.Doc, owner: TrackOwner['target'], fileId: string): boolean | null {
+  const file = fileNow(doc, fileId);
+  if (!file) return null;
+  let chosen: string | null;
   try {
-    chooseTrack(doc, sceneId, chosen === fileId ? null : fileId);
+    if ('sceneId' in owner) {
+      if (file.sceneId !== owner.sceneId) return null;
+      chosen = readBoard(doc).get(owner.sceneId)?.chosenTrack ?? null;
+      chooseTrack(doc, owner.sceneId, chosen === fileId ? null : fileId);
+    } else {
+      if (file.sceneId !== null || file.musicId !== owner.musicId) return null;
+      chosen = readMusicPrompts(doc).find((m) => m.id === owner.musicId)?.chosenTrack ?? null;
+      chooseGeneralTrack(doc, owner.musicId, chosen === fileId ? null : fileId);
+    }
   } catch {
     return null;
   }
@@ -286,4 +337,63 @@ export function removePrompt(doc: Y.Doc, id: string): string | null {
   }
   if (images === 0) return 'Prompt removed.';
   return `Prompt removed. ${images} ${images === 1 ? 'image' : 'images'} in Unmatched.`;
+}
+
+// General music prompts (general-board-items design decision 9).
+
+export const EMPTY_TITLE = 'Write the title first: it is how its tracks find it.';
+
+export const FULL_MUSIC = `The project holds ${CAPS.musicPrompts} music prompts, the most it can.`;
+
+// A new General music prompt from the Add card, as the user's: «Added
+// General · La scossa. Copy it into Suno.»; nothing added with no title or
+// when the project is full.
+export function addMusic(doc: Y.Doc, music: MusicInput): { added: boolean; said: string } {
+  if (music.title.trim() === '') return { added: false, said: EMPTY_TITLE };
+  if (readMusicPrompts(doc).length >= CAPS.musicPrompts) return { added: false, said: FULL_MUSIC };
+  try {
+    const entry = addMusicPrompt(doc, music, 'user');
+    return { added: true, said: `Added General · ${entry.title}. Copy it into Suno.` };
+  } catch {
+    return { added: false, said: FULL_MUSIC };
+  }
+}
+
+// Save in a General music prompt's editor, as the user's, dated now. False
+// when the prompt was removed meanwhile; the caller refuses an empty title.
+export function saveMusic(doc: Y.Doc, id: string, music: MusicInput): boolean {
+  try {
+    updateMusicPrompt(doc, id, music, 'user');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// The confirm before a General music prompt leaves the board.
+export function musicQuestion(card: MusicCardRow): { title: string; text: string; note: string } {
+  const n = card.tracks.length;
+  return {
+    title: 'Remove this music prompt?',
+    text: `${musicLabel(card)} leaves the board.`,
+    note:
+      n === 0
+        ? 'It has no tracks yet.'
+        : n === 1
+          ? 'Its 1 track moves to Unmatched, where you can assign it to a scene or another music prompt.'
+          : `Its ${n} tracks move to Unmatched, where you can assign them to a scene or another music prompt.`,
+  };
+}
+
+// «Music prompt removed. 2 tracks in Unmatched.», «Music prompt removed.»;
+// null when it was removed already.
+export function removeMusic(doc: Y.Doc, id: string): string | null {
+  let tracks: number;
+  try {
+    tracks = removeMusicPrompt(doc, id).tracks;
+  } catch {
+    return null;
+  }
+  if (tracks === 0) return 'Music prompt removed.';
+  return `Music prompt removed. ${tracks} ${tracks === 1 ? 'track' : 'tracks'} in Unmatched.`;
 }

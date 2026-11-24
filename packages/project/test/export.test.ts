@@ -3,7 +3,9 @@ import * as Y from 'yjs';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
   assignImage,
+  chooseGeneralTrack,
   chooseImage,
   chooseTrack,
   exportBoard,
@@ -79,7 +81,7 @@ const track = (n: number, name: string, sceneId: string | null = 'S1'): NewFile 
 
 const scenePrompt = (doc: Y.Doc, sceneId: string, prompt: string) =>
   addImagePrompt(doc, { category: 'scene', sceneId, prompt }, 'claude', AT).id;
-const named = (doc: Y.Doc, category: 'pc' | 'npc' | 'handout', name: string, prompt: string) =>
+const named = (doc: Y.Doc, category: 'general' | 'pc' | 'npc' | 'handout', name: string, prompt: string) =>
   addImagePrompt(doc, { category, name, prompt }, 'claude', AT).id;
 
 describe('the gdrarchive link in the export', () => {
@@ -172,6 +174,16 @@ describe('the board in the export', () => {
         '',
         'No prompt yet.',
         '',
+        '# General',
+        '',
+        '## Images',
+        '',
+        'None yet.',
+        '',
+        '## Music',
+        '',
+        'None yet.',
+        '',
         '# PCs',
         '',
         '## Rosalia Ferrante',
@@ -206,7 +218,107 @@ describe('the board in the export', () => {
     const doc = project({ document: '# Senza appendice\n' });
     named(doc, 'handout', 'Lettera di Salvi', 'an old letter --ar 3:4 --v 8.1');
     const markdown = exportBoard(doc).markdown;
-    expect(markdown.startsWith('# Scenes\n\nNone yet.\n\n# PCs\n\nNone yet.\n\n# NPCs\n\nNone yet.\n\n# Handouts\n\n## Lettera di Salvi\n')).toBe(true);
+    expect(markdown.startsWith('# Scenes\n\nNone yet.\n\n# General\n\n## Images\n\nNone yet.\n\n## Music\n\nNone yet.\n\n# PCs\n\nNone yet.\n\n# NPCs\n\nNone yet.\n\n# Handouts\n\n## Lettera di Salvi\n')).toBe(true);
+  });
+
+  it('writes the General part and puts its files in files/general', () => {
+    const doc = project({ document: DOCUMENT });
+    const cover = named(doc, 'general', 'Copertina', 'an anchor on a stormy sea --ar 2:3 --v 8.1');
+    const twin = named(doc, 'general', 'copertina', 'another cover');
+    const theme = addMusicPrompt(doc, { title: 'Tema di Sabaoth', style: 'dark orchestral', lyrics: '[Instrumental]\n[End]' }, 'claude', AT);
+    const empty = addMusicPrompt(doc, { title: 'La scossa: II', style: 'drums', lyrics: '' }, 'user', AT);
+    add(doc, [
+      image(1, 'a.png', cover),
+      image(2, 'b.png', cover),
+      image(3, 'c.png', cover),
+      image(4, 'd.png', cover),
+      image(5, 'e.png', twin),
+      { ...track(6, 'tema.mp3', null), musicId: theme.id },
+      { ...track(7, 'tema (1).mp3', null), musicId: theme.id },
+    ]);
+    const ids = new Map(readFiles(doc).map((f) => [f.name, f.id]));
+    chooseGeneralTrack(doc, theme.id, ids.get('tema (1).mp3')!);
+    const { markdown, files } = exportBoard(doc);
+    expect(files.filter((f) => f.path.startsWith('files/general/'))).toEqual([
+      { path: 'files/general/images/Copertina/a.png', sha256: hash(1) },
+      { path: 'files/general/images/Copertina/b.png', sha256: hash(2) },
+      { path: 'files/general/images/Copertina/c.png', sha256: hash(3) },
+      { path: 'files/general/images/Copertina/d.png', sha256: hash(4) },
+      { path: 'files/general/images/copertina (2)/e.png', sha256: hash(5) },
+      { path: 'files/general/music/Tema di Sabaoth/tema.mp3', sha256: hash(6) },
+      { path: 'files/general/music/Tema di Sabaoth/tema (1).mp3', sha256: hash(7) },
+    ]);
+    const part = markdown.slice(markdown.indexOf('# General'), markdown.indexOf('# PCs'));
+    expect(part).toBe(
+      [
+        '# General',
+        '',
+        '## Images',
+        '',
+        '### Copertina',
+        '',
+        '```',
+        'an anchor on a stormy sea --ar 2:3 --v 8.1',
+        '```',
+        '',
+        `by Claude · ${AT}`,
+        '',
+        '### copertina',
+        '',
+        '```',
+        'another cover',
+        '```',
+        '',
+        `by Claude · ${AT}`,
+        '',
+        '## Music',
+        '',
+        '### Tema di Sabaoth',
+        '',
+        'Style:',
+        '',
+        '```',
+        'dark orchestral',
+        '```',
+        '',
+        'Lyrics:',
+        '',
+        '```',
+        '[Instrumental]',
+        '[End]',
+        '```',
+        '',
+        `by Claude · ${AT}`,
+        '',
+        'Chosen: tema (1).mp3',
+        '',
+        '### La scossa: II',
+        '',
+        'Style:',
+        '',
+        '```',
+        'drums',
+        '```',
+        '',
+        'Lyrics:',
+        '',
+        '```',
+        '',
+        '```',
+        '',
+        `by you · ${AT}`,
+        '',
+        '',
+      ].join('\n'),
+    );
+    expect(markdown.indexOf('# General')).toBeGreaterThan(markdown.indexOf('# Scenes'));
+    expect(empty.id).toBeTruthy();
+  });
+
+  it('writes board.md for a board holding only General music', () => {
+    const doc = project({ document: '# Senza appendice\n' });
+    addMusicPrompt(doc, { title: 'Tema', style: 's', lyrics: '' }, 'claude', AT);
+    expect(exportBoard(doc).markdown).toContain('## Music\n\n### Tema\n');
   });
 
   it('fences a text that holds backticks with a longer fence', () => {
