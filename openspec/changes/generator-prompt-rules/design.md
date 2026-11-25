@@ -189,11 +189,7 @@ missingCredential(status) !== null)`; else `'image'`. Reason: Midjourney
 
 ## Risks
 
-- e2e specs share one account in file order. `board.spec.ts`,
-  `campaign-board.spec.ts` and `desktop.spec.ts` assert Midjourney labels
-  and toasts and run before `generate.spec.ts` saves a key, so they keep
-  passing unchanged. If one of them fails on wording, an earlier spec left a
-  key saved: report it, do not rewrite those assertions to the new words.
+- e2e specs share one account in file order. `board.spec.ts` and `campaign-board.spec.ts` assert Midjourney labels and toasts and run online before `generate.spec.ts` saves a key, so they keep passing unchanged. `desktop.spec.ts` edits the board offline, where D9 gives the image wording, so its offline assertions use the image words (found in the build, accepted 2026-11-25).
 - The board flashes the `image` wording for a Midjourney account until the
   status loads (once per page). Accepted.
 - If saving a key in `mcp-board.test.ts` needs the fake OpenRouter `/key`

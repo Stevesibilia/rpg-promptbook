@@ -215,9 +215,9 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await page.goto(`promptbook://app/projects/${mine.id}/board`);
   const s1 = page.locator('#row-S1');
   await s1.getByRole('button', { name: 'Add image prompt' }).click();
-  await page.getByLabel('Midjourney prompt for S1 · prompt 1').fill(PROMPT);
+  await page.getByLabel('Image prompt for S1 · prompt 1').fill(PROMPT);
   await s1.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.locator('.toast')).toHaveText('Added S1 · prompt 1. Copy it into Midjourney.');
+  await expect(page.locator('.toast')).toHaveText('Added S1 · prompt 1.');
   // Generate needs the server (board-image-generation design decision 15).
   const generate = s1.getByRole('button', { name: 'Generate', exact: true });
   await expect(generate).toBeDisabled();
@@ -241,9 +241,9 @@ test('offline: an edit and a new project, kept across a relaunch', async () => {
   await page.getByRole('tab', { name: /^NPCs/ }).click();
   await page.getByRole('button', { name: 'Add NPC' }).click();
   await page.getByLabel('Name').fill('Zu Peppe');
-  await page.getByLabel('Midjourney prompt for the new NPC').fill(NPC);
+  await page.getByLabel('Image prompt for the new NPC').fill(NPC);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.locator('.toast')).toHaveText('Added NPC · Zu Peppe. Copy it into Midjourney.');
+  await expect(page.locator('.toast')).toHaveText('Added NPC · Zu Peppe.');
   await expect(page.locator('[role=tabpanel]:not([hidden]) .ent .enm')).toHaveText(['Zu Peppe']);
   // Settings → Image generation waits for the server.
   await page.goto('promptbook://app/settings/image-generation');

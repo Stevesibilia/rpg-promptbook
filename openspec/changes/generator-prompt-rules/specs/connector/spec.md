@@ -15,7 +15,7 @@ read at every call, so a key saved or deleted takes effect at the next one.
 
 - **WHEN** an account whose OpenRouter key is saved calls `get_board`
 - **THEN** `imageRules.style` is `generator` and its rules name `--ar 2:3`
-  and do not name `--v`
+  and do not name `--v 8.1`
 
 #### Scenario: Account without a key
 
