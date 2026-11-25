@@ -44,9 +44,9 @@ setting`, push.
 
 ## 4. Proof and hand-back
 
-- [ ] 4.1 Typecheck; package tests (server with `TEST_DATABASE_URL`);
+- [x] 4.1 Typecheck; package tests (server with `TEST_DATABASE_URL`);
       e2e full suite. Literal counts in the hand-back.
-- [ ] 4.2 Screenshots: board with a key (scene row, NPCs tab text, Add
+- [x] 4.2 Screenshots: board with a key (scene row, NPCs tab text, Add
       editor placeholder, toast) and without (unchanged), in the
       scratchpad, paths in the hand-back.
-- [ ] 4.3 Hand back.
+- [x] 4.3 Hand back.
