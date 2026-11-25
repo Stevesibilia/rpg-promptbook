@@ -65,8 +65,8 @@ export function NamedGrid({
   filter: Filter;
   setFilter(filter: Filter): void;
 }) {
-  const { whole, named, editing, adding, setAdding } = useBoardContext();
-  const text = namedText(category, whole);
+  const { whole, named, editing, adding, setAdding, generation } = useBoardContext();
+  const text = namedText(category, whole, generation.wording);
   const items = named[category];
   const addingHere = adding?.category === category;
   const add = () => setAdding({ category });

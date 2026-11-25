@@ -108,7 +108,7 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
     'true',
   );
   await expect(panel(page).locator('details')).toHaveAttribute('open', '');
-  await expect(panel(page).locator('summary')).toHaveText('What is sent: Midjourney flags left out');
+  await expect(panel(page).locator('summary')).toHaveText('What is sent: flags left out');
   await expect(panel(page).locator('.sent ins')).toHaveText('No text, letters or modern buildings.');
   await expect(panel(page).locator('.sent s')).toHaveText('--ar 3:2 --v 8.1 --no text, letters, modern buildings');
   await expect(panel(page).locator('.est')).toHaveText('About $0.08 · 1K');
@@ -165,6 +165,16 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
   await expect(block(page, 'S2').locator('.th-i .badge.gen')).toHaveCount(3);
   await expect(page.locator('.genline')).toHaveCount(0);
   await expect(page.locator('.spend')).toHaveText('Generated here: 5 images · $0.19');
+
+  // A key is saved: the board speaks of images, not Midjourney
+  // (generator-prompt-rules).
+  await expect(page.locator('#row-S2 .hh .lab').first()).toHaveText('Images');
+  await page.goto(`/projects/${id}/board?tab=npcs`);
+  await page.getByRole('button', { name: 'Add NPC' }).click();
+  await page.getByLabel('Name').fill('Turi');
+  await page.getByLabel('Image prompt for the new NPC').fill('Portrait of a young fisherman mending a net at dawn');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(toast(page)).toHaveText('Added NPC · Turi.');
 
   // A key with no credit: the 402 line on the prompt, with Try again.
   await saveKey(page, 'sk-or-v1-broke', 'Key saved and checked: $9.50 credit left.');

@@ -26,7 +26,7 @@ import { useThumbBackfill } from './backfill.js';
 import { BoardContext, held, usePlayer, type Adding, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
 import { GeneralSummary, GeneralView } from './GeneralView.js';
-import { doneToast, generatedHereTitle, jobFiles, jobsByPrompt, toastLabel } from './generate.js';
+import { doneToast, generatedHereTitle, jobFiles, jobsByPrompt, promptWording, toastLabel } from './generate.js';
 import { GeneratedHere } from './GeneratePanel.js';
 import { progressLine, resultLine, type IntakeState, type ResultPlace } from './intake.js';
 import { MatchHelp } from './MatchHelp.js';
@@ -101,6 +101,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const user = useAuth().user.id;
   const offline = useOffline();
   const { status: generationStatus, retry: retryStatus, check: checkStatus } = useGenerationStatus(user, offline);
+  const wording = promptWording(offline || generationStatus.state !== 'ready' ? null : generationStatus.status);
   const defaults = useGenerateDefaults(user);
   const jobList = useGenerationJobs(doc);
   const jobs = useMemo(() => jobsByPrompt(jobList), [jobList]);
@@ -222,6 +223,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       user,
       offline,
       status: generationStatus,
+      wording,
       retryStatus: retryGeneration,
       checkStatus,
       projectTitle: meta.title,
@@ -328,7 +330,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
               ) : (
                 <NamedSummary category={category} filter={filter} setFilter={setFilter} />
               )}
-              {noPrompts && <ClaudeCard title={meta.title} whole={whole} onToast={showToast} />}
+              {noPrompts && <ClaudeCard title={meta.title} whole={whole} wording={wording} onToast={showToast} />}
               <OfflineLine projectId={id} />
               <Strips state={intakeState} onDismiss={() => intake.dismissResult()} intake={intake} onPlace={goTo} />
               <Tray

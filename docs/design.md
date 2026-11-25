@@ -358,6 +358,10 @@ README says how to connect it.
   board tools work on every project, campaigns included (#68); on a
   campaign `set_scene_prompts` and `add_image_prompt` with the category
   `scene` answer `not_an_adventure`, as `add_scene` does.
+  `get_board` also answers `imageRules`, the rules for image prompts on this
+  account: for GPT Image and Nano Banana when it generates on the board,
+  for Midjourney otherwise (#57, `generator-prompt-rules`; see «Asset
+  board»).
 - **Section-scoped edits:** Claude replaces one section, scene or sheet, or
   adds a scene. The edit carries the hash of the text Claude read, so text
   the user changed in between is never overwritten. Checks never refuse an
@@ -436,8 +440,9 @@ Built 2026-10-20 (#26, the OpenSpec change `asset-board`): "Images and music"
 in the rail. One row per scene, built from the `visual:`/`mood:` appendix of
 the prep document:
 
-- A Midjourney prompt and a Suno prompt per row, written with the rules of the
-  `midjourney-prompts` and `suno-prompts` skills, each with a copy button.
+- An image prompt and a Suno prompt per row, written with the rules of the
+  `midjourney-prompts` and `suno-prompts` skills, each with a copy button;
+  the image rules follow the account's generation setting (below).
 - Image prompts in four categories, one tab each (#36, the OpenSpec change
   `image-categories`): Scenes, with any number of prompts per scene; PCs,
   NPCs and Handouts, project-wide lists of a name and a prompt. Music stays
@@ -459,6 +464,20 @@ the prep document:
   `add_image_prompt`, `update_image_prompt`, `remove_image_prompt`,
   `set_scene_prompts`, `add_music_prompt`, `update_music_prompt`,
   `remove_music_prompt`); the user adds, edits and removes them by hand.
+- The image prompt rules follow the account's generation setting (#57, the
+  OpenSpec change `generator-prompt-rules`). The server gives each account a
+  prompt style: `generator` when the provider chosen in Settings has its key
+  or token saved and usable, `midjourney` otherwise. `get_board` answers
+  `imageRules` with the style and its rules, read live, so a key saved or
+  deleted takes effect at the next read; tool descriptions are static (clients
+  cache them) and only point at `imageRules`. The generator rules ask for
+  English prose for GPT Image and Nano Banana, quoted text for words in the
+  image, exclusions as a sentence, and no flags but a final `--ar`, which
+  still picks the shape. The Midjourney rules are the earlier ones. Warnings
+  follow the style: shared first words for `midjourney`, flags other than
+  `--ar` for `generator`; neither refuses a write. The board says Midjourney
+  only when it knows the account cannot generate, and «Images», «Image
+  prompt» otherwise, including while the status loads.
   Removing a prompt sends its images, or a General music prompt its tracks,
   to the Unmatched tray. Prompts are not versioned.
 - Claude puts images on the board through the connector (#61, the OpenSpec

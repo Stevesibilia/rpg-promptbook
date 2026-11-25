@@ -168,15 +168,18 @@ describe('the board tools in the list', () => {
     const s = await setup();
     const tools = await mcpListTools(s.app, s.token);
     const write = tools.find((t) => t.name === 'set_scene_prompts')!.description!;
-    for (const part of ['--ar 16:9 --v 8.1', '[End]', 'unique in the project', 'English', '4 to 7 descriptors', 'instrumental']) {
+    for (const part of ['imageRules', 'get_board', '[End]', 'unique in the project', 'English', '4 to 7 descriptors', 'instrumental']) {
       expect(write).toContain(part);
     }
+    expect(write).not.toContain('--v');
     expect(tools.find((t) => t.name === 'get_board')!.description).toContain('Read it before writing prompts');
     expect(tools.find((t) => t.name === 'get_board')!.description).toContain('Scenes (any number per scene');
     const add = tools.find((t) => t.name === 'add_image_prompt')!.description!;
-    for (const part of ['--ar 16:9', '--ar 2:3', 'words no other prompt starts with', 'English', 'PCs, NPCs, Handouts']) {
+    for (const part of ['imageRules', 'get_board', 'English', 'PCs, NPCs, Handouts']) {
       expect(add).toContain(part);
     }
+    expect(add).not.toContain('--v');
+    expect(add).not.toContain('Midjourney');
     expect(tools.find((t) => t.name === 'remove_image_prompt')!.description).toContain('no file is deleted');
     // campaign-board design decision 8.
     expect(tools.find((t) => t.name === 'get_board')!.description).toContain('A campaign has no scenes: scenes is empty.');
@@ -223,7 +226,7 @@ describe('get_board', () => {
 
   it('answers appendix false and no rows for a document without an appendix', async () => {
     const s = await setup({ text: NO_APPENDIX });
-    expect((await s.call('get_board', { projectId: s.id })).value).toEqual({
+    expect((await s.call('get_board', { projectId: s.id })).value).toMatchObject({
       appendix: false,
       scenes: [],
       general: { images: [], music: [] },
@@ -798,7 +801,7 @@ describe('the General music tools', () => {
     expect(tools.find((t) => t.name === 'remove_music_prompt')!.description).toContain('no file is deleted');
     const add = tools.find((t) => t.name === 'add_image_prompt')!.description!;
     expect(add).toContain('General');
-    expect(add).toContain('for a cover');
+    expect(add).toContain('a cover');
     expect(tools.find((t) => t.name === 'get_board')!.description).toContain('five categories');
   });
 

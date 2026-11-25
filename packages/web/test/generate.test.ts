@@ -122,7 +122,7 @@ describe('the Generate panel', () => {
 
   it('shows what is sent: the flags left out, the --no sentence added', () => {
     expect(sentView('desaturated --ar 3:2 --v 8.1 --no text, letters, modern buildings')).toEqual({
-      summary: 'What is sent: Midjourney flags left out',
+      summary: 'What is sent: flags left out',
       open: true,
       base: 'desaturated',
       added: 'No text, letters or modern buildings.',

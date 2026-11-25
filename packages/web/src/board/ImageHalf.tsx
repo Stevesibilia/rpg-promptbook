@@ -10,7 +10,7 @@ import { dims, stackLine, type Filter } from './summary.js';
 // then a stack of image prompts and «Add image prompt». With a filter, the
 // blocks not in its state dim; a half with none in it dims whole.
 export function ImageHalf({ row, filter }: { row: BoardRow; filter: Filter }) {
-  const { doc, projectId, shown, toast, editing, adding, setAdding } = useBoardContext();
+  const { doc, projectId, shown, toast, editing, adding, setAdding, generation } = useBoardContext();
   const addingHere = adding?.category === 'scene' && adding.sceneId === row.sceneId;
   const kept = (p: BoardRow['prompts'][number]) => !dims(p.status, filter) || held(editing, p.prompt.id);
   const dimAll = filter !== 'all' && !addingHere && !row.prompts.some(kept);
@@ -21,7 +21,7 @@ export function ImageHalf({ row, filter }: { row: BoardRow; filter: Filter }) {
       <div className="hh">
         <span className="lab">
           <ImageIcon className="ic" />
-          Images · Midjourney
+          {generation.wording === 'image' ? 'Images' : 'Images · Midjourney'}
         </span>
         <span className="hsum">{stackLine(row.prompts)}</span>
       </div>

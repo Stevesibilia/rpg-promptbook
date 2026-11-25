@@ -117,7 +117,7 @@ export function sentView(text: string): SentView {
   const sent = sentPrompt(text);
   const flagged = sent.flags !== '';
   return {
-    summary: flagged ? 'What is sent: Midjourney flags left out' : 'What is sent',
+    summary: flagged ? 'What is sent: flags left out' : 'What is sent',
     open: flagged,
     base: flagged ? sent.base : sent.text,
     added: sent.no === null ? null : `No ${sent.no}.`,
@@ -224,6 +224,27 @@ export function throughLine(
   const month = status.atelier.token?.month ?? null;
   const used = month ? ` · ${money2(month.spent)} of ${capDollars(month.cap)} used this month` : '';
   return { provider: 'atelier', rest: ` · into the collection «${collectionTitle(projectTitle)}»${used}` };
+}
+
+// Why the chosen provider cannot generate yet, or null (D13): no Atelier on
+// the server, or no credential.
+export function missingCredential(status: ImageGenerationStatus): string | null {
+  if (status.provider === 'atelier') {
+    if (!status.atelier.available) return 'This server has no Atelier address.';
+    return status.atelier.token ? null : noCredential('atelier');
+  }
+  return status.key ? null : noCredential('openrouter');
+}
+
+// The words the board uses for an image prompt (generator-prompt-rules D8):
+// 'midjourney' only when the account is known to have no way to generate,
+// the status read and the server not configured or the chosen provider
+// without its credential. Unknown (loading, failed, offline) reads as
+// 'image'.
+export type PromptWording = 'midjourney' | 'image';
+
+export function promptWording(status: ImageGenerationStatus | null): PromptWording {
+  return status !== null && (!status.configured || missingCredential(status) !== null) ? 'midjourney' : 'image';
 }
 
 // What the panel asks for when the chosen provider has no credential.

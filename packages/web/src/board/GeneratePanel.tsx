@@ -19,7 +19,7 @@ import {
   imageCounts,
   modelLine,
   money2,
-  noCredential,
+  missingCredential,
   OFFLINE_TITLE,
   panelShape,
   priceLine,
@@ -163,16 +163,6 @@ export function GeneratePanel({
       {body}
     </div>
   );
-}
-
-// Why the chosen provider cannot generate yet, or null (D13): no Atelier on
-// the server, or no credential.
-export function missingCredential(status: ImageGenerationStatus): string | null {
-  if (status.provider === 'atelier') {
-    if (!status.atelier.available) return 'This server has no Atelier address.';
-    return status.atelier.token ? null : noCredential('atelier');
-  }
-  return status.key ? null : noCredential('openrouter');
 }
 
 // «Through Atelier · into the collection «…» · $0.90 of $20 used this month

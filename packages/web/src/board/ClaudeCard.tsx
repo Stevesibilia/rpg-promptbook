@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
 import { CopyButton } from './CopyButton.js';
+import type { PromptWording } from './generate.js';
 import type { Whole } from './summary.js';
 
 // The request to copy into a chat on claude.ai: a campaign's names no scene
@@ -12,7 +13,18 @@ export const claudeRequest = (title: string, whole: Whole) =>
 
 // Screen 2: while no image prompt has a text, no scene a music title and no
 // General music prompt exists, where the prompts come from.
-export function ClaudeCard({ title, whole, onToast }: { title: string; whole: Whole; onToast(message: string): void }) {
+export function ClaudeCard({
+  title,
+  whole,
+  wording,
+  onToast,
+}: {
+  title: string;
+  whole: Whole;
+  wording: PromptWording;
+  onToast(message: string): void;
+}) {
+  const kind = wording === 'image' ? 'image' : 'Midjourney';
   const request = claudeRequest(title, whole);
   const text = useRef<HTMLSpanElement>(null);
   return (
@@ -22,12 +34,12 @@ export function ClaudeCard({ title, whole, onToast }: { title: string; whole: Wh
         <h3>Prompts come from Claude</h3>
         {whole === 'campaign' ? (
           <p>
-            Claude reads the campaign and writes General images and music for it, like a cover and a main theme, and
-            Midjourney prompts for the PCs, the NPCs and the handouts. Ask in a chat on claude.ai:
+            Claude reads the campaign and writes General images and music for it, like a cover and a main theme, and{' '}
+            {kind} prompts for the PCs, the NPCs and the handouts. Ask in a chat on claude.ai:
           </p>
         ) : (
           <p>
-            Claude reads the document and writes Midjourney prompts for the scenes, the PCs, the NPCs and the handouts,
+            Claude reads the document and writes {kind} prompts for the scenes, the PCs, the NPCs and the handouts,
             one Suno prompt per scene from its <code>mood:</code> line, and General images and music for the whole
             adventure. Ask in a chat on claude.ai:
           </p>

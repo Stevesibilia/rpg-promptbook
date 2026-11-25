@@ -72,6 +72,7 @@ function render(prompt: ShownPrompt, gen: Partial<Generation> = {}, part?: React
     user: 'u1',
     offline: false,
     status: ready(),
+    wording: 'image',
     retryStatus: () => {},
     checkStatus: () => {},
     projectTitle: "L'Ancora di Sabaoth",
@@ -145,7 +146,7 @@ describe('Generate on a prompt', () => {
     expect(html).toMatch(/<button class="on" aria-pressed="true">3:2<\/button>/);
     expect(html).toMatch(/<button class="on" aria-pressed="true">2<\/button>/);
     expect(html).toMatch(/<details open="">/);
-    expect(t).toMatch(/What is sent: Midjourney flags left out Low-angle view of a flooded crypt, sepia and ash palette No text, letters or modern buildings\. --ar 3:2/);
+    expect(t).toMatch(/What is sent: flags left out Low-angle view of a flooded crypt, sepia and ash palette No text, letters or modern buildings\. --ar 3:2/);
     expect(html).toMatch(/<ins>No text, letters or modern buildings\.<\/ins>/);
     expect(html).toMatch(/<s>--ar 3:2 --v 8\.1 --no text, letters, modern buildings<\/s>/);
     expect(t).toMatch(/About \$0\.08 · 1K Cancel Generate 2 No images yet/);

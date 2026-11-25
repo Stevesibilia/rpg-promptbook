@@ -161,7 +161,7 @@ export function PromptBody({ prompt }: { prompt: ShownPrompt }) {
     // A migrated prompt with images and no text.
     box = (
       <div className="noprompt">
-        <span>No Midjourney prompt yet. Ask Claude, or write one.</span>
+        <span>No {gen.wording === 'image' ? 'image' : 'Midjourney'} prompt yet. Ask Claude, or write one.</span>
         <button className="tb sm line" onClick={() => setEditing(true)}>
           <EditIcon />
           Write by hand

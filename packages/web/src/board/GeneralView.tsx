@@ -43,8 +43,8 @@ export function GeneralView({
   filter: Filter;
   setFilter(filter: Filter): void;
 }) {
-  const { whole, named, music, editing, adding, setAdding } = useBoardContext();
-  const text = namedText('general', whole);
+  const { whole, named, music, editing, adding, setAdding, generation } = useBoardContext();
+  const text = namedText('general', whole, generation.wording);
   const images = named.general;
   const addingImage = adding?.category === 'general';
   const addingMusic = adding?.category === 'music';
@@ -93,7 +93,7 @@ export function GeneralView({
         <div className="gsh">
           <span className="lab">
             <ImageIcon className="ic" />
-            Images · Midjourney
+            {generation.wording === 'image' ? 'Images' : 'Images · Midjourney'}
           </span>
           <span className="hsum">{sectionLine(images, 'image', 'images')}</span>
         </div>
