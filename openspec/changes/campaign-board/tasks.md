@@ -31,8 +31,8 @@ Commit: `feat(connector): open the board tools to campaigns`
 
 ## 3. Proof and hand-back of brief A
 
-- [ ] 3.1 `npm run typecheck`; `npm test` with `TEST_DATABASE_URL` on a throwaway postgres (`CI` unset), the report showing the server db tests ran
-- [ ] 3.2 Hand-back to the architect: commits, test counts, "Corrections" to "The code today", departures from D6 to D10 with their reasons
+- [x] 3.1 `npm run typecheck`; `npm test` with `TEST_DATABASE_URL` on a throwaway postgres (`CI` unset), the report showing the server db tests ran
+- [x] 3.2 Hand-back to the architect: commits, test counts, "Corrections" to "The code today", departures from D6 to D10 with their reasons
 
 Commit: `chore(openspec): tick brief A of campaign-board`
 
