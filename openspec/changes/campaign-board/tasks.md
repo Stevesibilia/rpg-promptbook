@@ -49,10 +49,10 @@ Commit: `feat(web): open the images and music board on campaigns`
 
 ## 5. End-to-end tests (brief B)
 
-- [ ] 5.1 Merge `origin/main` if it moved since brief A; build web and desktop (`npm run build -w promptbook-web && npm run build -w promptbook-desktop`)
-- [ ] 5.2 `e2e/campaign-board.spec.ts` (new, D15): 11c on a new campaign, add by hand, drop files, choose, the 11b dialog lines, the pack's one group «General»; it generates nothing and leaves account-wide settings alone
-- [ ] 5.3 `e2e/connector.spec.ts` (`add_music_prompt` on a campaign, `set_scene_prompts` answering `not_an_adventure`) and `e2e/editor.spec.ts` («campaign not checked»: the rail shows «Images and music»)
-- [ ] 5.4 The whole e2e suite green once normally and once with `E2E_CPU_THROTTLE=3`; check `docker volume ls | grep promptbook-e2e` is empty before each fresh run
+- [x] 5.1 Merge `origin/main` if it moved since brief A; build web and desktop (`npm run build -w promptbook-web && npm run build -w promptbook-desktop`)
+- [x] 5.2 `e2e/campaign-board.spec.ts` (new, D15): 11c on a new campaign, add by hand, drop files, choose, the 11b dialog lines, the pack's one group «General»; it generates nothing and leaves account-wide settings alone
+- [x] 5.3 `e2e/connector.spec.ts` (`add_music_prompt` on a campaign, `set_scene_prompts` answering `not_an_adventure`) and `e2e/editor.spec.ts` («campaign not checked»: the rail shows «Images and music»)
+- [x] 5.4 The whole e2e suite green once normally and once with `E2E_CPU_THROTTLE=3`; check `docker volume ls | grep promptbook-e2e` is empty before each fresh run
 
 Commit: `test(e2e): cover the campaign board`
 
