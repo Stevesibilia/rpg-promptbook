@@ -43,6 +43,7 @@ describe('an answer too large to read', () => {
         model: 'openai/gpt-image-2.6-sunburst',
         prompt: 'a pier',
         aspectRatio: '1:1',
+        references: [],
       });
       expect(answer).toEqual({ ok: false, error: IMAGE_ERRORS.noImage });
     } finally {

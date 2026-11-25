@@ -27,11 +27,13 @@ import { getProject } from '../projects.js';
 import type { Sync } from '../sync.js';
 import {
   ATELIER_ERRORS,
+  ATELIER_REFERENCE_NOT_FOUND,
   AtelierError,
   downloadImage,
   ensureCollection,
   readGeneration,
   startGeneration,
+  uploadImage,
   type AtelierImage,
   type GenerationState,
 } from './atelier.js';
@@ -84,9 +86,33 @@ export interface GenerationRun {
   // Who the images are marked as added by: the user from the board's
   // Generate, Claude from the connector (connector-board-images D5).
   addedBy: Author;
+  // The reference images, checked by startImageGeneration
+  // (reference-images design decisions 5 and 6), in order; none is [].
+  references: ReferenceFile[];
   // Aborted when the key is removed or the server stops; its reason, a
   // string, is the sentence of the images it stops.
   stop: AbortSignal;
+}
+
+// A reference image as the job sends it: its file on the board and its
+// bytes' name, type and size as the server holds them.
+export interface ReferenceFile {
+  fileId: string;
+  sha256: string;
+  mime: string;
+  size: number;
+  // The Atelier image it came from, sent to Atelier instead of its bytes
+  // (D8).
+  atelierImageId: string | null;
+}
+
+// Reads a reference's bytes from the file store; null when they are gone.
+async function readReference(blobs: BlobStore, ref: ReferenceFile): Promise<Buffer | null> {
+  const found = await blobs.get(ref.sha256);
+  if (!found) return null;
+  const chunks: Buffer[] = [];
+  for await (const chunk of found.stream) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
 }
 
 const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
@@ -218,10 +244,11 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
   const write = async <T>(fn: Parameters<typeof withLiveDocument<T>>[3]): Promise<T | null> =>
     (await writable()) ? withLiveDocument(sync, run.projectId, run.userId, fn) : null;
 
+  const references = run.references.map((r) => r.fileId);
   const row = (ok: boolean, fields: { cost?: number | null; sha256?: string | null; error?: string | null }) =>
     db.query(
-      `insert into image_generations (user_id, project_id, prompt_id, model, cost, sha256, ok, error, provider)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `insert into image_generations (user_id, project_id, prompt_id, model, cost, sha256, ok, error, provider, reference_count)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         run.userId,
         run.projectId,
@@ -232,6 +259,7 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
         ok,
         fields.error ?? null,
         run.provider,
+        references.length,
       ],
     );
 
@@ -274,6 +302,8 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
         cost,
         generatedVia: extra.generatedVia,
         ...(extra.atelierImageId !== undefined ? { atelierImageId: extra.atelierImageId } : {}),
+        // D9: what it was made with.
+        ...(references.length > 0 ? { references } : {}),
       };
       let skipped: number;
       try {
@@ -304,14 +334,14 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     return { ok: false, error: sentence, billed: cost !== null || mayBeBilled };
   }
 
-  async function one(): Promise<Outcome> {
+  async function one(inputs: string[]): Promise<Outcome> {
     let cost: number | null = null;
     let sha256 = '';
     try {
       const answer = await generateImage(
         deps.baseUrl,
         run.key,
-        { model: IMAGE_MODELS[run.model].id, prompt: text, aspectRatio: run.shape },
+        { model: IMAGE_MODELS[run.model].id, prompt: text, aspectRatio: run.shape, references: inputs },
         deps.timeoutMs,
         run.stop,
       );
@@ -381,23 +411,78 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     return id;
   }
 
+  // A reference's bytes for the job. Bytes the store no longer has, or
+  // cannot read, fail the image with the reference sentence before any
+  // provider is asked (reference-images design decisions 7 and 8).
+  async function referenceBytes(ref: ReferenceFile): Promise<Buffer> {
+    let bytes: Buffer | null;
+    try {
+      bytes = await readReference(deps.blobs, ref);
+    } catch (error) {
+      log.error({ jobId: run.jobId, err: error }, 'Could not read a reference image');
+      bytes = null;
+    }
+    if (bytes === null) throw new ImageFailed(IMAGE_ERRORS.referenceNotSynced);
+    return bytes;
+  }
+
+  // reference-images design decision 8: each reference as an Atelier image,
+  // the one it came from when it has one, else its bytes uploaded, each
+  // file at most once per job. `upload` uploads every file, the ones from
+  // Atelier too.
+  const uploaded = new Map<string, string>();
+  async function referenceIds(upload: boolean): Promise<string[]> {
+    const ids: string[] = [];
+    for (const ref of run.references) {
+      if (ref.atelierImageId !== null && !upload) {
+        ids.push(ref.atelierImageId);
+        continue;
+      }
+      let id = uploaded.get(ref.fileId);
+      if (id === undefined) {
+        const bytes = await referenceBytes(ref);
+        id = await uploadImage(run.atelierUrl!, run.key, { bytes, mime: ref.mime }, { signal: run.stop });
+        uploaded.set(ref.fileId, id);
+      }
+      ids.push(id);
+    }
+    return ids;
+  }
+
   // D10, step 1: the generation started; a collection Atelier no longer has
-  // is made again, once.
+  // is made again, once; when Atelier does not find a reference id that came
+  // from it (deleted there since), every file is uploaded and sent again,
+  // once (D8). Any other refusal of the references is shown at once.
   async function start(): Promise<string> {
-    const body = (collectionId: string) => ({
+    const body = (collectionId: string, refs: string[]) => ({
       prompt: text,
       model: IMAGE_MODELS[run.model].id,
       aspectRatio: run.shape,
       count: run.count,
       collectionId,
+      ...(refs.length > 0 ? { referenceIds: refs } : {}),
     });
-    try {
-      return (await startGeneration(run.atelierUrl!, run.key, body(await collection(false)), { signal: run.stop })).id;
-    } catch (error) {
-      if (!(error instanceof AtelierError) || error.status !== 400 || error.field !== 'collectionId') throw error;
+    let refs = await referenceIds(false);
+    let collectionId = await collection(false);
+    let freshCollection = false;
+    let uploadedAll = !run.references.some((r) => r.atelierImageId !== null);
+    for (;;) {
+      try {
+        return (await startGeneration(run.atelierUrl!, run.key, body(collectionId, refs), { signal: run.stop })).id;
+      } catch (error) {
+        if (!(error instanceof AtelierError) || error.status !== 400) throw error;
+        if (error.field === 'collectionId' && !freshCollection) {
+          await db.query('delete from atelier_collections where user_id = $1 and project_id = $2', [run.userId, run.projectId]);
+          collectionId = await collection(true);
+          freshCollection = true;
+        } else if (error.field === 'referenceIds' && error.message === ATELIER_REFERENCE_NOT_FOUND && !uploadedAll) {
+          refs = await referenceIds(true);
+          uploadedAll = true;
+        } else {
+          throw error;
+        }
+      }
     }
-    await db.query('delete from atelier_collections where user_id = $1 and project_id = $2', [run.userId, run.projectId]);
-    return (await startGeneration(run.atelierUrl!, run.key, body(await collection(true)), { signal: run.stop })).id;
   }
 
   async function viaAtelier(): Promise<Outcome[]> {
@@ -405,13 +490,18 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     try {
       generationId = await start();
     } catch (error) {
-      // Nothing started: every image fails with Atelier's sentence.
+      // Nothing started: every image fails with Atelier's sentence, or a
+      // reference's.
       const sentence = run.stop.aborted
         ? stopReason()
-        : error instanceof AtelierError
-          ? (atelierRefused(error) ?? error.message)
-          : ATELIER_ERRORS.unreachable;
-      if (!(error instanceof AtelierError)) log.error({ jobId: run.jobId, err: error }, 'An Atelier generation did not start');
+        : error instanceof ImageFailed
+          ? error.message
+          : error instanceof AtelierError
+            ? (atelierRefused(error) ?? error.message)
+            : ATELIER_ERRORS.unreachable;
+      if (!(error instanceof AtelierError) && !(error instanceof ImageFailed)) {
+        log.error({ jobId: run.jobId, err: error }, 'An Atelier generation did not start');
+      }
       const outcomes: Outcome[] = [];
       for (let i = 0; i < run.count; i++) outcomes.push(await failImage(sentence, null));
       return outcomes;
@@ -476,19 +566,34 @@ export async function runGenerationJob(deps: JobDeps, run: GenerationRun): Promi
     return outcomes;
   }
 
+  // D7: the references' bytes, read once for every call of the job. Bytes
+  // gone since the start, or unreadable, fail every image, nothing asked of
+  // OpenRouter.
+  async function viaOpenRouter(): Promise<Outcome[]> {
+    // The data URLs, built once and sent by every call.
+    const inputs: string[] = [];
+    try {
+      for (const ref of run.references) inputs.push(`data:${ref.mime};base64,${(await referenceBytes(ref)).toString('base64')}`);
+    } catch (error) {
+      if (!(error instanceof ImageFailed)) throw error;
+      first = error.message;
+      const outcomes: Outcome[] = [];
+      for (let i = 0; i < run.count; i++) outcomes.push(await failImage(error.message, null));
+      return outcomes;
+    }
+    return Promise.all(
+      Array.from({ length: run.count }, () =>
+        one(inputs).then((outcome) => {
+          if (!outcome.ok) first ??= outcome.error;
+          return outcome;
+        }),
+      ),
+    );
+  }
+
   // The first image to fail gives the sentence.
   let first: string | null = null;
-  const outcomes =
-    run.provider === 'atelier'
-      ? await viaAtelier()
-      : await Promise.all(
-          Array.from({ length: run.count }, () =>
-            one().then((outcome) => {
-              if (!outcome.ok) first ??= outcome.error;
-              return outcome;
-            }),
-          ),
-        );
+  const outcomes = run.provider === 'atelier' ? await viaAtelier() : await viaOpenRouter();
   if (run.provider === 'atelier') first = outcomes.find((o): o is Extract<Outcome, { ok: false }> => !o.ok)?.error ?? null;
   const failed = outcomes.filter((o) => !o.ok).length;
   const done = run.count - failed;

@@ -451,6 +451,22 @@ body.phone .notch { display: flex; }
 .sent s { color: var(--faint); }
 .sent ins { text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--primary) 20%, transparent); border-radius: 2px; }
 .gpop details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+/* With the picker open the panel sits in the flow, so the card grows instead of cutting it. */
+.gpop.inflow { position: relative; right: auto; margin: 4px 0 8px auto; }
+.refs { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.ref { width: 74px; display: grid; gap: 3px; position: relative; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.25; }
+.ref i { display: block; aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--border); background-size: cover; }
+.ref .rx { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; line-height: 1; cursor: pointer; }
+.refadd { width: 74px; aspect-ratio: 1; border: 1px dashed var(--border); border-radius: 6px; background: none; color: var(--muted); font: 12px var(--font); cursor: pointer; }
+.refadd:hover, .refadd[aria-expanded="true"] { border-color: var(--primary); color: var(--primary); }
+.refgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; max-height: 196px; overflow-y: auto; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-top: 8px; }
+.refgrid button { all: unset; cursor: pointer; display: grid; gap: 3px; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.25; border-radius: 6px; }
+.refgrid button i { display: block; aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--border); background-size: cover; }
+.refgrid button.on i { outline: 2px solid var(--primary); outline-offset: 1px; }
+.refgrid button:focus-visible i { outline: 2px solid var(--text); outline-offset: 1px; }
+.refgrid button[disabled] { opacity: .4; cursor: default; }
+.refgrid .ck { color: var(--primary); }
+.refnote { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .gfoot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
 .gfoot .est { margin-right: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .gfoot .est b { color: var(--text); }
@@ -557,6 +573,7 @@ body.phone .notch { display: flex; }
     <button data-sc="viewer">4 Viewer</button><button data-sc="npcs">5 NPCs</button><button data-sc="mjflags">6 Midjourney prompt</button>
     <button data-sc="nokey">7 No key yet</button><button data-sc="error">8 OpenRouter error</button><button data-sc="offline">9 Desktop offline</button>
     <button data-sc="settings">10 Settings</button><button data-sc="setnokey">10b Settings, no key</button><button data-sc="setoffline">10c Settings, offline</button>
+    <button data-sc="refs">11 References</button><button data-sc="refpick">12 Pick a reference</button><button data-sc="refviewer">13 Viewer, with references</button>
   </div>
   <ul>
     <li><b>Generate</b> sits on every image prompt, next to Copy and Edit, in every category. It opens a small panel: model, number of images (1 to 4), shape, and the price before you start.</li>
@@ -568,6 +585,11 @@ body.phone .notch { display: flex; }
     <li><b>Key</b>: one OpenRouter key per account, in Settings → Image generation. Stored encrypted on the server, never sent to the browser or the desktop app. Saving checks it with OpenRouter and shows the credit left.</li>
     <li><b>No key</b> (7): Generate still shows; its panel says where to add one. <b>Errors</b> (8): OpenRouter's reason in plain words, on the prompt; nothing is charged for a failed image.</li>
     <li><b>Desktop offline</b> (9, 10c): Generate needs the server, so it is off with a reason, like Export.</li>
+    <li><b>References</b> (11, 12, #57 change 2): the panel takes up to 3 images already on this project's board, from any category. They are sent with the prompt, so the model keeps the same face, outfit or place. The picker lists chosen images first. With 3 picked the others are off.</li>
+    <li>A prompt <b>remembers its references</b>: they are saved with the project and sync like the prompt's text. The next Generate on the same prompt starts with them picked. The prompt card shows them as a small line.</li>
+    <li>A reference whose image was deleted from the board drops off the prompt by itself; the panel says «1 reference is no longer on the board» once.</li>
+    <li>A generated image records which references it was made with (13). The estimate counts the input images; the real cost comes back from the provider.</li>
+    <li>From chat, <code>generate_image</code> takes the same references, and <code>get_board</code> lists the references of each prompt.</li>
     <li>Click <b>Generate</b> in the panel to watch a run; it is faster than real (about 15 s per Nano Banana image, 50 s per GPT image).</li>
   </ul>
 </div>
@@ -666,10 +688,13 @@ const SCENES = [
 const CAT = { scene: 'Scenes', pc: 'PCs', npc: 'NPCs', handout: 'Handouts' };
 
 let S;
-function reset() { seed(); S = { view: 'board', cat: 'scene', key: true, offline: false, err: null, pop: null, opt: { model: 'gpt', n: 2, ar: null }, run: null, lb: null, fresh: new Set(), setKey: true }; }
+function reset() { seed(); S = { view: 'board', cat: 'scene', key: true, offline: false, err: null, pop: null, opt: { model: 'gpt', n: 2, ar: null }, refPick: false, run: null, lb: null, fresh: new Set(), setKey: true }; }
 reset();
 
 const label = p => p.cat === 'scene' ? `${p.sid} · prompt ${p.n}` : p.name;
+const refsOf = p => (p.refs || (p.refs = [])).filter(r => P(r.pid) && P(r.pid).files[r.i]);
+const refName = r => { const q = P(r.pid); return q.cat === 'scene' ? `${q.sid} · ${q.n}` : q.name; };
+const REF_COST = 0.004;
 const statusOf = p => !p.files.length ? 'wanted' : p.chosen != null ? 'chosen' : 'received';
 const chip = st => `<span class="st ${st}"><i></i>${st[0].toUpperCase() + st.slice(1)}</span>`;
 const arFor = p => split(p.text).ar || DEF_AR[p.cat];
@@ -711,21 +736,38 @@ function pop(p) {
     <div class="nokey"><span>Add your OpenRouter key first. Images are billed to your OpenRouter account.</span>
     <span><button class="tb sm primary" data-goto="setnokey">Open Settings → Image generation</button></span></div></div>`;
   const o = S.opt, m = MODELS[o.model], s = split(p.text), ar = o.ar || arFor(p);
-  const est = m.cost * o.n, secs = m.secs * (o.model === 'gpt' ? 1 : o.n) ;
+  const refs = refsOf(p), full = refs.length >= 3;
+  const est = (m.cost + REF_COST * refs.length) * o.n, secs = m.secs * (o.model === 'gpt' ? 1 : o.n) ;
   const mod = k => `<button class="model${o.model === k ? ' on' : ''}" data-model="${k}"><b>${MODELS[k].name}</b><small>${MODELS[k].note}</small><span class="mm">≈ ${money(MODELS[k].cost)} · ${MODELS[k].secs} s per image</span></button>`;
   const sent = s.flags
     ? `${esc(s.base)}${s.no ? ` <ins>No ${esc(s.no.replace(/,\s*([^,]+)$/, ' or $1'))}.</ins>` : ''} <s>${esc(s.flags)}</s>`
     : esc(s.base);
-  return `<div class="gpop" role="dialog" aria-label="Generate images">
+  return `<div class="gpop${S.refPick ? ' inflow' : ''}" role="dialog" aria-label="Generate images">
     <h4>Generate images <button class="tb xs" data-popx title="Close">✕</button></h4>
     <div><div class="gl">Model</div><div class="models">${mod('gpt')}${mod('nb')}</div></div>
     <div class="row" style="gap:18px">
       <div><div class="gl">Images</div><div class="seg">${[1, 2, 3, 4].map(n => `<button class="${o.n === n ? 'on' : ''}" data-n="${n}">${n}</button>`).join('')}</div></div>
       <div><div class="gl">Shape <span>${s.ar ? "from the prompt's --ar" : `default for ${CAT[p.cat]}`}</span></div><div class="seg">${['16:9', '3:2', '1:1', '2:3'].map(a => `<button class="${ar === a ? 'on' : ''}" data-ar="${a}">${a}</button>`).join('')}</div></div>
     </div>
+    <div><div class="gl">References <span>${refs.length ? `${refs.length} of 3` : 'up to 3, from this board'}</span></div>
+      <div class="refs">${refs.map((r, k) => `<div class="ref"><i style="${art(P(r.pid).files[r.i].art, P(r.pid).files[r.i].i)}"></i>${esc(refName(r))}<button class="rx" data-refx="${k}" title="Remove this reference" aria-label="Remove ${esc(refName(r))}">✕</button></div>`).join('')}
+      ${full ? '' : `<button class="refadd" data-refadd aria-expanded="${S.refPick}">${refs.length ? '+ Add' : '+ Add an image'}</button>`}</div>
+      ${S.refPick ? refGrid(p, refs) : ''}
+      ${refs.length ? `<div class="refnote">Sent with the prompt and kept on this prompt for next time.</div>` : ''}
+    </div>
     <details${s.flags ? ' open' : ''}><summary>What is sent${s.flags ? ': Midjourney flags left out' : ''}</summary><div class="sent">${sent}</div></details>
     <div class="gfoot"><span class="est">About <b>${money(est)}</b> · ${SIZE[ar]}</span><button class="tb sm line" data-popx>Cancel</button><button class="tb sm primary" data-start="${p.pid}">${IC.spark}Generate ${o.n}</button></div>
   </div>`;
+}
+
+function refGrid(p, refs) {
+  const has = (q, i) => refs.some(r => r.pid === q.pid && r.i === i), full = refs.length >= 3;
+  const all = PROMPTS.flatMap(q => q.files.map((f, i) => ({ q, f, i }))).sort((a, b) => (b.q.chosen === b.i) - (a.q.chosen === a.i));
+  if (!all.length) return `<div class="refnote">No images on this board yet.</div>`;
+  return `<div class="refgrid" role="listbox" aria-label="Images on this board">` + all.map(({ q, f, i }) => {
+    const on = has(q, i);
+    return `<button role="option" aria-selected="${on}" class="${on ? 'on' : ''}" data-ref="${q.pid}:${i}" ${!on && full ? 'disabled title="3 references at most"' : ''}><i style="${art(f.art, f.i)}"></i><span>${q.chosen === i ? '<b class="ck">✓</b> ' : ''}${esc(q.cat === 'scene' ? `${q.sid} · ${q.n}` : q.name)}</span></button>`;
+  }).join('') + `</div>`;
 }
 
 function promptCard(p, inCard) {
@@ -734,6 +776,7 @@ function promptCard(p, inCard) {
   return `${head}<div class="pbox"><div class="ptext">${esc(p.text)}</div>
     <div class="pfoot"><span class="prov">by <span class="${p.by === 'claude' ? 'who-cl' : 'who-you'}">${p.by === 'claude' ? 'Claude' : 'you'}</span> · ${p.when}</span>
     <button class="tb sm line">${IC.copy}<span>Copy</span></button><button class="tb sm line">${IC.edit}<span>Edit</span></button>${genButton(p)}</div></div>
+    ${refsOf(p).length ? `<div class="refnote" style="margin:4px 2px 0">References: ${refsOf(p).map(r => esc(refName(r))).join(', ')}</div>` : ''}
     ${pop(p)}${thumbs(p)}`;
 }
 
@@ -813,7 +856,7 @@ function start(pid) {
   const tick = setInterval(() => { if (!S.run || S.run.pid !== pid) return clearInterval(tick); S.run.t += S.run.model === 'gpt' ? 5 : 2; render(); }, 250);
   const step = () => {
     if (!S.run || S.run.pid !== pid) return;
-    const f = mkGen(p.cat === 'scene' ? (p.sid === 'S2' ? 'S2b' : 'S3') : 'N1b', 1, S.run.model, p.files.length)[0]; f.when = 'just now';
+    const f = mkGen(p.cat === 'scene' ? (p.sid === 'S2' ? 'S2b' : 'S3') : 'N1b', 1, S.run.model, p.files.length)[0]; f.when = 'just now'; f.refs = refsOf(p).map(refName);
     p.files.push(f); S.fresh.add(f); S.run.done++;
     if (S.run.done >= S.run.n) { const r = S.run; S.run = null; clearInterval(tick); render();
       const cost = p.files.slice(-r.n).reduce((a, x) => a + x.cost, 0);
@@ -830,7 +873,7 @@ function openLb(pid, i) {
   $('#lbFn').textContent = f.src === 'gen' ? `${pid}-${MODELS[f.model].short.toLowerCase().replace(' ', '-')}-${i + 1}.png` : f.name;
   const ar = arFor(p);
   $('#lbKv').innerHTML = f.src === 'gen'
-    ? `<dt>Source</dt><dd>Generated</dd><dt>Model</dt><dd>${MODELS[f.model].full}</dd><dt>Cost</dt><dd>${money3(f.cost)}</dd><dt>Size</dt><dd>${SIZE[ar]}</dd><dt>Added</dt><dd>${f.by} · ${f.when}</dd>`
+    ? `<dt>Source</dt><dd>Generated</dd><dt>Model</dt><dd>${MODELS[f.model].full}</dd><dt>Cost</dt><dd>${money3(f.cost)}</dd><dt>Size</dt><dd>${SIZE[ar]}</dd>${f.refs && f.refs.length ? `<dt>References</dt><dd>${f.refs.map(esc).join(', ')}</dd>` : ''}<dt>Added</dt><dd>${f.by} · ${f.when}</dd>`
     : `<dt>Source</dt><dd>Dropped file (Midjourney)</dd><dt>Matched</dt><dd>by prompt words</dd><dt>Added</dt><dd>${f.by} · ${f.when}</dd>`;
   $('#lbChoose').textContent = p.chosen === i ? 'Chosen ✓' : 'Choose this image';
   $('#lb').hidden = false;
@@ -846,11 +889,14 @@ const SCREENS = {
   offline: () => { S.offline = true; },
   settings: () => { S.view = 'settings'; }, setnokey: () => { S.view = 'settings'; S.setKey = false; S.key = false; },
   setoffline: () => { S.view = 'settings'; S.offline = true; },
+  refs: () => { P('s2a').refs = [{ pid: 'n1', i: 2 }]; S.pop = 's2a'; },
+  refpick: () => { P('s2a').refs = [{ pid: 'n1', i: 2 }]; S.pop = 's2a'; S.refPick = true; },
+  refviewer: () => { P('s1b').files[0].refs = ['Padre Anselmo']; setTimeout(() => openLb('s1b', 0), 30); },
 };
 function screen(k) {
   reset(); $('#lb').hidden = true; SCREENS[k](); render();
   $$('#screens button').forEach(b => b.classList.toggle('on', b.dataset.sc === k));
-  const t = { pop: 'p-s2a', mjflags: 'p-s3a', running: 'p-s2a', nokey: 'p-s2a', error: 'p-s3a' }[k];
+  const t = { refs: 'p-s2a', refpick: 'p-s2a', pop: 'p-s2a', mjflags: 'p-s3a', running: 'p-s2a', nokey: 'p-s2a', error: 'p-s3a' }[k];
   if (t) setTimeout(() => document.getElementById(t)?.scrollIntoView({ block: 'center' }), 30); else $('#center').scrollTop = 0;
 }
 
@@ -864,7 +910,10 @@ document.addEventListener('click', e => {
   const go = t.closest('[data-goto]'); if (go) return screen(go.dataset.goto);
   const cat = t.closest('[data-cat]'); if (cat) { S.cat = cat.dataset.cat; S.pop = null; render(); return; }
   const g = t.closest('[data-gen]'); if (g) { S.err = null; S.pop = S.pop === g.dataset.gen ? null : g.dataset.gen; S.opt.ar = null; render(); return; }
-  if (t.closest('[data-popx]')) { S.pop = null; render(); return; }
+  if (t.closest('[data-popx]')) { S.pop = null; S.refPick = false; render(); return; }
+  if (t.closest('[data-refadd]')) { S.refPick = !S.refPick; render(); return; }
+  const rx = t.closest('[data-refx]'); if (rx && S.pop) { refsOf(P(S.pop)); P(S.pop).refs.splice(+rx.dataset.refx, 1); render(); return; }
+  const rf = t.closest('[data-ref]'); if (rf && S.pop && !rf.disabled) { const [pid, i] = rf.dataset.ref.split(':'); const p = P(S.pop); p.refs = refsOf(p); const k = p.refs.findIndex(r => r.pid === pid && r.i === +i); if (k >= 0) p.refs.splice(k, 1); else if (p.refs.length < 3) p.refs.push({ pid, i: +i }); if (p.refs.length >= 3) S.refPick = false; render(); return; }
   const md = t.closest('[data-model]'); if (md) { S.opt.model = md.dataset.model; render(); return; }
   const nn = t.closest('[data-n]'); if (nn) { S.opt.n = +nn.dataset.n; render(); return; }
   const ar = t.closest('[data-ar]'); if (ar) { S.opt.ar = ar.dataset.ar; render(); return; }

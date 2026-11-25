@@ -73,6 +73,9 @@ export interface ImageRequest {
   model: string;
   prompt: string;
   aspectRatio: string;
+  // The reference images (reference-images design decision 7), each a
+  // data URL, sent as input references; none is [].
+  references: string[];
 }
 
 export type ImageResult = { ok: true; bytes: Buffer; cost: number | null } | { ok: false; error: string };
@@ -95,6 +98,12 @@ export const IMAGE_ERRORS = {
   keyRemoved: 'Stopped: the OpenRouter key was removed.',
   restarted: 'The server restarted before the image arrived. Try again.',
   refused: (status: number) => `OpenRouter refused the request (HTTP ${status}).`,
+  // The reference images' refusals (reference-images design decision 6),
+  // for both providers.
+  referenceGone: 'A reference image is no longer on the board. Remove it and try again.',
+  referenceNotSynced: 'A reference image has not reached the server yet. Wait for it to sync, or remove it.',
+  referenceType: 'A reference image must be a PNG, JPEG or WebP.',
+  referenceSize: 'The reference images can be at most 20 MB each and 30 MB together.',
 } as const;
 
 // The sentence for an answer that is not a 200.
@@ -129,6 +138,13 @@ export async function generateImage(
         prompt: request.prompt,
         aspect_ratio: request.aspectRatio,
         resolution: '1K',
+        // The shape Atelier's own OpenRouter client sends, proven against
+        // the real API; only when there is one.
+        ...(request.references.length > 0
+          ? {
+              input_references: request.references.map((url) => ({ type: 'image_url', image_url: { url } })),
+            }
+          : {}),
       }),
       redirect: 'error',
       signal: stop ? AbortSignal.any([timeout, stop]) : timeout,

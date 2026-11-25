@@ -28,6 +28,7 @@ describe('command line', () => {
       '007_document_templates.sql',
       '008_image_generation.sql',
       '009_atelier.sql',
+      '010_reference_images.sql',
     ]);
     expect(await runMigrations(db)).toEqual([]);
   });

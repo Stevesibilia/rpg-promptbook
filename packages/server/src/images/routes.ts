@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { IMAGE_SHAPES, imageModelKeys, type ImageModelKey, type ImageProvider } from 'promptbook-project';
+import { IMAGE_SHAPES, imageModelKeys, MAX_REFERENCES, type ImageModelKey, type ImageProvider } from 'promptbook-project';
 import { z } from 'zod';
 import { requireSession } from '../accounts/auth.js';
 import type { Config } from '../config.js';
@@ -119,6 +119,9 @@ const generateSchema = z
     model: z.enum(imageModelKeys),
     count: z.number().int().min(1).max(4),
     shape: z.enum(IMAGE_SHAPES),
+    // File ids of the project's images (reference-images design decision
+    // 5); left out, the prompt's remembered ones.
+    references: z.array(z.string().min(1).max(200)).max(MAX_REFERENCES).optional(),
   })
   .strict();
 
@@ -317,6 +320,7 @@ export async function imageRoutes(app: FastifyInstance, { config, db, starter }:
       model: body.model,
       count: body.count,
       shape: body.shape,
+      references: body.references ?? null,
       addedBy: 'user',
     });
     return reply.code(202).send({ jobId });

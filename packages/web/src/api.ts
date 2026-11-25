@@ -192,6 +192,10 @@ export interface GenerateBody {
   model: ImageModelKey;
   count: 1 | 2 | 3 | 4;
   shape: ImageShape;
+  // The reference images' file ids (reference-images design decision 5):
+  // the app always sends the list, also an empty one, and the server
+  // remembers it on the prompt. Left out, the prompt's own are used.
+  references?: string[];
 }
 
 export class ApiError extends Error {

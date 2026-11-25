@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FileEntry, MatchedBy } from 'promptbook-project';
 import { snapshotTime } from '../dates.js';
@@ -10,6 +10,7 @@ import { useBoardContext } from './context.js';
 import { useLocalFiles } from './device.js';
 import { attachedRow, generatedRows, type ViewerRow } from './generate.js';
 import { FileImage } from './parts.js';
+import { referenceLabels, referencesRow } from './references.js';
 import { fileSize, promptGroups, promptLabel, sceneLabel, shapeOf, tabLabel } from './summary.js';
 
 const matchedLabels: Record<MatchedBy, string> = {
@@ -37,7 +38,8 @@ export function Viewer({
   onShow(fileId: string): void;
   onClose(): void;
 }) {
-  const { doc, projectId, rows, shown, toast, generation } = useBoardContext();
+  const { doc, projectId, rows, shown, files, toast, generation } = useBoardContext();
+  const labels = useMemo(() => referenceLabels(shown, files), [shown, files]);
   // An Atelier image links to Atelier when the server's address is known.
   const atelierUrl = generation.status.state === 'ready' ? generation.status.status.atelier.url : null;
   const local = useLocalFiles(projectId);
@@ -141,7 +143,7 @@ export function Viewer({
                 </dd>
               </>
             ) : null}
-            <SourceRows file={file} atelierUrl={atelierUrl} />
+            <SourceRows file={file} atelierUrl={atelierUrl} labels={labels} />
             <dt>Added</dt>
             <dd>
               {snapshotTime(file.addedAt)}
@@ -227,12 +229,25 @@ export function Viewer({
 }
 
 // Where the file came from, in the details list: a generated file's Source,
-// Through, Model and Cost; an image attached from Atelier, «From · Atelier»
+// Through, Model and Cost, then its References when it was made with some
+// (reference-images design decision 17), named by `labels`; an image
+// attached from Atelier, «From · Atelier»
 // alone, since Claude attached it and nobody matched it by hand
 // (connector-board-images review); any other file's «Matched by».
-export function SourceRows({ file, atelierUrl }: { file: FileEntry; atelierUrl: string | null }) {
+export function SourceRows({
+  file,
+  atelierUrl,
+  labels = new Map(),
+}: {
+  file: FileEntry;
+  atelierUrl: string | null;
+  labels?: ReadonlyMap<string, string>;
+}) {
   const generated = generatedRows(file, atelierUrl);
-  if (generated) return generated.map((row) => <Row key={row.label} row={row} />);
+  if (generated) {
+    const references = referencesRow(file.references, labels);
+    return [...generated, ...(references ? [references] : [])].map((row) => <Row key={row.label} row={row} />);
+  }
   const attached = attachedRow(file, atelierUrl);
   if (attached) return <Row row={attached} />;
   return (

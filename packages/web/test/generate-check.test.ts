@@ -29,6 +29,8 @@ const prompt: ShownPrompt = {
       at: '',
       order: 0,
       chosenFileId: null,
+      references: [],
+      missingReferences: 0,
     } as ImagePromptEntry,
     number: 1,
     images: [],
@@ -56,7 +58,7 @@ const ready = (provider: 'atelier' | 'openrouter'): StatusState => ({
 let root: Root;
 let host: HTMLElement;
 
-function show(status: StatusState, checkStatus: () => void) {
+function show(status: StatusState, checkStatus: () => void, start: Generation['start'] = async () => null, shown = prompt) {
   const generation = {
     user: 'u1',
     offline: false,
@@ -68,18 +70,25 @@ function show(status: StatusState, checkStatus: () => void) {
     jobs: new Map(),
     pending: new Map(),
     shapes: new Map(),
-    start: async () => null,
+    start,
     spending: null,
     spendingTitle: '',
     open: 'p1',
     setOpen: () => {},
   } satisfies Generation;
-  const value = { doc: new Y.Doc(), generation } as unknown as BoardContextValue;
+  const value = {
+    doc: new Y.Doc(),
+    projectId: 'proj',
+    shown: new Map([['p1', shown]]),
+    files: [],
+    toast: () => {},
+    generation,
+  } as unknown as BoardContextValue;
   root.render(
     createElement(
       MemoryRouter,
       null,
-      createElement(BoardContext.Provider, { value }, createElement(GeneratePanel, { prompt, button: createRef<HTMLButtonElement>() })),
+      createElement(BoardContext.Provider, { value }, createElement(GeneratePanel, { prompt: shown, button: createRef<HTMLButtonElement>() })),
     ),
   );
 }
@@ -116,5 +125,31 @@ describe('the panel opening', () => {
     expect(check).not.toHaveBeenCalled();
     await act(async () => show(ready('atelier'), check));
     expect(check).toHaveBeenCalledOnce();
+  });
+});
+
+// reference-images design decision 5: the app always sends the prompt's
+// references, an empty list too.
+describe('Generate', () => {
+  const press = async () => {
+    const button = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Generate 2')!;
+    await act(async () => button.click());
+  };
+
+  it('sends the references the prompt holds', async () => {
+    const start = vi.fn(async () => null);
+    const withRefs: ShownPrompt = { ...prompt, row: { ...prompt.row, prompt: { ...prompt.row.prompt, references: ['f1', 'f2'] } } };
+    await act(async () => show(ready('openrouter'), () => {}, start, withRefs));
+    expect(host.querySelector('.est')?.textContent).toBe('About $0.08 · 1K · plus the input images');
+    await press();
+    expect(start).toHaveBeenCalledWith('p1', { model: 'gpt', count: 2, shape: '16:9', references: ['f1', 'f2'] }, 'openrouter');
+  });
+
+  it('sends an empty list when it holds none', async () => {
+    const start = vi.fn(async () => null);
+    await act(async () => show(ready('openrouter'), () => {}, start));
+    expect(host.querySelector('.est')?.textContent).toBe('About $0.08 · 1K');
+    await press();
+    expect(start).toHaveBeenCalledWith('p1', { model: 'gpt', count: 2, shape: '16:9', references: [] }, 'openrouter');
   });
 });

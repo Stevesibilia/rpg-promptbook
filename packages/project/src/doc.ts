@@ -73,6 +73,7 @@ import { isTemplateRef, readTemplateRef, templateKindOf } from './template.js';
 //            "<id>/chosen"  file id | null
 //            "<id>/legacy"  { prompt, by, at, chosen }      written only by the migration
 //            "<id>/removed" true                            written only by removal; never cleared
+//            "<id>/refs"    [file id, …]                    reference images, at most 3 (reference-images)
 //          Flat keys for the same reason as the board's: a migration and an
 //          edit never write the same key, so replicas migrating at once merge.
 //
@@ -118,6 +119,16 @@ import { isTemplateRef, readTemplateRef, templateKindOf } from './template.js';
 //   files  one more field, on a track of a General music prompt only:
 //          musicId; absent on every other file. A track with a sceneId is
 //          the scene's, whatever musicId it holds.
+//
+// and, from the reference-images change (its design decisions 1 to 4), read
+// and written by board.ts and generation.ts:
+//   imagePrompts  "<id>/refs" as above: the prompt's reference images, one
+//          value set whole, the last writer winning; only ids of image files
+//          are written, and readers leave out the ones gone since.
+//   files  one more field, on a generated image made with references only:
+//          references, [file id, …], at most 3, not checked against the files.
+//   generationJobs  one more field: references, [file id, …], the ids sent;
+//          a job without it reads [].
 //
 // To-do order lives in `pos`, never in the array's order: a move in a Y.Array
 // is a delete plus an insert, which would lose a concurrent rename of the

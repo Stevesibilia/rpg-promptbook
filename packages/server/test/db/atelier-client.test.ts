@@ -10,7 +10,9 @@ import {
   readGeneration,
   readMonth,
   startGeneration,
+  uploadImage,
 } from '../../src/images/atelier.js';
+import { png } from './fake-openrouter.js';
 import { ATELIER_SENTENCES, FAKE_ATELIER_TOKENS, startFakeAtelier, type FakeAtelier } from './fake-atelier.js';
 
 // The Atelier client (atelier-image-provider D1 and D6), against the fake
@@ -106,6 +108,29 @@ describe('the Atelier client, step by step', () => {
     fake.failNext(1, 'The model refused this prompt.');
     const { id } = await startGeneration(fake.url, GOOD, { prompt: 'x', model: GPT, aspectRatio: '1:1', count: 2, collectionId });
     expect(await finished(id)).toMatchObject({ status: 'partial', failures: ['The model refused this prompt.'] });
+  });
+});
+
+describe('reference images (reference-images D8)', () => {
+  it('uploads raw bytes with their type and answers the image id, the same one for the same bytes', async () => {
+    const bytes = png(120, 120, 60);
+    const id = await uploadImage(fake.url, GOOD, { bytes, mime: 'image/png' });
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await uploadImage(fake.url, GOOD, { bytes, mime: 'image/png' })).toBe(id);
+    // The raw body is not recorded as JSON; the token is never recorded.
+    expect(fake.calls.at(-1)).toEqual({ method: 'POST', path: '/api/v1/uploads', body: null, bearer: true });
+    const collection = await ensureCollection(fake.url, GOOD, 'Riferimenti');
+    const started = await startGeneration(fake.url, GOOD, { prompt: 'a pier', model: GPT, aspectRatio: '1:1', count: 1, collectionId: collection, referenceIds: [id] });
+    expect((await readGeneration(fake.url, GOOD, started.id)).status).toBe('running');
+    expect(fake.lastReferenceIds()).toEqual([id]);
+  });
+
+  it('throws Atelier’s refusal of a type, a size, a read token, and a bad answer', async () => {
+    const bytes = png(120, 120, 61);
+    expect(await failure(uploadImage(fake.url, GOOD, { bytes, mime: 'image/gif' }))).toMatchObject({ status: 415, code: 'unsupported_type' });
+    expect(await failure(uploadImage(fake.url, READ, { bytes, mime: 'image/png' }))).toMatchObject({ status: 403 });
+    fake.answerNext(201, { nope: true });
+    expect(await failure(uploadImage(fake.url, GOOD, { bytes, mime: 'image/png' }))).toMatchObject({ code: 'atelier_bad_answer' });
   });
 });
 
