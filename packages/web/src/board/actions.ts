@@ -1,3 +1,4 @@
+import type { PromptWording } from './generate.js';
 import {
   addImagePrompt,
   addMusicPrompt,
@@ -278,7 +279,9 @@ export function addPrompt(
   doc: Y.Doc,
   target: { category: 'scene'; sceneId: string } | { category: NamedCategory; name: string },
   prompt: string,
+  wording: PromptWording = 'midjourney',
 ): { added: boolean; said: string } {
+  const copy = wording === 'image' ? '' : ' Copy it into Midjourney.';
   if (readImagePrompts(doc).length >= CAPS.imagePrompts) return { added: false, said: FULL };
   if (target.category === 'scene') {
     const entry = addImagePrompt(doc, { category: 'scene', sceneId: target.sceneId, prompt }, 'user');
@@ -286,11 +289,11 @@ export function addPrompt(
       readImagePrompts(doc)
         .filter((p) => p.category === 'scene' && p.sceneId === target.sceneId)
         .findIndex((p) => p.id === entry.id) + 1;
-    return { added: true, said: `Added ${target.sceneId} · prompt ${n}. Copy it into Midjourney.` };
+    return { added: true, said: `Added ${target.sceneId} · prompt ${n}.${copy}` };
   }
   const name = target.name || newName(target.category);
   addImagePrompt(doc, { category: target.category, name, prompt }, 'user');
-  return { added: true, said: `Added ${categoryText[target.category].one} · ${name}. Copy it into Midjourney.` };
+  return { added: true, said: `Added ${categoryText[target.category].one} · ${name}.${copy}` };
 }
 
 // Save in a prompt's editor, as the user's, dated now; an empty name becomes

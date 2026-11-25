@@ -185,7 +185,7 @@ describe('the words of a campaign', () => {
       'Write the image and music prompts for the board of «Kulthos»: general images and music, portraits of the PCs and NPCs, and the handouts',
     );
     const html = renderToStaticMarkup(
-      createElement(MemoryRouter, null, createElement(ClaudeCard, { title: 'Kulthos', whole: 'campaign', onToast: () => {} })),
+      createElement(MemoryRouter, null, createElement(ClaudeCard, { title: 'Kulthos', whole: 'campaign', wording: 'midjourney', onToast: () => {} })),
     );
     const text = textOf(html);
     expect(text).toContain(
@@ -194,7 +194,7 @@ describe('the words of a campaign', () => {
     expect(text).not.toMatch(/scene/);
     const adventure = textOf(
       renderToStaticMarkup(
-        createElement(MemoryRouter, null, createElement(ClaudeCard, { title: 'Sabaoth', whole: 'adventure', onToast: () => {} })),
+        createElement(MemoryRouter, null, createElement(ClaudeCard, { title: 'Sabaoth', whole: 'adventure', wording: 'midjourney', onToast: () => {} })),
       ),
     );
     expect(adventure).toContain('one Suno prompt per scene');

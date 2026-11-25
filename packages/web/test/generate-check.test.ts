@@ -63,6 +63,7 @@ function show(status: StatusState, checkStatus: () => void, start: Generation['s
     user: 'u1',
     offline: false,
     status,
+    wording: 'image',
     retryStatus: () => {},
     checkStatus,
     projectTitle: 'Sabaoth',

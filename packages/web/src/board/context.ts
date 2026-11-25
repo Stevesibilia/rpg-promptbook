@@ -11,7 +11,7 @@ import type {
 import type { GenerateBody, SpendingTotal } from '../api.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
-import type { GenerateChoice } from './generate.js';
+import type { GenerateChoice, PromptWording } from './generate.js';
 import type { Named, ShownPrompt, Whole } from './summary.js';
 import type { PendingStart, Refused, StatusState } from './useGeneration.js';
 
@@ -67,6 +67,9 @@ export interface Generation {
   // Offline on the desktop: Generate is off.
   offline: boolean;
   status: StatusState;
+  // The words for an image prompt: Midjourney's only for an account known
+  // not to generate (generator-prompt-rules D9).
+  wording: PromptWording;
   retryStatus(): void;
   // Reads the status again with the credentials checked: Atelier's month and
   // estimates (atelier-image-provider D13).

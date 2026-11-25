@@ -10,6 +10,7 @@ import {
   type NamedCategory,
   type PromptRow,
 } from 'promptbook-project';
+import type { PromptWording } from './generate.js';
 
 // The board's labels, summary line, filters and tabs (asset-board specs,
 // status per half; image-categories design decision 7): counts per tab and
@@ -132,8 +133,10 @@ export const categoryText: Record<'scene', CategoryText> & Record<NamedCategory,
 
 // A named category's words on the board: on a campaign, General speaks of
 // the campaign and its example name is a campaign's.
-export function namedText(category: NamedCategory, whole: Whole): NamedText {
-  const text = categoryText[category];
+export function namedText(category: NamedCategory, whole: Whole, wording: PromptWording = 'midjourney'): NamedText {
+  const base = categoryText[category];
+  // «…a name, then a Midjourney prompt.» (generator-prompt-rules D10)
+  const text = wording === 'image' ? { ...base, what: base.what.replace('a Midjourney prompt.', 'an image prompt.') } : base;
   if (category !== 'general' || whole !== 'campaign') return text;
   return {
     ...text,

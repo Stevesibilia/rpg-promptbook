@@ -44,7 +44,8 @@ export function ImagePromptEditor({
   onToast(message: string): void;
   onDone(saved: boolean): void;
 }) {
-  const { whole } = useBoardContext();
+  const { whole, generation } = useBoardContext();
+  const noun = generation.wording === 'image' ? 'Image' : 'Midjourney';
   const entry = prompt.row.prompt;
   const named = entry.category !== 'scene';
   const base = useRef(entry);
@@ -70,7 +71,7 @@ export function ImagePromptEditor({
     <textarea
       id={id('p')}
       ref={text}
-      aria-label={`Midjourney prompt for ${promptLabel(prompt)}`}
+      aria-label={`${noun} prompt for ${promptLabel(prompt)}`}
       autoFocus={!named || entry.name !== ''}
       maxLength={LIMITS.imagePrompt}
       placeholder={named ? 'portrait of …' : undefined}
@@ -129,7 +130,9 @@ export function AddPromptEditor({
   onToast(message: string): void;
   onDone(): void;
 }) {
-  const { whole } = useBoardContext();
+  const { whole, generation } = useBoardContext();
+  const { wording } = generation;
+  const noun = wording === 'image' ? 'Image' : 'Midjourney';
   const [draft, setDraft] = useState('');
   const [name, setName] = useState('');
   const text = useRef<HTMLTextAreaElement>(null);
@@ -148,8 +151,8 @@ export function AddPromptEditor({
     const prompt = value.slice(0, LIMITS.imagePrompt);
     const { added, said } =
       adding.category === 'scene'
-        ? addPrompt(doc, adding, prompt)
-        : addPrompt(doc, { category: adding.category, name: oneLine(name).trim().slice(0, LIMITS.name) }, prompt);
+        ? addPrompt(doc, adding, prompt, wording)
+        : addPrompt(doc, { category: adding.category, name: oneLine(name).trim().slice(0, LIMITS.name) }, prompt, wording);
     onToast(said);
     // The project full: the draft stays.
     if (!added) return;
@@ -164,14 +167,14 @@ export function AddPromptEditor({
       ref={text}
       aria-label={
         adding.category === 'scene'
-          ? `Midjourney prompt for ${adding.sceneId} · prompt ${number}`
-          : `Midjourney prompt for the new ${adding.category === 'general' ? 'General image' : categoryText[adding.category].one}`
+          ? `${noun} prompt for ${adding.sceneId} · prompt ${number}`
+          : `${noun} prompt for the new ${adding.category === 'general' ? 'General image' : categoryText[adding.category].one}`
       }
       autoFocus={!named}
       maxLength={LIMITS.imagePrompt}
       placeholder={
         adding.category === 'scene'
-          ? `A Midjourney prompt for ${adding.sceneId}…`
+          ? `${wording === 'image' ? 'An image' : 'A Midjourney'} prompt for ${adding.sceneId}…`
           : adding.category === 'general'
             ? undefined
             : 'portrait of …'

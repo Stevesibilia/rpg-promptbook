@@ -18,15 +18,15 @@
 
 ## 2. Web
 
-- [ ] 2.1 `missingCredential` moved to `generate.ts`; `promptWording`
+- [x] 2.1 `missingCredential` moved to `generate.ts`; `promptWording`
       (D8); `wording` in the board context (D9).
-- [ ] 2.2 The D10 strings both ways; `addPrompt(…, wording)`;
+- [x] 2.2 The D10 strings both ways; `addPrompt(…, wording)`;
       `sentView` summary «What is sent: flags left out» (D11).
-- [ ] 2.3 Web unit tests: `promptWording` (null, not configured, no key,
+- [x] 2.3 Web unit tests: `promptWording` (null, not configured, no key,
       Atelier unavailable, key saved), each D10 string both ways; update
       `generate.test.ts:125` and `generate-board.test.ts:148`; existing
       Midjourney assertions stay where the test has no key.
-- [ ] 2.4 Commit `feat(web): board wording follows the generation
+- [x] 2.4 Commit `feat(web): board wording follows the generation
     setting`, push.
 
 ## 3. e2e and docs
