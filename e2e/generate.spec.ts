@@ -168,7 +168,7 @@ test('Generate makes images from a Midjourney prompt, on every device, with thei
 
   // A key is saved: the board speaks of images, not Midjourney
   // (generator-prompt-rules).
-  await expect(block(page, 'S2').locator('.hh .lab')).toHaveText('Images');
+  await expect(page.locator('#row-S2 .hh .lab').first()).toHaveText('Images');
   await page.goto(`/projects/${id}/board?tab=npcs`);
   await page.getByRole('button', { name: 'Add NPC' }).click();
   await page.getByLabel('Name').fill('Turi');
