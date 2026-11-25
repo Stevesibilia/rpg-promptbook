@@ -121,16 +121,18 @@ with the scene id and title, its image prompts numbered in order and its
 music title, style and lyrics; then General, with its image prompts (name
 and prompt) and its music prompts (title, style and lyrics); then PCs, NPCs
 and Handouts, each item with its name and prompt; every prompt with who
-wrote it and when and the name of its chosen file. The images of a scene's
-prompt n SHALL be at `files/scenes/<scene id>/<n>/<original name>`, a
-scene's tracks at `files/scenes/<scene id>/music/`, the images of a General
-image prompt at `files/general/images/<name>/`, the tracks of a General
-music prompt at `files/general/music/<title>/`, the images of a PC, an NPC
-or a handout at `files/pcs/<name>/`, `files/npcs/<name>/` or
-`files/handouts/<name>/`, and a file in the Unmatched tray at
-`files/unmatched/<original name>`. A name taken twice in one folder, or by
-two items of one category, SHALL get « (2)», « (3)»… Thumbnails SHALL NOT be
-exported. The zip SHALL be streamed, never built whole in memory.
+wrote it and when and the name of its chosen file. A campaign's `board.md`
+SHALL have no part Scenes, and SHALL be empty while its board has no item.
+The images of a scene's prompt n SHALL be at
+`files/scenes/<scene id>/<n>/<original name>`, a scene's tracks at
+`files/scenes/<scene id>/music/`, the images of a General image prompt at
+`files/general/images/<name>/`, the tracks of a General music prompt at
+`files/general/music/<title>/`, the images of a PC, an NPC or a handout at
+`files/pcs/<name>/`, `files/npcs/<name>/` or `files/handouts/<name>/`, and a
+file in the Unmatched tray at `files/unmatched/<original name>`. A name
+taken twice in one folder, or by two items of one category, SHALL get «
+(2)», « (3)»… Thumbnails SHALL NOT be exported. The zip SHALL be streamed,
+never built whole in memory.
 
 #### Scenario: Files in their scene's folder
 
@@ -150,6 +152,14 @@ exported. The zip SHALL be streamed, never built whole in memory.
 - **THEN** the folder holds `files/general/images/Copertina/` with four
   images and `files/general/music/Tema di Sabaoth/` with two tracks, and
   `board.md` has a part General listing both
+
+#### Scenario: Campaign board exported
+
+- **WHEN** the campaign «Kulthos», with the General music prompt «Tema della
+  campagna» (one track) and the NPC «Padre Anselmo», is exported
+- **THEN** its `board.md` has the parts General, PCs, NPCs and Handouts and
+  no part Scenes, and the folder holds
+  `files/general/music/Tema della campagna/` with the track
 
 #### Scenario: Board from v0.6 exported
 
