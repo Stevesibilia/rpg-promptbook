@@ -107,6 +107,12 @@ with five tabs:
 - **PCs**, **NPCs** and **Handouts:** project-wide lists, each item a name
   and a Midjourney prompt. They work without the appendix.
 
+A campaign has a board too, with four tabs: General (images and music for
+the whole campaign, such as a cover and a main theme), PCs, NPCs and
+Handouts. It has no Scenes tab, opens on General, and never reads an
+appendix; its files find their prompt by name like an adventure's, a track
+by the title of a General music prompt.
+
 Every prompt has Copy. Claude writes them through the connector ("write the
 image and music prompts for the board of …, with portraits of the PCs and
 NPCs, the handouts, and general images and music"); you can add, edit or
@@ -136,7 +142,8 @@ General music prompt. The project's export holds `board.md` with the
 prompts, and the files in `files/scenes/<scene>/<prompt number>/`,
 `files/scenes/<scene>/music/`, `files/general/images/<name>/`,
 `files/general/music/<title>/`, `files/pcs/<name>/`, `files/npcs/<name>/`,
-`files/handouts/<name>/` and `files/unmatched/`.
+`files/handouts/<name>/` and `files/unmatched/`. A campaign's `board.md`
+has no Scenes part.
 
 **Export for CueBard…**, in the board's header and in a project's Actions on
 the projects screen, makes a CueBard pack, `<title>.cbpack`, that CueBard's
@@ -144,9 +151,10 @@ Import project opens as it is: one cue group per scene of the appendix, in
 its order, with the scene's tracks looping, then one cue group General with
 the tracks of the General music prompts (left out when it has none); the
 images in the visual folders Scenes, General, PCs, NPCs and Handouts, each
-scene's images linked to its first track, General images linked to none.
-Each prompt and scene gives its chosen file, or every matched file when
-nothing is chosen; the Unmatched tray stays out, and so does the prep's text.
+scene's images linked to its first track, General images linked to none. A
+campaign's pack has one cue group, General, and four visual folders, no
+Scenes. Each prompt and scene, or music prompt, gives its chosen file, or
+every matched file when nothing is chosen; the Unmatched tray stays out, and so does the prep's text.
 Before exporting, the dialog counts what goes in and warns about each gap: a
 scene or a General music prompt with no track, a prompt with no image, a
 track whose length the
@@ -231,8 +239,10 @@ brainstorm log, and the board's prompts (`get_board`; `add_image_prompt`,
 `update_image_prompt` and `remove_image_prompt` for the image prompts of every
 category, General included; `set_scene_prompts` for a scene's music and first
 image prompt, one scene at a time; `add_music_prompt`, `update_music_prompt`
-and `remove_music_prompt` for the General music prompts). A new chat about a project starts by reading its
-brainstorm log.
+and `remove_music_prompt` for the General music prompts). These work on a
+campaign's board too; there `set_scene_prompts` and a `scene` image prompt
+answer `not_an_adventure`, since a campaign has no scenes. A new chat about
+a project starts by reading its brainstorm log.
 
 Claude can also put images on the board. `generate_image` generates 1 to 4
 images on an image prompt through the provider you chose in **Settings →

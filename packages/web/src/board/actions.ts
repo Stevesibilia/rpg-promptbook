@@ -36,6 +36,7 @@ import {
   type ShownPrompt,
   type TrackOwner,
   type TrackPlace,
+  type Whole,
 } from './summary.js';
 
 // What the prompt blocks and cards, the viewer, the track menu and the tray
@@ -370,9 +371,14 @@ export function saveMusic(doc: Y.Doc, id: string, music: MusicInput): boolean {
   }
 }
 
-// The confirm before a General music prompt leaves the board.
-export function musicQuestion(card: MusicCardRow): { title: string; text: string; note: string } {
+// The confirm before a General music prompt leaves the board. A campaign's
+// tracks have no scene to go to (campaign-board design decision 4).
+export function musicQuestion(
+  card: MusicCardRow,
+  whole: Whole = 'adventure',
+): { title: string; text: string; note: string } {
   const n = card.tracks.length;
+  const to = whole === 'campaign' ? 'another music prompt' : 'a scene or another music prompt';
   return {
     title: 'Remove this music prompt?',
     text: `${musicLabel(card)} leaves the board.`,
@@ -380,8 +386,8 @@ export function musicQuestion(card: MusicCardRow): { title: string; text: string
       n === 0
         ? 'It has no tracks yet.'
         : n === 1
-          ? 'Its 1 track moves to Unmatched, where you can assign it to a scene or another music prompt.'
-          : `Its ${n} tracks move to Unmatched, where you can assign them to a scene or another music prompt.`,
+          ? `Its 1 track moves to Unmatched, where you can assign it to ${to}.`
+          : `Its ${n} tracks move to Unmatched, where you can assign them to ${to}.`,
   };
 }
 

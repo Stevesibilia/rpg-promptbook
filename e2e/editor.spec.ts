@@ -162,6 +162,8 @@ test('campaign not checked', async ({ page }) => {
   await expect(page.locator('.status .counts')).toHaveCount(0);
   await expect(page.locator('.cm-lint-marker')).toHaveCount(0);
   await expect(page.locator('.inspector .checks')).toHaveCount(0);
+  // A campaign has a board too (campaign-board design decision 5).
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Images and music' })).toBeEnabled();
 });
 
 test('jump to a scene', async ({ page }) => {

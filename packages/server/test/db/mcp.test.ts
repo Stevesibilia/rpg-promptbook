@@ -152,6 +152,9 @@ describe('the endpoint', () => {
     expect(answer.message.result).toMatchObject({ serverInfo: { name: 'promptbook', version: 'dev' } });
     expect(Object.keys(answer.message.result!.capabilities as object)).toEqual(['tools']);
     expect(answer.message.result!.instructions).toContain('read its brainstorm log first');
+    expect(answer.message.result!.instructions).toContain(
+      'A campaign’s board has no scenes: General, PCs, NPCs and Handouts, and General music for the whole campaign.',
+    );
     expect(answer.headers['mcp-session-id']).toBeUndefined();
   });
 

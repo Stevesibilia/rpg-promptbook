@@ -2,8 +2,8 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 import { LIMITS, type MusicInput, type MusicPrompt, type NamedCategory } from 'promptbook-project';
 import type * as Y from 'yjs';
 import { addPrompt, EMPTY_PROMPT, savePrompt } from './actions.js';
-import type { ImageAdding } from './context.js';
-import { categoryText, promptLabel, type ShownPrompt } from './summary.js';
+import { useBoardContext, type ImageAdding } from './context.js';
+import { categoryText, namedText, promptLabel, type ShownPrompt } from './summary.js';
 
 // Screen 7: a prompt edited in place. Save overwrites it as the user's, dated
 // now; prompts are not versioned (asset-board design decision 8). An empty
@@ -44,6 +44,7 @@ export function ImagePromptEditor({
   onToast(message: string): void;
   onDone(saved: boolean): void;
 }) {
+  const { whole } = useBoardContext();
   const entry = prompt.row.prompt;
   const named = entry.category !== 'scene';
   const base = useRef(entry);
@@ -87,7 +88,7 @@ export function ImagePromptEditor({
             id={id('n')}
             autoFocus={entry.name === ''}
             maxLength={LIMITS.name}
-            placeholder={categoryText[entry.category as NamedCategory].example}
+            placeholder={namedText(entry.category as NamedCategory, whole).example}
             value={name}
             onChange={(e) => setName(oneLine(e.target.value))}
           />
@@ -128,6 +129,7 @@ export function AddPromptEditor({
   onToast(message: string): void;
   onDone(): void;
 }) {
+  const { whole } = useBoardContext();
   const [draft, setDraft] = useState('');
   const [name, setName] = useState('');
   const text = useRef<HTMLTextAreaElement>(null);
@@ -188,7 +190,7 @@ export function AddPromptEditor({
             id={id('n')}
             autoFocus
             maxLength={LIMITS.name}
-            placeholder={categoryText[adding.category].example}
+            placeholder={namedText(adding.category, whole).example}
             value={name}
             onChange={(e) => setName(oneLine(e.target.value))}
           />

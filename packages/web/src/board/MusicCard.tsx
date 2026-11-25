@@ -65,7 +65,7 @@ export function MusicCard({ card }: { card: MusicCardRow }) {
 }
 
 function RemoveMusic({ card }: { card: MusicCardRow }) {
-  const { doc, toast, player, setEditing: hold } = useBoardContext();
+  const { doc, whole, toast, player, setEditing: hold } = useBoardContext();
   // Removed meanwhile (Claude, another tab), the card goes, its confirm too;
   // while it asks, a change of status does not filter it away.
   const id = card.prompt.id;
@@ -75,7 +75,7 @@ function RemoveMusic({ card }: { card: MusicCardRow }) {
     hold(`music:${id}/remove`, on);
   };
   useEffect(() => () => hold(`music:${id}/remove`, false), [hold, id]);
-  const question = musicQuestion(card);
+  const question = musicQuestion(card, whole);
   return (
     <>
       <button

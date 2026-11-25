@@ -172,7 +172,8 @@ const PARTS: [NamedCategory, string, string][] = [
 // its chosen file; every image in its prompt's folder, every track in its
 // scene's, the ones in the Unmatched tray in files/unmatched. A board from
 // before image categories is read migrated, the document left as it is.
-// Thumbnails are not listed. A campaign's board.md is empty.
+// Thumbnails are not listed. A campaign has no appendix (campaign-board design
+// decision 10): its board.md has no part Scenes.
 export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { markdown: string; files: ExportFile[] } {
   const view = migratedView(doc);
   const { rows, named, music, unmatched } = readDocumentBoard(view, templates);
@@ -210,7 +211,7 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
   }
   for (const { file } of unmatched) place(file, 'unmatched');
 
-  if (readMeta(view).category === 'campaign') return { markdown: '', files };
+  const campaign = readMeta(view).category === 'campaign';
   const empty =
     rows.length === 0 &&
     named.general.length === 0 &&
@@ -249,7 +250,7 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
     lines.push(...chosen(row.chosenTrack));
     return `${lines.join('\n')}\n`;
   });
-  const parts = [`# Scenes\n\n${scenes.length > 0 ? scenes.join('\n') : 'None yet.\n'}`];
+  const parts = campaign ? [] : [`# Scenes\n\n${scenes.length > 0 ? scenes.join('\n') : 'None yet.\n'}`];
   const generalImageItems = named.general.map(
     (row) => `${[`### ${oneLine(row.prompt.name ?? '') || 'Untitled'}`, '', ...promptLines(row)].join('\n')}\n`,
   );

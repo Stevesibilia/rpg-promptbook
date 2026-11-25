@@ -1451,6 +1451,23 @@ describe('General music on the board (D5)', () => {
     expect(unmatchedFiles(appendix, [], readFiles(doc), [])).toHaveLength(3);
   });
 
+  it('never reads a campaign’s text as an appendix, and reads its General and named prompts as on an adventure', () => {
+    // campaign-board design decision 2: the text holds «## Appendice: immagini
+    // e musica» with «### S1. …», and still gives no rows.
+    const doc = project({ category: 'campaign', document: APPENDIX });
+    const theme = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const cover = addImagePrompt(doc, { category: 'general', name: 'Copertina della campagna', prompt: 'a bronze anchor' }, 'claude', AT);
+    npc(doc, 'Padre Anselmo', 'portrait of an old priest');
+    const { added } = addFiles(doc, [generalTrack(1, theme.id)]);
+    const board = readDocumentBoard(doc);
+    expect(board.rows).toEqual([]);
+    expect(board.outsideAppendix).toEqual([]);
+    expect(board.music.map((c) => [c.prompt.id, c.tracks.map((f) => f.id), c.status])).toEqual([[theme.id, [added[0]!.id], 'received']]);
+    expect(board.named.general.map((r) => r.prompt.id)).toEqual([cover.id]);
+    expect(board.named.npc.map((r) => r.prompt.name)).toEqual(['Padre Anselmo']);
+    expect(board.unmatched).toEqual([]);
+  });
+
   it('reads as empty in a document with no General music', () => {
     const board = readDocumentBoard(project({ document: APPENDIX }));
     expect(board.music).toEqual([]);

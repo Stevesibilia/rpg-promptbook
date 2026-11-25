@@ -2,6 +2,7 @@ import {
   halfStatuses,
   imageCategories,
   type BoardRow,
+  type Category,
   type FileEntry,
   type HalfStatus,
   type ImageCategory,
@@ -42,9 +43,14 @@ export function tally(statuses: readonly HalfStatus[]): HalfCounts {
 }
 
 // The tabs, in order, and what each says. The address holds the tab as
-// `?tab=pcs`; Scenes has none.
+// `?tab=pcs`; the first tab of the board has none.
 export const tabs = ['scenes', 'general', 'pcs', 'npcs', 'handouts'] as const;
 export type Tab = (typeof tabs)[number];
+
+// A campaign's board has no Scenes tab and opens on General (campaign-board
+// design decision 3); an adventure's or a one-shot's has the five.
+const campaignTabs: readonly Tab[] = tabs.slice(1);
+export const boardTabs = (category: Category): readonly Tab[] => (category === 'campaign' ? campaignTabs : tabs);
 
 export const tabOf: Record<ImageCategory, Tab> = {
   scene: 'scenes',
@@ -61,8 +67,17 @@ export const categoryOf: Record<Tab, ImageCategory> = {
   handouts: 'handout',
 };
 
-export const tabParam = (value: string | null): Tab =>
-  value !== null && (tabs as readonly string[]).includes(value) ? (value as Tab) : 'scenes';
+// The tab an address names, or the board's first when it names none that
+// the board shows: `?tab=scenes` on a campaign opens General.
+export function tabParam(value: string | null, category: Category = 'adventure'): Tab {
+  const shown = boardTabs(category);
+  return shown.find((t) => t === value) ?? shown[0]!;
+}
+
+// What the board is about, in its words: «the whole adventure» or «the whole
+// campaign» (campaign-board design decision 4).
+export type Whole = 'adventure' | 'campaign';
+export const wholeOf = (category: Category): Whole => (category === 'campaign' ? 'campaign' : 'adventure');
 
 export interface CategoryText {
   // «NPCs»
@@ -114,6 +129,18 @@ export const categoryText: Record<'scene', CategoryText> & Record<NamedCategory,
     example: 'Lettera di Salvi',
   },
 };
+
+// A named category's words on the board: on a campaign, General speaks of
+// the campaign and its example name is a campaign's.
+export function namedText(category: NamedCategory, whole: Whole): NamedText {
+  const text = categoryText[category];
+  if (category !== 'general' || whole !== 'campaign') return text;
+  return {
+    ...text,
+    what: 'Images and music for the whole campaign, not tied to a scene: establishing shots, a cover, a main theme, ambience, combat music.',
+    example: 'Copertina della campagna',
+  };
+}
 
 // «New NPC»: the name of a pc, npc or handout left without one; «New image»
 // for a General image (general-board-items design decision 1).

@@ -220,6 +220,30 @@ test('Claude connects, writes into open views, refreshes, and stops when revoked
   await expect(card.locator('.prov')).toContainText('by Claude');
   await expect(page.getByRole('tab', { name: /^General/ })).toHaveText('General11 wanted');
 
+  // On a campaign's board too (campaign-board design decision 6); its
+  // scene-only writes are refused with nothing written (decision 7).
+  const { id: campaignId } = await createProject(page.request, 'Kulthos per Claude', { category: 'campaign' });
+  await open(page, `/projects/${campaignId}/board`);
+  await expect(page.getByRole('heading', { name: 'Nothing general yet' })).toBeVisible();
+  await tool(api, first.access_token, 'add_music_prompt', {
+    projectId: campaignId,
+    title: 'Tema della campagna',
+    style: 'dark orchestral main theme, slow, low strings, distant choir',
+    lyrics: '[Instrumental]\n[End]',
+  });
+  const campaignCard = page.locator('.ent', { has: page.locator('.enm', { hasText: /^Tema della campagna$/ }) });
+  await expect(campaignCard.locator('.st')).toHaveText('Wanted');
+  await expect(page.getByRole('tab', { name: /^General/ })).toHaveText('General11 wanted');
+  const refused = await mcp(api, first.access_token, 'tools/call', {
+    name: 'set_scene_prompts',
+    arguments: { projectId: campaignId, sceneId: 'S1', music: { title: 'Una scena', style: 'ambient', lyrics: '[End]' } },
+  });
+  const refusal = refused.message.result as { isError?: boolean; structuredContent: { error: { code: string } } };
+  expect(refusal.isError).toBe(true);
+  expect(refusal.structuredContent.error.code).toBe('not_an_adventure');
+  await expect(page.locator('[role=tabpanel]:not([hidden]) .ent')).toHaveCount(1);
+  await open(page, `/projects/${id}/board?tab=general`);
+
   // A section edit reaches an open Document view with its banner; Undo puts
   // the text back.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Document' }).click();

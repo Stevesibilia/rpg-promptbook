@@ -1,12 +1,14 @@
 import type { BoardRow, FileEntry, MusicCardRow, PromptRow } from 'promptbook-project';
-import { categoryOf, categoryText, generalTabLine, tabLine, tabs, type Named, type Tab } from './summary.js';
+import { categoryOf, categoryText, generalTabLine, tabLine, type Named, type Tab } from './summary.js';
 
 // The category switch (image-categories design decision 7): Scenes,
-// General, PCs, NPCs and Handouts, each with its number of prompts (on
+// General, PCs, NPCs and Handouts, or on a campaign the last four
+// (campaign-board design decision 3), each with its number of prompts (on
 // General, image and music prompts together), what is still wanted, and a
 // dot while one of its prompts, or for Scenes and General a track, holds a
 // file marked new.
 export function CategoryTabs({
+  tabs,
   tab,
   onTab,
   rows,
@@ -14,6 +16,8 @@ export function CategoryTabs({
   music,
   marks,
 }: {
+  // The tabs the board shows, in order.
+  tabs: readonly Tab[];
   tab: Tab;
   onTab(tab: Tab): void;
   rows: readonly BoardRow[];

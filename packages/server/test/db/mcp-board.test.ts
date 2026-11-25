@@ -178,6 +178,12 @@ describe('the board tools in the list', () => {
       expect(add).toContain(part);
     }
     expect(tools.find((t) => t.name === 'remove_image_prompt')!.description).toContain('no file is deleted');
+    // campaign-board design decision 8.
+    expect(tools.find((t) => t.name === 'get_board')!.description).toContain('A campaign has no scenes: scenes is empty.');
+    expect(add).toContain('Scenes (adventures and one-shots only)');
+    expect(add).toContain('the whole adventure or campaign');
+    expect(tools.find((t) => t.name === 'add_music_prompt')!.description).toContain('the whole adventure or campaign');
+    expect(tools.find((t) => t.name === 'set_scene_prompts')!.description).toContain('Adventures and one-shots only.');
   });
 });
 
@@ -230,18 +236,37 @@ describe('get_board', () => {
     });
   });
 
-  it('answers no_board for a campaign, to the read and to the write', async () => {
-    const s = await setup({ category: 'campaign' });
-    expect((await s.call('get_board', { projectId: s.id })).error?.code).toBe('no_board');
-    const write = await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S1', image: { prompt: IMAGE } });
-    expect(write.error?.code).toBe('no_board');
+  it('answers a campaign’s board with no scenes, even when its text looks like an appendix', async () => {
+    // campaign-board design decisions 2 and 6: a campaign is never parsed.
+    const s = await setup({ category: 'campaign', text: ADVENTURE });
+    const cover = await s.call('add_image_prompt', { projectId: s.id, category: 'general', name: 'Copertina della campagna', prompt: IMAGE });
+    expect(cover.isError).toBe(false);
+    const npc = await s.call('add_image_prompt', { projectId: s.id, category: 'npc', name: 'Padre Anselmo', prompt: `portrait ${IMAGE}` });
+    expect(npc.isError).toBe(false);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board).toMatchObject({ appendix: false, scenes: [], outsideAppendix: [], pcs: [], handouts: [], unmatched: 0, duplicateTitles: [] });
+    expect(board.general.images).toEqual([expect.objectContaining({ id: cover.value.prompt.id, category: 'general', name: 'Copertina della campagna', by: 'claude' })]);
+    expect(board.npcs).toEqual([expect.objectContaining({ id: npc.value.prompt.id, category: 'npc', name: 'Padre Anselmo', status: 'wanted' })]);
+    const updated = await s.call('update_image_prompt', { projectId: s.id, id: npc.value.prompt.id, name: 'Padre Anselmo Ferro' });
+    expect(updated.value.prompt).toMatchObject({ name: 'Padre Anselmo Ferro' });
+    expect((await s.call('remove_image_prompt', { projectId: s.id, id: cover.value.prompt.id })).isError).toBe(false);
+    expect(readImagePrompts(await storedDoc(s.id)).map((p) => p.name)).toEqual(['Padre Anselmo Ferro']);
+  });
+
+  it('answers not_an_adventure to a campaign’s scene-only writes, and writes nothing', async () => {
+    const s = await setup({ category: 'campaign', text: ADVENTURE });
     for (const [name, args] of [
-      ['add_image_prompt', { category: 'npc', name: 'x', prompt: IMAGE }],
-      ['update_image_prompt', { id: 'x', prompt: IMAGE }],
-      ['remove_image_prompt', { id: 'x' }],
+      ['set_scene_prompts', { sceneId: 'S1', image: { prompt: IMAGE }, music: MUSIC }],
+      ['set_scene_prompts', { sceneId: 'S9', music: MUSIC }],
+      ['add_image_prompt', { category: 'scene', sceneId: 'S1', prompt: IMAGE }],
     ] as const) {
-      expect((await s.call(name, { projectId: s.id, ...args })).error?.code, name).toBe('no_board');
+      const outcome = await s.call(name, { projectId: s.id, ...args });
+      expect(outcome.error?.code, name).toBe('not_an_adventure');
+      expect(outcome.error?.message, name).toContain('category general, pc, npc or handout');
+      expect(outcome.error?.message, name).toContain('add_music_prompt');
     }
+    expect(boardSize(await storedDoc(s.id))).toBe(0);
+    expect(await snapshots(s.id)).toEqual([]);
   });
 
   it('lets a read grant read it', async () => {
@@ -860,15 +885,26 @@ describe('the General music tools', () => {
     expect((await s.call('remove_music_prompt', { projectId: s.id, musicId: id })).error?.code).toBe('unknown_music');
   });
 
-  it('refuses a campaign', async () => {
-    const campaign = await setup({ category: 'campaign' });
-    for (const [name, args] of [
-      ['add_music_prompt', THEME],
-      ['update_music_prompt', { musicId: 'x', style: 'x' }],
-      ['remove_music_prompt', { musicId: 'x' }],
-    ] as const) {
-      expect((await campaign.call(name, { projectId: campaign.id, ...args })).error?.code, name).toBe('no_board');
-    }
+  it('work on a campaign, warning of a title two General prompts share', async () => {
+    const s = await setup({ category: 'campaign' });
+    const theme = await s.call('add_music_prompt', { projectId: s.id, ...THEME, title: 'Tema della campagna' });
+    expect(theme.isError).toBe(false);
+    expect(theme.value.warnings).toEqual([]);
+    const twice = await s.call('add_music_prompt', { projectId: s.id, ...THEME, title: 'tema della campagna!' });
+    expect(twice.value.warnings[0]).toContain('General «Tema della campagna» already has the track title');
+    const { id } = theme.value.music;
+    const updated = await s.call('update_music_prompt', { projectId: s.id, musicId: id, style: 'solo cello, slow, sparse, cold' });
+    expect(updated.value.music).toMatchObject({ title: 'Tema della campagna', style: 'solo cello, slow, sparse, cold' });
+    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => addFiles(doc, [generalTrack(1, id)]));
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.scenes).toEqual([]);
+    expect(board.duplicateTitles).toEqual(['Tema della campagna']);
+    expect(board.general.music.map((m: { id: string; status: string; tracks: number }) => [m.id, m.status, m.tracks])).toEqual([
+      [id, 'received', 1],
+      [twice.value.music.id, 'wanted', 0],
+    ]);
+    expect((await s.call('remove_music_prompt', { projectId: s.id, musicId: id })).value).toEqual({ removed: id, tracksToUnmatched: 1 });
+    expect((await s.call('get_board', { projectId: s.id })).value.unmatched).toBe(1);
   });
 
   it('refuses a read grant, and writes nothing', async () => {

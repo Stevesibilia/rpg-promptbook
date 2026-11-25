@@ -16,8 +16,8 @@ hint and the sync pill; the outline on the left; the prep document in a
 CodeMirror 6 Markdown editor bound to the project's Yjs text, in Spectral,
 about 70 characters wide; the inspector or the PDF preview on the right; the
 status bar. The rail SHALL hold Projects,
-Document, Inspiration, Research, Images and music (adventures and one-shots
-only, as in [docs/mockups/board.html](../../../docs/mockups/board.html)),
+Document, Inspiration, Research, Images and music (every project, campaigns
+included, as in [docs/mockups/board.html](../../../docs/mockups/board.html)),
 Brainstorm log and History, and Settings at the bottom, as in
 [docs/mockups/connector.html](../../../docs/mockups/connector.html); the
 project entries SHALL be disabled while no project is open. The page SHALL
@@ -35,11 +35,11 @@ NOT show export controls.
 - **THEN** the Research view of the same project opens, then the editor
   again with the same text
 
-#### Scenario: No board for a campaign
+#### Scenario: Board of a campaign
 
 - **WHEN** a campaign is open
-- **THEN** the rail shows no Images and music entry, and
-  `/projects/<id>/board` opens the Document view instead
+- **THEN** the rail shows the Images and music entry, and
+  `/projects/<id>/board` opens the campaign's board on General
 
 #### Scenario: PDF button in a campaign
 

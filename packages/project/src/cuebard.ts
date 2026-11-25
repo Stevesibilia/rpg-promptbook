@@ -8,9 +8,12 @@ import { LIMITS } from './model.js';
 import { sha256Hex } from './sha256.js';
 
 // The CueBard pack (cuebard-export design decisions 4 to 12, general-board-items
-// design decision 7): the project file CueBard opens at schemaVersion 5 and
-// the list of the media to put beside it, planned from the board alone. The server and the desktop's main
-// process stream the bytes; nothing here reads a file or writes the document.
+// design decision 7, campaign-board design decision 9): the project file
+// CueBard opens at schemaVersion 5 and the list of the media to put beside it,
+// planned from the board alone. A campaign has no appendix, so its only cue
+// group is General, at index 0, and it has no Scenes folder. The server and
+// the desktop's main process stream the bytes; nothing here reads a file or
+// writes the document.
 
 export const CUEBARD_FOLDERS = {
   scene: 'Scenes',
@@ -285,9 +288,7 @@ function plan(doc: Y.Doc, templates: readonly Template[] = []): Plan {
 
   // Per General music prompt, its chosen track or all of them, named after
   // its title, « (2)», « (3)»… for the later ones.
-  // A campaign has no cue groups (cuebard-export spec) until it gets a board.
-  const cards = meta.category === 'campaign' ? [] : board.music;
-  const music = cards.map((card): PlannedMusic => {
+  const music = board.music.map((card): PlannedMusic => {
     const label = clip(card.prompt.title.trim(), LIMITS.trackTitle) || 'Untitled';
     const tracks = once(picked(card.tracks, card.prompt.chosenTrack)).map((file, i): PlannedTrack => ({
       file,

@@ -19,13 +19,22 @@ const summary = (patch: Partial<CuebardSummary> = {}): CuebardSummary => ({
 });
 
 // The body as text, tags dropped, the bold parts marked with *.
-function text(s: CuebardSummary, { state, desktop = false }: { state?: CuebardState; desktop?: boolean } = {}): string {
+function text(
+  s: CuebardSummary,
+  {
+    state,
+    desktop = false,
+    campaign = false,
+    fileName = "L'Ancora di Sabaoth.cbpack",
+  }: { state?: CuebardState; desktop?: boolean; campaign?: boolean; fileName?: string } = {},
+): string {
   const html = renderToStaticMarkup(
     createElement(CuebardSummaryView, {
       summary: s,
       state: state ?? cuebardState(s, 10),
-      fileName: "L'Ancora di Sabaoth.cbpack",
+      fileName,
       desktop,
+      campaign,
     }),
   );
   return html
@@ -85,6 +94,39 @@ describe('the CueBard dialog', () => {
       'General *"Tra le macerie"*: the length of "tra le macerie.mp3" is unknown, so it is left out.',
     ]);
     expect(text(summary({ warnings: [{ kind: 'no-track', sceneId: 'S4', label: 'S4. X' }] }))).toContain('\n1 warning\n');
+  });
+
+  // campaign-board design decision 11, screen 11b.
+  it('shows a campaign with its one group General and four folders, naming no scene', () => {
+    const kulthos = summary({
+      groups: 1,
+      general: true,
+      tracks: 3,
+      images: { scene: 0, general: 1, pc: 5, npc: 9, handout: 5 },
+      warnings: [
+        { kind: 'no-image', category: 'general', label: 'General "Il mare che guarda"', number: null, name: 'Il mare che guarda' },
+        { kind: 'no-track', musicId: 'm3', label: 'Riposo alla locanda' },
+      ],
+    });
+    expect(text(kulthos, { campaign: true, fileName: 'Kulthos.cbpack' }).split('\n')).toEqual([
+      "A CueBard project: one cue group General with the campaign's music, and the images in four visual folders.",
+      'Cue groups',
+      'General·*3* tracks',
+      'Visual folders',
+      'General *1*·PCs *5*·NPCs *9*·Handouts *5* images',
+      'Each prompt and music prompt gives its chosen file, or every matched file when nothing is chosen. General images are not linked to a track. The Unmatched tray stays out.',
+      '2 warnings',
+      'General *"Il mare che guarda"* has no image.',
+      'General music *"Riposo alla locanda"* has no track.',
+      'Your browser downloads Kulthos.cbpack',
+    ]);
+    const noTrack = summary({ groups: 0, general: false, tracks: 0, images: { scene: 0, general: 2, pc: 0, npc: 0, handout: 0 } });
+    expect(text(noTrack, { campaign: true })).toContain('\nno General group·*0* tracks\n');
+    const empty = summary({ groups: 0, tracks: 0, images: { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 }, bytes: 0, empty: true });
+    expect(text(empty, { campaign: true }).split('\n')).toEqual([
+      "A CueBard project: one cue group General with the campaign's music, and the images in four visual folders.",
+      'Nothing to export yet: add files to the board first.',
+    ]);
   });
 
   it('says there is nothing to export when nothing is picked', () => {

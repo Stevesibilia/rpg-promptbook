@@ -94,19 +94,26 @@ function WarningLine({ warning: w }: { warning: CuebardWarning }) {
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 // The dialog's body for a summary: the lead, then the lines and warnings,
-// or nothing to export, or too large; where the pack is built.
+// or nothing to export, or too large; where the pack is built. A campaign's
+// lines name no scene (campaign-board design decision 11, screen 11b).
 export function CuebardSummaryView({
   summary,
   state,
   fileName,
   desktop,
+  campaign = false,
 }: {
   summary: CuebardSummary;
   state: CuebardState;
   fileName: string;
   desktop: boolean;
+  campaign?: boolean;
 }) {
-  const lead = (
+  const lead = campaign ? (
+    <p>
+      A CueBard project: one cue group General with the campaign's music, and the images in four visual folders.
+    </p>
+  ) : (
     <p>
       A CueBard project: one cue group per scene, with its tracks, then one group General for the music of the whole
       adventure, and the images in five visual folders.
@@ -131,24 +138,33 @@ export function CuebardSummaryView({
       <dl className="xsum">
         <dt>Cue groups</dt>
         <dd>
-          <b>{scenes}</b> {plural(scenes, 'scene', 'scenes')}
-          {sep}
+          {!campaign && (
+            <>
+              <b>{scenes}</b> {plural(scenes, 'scene', 'scenes')}
+              {sep}
+            </>
+          )}
           {general ? 'General' : <span className="hint">no General group</span>}
           {sep}
           <b>{summary.tracks}</b> {plural(summary.tracks, 'track', 'tracks')}
         </dd>
         <dt>Visual folders</dt>
         <dd>
-          Scenes <b>{images.scene}</b>
-          {sep}General <b>{images.general}</b>
+          {!campaign && (
+            <>
+              Scenes <b>{images.scene}</b>
+              {sep}
+            </>
+          )}
+          General <b>{images.general}</b>
           {sep}PCs <b>{images.pc}</b>
           {sep}NPCs <b>{images.npc}</b>
           {sep}Handouts <b>{images.handout}</b> <span className="hint">images</span>
         </dd>
       </dl>
       <p className="m">
-        Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. General images are
-        not linked to a track. The Unmatched tray stays out.
+        Each prompt and {campaign ? 'music prompt' : 'scene'} gives its chosen file, or every matched file when nothing
+        is chosen. General images are not linked to a track. The Unmatched tray stays out.
       </p>
       {warnings.length > 0 && (
         <div className="xwarn">
@@ -185,7 +201,14 @@ export function CuebardSummaryView({
 // the board the user sees, offline too.
 const plan = (doc: Y.Doc, templates: readonly Template[]) => {
   const pack = cuebardPack(doc, { now: '', templates });
-  return { title: readMeta(doc).title, fileName: pack.fileName, summary: pack.summary, entries: pack.entries.length };
+  const meta = readMeta(doc);
+  return {
+    title: meta.title,
+    campaign: meta.category === 'campaign',
+    fileName: pack.fileName,
+    summary: pack.summary,
+    entries: pack.entries.length,
+  };
 };
 
 // The projects whose export runs: a second click, or a dialog opened again
@@ -206,7 +229,7 @@ export function CuebardDialog({
   // Follows the document while open: a file added elsewhere counts at once.
   const { templates } = useTemplates();
   const read = useCallback((d: Y.Doc) => plan(d, templates), [templates]);
-  const { title, fileName, summary, entries } = useDocValue(doc, read);
+  const { title, campaign, fileName, summary, entries } = useDocValue(doc, read);
   const state = cuebardState(summary, entries);
   const kind = platform.kind;
   // The desktop's answer comes after its save dialog and the build, maybe
@@ -255,7 +278,13 @@ export function CuebardDialog({
         </>
       }
     >
-      <CuebardSummaryView summary={summary} state={state} fileName={fileName} desktop={kind === 'desktop'} />
+      <CuebardSummaryView
+        summary={summary}
+        state={state}
+        fileName={fileName}
+        desktop={kind === 'desktop'}
+        campaign={campaign}
+      />
     </Modal>
   );
 }

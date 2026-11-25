@@ -11,7 +11,7 @@ import type { TrayFile } from './useBoard.js';
 // scene or a General music prompt, or removed at once. An image whose name matches several prompts
 // names them, and its menu lists them first.
 export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
-  const { doc, projectId, rows, music, shown, toast, mark } = useBoardContext();
+  const { doc, projectId, whole, rows, music, shown, toast, mark } = useBoardContext();
   if (files.length === 0) return null;
   const sceneIds = rows.map((r) => r.sceneId);
   const places = trackPlaces(rows, music);
@@ -86,8 +86,8 @@ export function Tray({ files, onHelp }: { files: TrayFile[]; onHelp(): void }) {
                   />
                 ) : (
                   <ActionSelect
-                    label={`Assign ${file.name} to a scene or music prompt`}
-                    placeholder="Assign to scene or music…"
+                    label={`Assign ${file.name} to ${whole === 'campaign' ? 'a music prompt' : 'a scene or music prompt'}`}
+                    placeholder={whole === 'campaign' ? 'Assign to music…' : 'Assign to scene or music…'}
                     options={trackGroups(places)}
                     onPick={(to) => {
                       const said = assignTrackFromTray(doc, places, file.id, to);

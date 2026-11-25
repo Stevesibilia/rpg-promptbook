@@ -155,6 +155,29 @@ describe('the picker', () => {
     expect(cardLine(['cover', 'npc'], referenceLabels(all, [cover, npc]))).toBe('References: Copertina, Padre Anselmo');
   });
 
+  // campaign-board design decision 16: a campaign's board shows no scene, and
+  // its General, PC, NPC and handout images are the references offered.
+  it("offers a campaign's General, PC, NPC and handout images", () => {
+    const cover = file('cover');
+    const elsa = file('elsa');
+    const poster = file('poster');
+    const campaign = shownPrompts([], {
+      general: [shownPrompt({ id: 'g1', category: 'general', sceneId: null, name: 'Copertina della campagna' }, 1, [cover]).row],
+      pc: [shownPrompt({ id: 'c1', category: 'pc', sceneId: null, name: 'Elsa Lindqvist' }, 1, [elsa], 'elsa').row],
+      npc: [shown.get('p2')!.row],
+      handout: [shownPrompt({ id: 'h1', category: 'handout', sceneId: null, name: 'Avviso di ricerca' }, 1, [poster]).row],
+    });
+    expect(boardImages(campaign).map((i) => [i.file.id, i.label, i.chosen])).toEqual([
+      ['elsa', 'Elsa Lindqvist', true],
+      ['npc', 'Padre Anselmo', true],
+      ['cover', 'Copertina della campagna', false],
+      ['poster', 'Avviso di ricerca', false],
+    ]);
+    expect(cardLine(['cover', 'elsa'], referenceLabels(campaign, [cover, elsa]))).toBe(
+      'References: Copertina della campagna, Elsa Lindqvist',
+    );
+  });
+
   it('turns a tile off when its image is only on this device, or when three are picked', () => {
     expect(tileState('a', [], false)).toEqual({ selected: false, disabled: null });
     expect(tileState('a', ['a'], false)).toEqual({ selected: true, disabled: null });

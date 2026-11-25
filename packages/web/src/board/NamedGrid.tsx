@@ -10,6 +10,7 @@ import {
   categoryText,
   filterLabels,
   keepsCard,
+  namedText,
   newName,
   tally,
   type Filter,
@@ -64,8 +65,8 @@ export function NamedGrid({
   filter: Filter;
   setFilter(filter: Filter): void;
 }) {
-  const { named, editing, adding, setAdding } = useBoardContext();
-  const text = categoryText[category];
+  const { whole, named, editing, adding, setAdding } = useBoardContext();
+  const text = namedText(category, whole);
   const items = named[category];
   const addingHere = adding?.category === category;
   const add = () => setAdding({ category });
@@ -117,7 +118,7 @@ export function NamedGrid({
         </p>
       )}
       <p className="hint" style={{ marginTop: 14 }}>
-        {text.tab} belong to the whole adventure, not to a scene.
+        {text.tab} belong to the whole {whole}, not to a scene.
       </p>
     </>
   );

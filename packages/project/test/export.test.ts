@@ -491,6 +491,24 @@ describe('the board in the export', () => {
       files: [{ path: 'files/unmatched/one.png', sha256: hash(1) }],
     });
   });
+
+  it('writes a campaign’s board.md with General, PCs, NPCs and Handouts and no Scenes', () => {
+    // Its text holds an adventure's appendix, which a campaign never reads.
+    const doc = project({ category: 'campaign', title: 'Kulthos', document: DOCUMENT });
+    const theme = addMusicPrompt(doc, { title: 'Tema della campagna', style: 'dark folk', lyrics: '[Instrumental]\n[End]' }, 'claude', AT);
+    const npc = named(doc, 'npc', 'Padre Anselmo', 'portrait of an old priest');
+    add(doc, [{ ...track(1, 'tema della campagna.mp3', null), musicId: theme.id }, image(2, 'anselmo.png', npc), image(3, 'stray.png', null)]);
+    const { markdown, files } = exportBoard(doc);
+    expect(markdown).not.toContain('# Scenes');
+    expect(markdown.match(/^# .+$/gm)).toEqual(['# General', '# PCs', '# NPCs', '# Handouts']);
+    expect(markdown.startsWith('# General\n\n## Images\n\nNone yet.\n\n## Music\n\n### Tema della campagna\n')).toBe(true);
+    expect(markdown).toContain('# NPCs\n\n## Padre Anselmo\n\n```\nportrait of an old priest\n```');
+    expect(files.map((f) => f.path)).toEqual([
+      'files/general/music/Tema della campagna/tema della campagna.mp3',
+      'files/npcs/Padre Anselmo/anselmo.png',
+      'files/unmatched/stray.png',
+    ]);
+  });
 });
 
 describe('exportFolderName', () => {

@@ -34,6 +34,7 @@ import { NamedGrid, NamedSummary } from './NamedGrid.js';
 import { Counts, OfflineNotice, SummaryLine } from './parts.js';
 import { SceneRow } from './SceneRow.js';
 import {
+  boardTabs,
   categoryOf,
   categoryText,
   keepsRow,
@@ -41,6 +42,7 @@ import {
   summarizeScenes,
   tabOf,
   tabParam,
+  wholeOf,
   type Filter,
   type Tab,
 } from './summary.js';
@@ -65,14 +67,25 @@ import './board.css';
 // per scene of the document's appendix with its image prompts and music; on
 // General its images and music prompts (general-board-items design decision
 // 9); on PCs, NPCs and Handouts one card per prompt. Files are dropped anywhere on
-// the window; the Unmatched tray and the viewer serve every tab.
+// the window; the Unmatched tray and the viewer serve every tab. A campaign's
+// board has no Scenes tab, opens on General and never reads an appendix
+// (campaign-board design decisions 2 to 4).
 export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: ProjectMeta }) {
-  const board = useBoard(doc);
+  const campaign = meta.category === 'campaign';
+  const whole = wholeOf(meta.category);
+  const shownTabs = boardTabs(meta.category);
+  const board = useBoard(doc, campaign);
   const { parsed, rows, named, music, shown, tray } = board;
   const [intake, intakeState] = useIntake(id);
   const [toast, showToast] = useToast();
   const [params, setParams] = useSearchParams();
-  const tab = tabParam(params.get('tab'));
+  const asked = params.get('tab');
+  const tab = tabParam(asked, meta.category);
+  // A tab the board does not show, such as Scenes on a campaign, opens the
+  // first one: the address says so too.
+  useEffect(() => {
+    if (asked !== null && asked !== tab) setParams(tab === shownTabs[0] ? {} : { tab }, { replace: true });
+  }, [asked, tab, shownTabs, setParams]);
   const [filter, setFilter] = useState<Filter>('all');
   const [help, setHelp] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -164,7 +177,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
 
   const toTop = () => center.current?.closest('.center')?.scrollTo({ top: 0 });
   const setTab = (next: Tab) => {
-    if (next !== tab) setParams(next === 'scenes' ? {} : { tab: next }, { replace: false });
+    if (next !== tab) setParams(next === shownTabs[0] ? {} : { tab: next }, { replace: false });
     toTop();
   };
   useEffect(() => {
@@ -190,6 +203,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
   const context: BoardContextValue = {
     doc,
     projectId: id,
+    whole,
     rows,
     named,
     music,
@@ -229,8 +243,8 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       <span>Images and music</span>
       {parsed && (
         <span>
-          {hasRows ? `${rows.length} ${rows.length === 1 ? 'scene' : 'scenes'}` : 'No appendix'} · {prompts}{' '}
-          {prompts === 1 ? 'image prompt' : 'image prompts'} · {music.length} general music
+          {campaign ? 'Campaign' : hasRows ? `${rows.length} ${rows.length === 1 ? 'scene' : 'scenes'}` : 'No appendix'}{' '}
+          · {prompts} {prompts === 1 ? 'image prompt' : 'image prompts'} · {music.length} general music
         </span>
       )}
     </>
@@ -248,8 +262,9 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
           <div className="head">
             <h1>Images and music</h1>
             <p className="lead">
-              Images and music for each scene and for the whole adventure, with PCs, NPCs and handouts. For the table
-              and the CueBard export.
+              {campaign
+                ? 'Images and music for the whole campaign, with PCs, NPCs and handouts. For the table and the CueBard export.'
+                : 'Images and music for each scene and for the whole adventure, with PCs, NPCs and handouts. For the table and the CueBard export.'}
             </p>
             <span className="spacer" />
             {loaded && (
@@ -285,7 +300,9 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                 />
               </span>
             )}
-            {help && loaded && <MatchHelp rows={rows} named={named} music={music} shown={shown} onClose={closeHelp} />}
+            {help && loaded && (
+              <MatchHelp rows={rows} named={named} music={music} shown={shown} whole={whole} onClose={closeHelp} />
+            )}
             {exporting && loaded && (
               <CuebardDialog projectId={id} doc={doc} onClose={() => setExporting(false)} onToast={showToast} />
             )}
@@ -295,7 +312,15 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
             <p className="loading">Reading the appendix…</p>
           ) : (
             <>
-              <CategoryTabs tab={tab} onTab={setTab} rows={rows} named={named} music={music} marks={intakeState.marks} />
+              <CategoryTabs
+                tabs={shownTabs}
+                tab={tab}
+                onTab={setTab}
+                rows={rows}
+                named={named}
+                music={music}
+                marks={intakeState.marks}
+              />
               {category === 'scene' ? (
                 hasRows && <ScenesSummary rows={rows} filter={filter} setFilter={setFilter} />
               ) : category === 'general' ? (
@@ -303,7 +328,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
               ) : (
                 <NamedSummary category={category} filter={filter} setFilter={setFilter} />
               )}
-              {noPrompts && <ClaudeCard title={meta.title} onToast={showToast} />}
+              {noPrompts && <ClaudeCard title={meta.title} whole={whole} onToast={showToast} />}
               <OfflineLine projectId={id} />
               <Strips state={intakeState} onDismiss={() => intake.dismissResult()} intake={intake} onPlace={goTo} />
               <Tray
@@ -314,25 +339,27 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                 }}
               />
               {/* Every tab stays mounted, the others hidden, so an editor's
-                  draft outlives a change of tab. */}
-              <div role="tabpanel" aria-label="Scenes" hidden={tab !== 'scenes'}>
-                {hasRows ? (
-                  <>
-                    <div className="rows">
-                      {rows
-                        .filter((row) => keepsRow(row, filter) || beingEdited(row))
-                        .map((row) => (
-                          <SceneRow key={row.sceneId} row={row} filter={filter} />
-                        ))}
-                    </div>
-                    <p className="hint" style={{ marginTop: 14 }}>
-                      Rows follow the appendix. Add or rename a scene there and the board follows.
-                    </p>
-                  </>
-                ) : (
-                  <NoAppendix doc={doc} id={id} board={board} onToast={showToast} />
-                )}
-              </div>
+                  draft outlives a change of tab. A campaign has no Scenes. */}
+              {!campaign && (
+                <div role="tabpanel" aria-label="Scenes" hidden={tab !== 'scenes'}>
+                  {hasRows ? (
+                    <>
+                      <div className="rows">
+                        {rows
+                          .filter((row) => keepsRow(row, filter) || beingEdited(row))
+                          .map((row) => (
+                            <SceneRow key={row.sceneId} row={row} filter={filter} />
+                          ))}
+                      </div>
+                      <p className="hint" style={{ marginTop: 14 }}>
+                        Rows follow the appendix. Add or rename a scene there and the board follows.
+                      </p>
+                    </>
+                  ) : (
+                    <NoAppendix doc={doc} id={id} board={board} onToast={showToast} />
+                  )}
+                </div>
+              )}
               <div role="tabpanel" aria-label="General" hidden={category !== 'general'}>
                 <GeneralView title={meta.title} filter={filter} setFilter={setFilter} />
               </div>
