@@ -46,9 +46,11 @@ interface Setup {
   headers: Record<string, string>;
   session: string;
   id: string;
-  // S2's prompt 1, and the NPC «Padre Anselmo».
+  // S2's prompt 1, and the NPC «Padre Anselmo»; on a campaign, no scene
+  // prompt and the General image «Copertina della campagna».
   scene: string;
   npc: string;
+  general: string;
   token: string;
   call(name: string, args?: Record<string, unknown>, app?: FastifyInstance): Promise<ToolOutcome>;
 }
@@ -69,8 +71,15 @@ async function setup({
   const id = created.json().project.id as string;
   const ids = await withLiveDocument(app.sync, id, user.id, (doc) => {
     setDocumentText(doc, category === 'campaign' ? CAMPAIGN : ADVENTURE);
-    if (category === 'campaign') return { scene: 'none', npc: 'none' };
+    if (category === 'campaign') {
+      return {
+        scene: 'none',
+        npc: addImagePrompt(doc, { category: 'npc', name: 'Padre Anselmo', prompt: 'an old priest, candlelight --ar 2:3 --v 8.1' }, 'claude').id,
+        general: addImagePrompt(doc, { category: 'general', name: 'Copertina della campagna', prompt: 'a bronze anchor in black sand --ar 2:3 --v 8.1' }, 'claude').id,
+      };
+    }
     return {
+      general: 'none',
       scene: addImagePrompt(doc, { category: 'scene', sceneId: 'S2', prompt: 'a pier at dawn, fog --ar 16:9 --v 8.1' }, 'claude').id,
       npc: addImagePrompt(doc, { category: 'npc', name: 'Padre Anselmo', prompt: 'an old priest, candlelight --ar 2:3 --v 8.1' }, 'claude').id,
     };
@@ -338,12 +347,16 @@ describe('attach_atelier_image’s refusals (D10), each leaving the board as it 
     await unchanged(s);
   });
 
-  it('answers no_board on a campaign', async () => {
+  it('attaches to a campaign’s General prompt (campaign-board design decision 6)', async () => {
     const s = await setup({ category: 'campaign' });
-    const imageId = atelier.addImage(png(50, 50, 8));
-    const answer = seen(await s.call('attach_atelier_image', { projectId: s.id, promptId: 'any', atelierImageId: imageId }));
-    expect(answer.error?.code).toBe('no_board');
-    expect(atelier.calls).toEqual([]);
+    const imageId = atelier.addImage(png(1024, 1536, 8));
+    const answer = seen(await s.call('attach_atelier_image', { projectId: s.id, promptId: s.general, atelierImageId: imageId }));
+    expect(answer.isError, answer.text).toBe(false);
+    expect(answer.value).toMatchObject({ promptId: s.general, already: false, file: { name: `copertina-della-campagna-atelier-${imageId.slice(0, 8)}.png` } });
+    expect((await liveFiles(s)).map((f) => [f.promptId, f.matchedBy, f.addedBy])).toEqual([[s.general, 'hand', 'claude']]);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.scenes).toEqual([]);
+    expect(board.general.images[0]).toMatchObject({ id: s.general, status: 'received', files: 1 });
   });
 
   it('answers insufficient_scope to a read grant', async () => {
@@ -449,6 +462,16 @@ describe('generate_image (D3, D4, D5)', () => {
       ['nb', true, 'atelier'],
       ['nb', true, 'atelier'],
     ]);
+  });
+
+  it('generates on a campaign’s General prompt (campaign-board design decision 14)', async () => {
+    const s = await setup({ category: 'campaign', token: null, key: OPENROUTER_KEY, provider: 'openrouter' });
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.general, model: 'gpt', count: 1, shape: '2:3' });
+    expect(answer.isError, answer.text).toBe(false);
+    expect(answer.value).toMatchObject({ promptId: s.general, provider: 'openrouter', state: 'finished', failed: 0 });
+    expect((await liveFiles(s)).map((f) => [f.promptId, f.matchedBy, f.addedBy])).toEqual([[s.general, 'generated', 'claude']]);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.general.images[0]).toMatchObject({ id: s.general, status: 'received', files: 1, generating: false });
   });
 
   it('takes the model and count from the settings, the shape as the panel picks it', async () => {

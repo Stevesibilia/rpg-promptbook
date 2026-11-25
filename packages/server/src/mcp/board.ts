@@ -198,8 +198,14 @@ function sharedTitle(board: DocumentBoard, title: string, own: { sceneId: string
   return `${others.join(', ')} already ${others.length === 1 ? 'has' : 'have'} the track title «${title}», so Suno’s downloads cannot be matched to their music prompts. Give each scene and each General music prompt its own title.`;
 }
 
-const NO_BOARD = () =>
-  new AppError(400, 'no_board', 'A campaign has no images and music board: only an adventure or a one-shot does.');
+// campaign-board design decision 7: a scene-only write on a campaign. The code
+// is add_scene's, so one code means «this needs an adventure».
+const NOT_AN_ADVENTURE = () =>
+  new AppError(
+    400,
+    'not_an_adventure',
+    'A campaign has no scenes: give its images the category general, pc, npc or handout, and its music with add_music_prompt.',
+  );
 
 const UNKNOWN_MUSIC = () =>
   new ToolRefusal(404, 'unknown_music', 'No General music prompt with that id. get_board lists them.', undefined, 'musicId');
@@ -224,7 +230,7 @@ const oneLine = z.string().regex(/^[^\r\n]*$/, 'must be one line');
 
 const IMAGE_RULES =
   'Midjourney prompts in English, natural description, most important first: subject, setting, lighting, style, mood; concrete words, no quality tokens (8k, masterpiece); one idea per prompt. ' +
-  'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. General: images of the whole adventure, in the image’s own ratio: `--ar 16:9 --v 8.1` for an establishing shot, `--ar 2:3 --v 8.1` for a cover. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
+  'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. General: images of the whole adventure or campaign, in the image’s own ratio: `--ar 16:9 --v 8.1` for an establishing shot, `--ar 2:3 --v 8.1` for a cover. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
   'Start each image prompt with words no other prompt starts with: the downloads find their prompt by their first words.';
 
 // Suno's rules, shared by the scene music and the General music prompts.
@@ -278,12 +284,6 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
   const musicStyle = requiredText(LIMITS.style);
   const musicLyrics = text(LIMITS.lyrics);
 
-  // The board of a project that can have one.
-  const boardable = (project: ProjectRow) => {
-    if (project.category === 'campaign') throw NO_BOARD();
-    return project;
-  };
-
   // A write on the migrated board.
   const writeBoard = <T>(project: ProjectRow, fn: (doc: Y.Doc) => T) =>
     write(project, (doc) => {
@@ -293,13 +293,14 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'get_board',
-    'The project’s images and music board. Image prompts come in five categories: Scenes (any number per scene of the appendix, with its visual: and mood: lines), General (images of the whole adventure, under general.images), PCs, NPCs and Handouts (a name and a prompt each). ' +
+    'The project’s images and music board. Image prompts come in five categories: Scenes (any number per scene of the appendix, with its visual: and mood: lines), General (images of the whole adventure or campaign, under general.images), PCs, NPCs and Handouts (a name and a prompt each). ' +
       'Each image prompt has its id, number, text, who wrote it and when, status (wanted, received, chosen), image count and chosen file; each scene has its Suno music prompt and status; general.music lists the General music prompts (a main theme, combat, ambience), each with its id, title, style, lyrics, who wrote it and when, status, track count and chosen track. ' +
-      'outsideAppendix lists scene prompts whose scene has no appendix row: kept, not shown. duplicateTitles lists the music titles used twice, in scenes or General. Read it before writing prompts.',
+      'outsideAppendix lists scene prompts whose scene has no appendix row: kept, not shown. duplicateTitles lists the music titles used twice, in scenes or General. Read it before writing prompts. ' +
+      'A campaign has no scenes: scenes is empty. For the style of a campaign’s images and music, read its document.',
     { title: 'Get the board', readOnly: true, idempotent: true },
     { projectId },
     async (args) => {
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       const doc = migratedView(await docOf(project));
       return boardOut(readDocumentBoard(doc, extra), readGenerationJobs(doc));
@@ -308,7 +309,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'set_scene_prompts',
-    'Write one scene’s first image prompt, its music prompt, or both. Image: one Midjourney prompt in English from the scene’s visual: line, natural description, most important first: subject, setting, lighting, style, mood; concrete words, no quality tokens (8k, masterpiece); one idea per prompt; end with `--ar 16:9 --v 8.1`. It replaces the text of the scene’s prompt 1, creating it when the scene has none; add more shots with add_image_prompt. ' +
+    'Write one scene’s first image prompt, its music prompt, or both. Adventures and one-shots only. Image: one Midjourney prompt in English from the scene’s visual: line, natural description, most important first: subject, setting, lighting, style, mood; concrete words, no quality tokens (8k, masterpiece); one idea per prompt; end with `--ar 16:9 --v 8.1`. It replaces the text of the scene’s prompt 1, creating it when the scene has none; add more shots with add_image_prompt. ' +
       `Music: from the mood: line. ${SUNO_RULES} ` +
       'Send image, music or both; the half you leave out is kept. The user can edit any of it by hand.',
     { title: 'Write a scene’s prompts', readOnly: false, idempotent: true },
@@ -326,7 +327,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     },
     async (args) => {
       if (args.image === undefined && args.music === undefined) throw invalid('Send image, music or both.');
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
+      if (project.category === 'campaign') throw NOT_AN_ADVENTURE();
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         const before = readDocumentBoard(doc, extra);
@@ -345,7 +347,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'add_image_prompt',
-    'Add an image prompt. Scenes: any number per scene of the appendix, each a different shot. General (images of the whole adventure: establishing shots, a cover), PCs, NPCs, Handouts: project-wide, a name and a prompt. ' +
+    'Add an image prompt. Scenes (adventures and one-shots only): any number per scene of the appendix, each a different shot. General (images of the whole adventure or campaign: establishing shots, a cover), PCs, NPCs, Handouts: project-wide, a name and a prompt. ' +
       `${IMAGE_RULES} Read get_board first, so the new prompt does not repeat one that is there.`,
     { title: 'Add an image prompt', readOnly: false, idempotent: false },
     {
@@ -363,7 +365,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         if (args.name === undefined) throw invalid(`A ${args.category} prompt needs a name.`);
         if (args.sceneId !== undefined) throw invalid('Only a scene prompt has a sceneId.');
       }
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
+      if (args.category === 'scene' && project.category === 'campaign') throw NOT_AN_ADVENTURE();
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (args.category === 'scene') {
@@ -393,7 +396,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     { projectId, id: promptId, prompt: prompt.optional(), name: name.optional() },
     async (args) => {
       if (args.prompt === undefined && args.name === undefined) throw invalid('Send prompt, name or both.');
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         const found = allPrompts(readDocumentBoard(doc, extra)).find((p) => p.prompt.id === args.id);
@@ -448,7 +451,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     shape?: ImageShape | undefined;
     waitSeconds?: number | undefined;
   }) {
-    const project = boardable(await projectOf(args.projectId));
+    const project = await projectOf(args.projectId);
     const prompt = readImagePrompts(migratedView(await docOf(project))).find((p) => p.id === args.promptId);
     if (!prompt) throw UNKNOWN_PROMPT();
     const settings = (await getSettings(starter.db, caller.userId)).imageGeneration;
@@ -515,7 +518,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
   // known before the download comes before it, and the board is written
   // last, so a refusal changes nothing on it.
   async function attach(id: string, promptIdArg: string, atelierImageId: string) {
-    const project = boardable(await projectOf(id));
+    const project = await projectOf(id);
     const known = readImagePrompts(migratedView(await docOf(project)));
     if (!known.some((p) => p.id === promptIdArg)) throw UNKNOWN_PROMPT();
     const { config, db, blobs } = starter;
@@ -583,7 +586,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     { title: 'Remove an image prompt', readOnly: false, idempotent: true, destructive: true },
     { projectId, id: promptId },
     async (args) => {
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (!allPrompts(readDocumentBoard(doc, extra)).some((p) => p.prompt.id === args.id)) throw UNKNOWN_PROMPT();
@@ -598,12 +601,12 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'add_music_prompt',
-    'Add a General music prompt: a Suno prompt for the whole adventure, not tied to a scene, such as a main theme, combat music or ambience. Any number per adventure or one-shot; a scene’s own music is written with set_scene_prompts. ' +
+    'Add a General music prompt: a Suno prompt for the whole adventure or campaign, not tied to a scene, such as a main theme, combat music or ambience. Any number per project; a scene’s own music is written with set_scene_prompts. ' +
       `${SUNO_RULES} Read get_board first, so the new prompt does not repeat one that is there.`,
     { title: 'Add a music prompt', readOnly: false, idempotent: false },
     { projectId, title: musicTitle, style: musicStyle, lyrics: musicLyrics },
     async (args) => {
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (readDocumentBoard(doc, extra).music.length >= CAPS.musicPrompts) throw MUSIC_FULL();
@@ -630,7 +633,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       if (args.title === undefined && args.style === undefined && args.lyrics === undefined) {
         throw invalid('Send title, style, lyrics or several.');
       }
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (!readDocumentBoard(doc, extra).music.some((m) => m.prompt.id === args.musicId)) throw UNKNOWN_MUSIC();
@@ -658,7 +661,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     { title: 'Remove a music prompt', readOnly: false, idempotent: true, destructive: true },
     { projectId, musicId },
     async (args) => {
-      const project = boardable(await projectOf(args.projectId));
+      const project = await projectOf(args.projectId);
       const extra = await templates();
       return writeBoard(project, (doc: Y.Doc) => {
         if (!readDocumentBoard(doc, extra).music.some((m) => m.prompt.id === args.musicId)) throw UNKNOWN_MUSIC();
