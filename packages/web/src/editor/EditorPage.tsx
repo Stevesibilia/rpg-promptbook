@@ -347,7 +347,6 @@ export function EditorPage({ doc }: { doc: Y.Doc }) {
     <Shell
       rail="document"
       project={meta.id}
-      category={meta.category}
       focus={focus}
       wideRight={pane}
       crumbs={<ProjectCrumbs meta={meta} campaign={campaign} />}

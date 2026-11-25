@@ -30,7 +30,9 @@ import { shownPrompts, type Named, type ShownPrompt } from './summary.js';
 // The board's data (asset-board design decision 2, image-categories design
 // decisions 7 and 9): the appendix parsed by the editor's worker with the
 // project's template, never on the main thread, joined to the image prompts and files of the Yjs
-// document, which are read again on every change.
+// document, which are read again on every change. A campaign is never parsed
+// (campaign-board design decision 2): its appendix is empty from the first
+// render, as readDocumentBoard reads it.
 
 export interface Parsed {
   // The text the model was parsed from.
@@ -65,6 +67,26 @@ export interface Board {
 }
 
 const textOf = (doc: Y.Doc) => doc.getText('document');
+
+// What a campaign's board reads instead of a parse: no scenes, no appendix.
+const NOTHING_PARSED: Model = {
+  template: '',
+  meta: { range: null, values: {}, entries: [], licence: null },
+  sections: [],
+  scenes: [],
+  sheets: [],
+  pregenerated: null,
+  revelations: [],
+  revelationsLabel: null,
+  clues: [],
+  reminders: [],
+  sceneMap: [],
+  tracker: [],
+  npcs: [],
+  appendix: [],
+  unplaced: [],
+};
+const unparsed = (doc: Y.Doc): Parsed => ({ text: textOf(doc).toString(), model: NOTHING_PARSED });
 
 interface Read {
   files: FileEntry[];
@@ -143,8 +165,10 @@ export function trayFiles(
   });
 }
 
-export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
-  const [parsed, setParsed] = useState<Parsed | null>(null);
+export function useBoard(doc: Y.Doc, campaign: boolean, connect: Connect = connectWorker): Board {
+  const [parsedHere, setParsed] = useState<Parsed | null>(null);
+  const campaignParsed = useMemo(() => (campaign ? unparsed(doc) : null), [doc, campaign]);
+  const parsed = campaignParsed ?? parsedHere;
   const read = useFilesAndBoard(doc);
   useMigration(doc, read);
   const { files, board, prompts, music: musicPrompts } = read;
@@ -160,6 +184,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
   }, [templates]);
 
   useEffect(() => {
+    if (campaign) return;
     const text = textOf(doc);
     const analysis = createAnalysisClient<string>({
       connect,
@@ -186,7 +211,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
       client.current = null;
       waiting.current = [];
     };
-  }, [doc, connect]);
+  }, [doc, connect, campaign]);
 
   const rows = useMemo(
     () => (parsed ? boardRows(parsed.model.appendix, board, prompts, files, musicPrompts) : []),
@@ -202,6 +227,7 @@ export function useBoard(doc: Y.Doc, connect: Connect = connectWorker): Board {
 
   const parseNow = () =>
     new Promise<Parsed>((resolve) => {
+      if (campaign) return resolve(unparsed(doc));
       const current = textOf(doc).toString();
       if (parsed && parsed.text === current) return resolve(parsed);
       waiting.current.push({ resolve });

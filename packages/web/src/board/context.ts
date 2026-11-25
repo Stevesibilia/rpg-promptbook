@@ -12,7 +12,7 @@ import type { GenerateBody, SpendingTotal } from '../api.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
 import type { GenerateChoice } from './generate.js';
-import type { Named, ShownPrompt } from './summary.js';
+import type { Named, ShownPrompt, Whole } from './summary.js';
 import type { PendingStart, Refused, StatusState } from './useGeneration.js';
 
 // Where the one new prompt is being written: a scene's stack, the General,
@@ -28,6 +28,9 @@ export const addingKey = (a: Adding) => (a.category === 'scene' ? `scene:${a.sce
 export interface BoardContextValue {
   doc: Y.Doc;
   projectId: string;
+  // «the whole adventure» or «the whole campaign» (campaign-board design
+  // decision 4).
+  whole: Whole;
   rows: BoardRow[];
   named: Named;
   // The General music prompts.

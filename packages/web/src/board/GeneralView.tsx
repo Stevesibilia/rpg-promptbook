@@ -4,7 +4,7 @@ import { GeneratedHere } from './GeneratePanel.js';
 import { AddMusicCard, MusicCard } from './MusicCard.js';
 import { AddNamedCard, NamedCard } from './NamedGrid.js';
 import { Counts, SummaryLine } from './parts.js';
-import { categoryText, filterLabels, keepsCard, sectionLine, summarizeGeneral, type Filter } from './summary.js';
+import { filterLabels, keepsCard, namedText, sectionLine, summarizeGeneral, type Filter } from './summary.js';
 
 // The General tab (general-board-items design decision 9, screens 1a and
 // 7c): the General images, then the General music prompts, each section
@@ -43,7 +43,8 @@ export function GeneralView({
   filter: Filter;
   setFilter(filter: Filter): void;
 }) {
-  const { named, music, editing, adding, setAdding } = useBoardContext();
+  const { whole, named, music, editing, adding, setAdding } = useBoardContext();
+  const text = namedText('general', whole);
   const images = named.general;
   const addingImage = adding?.category === 'general';
   const addingMusic = adding?.category === 'music';
@@ -56,8 +57,8 @@ export function GeneralView({
         <div className="big-ic">
           <GeneralIcon className="ic" />
         </div>
-        <h2>{categoryText.general.empty}</h2>
-        <p>{categoryText.general.what}</p>
+        <h2>{text.empty}</h2>
+        <p>{text.what}</p>
         <div className="row">
           <button className="tb primary" onClick={addImage}>
             <PlusIcon />
@@ -135,8 +136,8 @@ export function GeneralView({
         {keptMusic.length === 0 && filter !== 'all' && none('music is')}
       </section>
       <p className="hint" style={{ marginTop: 14 }}>
-        General images and music belong to the whole adventure, not to a scene. Their files find them by filename,
-        like the others.
+        General images and music belong to the whole {whole}, not to a scene. Their files find them by filename, like
+        the others.
       </p>
     </>
   );

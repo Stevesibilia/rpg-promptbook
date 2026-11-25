@@ -208,7 +208,10 @@ function Track({ owner, file, take }: { owner: TrackOwner; file: FileEntry; take
 // «⋯»: Move to another scene or music… and Remove, the image viewer's
 // actions (asset-board design decision 12).
 export function TrackMenu({ owner, file }: { owner: TrackOwner; file: FileEntry }) {
-  const { doc, rows, music, toast, player, setEditing: hold } = useBoardContext();
+  const { doc, whole, rows, music, toast, player, setEditing: hold } = useBoardContext();
+  // A campaign has no scenes to move a track to (campaign-board design
+  // decision 4).
+  const moveTo = whole === 'campaign' ? 'Move to another music prompt' : 'Move to another scene or music';
   const [open, setOpen] = useState<'menu' | 'move' | null>(null);
   // While it asks, a change of status does not filter the row away.
   const [confirm, setConfirmHere] = useState(false);
@@ -255,7 +258,7 @@ export function TrackMenu({ owner, file }: { owner: TrackOwner; file: FileEntry 
           {open === 'menu' ? (
             <>
               <button role="menuitem" onClick={() => setOpen('move')}>
-                Move to another scene or music…
+                {moveTo}…
               </button>
               <button
                 role="menuitem"
@@ -270,8 +273,8 @@ export function TrackMenu({ owner, file }: { owner: TrackOwner; file: FileEntry 
             </>
           ) : (
             <ActionSelect
-              label="Move to another scene or music"
-              placeholder="Move to another scene or music…"
+              label={moveTo}
+              placeholder={`${moveTo}…`}
               autoFocus
               options={trackGroups(places, owner.target)}
               onPick={(to) => {

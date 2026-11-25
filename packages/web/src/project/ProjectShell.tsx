@@ -26,7 +26,6 @@ export function ProjectShell({
     <Shell
       rail={view}
       project={id}
-      category={meta.category}
       crumbs={<ProjectCrumbs meta={meta} campaign={campaign} />}
       topExtra={<ProjectMetaControls doc={doc} meta={meta} campaign={campaign} />}
       topEnd={

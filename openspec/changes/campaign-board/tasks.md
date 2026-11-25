@@ -38,12 +38,12 @@ Commit: `chore(openspec): tick brief A of campaign-board`
 
 ## 4. Web board on a campaign (brief B)
 
-- [ ] 4.1 `shell/Shell.tsx` and `project/ProjectView.tsx` (D5): the rail entry and the board route on every project
-- [ ] 4.2 `board/useBoard.ts` (D2): a campaign answers an empty appendix at once, no worker; `parseNow` resolves at once
-- [ ] 4.3 `board/summary.ts`, `CategoryTabs`, `BoardView` (D3): `boardTabs(category)`, the default tab per category, `tabParam` on a campaign, no Scenes panel, `ScenesSummary` or `NoAppendix` on a campaign
-- [ ] 4.4 Wording (D4, "Mockup in words", Q1 defaults): lead, status bar, `GeneralView` and `NamedGrid` hints, General's `what` and example, `ClaudeCard`, `MatchHelp`, `Tray`, `MusicHalf`'s track menu, `actions.ts`' removal note
-- [ ] 4.5 `export/CuebardDialog.tsx` (D11): `campaign` on `CuebardSummaryView`, the campaign lead and lines
-- [ ] 4.6 Web unit tests of D15; with #67 in, a `boardImages` test over a campaign's shown prompts (D16)
+- [x] 4.1 `shell/Shell.tsx` and `project/ProjectView.tsx` (D5): the rail entry and the board route on every project
+- [x] 4.2 `board/useBoard.ts` (D2): a campaign answers an empty appendix at once, no worker; `parseNow` resolves at once
+- [x] 4.3 `board/summary.ts`, `CategoryTabs`, `BoardView` (D3): `boardTabs(category)`, the default tab per category, `tabParam` on a campaign, no Scenes panel, `ScenesSummary` or `NoAppendix` on a campaign
+- [x] 4.4 Wording (D4, "Mockup in words", Q1 defaults): lead, status bar, `GeneralView` and `NamedGrid` hints, General's `what` and example, `ClaudeCard`, `MatchHelp`, `Tray`, `MusicHalf`'s track menu, `actions.ts`' removal note
+- [x] 4.5 `export/CuebardDialog.tsx` (D11): `campaign` on `CuebardSummaryView`, the campaign lead and lines
+- [x] 4.6 Web unit tests of D15; with #67 in, a `boardImages` test over a campaign's shown prompts (D16)
 
 Commit: `feat(web): open the images and music board on campaigns`
 

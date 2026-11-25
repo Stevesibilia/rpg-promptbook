@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { BoardRow, MusicCardRow } from 'promptbook-project';
-import { musicLabel, promptLabel, sceneLabel, tabLabel, type Named, type ShownPrompt } from './summary.js';
+import { musicLabel, promptLabel, sceneLabel, tabLabel, type Named, type ShownPrompt, type Whole } from './summary.js';
 
 // How matching works (screen 5b): the rules, with examples from the
 // project's first scene prompt with a text, its first General image, PC,
 // NPC or handout with one, its first scene music title and its first General
 // music prompt. Esc or a click outside closes it; the
-// buttons that open it toggle it themselves.
+// buttons that open it toggle it themselves. A campaign's rules name no
+// scene (campaign-board design decision 4).
 
 // The first words of a prompt as Midjourney writes them in a name: no
 // apostrophes, the rest of the punctuation and spaces as underscores.
@@ -24,21 +25,24 @@ export function MatchHelp({
   named,
   music,
   shown,
+  whole,
   onClose,
 }: {
   rows: readonly BoardRow[];
   named: Named;
   music: readonly MusicCardRow[];
   shown: ReadonlyMap<string, ShownPrompt>;
+  whole: Whole;
   onClose(): void;
 }) {
+  const campaign = whole === 'campaign';
   const box = useRef<HTMLDivElement>(null);
   const withText = (p: { prompt: { id: string; prompt: string } }) => p.prompt.prompt.trim() !== '';
-  const firstScene = rows.flatMap((r) => r.prompts).find(withText);
+  const firstScene = campaign ? undefined : rows.flatMap((r) => r.prompts).find(withText);
   const firstNamed = [...named.general, ...named.pc, ...named.npc, ...named.handout].find(withText);
   const scene = firstScene && shown.get(firstScene.prompt.id);
   const person = firstNamed && shown.get(firstNamed.prompt.id);
-  const sceneMusic = rows.find((r) => r.music?.title);
+  const sceneMusic = campaign ? undefined : rows.find((r) => r.music?.title);
   const general = music[0];
 
   useEffect(() => {
@@ -70,8 +74,8 @@ export function MatchHelp({
         <b>Midjourney</b>
         <div>
           <p>
-            The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, General,
-            PCs, NPCs or Handouts.
+            The filename holds the first words of the prompt. They pick the prompt, in any category:{' '}
+            {campaign ? 'General, PCs, NPCs or Handouts.' : 'Scenes, General, PCs, NPCs or Handouts.'}
           </p>
           {scene && (
             <>
@@ -95,8 +99,10 @@ export function MatchHelp({
         <b>Suno</b>
         <div>
           <p>
-            The filename is the track title from the prompt, of a scene or of a General music prompt. A second take
-            gets "(1)".
+            {campaign
+              ? 'The filename is the track title of a General music prompt.'
+              : 'The filename is the track title from the prompt, of a scene or of a General music prompt.'}{' '}
+            A second take gets "(1)".
           </p>
           {sceneMusic?.music && (
             <>
@@ -122,7 +128,7 @@ export function MatchHelp({
           <p>
             When two prompts start with the same words, their files match both. They wait in Unmatched, marked
             "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it. A track title used
-            twice, in scenes or General, warns on both and its tracks wait in Unmatched.
+            twice{campaign ? '' : ', in scenes or General,'} warns on both and its tracks wait in Unmatched.
           </p>
         </div>
       </div>
