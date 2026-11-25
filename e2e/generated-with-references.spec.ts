@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { connectClaude } from './claude.js';
+import { connectClaude, type Claude } from './claude.js';
 import { createProject, signIn, syncPill } from './helpers.js';
 import { midjourneyName, portrait } from './media.js';
 import { atelierPort, baseURL, compose, openRouterPort } from './stack.js';
@@ -12,7 +12,9 @@ import { atelierPort, baseURL, compose, openRouterPort } from './stack.js';
 // reload; the generation sends it, through the fake OpenRouter as one input
 // reference per image and through the fake Atelier as an uploaded image;
 // the viewer names it; removing the portrait from the board takes it off
-// the card, the panel says so, and the viewer counts it removed.
+// the card, the panel says so, and the viewer counts it removed. A General
+// prompt takes references the same way, and its images are offered to the
+// other prompts.
 //
 // Named to run after generate.spec.ts and generated-through-atelier.spec.ts
 // (the tests share one account and run in file order): the first checks the
@@ -26,6 +28,7 @@ const sabaoth = await readFile(
 
 const S2 = 'A ruined doctor’s office at cold dawn, anatomical drawings on the wall, a cracked brass microscope';
 const ANSELMO = 'Portrait of a gaunt village priest in a dusty cassock, a wooden rosary around his left hand';
+const COVER = 'A storm-lit lighthouse over a black sea, a lone figure on the rocks, engraving style';
 
 const headers = { origin: baseURL };
 const toast = (page: Page) => page.locator('.toast');
@@ -35,6 +38,7 @@ const generate = (page: Page, sceneId: string) =>
   block(page, sceneId).getByRole('button', { name: 'Generate', exact: true });
 const grid = (page: Page) => panel(page).getByRole('listbox', { name: 'Images on this board' });
 const npcCard = (page: Page) => page.locator('[role=tabpanel]:not([hidden]) .ent', { hasText: 'Padre Anselmo' });
+const coverCard = (page: Page) => page.locator('[role=tabpanel]:not([hidden]) .ent', { hasText: 'Copertina' });
 
 const file = (name: string, buffer: Buffer) => ({ name, mimeType: 'image/png', buffer });
 
@@ -71,7 +75,7 @@ async function typeDocument(page: Page, id: string, text: string): Promise<void>
 
 // A project with a prompt on S2 and Padre Anselmo's portrait dropped on the
 // board and chosen.
-async function prepare(page: Page, title: string): Promise<string> {
+async function prepare(page: Page, title: string): Promise<{ id: string; claude: Claude }> {
   const claude = await connectClaude(page);
   const { id } = await createProject(page.request, title);
   await typeDocument(page, id, sabaoth);
@@ -83,7 +87,7 @@ async function prepare(page: Page, title: string): Promise<string> {
   await expect(page.locator('.info.good')).toContainText('1 file added: 1 matched, 0 to assign.', { timeout: 30_000 });
   await npcCard(page).getByRole('button', { name: 'Choose this image' }).click();
   await expect(npcCard(page).locator('.th-i.chosen')).toHaveCount(1);
-  return id;
+  return { id, claude };
 }
 
 // Opens Generate on S2 and picks Padre Anselmo's portrait.
@@ -113,7 +117,7 @@ test('A reference picked in the panel is remembered, sent through OpenRouter and
   expect((await page.request.put('/api/image-generation/key', { headers, data: { key: 'sk-or-v1-good' } })).status()).toBe(
     200,
   );
-  const id = await prepare(page, 'Sabaoth con riferimenti');
+  const { id } = await prepare(page, 'Sabaoth con riferimenti');
 
   // A second device with the board open.
   const other = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -178,7 +182,7 @@ test('A reference dropped on the board is uploaded to Atelier and sent with the 
   const token = await page.request.put('/api/image-generation/atelier-token', { headers, data: { token: 'atl_pat_good' } });
   expect(token.status()).toBe(200);
   await chooseProvider(page, 'atelier');
-  const id = await prepare(page, 'Sabaoth in Atelier con riferimenti');
+  const { id } = await prepare(page, 'Sabaoth in Atelier con riferimenti');
   const before = last('atelier');
 
   await page.goto(`/projects/${id}/board`);
@@ -198,4 +202,42 @@ test('A reference dropped on the board is uploaded to Atelier and sent with the 
   await block(page, 'S2').locator('.th-i').first().click();
   await expect(kv(page)).toContainText('ThroughAtelier');
   await expect(kv(page)).toContainText(/Cost\$\d\.\d{3}ReferencesPadre Anselmo/);
+});
+
+test('A General prompt takes references, and its images are references for the others', async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page);
+  await reset(page);
+  expect((await page.request.put('/api/image-generation/key', { headers, data: { key: 'sk-or-v1-good' } })).status()).toBe(
+    200,
+  );
+  const { id, claude } = await prepare(page, 'Sabaoth, riferimenti generali');
+  await claude.tool('add_image_prompt', { projectId: id, category: 'general', name: 'Copertina', prompt: COVER });
+
+  // On the General tab: the portrait picked on the cover, sent with its image.
+  await page.goto(`/projects/${id}/board?tab=general`);
+  await coverCard(page).getByRole('button', { name: 'Generate', exact: true }).click();
+  await panel(page).getByRole('button', { name: '+ Add an image' }).click();
+  await grid(page).getByRole('option', { name: '✓ Padre Anselmo' }).click();
+  await expect(panel(page).locator('.ref .rl')).toHaveText(['Padre Anselmo']);
+  await expect(coverCard(page).locator('.refline')).toHaveText('References: Padre Anselmo');
+  await panel(page).getByRole('group', { name: 'Images' }).getByRole('button', { name: '1' }).click();
+  await panel(page).getByRole('button', { name: 'Generate 1' }).click();
+  await expect(toast(page)).toHaveText('1 image for General · Copertina · $0.04', { timeout: 30_000 });
+  await expect(coverCard(page).locator('.th-i')).toHaveCount(1);
+  expect(last('openrouter')).toEqual({ references: 1 });
+
+  // On S2: the cover is offered after the chosen portrait, picked and sent.
+  await page.goto(`/projects/${id}/board`);
+  await generate(page, 'S2').click();
+  await panel(page).getByRole('button', { name: '+ Add an image' }).click();
+  await expect(grid(page).getByRole('option')).toHaveText(['✓ Padre Anselmo', 'Copertina']);
+  await grid(page).getByRole('option', { name: 'Copertina' }).click();
+  await expect(block(page, 'S2').locator('.refline')).toHaveText('References: Copertina');
+  await panel(page).getByRole('group', { name: 'Images' }).getByRole('button', { name: '1' }).click();
+  await panel(page).getByRole('button', { name: 'Generate 1' }).click();
+  await expect(toast(page)).toHaveText('1 image for S2 · prompt 1 · $0.04', { timeout: 30_000 });
+  expect(last('openrouter')).toEqual({ references: 1 });
+  await block(page, 'S2').locator('.th-i').first().click();
+  await expect(kv(page)).toContainText('Cost$0.040ReferencesCopertina');
 });
