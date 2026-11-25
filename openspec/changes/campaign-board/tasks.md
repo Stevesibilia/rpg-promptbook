@@ -12,7 +12,7 @@ published and force pushes are refused; bring main in with a merge. B never call
 
 ## 1. Model: CueBard pack and board.md of a campaign (brief A)
 
-- [ ] 1.1 If PR #67 (`reference-images`) has landed on main, merge `origin/main` now; if not, build on d6645e9 and merge `origin/main` as soon as the architect says #67 landed (before hand-back of brief A). Resolve as design D16 says; check "The code today" against the merged code and note corrections
+- [x] 1.1 If PR #67 (`reference-images`) has landed on main, merge `origin/main` now; if not, build on d6645e9 and merge `origin/main` as soon as the architect says #67 landed (before hand-back of brief A). Resolve as design D16 says; check "The code today" against the merged code and note corrections
 - [x] 1.2 `packages/project/src/cuebard.ts` (D9): drop the campaign branch at `:288-289`; a campaign's group «General» at index 0; update the header comment
 - [x] 1.3 `packages/project/src/export.ts` (D10): drop the campaign branch at `:213`; a campaign's `board.md` without `# Scenes`, empty while the board has no item; update the comment at `:175`
 - [x] 1.4 Tests of D15 in `cuebard.test.ts` (rewrite `:413-424`), `export.test.ts` (rewrite `:486-492`) and `board.test.ts` (a campaign text with an adventure appendix reads no rows)
@@ -24,7 +24,7 @@ Commit: `feat(project): export a campaign's General group and board.md`
 - [x] 2.1 `packages/server/src/mcp/board.ts` (D6, D7): remove `NO_BOARD` and `boardable` and their ten calls; `set_scene_prompts` and `add_image_prompt` `scene` answer 400 `not_an_adventure` on a campaign before any scene lookup
 - [x] 2.2 Descriptions and `INSTRUCTIONS` (D8): `board.ts:227`, `:296`, `:348`, `:601`, `set_scene_prompts`; `tools.ts:98`
 - [x] 2.3 Db tests of D15: rewrite `mcp-board.test.ts:233-245` and `:862-866` and `mcp-board-images.test.ts:341-346` to prove a campaign works; `not_an_adventure` writes nothing; the instructions where `mcp.test.ts` pins them
-- [ ] 2.4 D16's check with #67: `generate_image` with one reference on a campaign's General prompt reaches the fake OpenRouter with one `input_references` entry; `get_board` on the campaign lists that prompt's `images[]` and `references`
+- [x] 2.4 D16's check with #67: `generate_image` with one reference on a campaign's General prompt reaches the fake OpenRouter with one `input_references` entry; `get_board` on the campaign lists that prompt's `images[]` and `references`
 - [x] 2.5 `grep -rn "boardable\|NO_BOARD\|no_board" packages/*/src` answers nothing
 
 Commit: `feat(connector): open the board tools to campaigns`

@@ -674,6 +674,20 @@ describe('references (reference-images D19, D20)', () => {
     expect(prompt.references).toEqual([face]);
   });
 
+  it('generates on a campaign’s General prompt with one reference, and get_board lists its images and references (campaign-board D16)', async () => {
+    const s = await setup({ category: 'campaign', token: null, key: 'sk-or-v1-good', provider: 'openrouter' });
+    const face = await portrait(s, 43);
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.general, count: 1, shape: '2:3', references: [face] });
+    expect(answer.isError, answer.text).toBe(false);
+    expect(answer.value).toMatchObject({ promptId: s.general, references: [face], state: 'finished', failed: 0 });
+    expect(inputs()).toEqual([1]);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.scenes).toEqual([]);
+    expect(board.npcs[0]).toMatchObject({ id: s.npc, images: [{ id: face, name: 'anselmo-43.png' }], references: [] });
+    expect(board.general.images[0]).toMatchObject({ id: s.general, files: 1, references: [face] });
+    expect(board.general.images[0].images.map((i: { generated: boolean }) => i.generated)).toEqual([true]);
+  });
+
   it('refuses with the app’s sentence, nothing generated', async () => {
     const s = await setup({ token: null, key: 'sk-or-v1-good', provider: 'openrouter' });
     const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, references: ['not-on-the-board'] });
