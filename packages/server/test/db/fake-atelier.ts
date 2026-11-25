@@ -1,12 +1,14 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { crc32, deflateSync } from 'node:zlib';
+import { ATELIER_REFERENCE_NOT_FOUND } from '../../src/images/atelier.js';
 
 // A fake Atelier for the tests, the end-to-end stack and the owner's preview
 // (atelier-image-provider design decision 15), shaped like Atelier's
-// /api/v1 as its v0.8.0 plan describes it (contract D1). Built-ins only and
-// erasable TypeScript only, so Node runs it with its types stripped.
+// /api/v1 as its v0.8.0 plan describes it (contract D1). Erasable
+// TypeScript only; besides built-ins it imports only the reference
+// sentence from the Atelier client, which e2e/atelier/serve.mjs copies.
 //
 // Tokens, as bearer tokens:
 //   atl_pat_good   write, named "promptbook", expires 2027-11-12
@@ -15,6 +17,15 @@ import { crc32, deflateSync } from 'node:zlib';
 //
 // A generation makes its images one by one, `delay` ms apart: small PNGs,
 // each with bytes of its own, $0.08 for GPT Image and $0.037 for Nano Banana.
+//
+// Reference images (reference-images design decision 22): POST /uploads
+// takes a raw PNG, JPEG or WebP of at most 20 MB and answers the image, the
+// one already there for the same bytes; a generation's referenceIds must be
+// known image ids, at most 4, and are echoed. For the tests only, without a
+// token: GET /api/v1/__last answers {"referenceIds": [...], "uploads": n},
+// the ids of the last POST /generations and the uploads since the start;
+// DELETE /api/v1/__images/<id> forgets an image, as one deleted in Atelier.
+// Keep e2e/atelier/serve.mjs, its copy, in step.
 
 export interface FakeAtelierCall {
   method: string;
@@ -46,6 +57,7 @@ export interface FakeGeneration {
   aspectRatio: string;
   count: number;
   collectionId: string;
+  referenceIds: string[];
   status: 'running' | 'done' | 'partial' | 'failed';
   error: string | null;
   images: { id: string; costUsd: number; mime: string }[];
@@ -75,6 +87,12 @@ export interface FakeAtelier {
   // (connector-board-images design decision 15): served at
   // /api/v1/images/<id>/file like a generated one. Answers its id.
   addImage(bytes: Buffer, mime?: string): string;
+  // An image deleted in Atelier: its id is unknown from now on.
+  deleteImage(id: string): void;
+  // The referenceIds of the last POST /generations; [] before any.
+  lastReferenceIds(): string[];
+  // How many POST /uploads were answered with an image.
+  uploads(): number;
   close(): Promise<void>;
 }
 
@@ -86,7 +104,14 @@ export const ATELIER_SENTENCES = {
   tooManyRunning: 'Three generations are already running. Wait for one to finish.',
   noCollection: 'Choose a collection that exists.',
   invalidToken: 'The API token is missing, unknown, revoked or expired.',
+  referenceNotFound: ATELIER_REFERENCE_NOT_FOUND,
+  wrongType: 'Only PNG, JPEG or WebP images can be references.',
+  tooLarge: 'A reference image can be at most 20 MB.',
 } as const;
+
+const UPLOAD_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const MAX_REFERENCES = 4;
 
 const MODELS: Record<string, { name: string; estCostUsd: number; costUsd: number }> = {
   'openai/gpt-image-2.6-sunburst': { name: 'GPT Image 2.6 Sunburst', estCostUsd: 0.083, costUsd: 0.08 },
@@ -157,16 +182,22 @@ function bearerOf(req: IncomingMessage): string | null {
   return typeof header === 'string' && header.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
 }
 
-async function readBody(req: IncomingMessage): Promise<unknown> {
+async function readRaw(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk as Buffer);
-  if (chunks.length === 0) return null;
+  return Buffer.concat(chunks);
+}
+
+function parse(raw: Buffer): unknown {
+  if (raw.length === 0) return null;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return JSON.parse(raw.toString('utf8'));
   } catch {
     return null;
   }
 }
+
+const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
 
@@ -181,6 +212,8 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
   let capped = false;
   let next: { status: number; body: unknown } | null = null;
   let made = 0;
+  let lastReferenceIds: string[] = [];
+  let uploads = 0;
   // This month's spend before the tests' images, as GET /spend answers it.
   let spent = 4.12;
 
@@ -200,7 +233,7 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
     aspectRatio: g.aspectRatio,
     resolution: '1K',
     count: g.count,
-    referenceIds: [],
+    referenceIds: g.referenceIds,
     collectionId: g.collectionId,
     status: g.status,
     error: g.error,
@@ -242,7 +275,17 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = new URL(req.url ?? '/', 'http://fake').pathname;
-    const body = req.method === 'POST' ? await readBody(req) : null;
+    // The tests' own routes: not recorded, never failed, no token.
+    if (req.method === 'GET' && path === '/api/v1/__last') return send(res, 200, { referenceIds: lastReferenceIds, uploads });
+    const forget = /^\/api\/v1\/__images\/([^/]+)$/.exec(path);
+    if (req.method === 'DELETE' && forget) {
+      files.delete(forget[1]!);
+      res.writeHead(204);
+      return void res.end();
+    }
+    const raw = req.method === 'POST' ? await readRaw(req) : Buffer.alloc(0);
+    const upload = req.method === 'POST' && path === '/api/v1/uploads';
+    const body = req.method === 'POST' && !upload ? parse(raw) : null;
     const token = bearerOf(req);
     calls.push({ method: req.method ?? '', path, body, bearer: token !== null });
     if (next) {
@@ -305,6 +348,18 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
     }
 
     if (req.method === 'POST' && !write) return failure(res, 403, 'insufficient_scope', 'This token is read only.');
+    if (upload) {
+      const type = (req.headers['content-type'] ?? '').split(';')[0]!.trim().toLowerCase();
+      if (!UPLOAD_TYPES.includes(type) || raw.length === 0) return failure(res, 415, 'unsupported_type', ATELIER_SENTENCES.wrongType);
+      if (raw.length > MAX_UPLOAD_BYTES) return failure(res, 413, 'too_large', ATELIER_SENTENCES.tooLarge);
+      uploads += 1;
+      const hash = sha256(raw);
+      const same = [...files].find(([, f]) => sha256(f.bytes) === hash);
+      if (same) return send(res, 200, { id: same[0], mime: same[1].mime, origin: 'uploaded', url: `/api/v1/images/${same[0]}/file` });
+      const id = randomUUID();
+      files.set(id, { bytes: raw, mime: type });
+      return send(res, 201, { id, mime: type, origin: 'uploaded', url: `/api/v1/images/${id}/file` });
+    }
     const asked = (body ?? {}) as Record<string, unknown>;
     if (req.method === 'POST' && path === '/api/v1/collections') {
       const name = typeof asked.name === 'string' ? asked.name.trim() : '';
@@ -332,6 +387,20 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
       ) {
         return failure(res, 400, 'invalid_request', 'The generation is not one Atelier can make.');
       }
+      // As Atelier: uuids, each once, at most the model's references, all
+      // of them images it has.
+      const askedRefs: unknown = asked.referenceIds ?? [];
+      lastReferenceIds = Array.isArray(askedRefs) ? askedRefs.filter((id): id is string => typeof id === 'string') : [];
+      if (!Array.isArray(askedRefs) || !askedRefs.every((id) => typeof id === 'string' && UUID.test(id))) {
+        return failure(res, 400, 'invalid_request', 'The reference images are not valid.', 'referenceIds');
+      }
+      const referenceIds = [...new Set(askedRefs as string[])];
+      if (referenceIds.length > MAX_REFERENCES) {
+        return failure(res, 400, 'invalid_request', `${MODELS[model]!.name} takes at most ${MAX_REFERENCES} reference images.`, 'referenceIds');
+      }
+      if (referenceIds.some((id) => !files.has(id))) {
+        return failure(res, 400, 'invalid_request', ATELIER_SENTENCES.referenceNotFound, 'referenceIds');
+      }
       const collectionId = asked.collectionId;
       if (
         collectionId !== undefined &&
@@ -353,6 +422,7 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
         aspectRatio: asked.aspectRatio,
         count,
         collectionId: typeof collectionId === 'string' ? collectionId : '',
+        referenceIds,
         status: 'running',
         error: null,
         images: [],
@@ -400,6 +470,11 @@ export async function startFakeAtelier(options: FakeAtelierOptions = {}): Promis
       files.set(id, { bytes, mime });
       return id;
     },
+    deleteImage(id: string) {
+      files.delete(id);
+    },
+    lastReferenceIds: () => lastReferenceIds,
+    uploads: () => uploads,
     close: () =>
       new Promise<void>((resolve) => {
         for (const timer of timers) clearTimeout(timer);

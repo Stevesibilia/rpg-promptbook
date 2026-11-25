@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { addFiles, addImagePrompt, readFiles, type NewFile } from 'promptbook-project';
+import { createHash } from 'node:crypto';
+import { addFiles, addImagePrompt, readFiles, readImagePrompts, setPromptReferences, type NewFile } from 'promptbook-project';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { User } from '../../src/accounts/users.js';
 import { setDocumentText, withLiveDocument } from '../../src/live.js';
 import { FAKE_ATELIER_TOKENS, startFakeAtelier, type FakeAtelier } from './fake-atelier.js';
 import { png, startFakeOpenRouter, type FakeOpenRouter } from './fake-openrouter.js';
+import { IMAGE_ERRORS } from '../../src/images/openrouter.js';
 import { db, ORIGIN, signedIn, startApp, steve } from './helpers.js';
 import { mcpCallTool, type ToolOutcome } from './mcp-helpers.js';
 import { connect as connectClient } from './oauth-helpers.js';
@@ -425,6 +427,7 @@ describe('generate_image (D3, D4, D5)', () => {
       model: 'gpt',
       count: 2,
       shape: '3:2',
+      references: [],
       state: 'finished',
       failed: 0,
       error: null,
@@ -605,5 +608,80 @@ describe('generate_image’s refusals (D10), each starting nothing', () => {
     const s = await setup({ token: null, key: OPENROUTER_KEY, provider: 'openrouter', scope: 'read' });
     expect((await s.call('generate_image', { projectId: s.id, promptId: s.scene })).error?.code).toBe('insufficient_scope');
     nothingStarted(s);
+  });
+});
+
+describe('references (reference-images D19, D20)', () => {
+  // An image of the NPC on the board, its bytes on the server; chosen.
+  async function portrait(s: Setup, n: number): Promise<string> {
+    const bytes = png(120, 120, n);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const put = await s.app.inject({
+      method: 'PUT',
+      url: `/api/projects/${s.id}/files/${sha256}`,
+      headers: { ...s.headers, 'content-type': 'application/octet-stream' },
+      payload: bytes,
+    });
+    expect(put.statusCode).toBe(201);
+    return withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+      const file: NewFile = {
+        sha256,
+        thumbSha256: null,
+        name: `anselmo-${n}.png`,
+        kind: 'image',
+        mime: 'image/png',
+        size: bytes.length,
+        width: 120,
+        height: 120,
+        duration: null,
+        sceneId: null,
+        promptId: s.npc,
+        matchedBy: 'hand',
+        addedBy: 'user',
+      };
+      return addFiles(doc, [file]).added[0]!.id;
+    });
+  }
+  const inputs = () =>
+    openRouter.calls.filter((c) => c.path === '/api/v1/images').map((c) => ((c.body as { input_references?: unknown[] }).input_references ?? []).length);
+
+  it('get_board lists each prompt’s images by id and its references; generate_image sends and remembers a list', async () => {
+    const s = await setup({ token: null, key: 'sk-or-v1-good', provider: 'openrouter' });
+    const face = await portrait(s, 41);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.npcs[0]).toMatchObject({
+      files: 1,
+      images: [{ id: face, name: 'anselmo-41.png', chosen: false, generated: false }],
+      references: [],
+    });
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, count: 2, shape: '16:9', references: [face] });
+    expect(answer.isError, answer.text).toBe(false);
+    expect(answer.value).toMatchObject({ references: [face], state: 'finished', failed: 0 });
+    expect(inputs()).toEqual([1, 1]);
+    const after = (await s.call('get_board', { projectId: s.id })).value;
+    expect(after.scenes[0].images[0]).toMatchObject({ references: [face], files: 2 });
+    expect(after.scenes[0].images[0].images.map((i: { generated: boolean }) => i.generated)).toEqual([true, true]);
+  });
+
+  it('sends the prompt’s references when the list is left out, and answers them', async () => {
+    const s = await setup({ token: null, key: 'sk-or-v1-good', provider: 'openrouter' });
+    const face = await portrait(s, 42);
+    await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => setPromptReferences(doc, s.scene, [face], 'user'));
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, count: 1 });
+    expect(answer.value.references).toEqual([face]);
+    expect(inputs()).toEqual([1]);
+    const prompt = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => readImagePrompts(doc).find((p) => p.id === s.scene)!);
+    expect(prompt.references).toEqual([face]);
+  });
+
+  it('refuses with the app’s sentence, nothing generated', async () => {
+    const s = await setup({ token: null, key: 'sk-or-v1-good', provider: 'openrouter' });
+    const answer = await s.call('generate_image', { projectId: s.id, promptId: s.scene, references: ['not-on-the-board'] });
+    expect(answer.isError).toBe(true);
+    expect(errorOf(answer)).toEqual(['reference_missing', IMAGE_ERRORS.referenceGone]);
+    expect(openRouter.calls).toEqual([]);
+    expect(await generations(s.id)).toEqual([]);
+    const tooMany = await s.call('generate_image', { projectId: s.id, promptId: s.scene, references: ['a', 'b', 'c', 'd'] });
+    expect(tooMany.isError).toBe(true);
   });
 });

@@ -18,7 +18,13 @@ import { crc32, deflateSync } from 'node:zlib';
 // and an aspect ratio outside the four shapes with 400, as OpenRouter does,
 // then answers one image after the delay: a PNG for GPT Image, a JPEG for
 // Nano Banana, each with bytes of its own, since the board skips a file it
-// already lists.
+// already lists. `input_references`, when sent, must be 1 to 3 image_url
+// entries with a PNG, JPEG or WebP data URL, else 400 (reference-images
+// design decision 21).
+//
+// For the tests only, without a key: GET /api/v1/__last answers
+// {"references": n}, the input references of the last POST /images (0 when
+// none, or before any).
 
 export interface FakeCall {
   method: string;
@@ -44,6 +50,8 @@ export interface FakeOpenRouter {
   setDelay(ms: number): void;
   // The next call answers this status and body instead.
   failNext(status: number, body?: unknown): void;
+  // How many input references the last POST /images carried; 0 before any.
+  lastReferences(): number;
   close(): Promise<void>;
 }
 
@@ -121,6 +129,21 @@ export function jpeg(shape: string, call: number): Buffer {
   return Buffer.concat([base.subarray(0, 2), head, text, base.subarray(2)]);
 }
 
+const DATA_URL = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+// The input references of a body: their count, or null when they are sent
+// but not 1 to 3 entries of the shape OpenRouter takes.
+function referencesOf(body: Record<string, unknown>): number | null {
+  if (!('input_references' in body)) return 0;
+  const refs = body.input_references;
+  if (!Array.isArray(refs) || refs.length < 1 || refs.length > 3) return null;
+  const ok = refs.every((ref: unknown) => {
+    const r = ref as { type?: unknown; image_url?: { url?: unknown } } | null;
+    return r !== null && typeof r === 'object' && r.type === 'image_url' && typeof r.image_url?.url === 'string' && DATA_URL.test(r.image_url.url);
+  });
+  return ok ? refs.length : null;
+}
+
 const GOOD = 'sk-or-v1-good';
 const BROKE = 'sk-or-v1-broke';
 const NOLIMIT = 'sk-or-v1-nolimit';
@@ -154,9 +177,12 @@ export async function startFakeOpenRouter(options: FakeOpenRouterOptions = {}): 
   let failure: { status: number; body: unknown } | null = null;
   let delay = options.delayMs ?? 0;
   let images = 0;
+  let last = 0;
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = new URL(req.url ?? '/', 'http://fake').pathname;
+    // The tests' own route: not recorded, never failed.
+    if (req.method === 'GET' && path === '/api/v1/__last') return send(res, 200, { references: last });
     const body = req.method === 'POST' ? await readBody(req) : null;
     const key = bearerOf(req);
     calls.push({ method: req.method ?? '', path, body, bearer: key !== null });
@@ -181,6 +207,11 @@ export async function startFakeOpenRouter(options: FakeOpenRouterOptions = {}): 
     if (req.method === 'POST' && path === '/api/v1/images') {
       if (key !== GOOD && key !== BROKE) return unauthorized(res);
       const asked = (body ?? {}) as { model?: unknown; prompt?: unknown; aspect_ratio?: unknown; resolution?: unknown };
+      const references = referencesOf(asked as Record<string, unknown>);
+      last = references ?? 0;
+      if (references === null) {
+        return send(res, 400, { error: { code: 400, message: 'Invalid request: input_references' } });
+      }
       const model = typeof asked.model === 'string' ? MODELS[asked.model] : undefined;
       const shape = typeof asked.aspect_ratio === 'string' && SIZES[asked.aspect_ratio] ? asked.aspect_ratio : null;
       if (!model || shape === null || asked.resolution !== '1K' || typeof asked.prompt !== 'string' || asked.prompt === '') {
@@ -218,6 +249,7 @@ export async function startFakeOpenRouter(options: FakeOpenRouterOptions = {}): 
     failNext(status: number, answer: unknown = { error: { code: status, message: `HTTP ${status}` } }) {
       failure = { status, body: answer };
     },
+    lastReferences: () => last,
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();

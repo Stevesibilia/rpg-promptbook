@@ -55,7 +55,17 @@ export interface ImagePromptEntry {
   order: number;
   // An image of this prompt; null when none is chosen.
   chosenFileId: string | null;
+  // The reference images remembered for its generations (reference-images
+  // design decision 1): the stored ids that are image files of the project,
+  // without duplicates, in stored order, the first MAX_REFERENCES. An image
+  // of this same prompt may be one.
+  references: string[];
+  // Stored ids that are no longer an image file of the project.
+  missingReferences: number;
 }
+
+// The most reference images a prompt holds and a generation sends.
+export const MAX_REFERENCES = 3;
 
 export interface MusicPrompt {
   title: string;
@@ -131,13 +141,18 @@ export interface FileEntry {
   // has no model, cost or provider.
   generatedVia: ImageProvider | null;
   atelierImageId: string | null;
+  // The file ids a generated image was made with (reference-images design
+  // decision 3); null for a file not generated, or generated without
+  // references. Not checked against the files: the viewer counts the ones
+  // gone.
+  references: string[] | null;
 }
 
 // The generated fields and musicId are optional: the map holds them only
 // when set.
 export type NewFile = Omit<
   FileEntry,
-  'id' | 'addedAt' | 'musicId' | 'generatedModel' | 'cost' | 'generatedVia' | 'atelierImageId'
+  'id' | 'addedAt' | 'musicId' | 'generatedModel' | 'cost' | 'generatedVia' | 'atelierImageId' | 'references'
 > & {
   addedAt?: string;
   musicId?: string | null;
@@ -145,6 +160,7 @@ export type NewFile = Omit<
   cost?: number | null;
   generatedVia?: ImageProvider | null;
   atelierImageId?: string | null;
+  references?: string[] | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -195,6 +211,11 @@ const num = (value: unknown): number | null =>
 
 const nullableStr = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
+// The ids of a stored list, each once, in order; nothing when it is not a
+// list.
+const storedIds = (value: unknown): string[] =>
+  Array.isArray(value) ? [...new Set(value.filter((id): id is string => isId(id)))] : [];
+
 function toMusic(value: unknown): MusicPrompt | null {
   const r = record(value);
   if (!r) return null;
@@ -229,6 +250,7 @@ function toFile(item: Item): FileEntry {
     image && (generatedVia === 'atelier' || generatedModel === null) && isUuid(item.get('atelierImageId'))
       ? (item.get('atelierImageId') as string)
       : null;
+  const references = generatedModel === null ? [] : storedIds(item.get('references')).slice(0, MAX_REFERENCES);
   const sceneId = image ? null : nullableStr(item.get('sceneId'));
   const musicId = image || sceneId !== null ? null : item.get('musicId');
   return {
@@ -252,6 +274,7 @@ function toFile(item: Item): FileEntry {
     cost: image ? num(item.get('cost')) : null,
     generatedVia,
     atelierImageId,
+    references: references.length > 0 ? references : null,
   };
 }
 
@@ -314,8 +337,8 @@ export function readBoard(doc: Y.Doc): Map<string, BoardEntry> {
 // sit under flat keys "<id>/<part>", so a migration and an edit never write
 // the same key and two edits of different fields merge.
 
-const PROMPT_KEY = /^([^/]+)\/(def|prompt|name|order|chosen|legacy|removed)$/;
-type PromptPart = 'def' | 'prompt' | 'name' | 'order' | 'chosen' | 'legacy' | 'removed';
+const PROMPT_KEY = /^([^/]+)\/(def|prompt|name|order|chosen|legacy|removed|refs)$/;
+type PromptPart = 'def' | 'prompt' | 'name' | 'order' | 'chosen' | 'legacy' | 'removed' | 'refs';
 
 const partKey = (id: string, part: PromptPart) => `${id}/${part}`;
 
@@ -362,6 +385,16 @@ function storedChoice(map: Y.Map<unknown>, id: string): string | null {
   return typeof value === 'string' && value !== '' ? value : null;
 }
 
+// A prompt's references as stored under `refs`, split into the ones that
+// are image files of the project today (the first MAX_REFERENCES) and the
+// count of the others (reference-images design decision 1).
+function referencesOf(stored: unknown, files: readonly FileEntry[]): { references: string[]; missing: number } {
+  const images = new Set(files.flatMap((f) => (f.kind === 'image' ? [f.id] : [])));
+  const ids = storedIds(stored);
+  const valid = ids.filter((id) => images.has(id));
+  return { references: valid.slice(0, MAX_REFERENCES), missing: ids.length - valid.length };
+}
+
 const byOrder = (a: ImagePromptEntry, b: ImagePromptEntry): number =>
   a.order !== b.order ? a.order - b.order : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
@@ -383,6 +416,7 @@ function allPrompts(doc: Y.Doc, files: readonly FileEntry[]): ImagePromptEntry[]
     if (!def || 'removed' in p) continue;
     const text = textOf(toText(p.prompt), toText(p.legacy));
     const chosen = storedChoice(map, id);
+    const refs = referencesOf(p.refs, files);
     prompts.push({
       id,
       category: def.category,
@@ -393,6 +427,8 @@ function allPrompts(doc: Y.Doc, files: readonly FileEntry[]): ImagePromptEntry[]
       at: text?.at ?? '',
       order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : 0,
       chosenFileId: files.some((f) => f.id === chosen && f.kind === 'image' && f.promptId === id) ? chosen : null,
+      references: refs.references,
+      missingReferences: refs.missing,
     });
   }
   return prompts.sort(byOrder);
@@ -443,7 +479,19 @@ function createPrompt(doc: Y.Doc, input: ImagePromptInput, by: Author, at: strin
   map.set(partKey(id, 'prompt'), { prompt: input.prompt, by: author, at });
   if (name !== null) map.set(partKey(id, 'name'), name);
   map.set(partKey(id, 'order'), order);
-  return { id, category: input.category, sceneId, name, prompt: input.prompt, by: author, at, order, chosenFileId: null };
+  return {
+    id,
+    category: input.category,
+    sceneId,
+    name,
+    prompt: input.prompt,
+    by: author,
+    at,
+    order,
+    chosenFileId: null,
+    references: [],
+    missingReferences: 0,
+  };
 }
 
 export function addImagePrompt(doc: Y.Doc, input: ImagePromptInput, by: Author, at: string = nowIso()): ImagePromptEntry {
@@ -542,6 +590,33 @@ export function setFirstScenePrompt(
     entry = { ...first, prompt, by: author, at: dated };
   });
   return entry;
+}
+
+// Remembers a prompt's reference images (reference-images design decision
+// 2): only the ids that are image files of the project are stored, each
+// once, the first MAX_REFERENCES, so a write also drops the missing ones. No
+// valid id deletes the key. Returns what was stored.
+export function setPromptReferences(doc: Y.Doc, promptId: string, fileIds: readonly string[], by: Author): string[] {
+  checkPromptId(promptId);
+  if (!Array.isArray(fileIds) || !fileIds.every((id) => typeof id === 'string')) {
+    throw new Error('references: must be a list of file ids');
+  }
+  if (!(authors as readonly unknown[]).includes(by)) throw new Error(`by: unknown author "${String(by)}"`);
+  let stored: string[] = [];
+  doc.transact(() => {
+    if (!validDef(doc, promptId)) throw new Error(`No image prompt ${promptId}`);
+    stored = referencesOf(fileIds, readFiles(doc)).references;
+    const map = promptsOf(doc);
+    const key = partKey(promptId, 'refs');
+    if (stored.length === 0) {
+      if (map.has(key)) map.delete(key);
+      return;
+    }
+    const before = map.get(key);
+    const same = Array.isArray(before) && before.length === stored.length && before.every((id, i) => id === stored[i]);
+    if (!same) map.set(key, stored);
+  });
+  return stored;
 }
 
 export interface MusicInput {
@@ -741,6 +816,14 @@ function checkNewFile(file: NewFile, i: number): void {
   if (atelierImageId !== null && (!isUuid(atelierImageId) || !(via === 'atelier' || model === null))) {
     throw new Error(`${field}.atelierImageId: a uuid, on an image generated through Atelier or attached from it`);
   }
+  const references = file.references ?? null;
+  if (references !== null) {
+    if (!Array.isArray(references) || !references.every(isId) || new Set(references).size !== references.length) {
+      throw new Error(`${field}.references: a list of distinct file ids`);
+    }
+    if (references.length > MAX_REFERENCES) throw new Error(`${field}.references: at most ${MAX_REFERENCES}`);
+    if (references.length > 0 && model === null) throw new Error(`${field}.references: only a generated image has them`);
+  }
   if ((model !== null || cost !== null) && file.kind !== 'image') {
     throw new Error(`${field}: only an image is generated`);
   }
@@ -794,13 +877,15 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         // OpenRouter, as one saved before Atelier does.
         generatedVia: (file.generatedModel ?? null) === null ? null : (file.generatedVia ?? 'openrouter'),
         atelierImageId: file.atelierImageId ?? null,
+        references: file.references && file.references.length > 0 ? [...file.references] : null,
       };
       added.push(entry);
       // The generated fields and musicId go in the map only when set, so
       // every other file's map stays as it was. generatedVia is written only
       // when given, so an OpenRouter image's map is the one it was before
       // Atelier.
-      const { generatedModel, cost, generatedVia: _via, atelierImageId, musicId: _music, ...stored } = entry;
+      const { generatedModel, cost, generatedVia: _via, atelierImageId, musicId: _music, references, ...stored } =
+        entry;
       const via = file.generatedVia ?? null;
       return mapOf({
         ...stored,
@@ -809,6 +894,7 @@ export function addFiles(doc: Y.Doc, files: readonly NewFile[]): { added: FileEn
         ...(cost !== null ? { cost } : {}),
         ...(via !== null ? { generatedVia: via } : {}),
         ...(atelierImageId !== null ? { atelierImageId } : {}),
+        ...(references !== null ? { references } : {}),
       });
     });
     if (items.length > 0) filesOf(doc).push(items);

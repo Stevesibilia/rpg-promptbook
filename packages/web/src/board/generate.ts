@@ -74,10 +74,17 @@ export const modelLine = (model: ImageModelKey, estimates: Estimates = null): st
   `≈ ${money2(estimateOf(model, estimates))} · ${IMAGE_MODELS[model].seconds} s per image`;
 
 // The footer: «About $0.08 · 1K», the estimate times the count. The tier,
-// never a size in pixels: the two models answer different sizes (Q4).
-export function priceLine(choice: GenerateChoice, estimates: Estimates = null): { amount: string; text: string } {
+// never a size in pixels: the two models answer different sizes (Q4). With
+// reference images, «· plus the input images» after it, with no figure
+// (reference-images design decision 15).
+export function priceLine(
+  choice: GenerateChoice,
+  estimates: Estimates = null,
+  references = 0,
+): { amount: string; extra: string; text: string } {
   const amount = money2(estimateOf(choice.model, estimates) * choice.count);
-  return { amount, text: `About ${amount} · 1K` };
+  const extra = references > 0 ? ' · plus the input images' : '';
+  return { amount, extra, text: `About ${amount} · 1K${extra}` };
 }
 
 // The shape a prompt starts from and the hint after «Shape».

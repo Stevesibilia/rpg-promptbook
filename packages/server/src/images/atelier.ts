@@ -27,6 +27,11 @@ export class AtelierError extends Error {
   }
 }
 
+// Atelier's refusal of a reference id it does not have, with field
+// referenceIds (reference-images design decision 8): the one refusal of the
+// references that an upload can mend. The fakes answer it too.
+export const ATELIER_REFERENCE_NOT_FOUND = 'A reference image was not found. Remove it and try again.';
+
 export const ATELIER_ERRORS = {
   unreachable: 'Atelier did not answer.',
   refused: (status: number) => `Atelier refused the request (${status}).`,
@@ -70,6 +75,8 @@ async function readCapped(response: Response, max: number): Promise<Buffer | nul
 interface Request {
   method?: 'GET' | 'POST';
   body?: unknown;
+  // A raw body instead of JSON: an upload's bytes and their type.
+  raw?: { bytes: Buffer; mime: string };
   max: number;
   timeoutMs: number;
   signal?: AbortSignal | undefined;
@@ -86,9 +93,17 @@ async function call(base: string, token: string, path: string, request: Request)
       method: request.method ?? 'GET',
       headers: {
         authorization: `Bearer ${token}`,
-        ...(request.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(request.raw !== undefined
+          ? { 'content-type': request.raw.mime }
+          : request.body !== undefined
+            ? { 'content-type': 'application/json' }
+            : {}),
       },
-      ...(request.body !== undefined ? { body: JSON.stringify(request.body) } : {}),
+      ...(request.raw !== undefined
+        ? { body: request.raw.bytes }
+        : request.body !== undefined
+          ? { body: JSON.stringify(request.body) }
+          : {}),
       redirect: 'error',
       signal: request.signal ? AbortSignal.any([timeout, request.signal]) : timeout,
     });
@@ -203,6 +218,9 @@ export interface GenerationRequest {
   aspectRatio: string;
   count: number;
   collectionId: string;
+  // Atelier image ids (reference-images design decision 8); left out when
+  // there are none.
+  referenceIds?: string[];
 }
 
 // Step 5: one generation of `count` images, filed into the collection.
@@ -215,6 +233,32 @@ export async function startGeneration(
   const { status, answer } = await callJson(base, token, '/generations', options, body);
   if (!isUuid(answer.id)) throw badAnswer(status);
   return { id: answer.id };
+}
+
+// A reference image's bytes, PNG, JPEG or WebP, at most 20 MB, uploaded to
+// the gallery (reference-images design decision 8). Atelier answers the
+// image already there for the same bytes. Answers its id.
+export async function uploadImage(
+  base: string,
+  token: string,
+  image: { bytes: Buffer; mime: string },
+  options: CallOptions = {},
+): Promise<string> {
+  const { status, bytes } = await call(base, token, '/uploads', {
+    method: 'POST',
+    raw: image,
+    max: MAX_JSON_BYTES,
+    timeoutMs: options.timeoutMs ?? FILE_TIMEOUT_MS,
+    signal: options.signal,
+  });
+  let answer: Record<string, unknown> | null = null;
+  try {
+    answer = record(JSON.parse(bytes.toString('utf8')));
+  } catch {
+    answer = null;
+  }
+  if (!answer || !isUuid(answer.id)) throw badAnswer(status);
+  return answer.id;
 }
 
 export interface AtelierImage {

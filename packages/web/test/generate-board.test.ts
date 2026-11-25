@@ -29,6 +29,8 @@ const entry = (patch: Partial<ImagePromptEntry> = {}): ImagePromptEntry => ({
   at: '',
   order: 0,
   chosenFileId: null,
+  references: [],
+  missingReferences: 0,
   ...patch,
 });
 
@@ -61,6 +63,7 @@ const job = (patch: Partial<GenerationJob> = {}): GenerationJob => ({
   by: 'u1',
   error: null,
   finishedAt: null,
+  references: [],
   ...patch,
 });
 
@@ -89,6 +92,7 @@ function render(prompt: ShownPrompt, gen: Partial<Generation> = {}, part?: React
     rows: [],
     named: { pc: [], npc: [], handout: [] },
     shown: new Map([[prompt.row.prompt.id, prompt]]),
+    files: prompt.row.images,
     marks: new Set<string>(),
     toast: () => {},
     openViewer: () => {},
@@ -211,6 +215,56 @@ describe('Generate on a prompt', () => {
     expect(text(rows({ generatedModel: 'gpt', generatedVia: 'openrouter', cost: 0.041, matchedBy: 'generated', atelierImageId: null }))).not.toMatch(
       /Matched by/,
     );
+  });
+
+  // reference-images design decisions 12, 15, 16 and 17.
+  it('puts References between Shape and What is sent, empty at first', () => {
+    const t = text(render(shown(), { open: 'p1' }));
+    expect(t).toMatch(/2:3 References up to 3, from this board \+ Add an image What is sent/);
+    expect(t).toMatch(/About \$0\.08 · 1K Cancel/);
+  });
+
+  it('lists the picked references with their remove buttons, and the estimate says the input images are extra', () => {
+    const portrait = {
+      id: 'f1',
+      kind: 'image',
+      promptId: 'p1',
+      sha256: 'a'.repeat(64),
+      thumbSha256: null,
+      width: 1024,
+      height: 1024,
+      generatedModel: null,
+      cost: null,
+      generatedVia: null,
+      matchedBy: 'hand',
+    } as FileEntry;
+    const html = render(shown({ references: ['f1'] }, [portrait]), { open: 'p1' });
+    const t = text(html);
+    expect(t).toMatch(
+      /References 1 of 3 S2 · 1 ✕ \+ Add Sent with the prompt and kept on this prompt for next time\. What is sent/,
+    );
+    expect(html).toMatch(/<button class="rx" title="Remove this reference" aria-label="Remove S2 · 1">✕<\/button>/);
+    expect(t).toMatch(/About \$0\.08 · 1K · plus the input images Cancel/);
+    // The prompt card's line, under its buttons.
+    expect(t).toMatch(/Edit Generate References: S2 · 1 Generate images/);
+  });
+
+  it('says how many references left the board', () => {
+    const t = text(render(shown({ missingReferences: 2 }), { open: 'p1' }));
+    expect(t).toMatch(/2 references no longer on the board References up to 3/);
+  });
+
+  it('has no references line on a prompt without them', () => {
+    expect(text(render(shown()))).not.toMatch(/References/);
+  });
+
+  it('shows the references of a generated image after its cost, and how many were removed', () => {
+    const file = { generatedModel: 'gpt', generatedVia: 'openrouter', cost: 0.041, atelierImageId: null, references: ['f1', 'gone'] };
+    const labels = new Map([['f1', 'Padre Anselmo']]);
+    const html = renderToStaticMarkup(createElement(SourceRows, { file: file as FileEntry, atelierUrl: null, labels }));
+    expect(text(html)).toBe('Source Generated Through OpenRouter Model GPT Image 2.6 Sunburst Cost $0.041 References Padre Anselmo, 1 removed');
+    const none = renderToStaticMarkup(createElement(SourceRows, { file: { ...file, references: null } as FileEntry, atelierUrl: null, labels }));
+    expect(none).not.toMatch(/References/);
   });
 
   it('shows a start the server took at once, in the shape chosen here', () => {

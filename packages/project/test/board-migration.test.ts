@@ -93,6 +93,8 @@ describe('migrating a v0.6 board', () => {
         at: T0,
         order: 0,
         chosenFileId: 'i1',
+        references: [],
+        missingReferences: 0,
       },
       {
         id: 'legacy-S2',
@@ -104,8 +106,22 @@ describe('migrating a v0.6 board', () => {
         at: T0,
         order: 0,
         chosenFileId: null,
+        references: [],
+        missingReferences: 0,
       },
-      { id: 'legacy-S3', category: 'scene', sceneId: 'S3', name: null, prompt: '', by: 'user', at: '', order: 0, chosenFileId: null },
+      {
+        id: 'legacy-S3',
+        category: 'scene',
+        sceneId: 'S3',
+        name: null,
+        prompt: '',
+        by: 'user',
+        at: '',
+        order: 0,
+        chosenFileId: null,
+        references: [],
+        missingReferences: 0,
+      },
     ]);
     expect(promptKeys(doc)).toEqual(['legacy-S1/def', 'legacy-S1/legacy', 'legacy-S2/def', 'legacy-S2/legacy', 'legacy-S3/def']);
     expect(boardKeys(doc)).toEqual(['S1/chosenTrack', 'S1/music']);

@@ -31,7 +31,7 @@ describe('generation jobs (D8)', () => {
   it('starts a job and reads it while it runs', () => {
     const doc = project();
     const job = startGenerationJob(doc, start(), SOON);
-    expect(job).toEqual({ ...start(), provider: 'openrouter', done: 0, failed: 0, error: null, finishedAt: null });
+    expect(job).toEqual({ ...start(), provider: 'openrouter', references: [], done: 0, failed: 0, error: null, finishedAt: null });
     expect(readGenerationJobs(doc, SOON)).toEqual([job]);
     // A plain JSON value set whole under its id.
     expect(jobsMap(doc).get('job-1')).toEqual(job);
@@ -86,6 +86,7 @@ describe('generation jobs (D8)', () => {
         failed: 1,
         error: 'OpenRouter did not answer. Try again.',
         finishedAt: at(120_000).toISOString(),
+        references: [],
       },
     ]);
     // A finished job with an error never goes stale.
@@ -179,6 +180,35 @@ describe('generation jobs (D8)', () => {
     expect(() => startGenerationJob(doc, start({ model: 'flux' as 'gpt' }))).toThrow(/model/);
     expect(() => startGenerationJob(doc, start({ startedAt: 'yesterday' }))).toThrow(/startedAt/);
     expect(() => startGenerationJob(doc, start({ promptId: '' }))).toThrow();
+  });
+
+  it('records the references a job sends, none when not given (reference-images D4)', () => {
+    const doc = project();
+    const job = startGenerationJob(doc, start({ references: ['f1', 'f2'] }), SOON);
+    expect(job.references).toEqual(['f1', 'f2']);
+    expect(readGenerationJobs(doc, SOON)[0]!.references).toEqual(['f1', 'f2']);
+    expect(jobsMap(doc).get('job-1')).toMatchObject({ references: ['f1', 'f2'] });
+    expect(startGenerationJob(doc, start({ id: 'job-2', promptId: 'p2' }), SOON).references).toEqual([]);
+  });
+
+  it('reads a job written without references, or with hostile ones, as far as it can', () => {
+    const doc = project();
+    const { references: _none, ...older } = startGenerationJob(doc, start(), SOON);
+    jobsMap(doc).set('job-1', older);
+    expect(readGenerationJobs(doc, SOON)[0]!.references).toEqual([]);
+    jobsMap(doc).set('job-1', { ...older, references: 'f1' });
+    expect(readGenerationJobs(doc, SOON)[0]!.references).toEqual([]);
+    jobsMap(doc).set('job-1', { ...older, references: [3, 'f1', 'f1', 'a/b', 'f2', 'f3', 'f4'] });
+    expect(readGenerationJobs(doc, SOON)[0]!.references).toEqual(['f1', 'f2', 'f3']);
+  });
+
+  it('refuses references that are not up to 3 distinct file ids', () => {
+    const doc = project();
+    expect(() => startGenerationJob(doc, start({ references: ['a', 'b', 'c', 'd'] }), SOON)).toThrow(/references/);
+    expect(() => startGenerationJob(doc, start({ references: ['a', 'a'] }), SOON)).toThrow(/references/);
+    expect(() => startGenerationJob(doc, start({ references: [''] }), SOON)).toThrow(/references/);
+    expect(() => startGenerationJob(doc, start({ references: 'a' as unknown as string[] }), SOON)).toThrow(/references/);
+    expect(jobsMap(doc).size).toBe(0);
   });
 
   it('reaches another replica through sync', () => {
