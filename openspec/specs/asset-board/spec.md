@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD - created by archiving change asset-board. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Board view
 
 The rail's Images and music entry SHALL open `/projects/<id>/board` for an
@@ -1354,4 +1356,3 @@ and the Claude card naming «image prompts».
 - **WHEN** a user with no key or token saved opens a board
 - **THEN** the scene rows' image half is labelled «Images · Midjourney» and
   adding a prompt says «Copy it into Midjourney.»
-

@@ -3,7 +3,9 @@
 ## Purpose
 
 The Claude connector: an MCP endpoint with section-scoped tools, the OAuth authorization server that lets Claude sign in as the user, the consent page and Connected apps.
+
 ## Requirements
+
 ### Requirement: Authorization server metadata
 
 The server SHALL publish OAuth protected resource metadata at
@@ -926,4 +928,3 @@ read at every call, so a key saved or deleted takes effect at the next one.
 
 - **WHEN** the account deletes its key and calls `get_board` again
 - **THEN** `imageRules.style` is `midjourney`
-
