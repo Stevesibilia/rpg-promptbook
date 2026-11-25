@@ -1065,6 +1065,22 @@ describe('reference images (reference-images D1 to D3)', () => {
     expect(promptsMap(other).has(`${p.id}/refs`)).toBe(false);
   });
 
+  it('works the same on a General prompt, whose images can be references of any prompt', () => {
+    const { doc, p, ids } = board();
+    const cover = addImagePrompt(doc, { category: 'general', name: 'Copertina', prompt: 'a cover' }, 'claude', AT);
+    const [art] = addFiles(doc, [image(40, { promptId: cover.id })]).added;
+    // A General prompt takes an NPC's image and a scene's.
+    expect(setPromptReferences(doc, cover.id, [ids[0]!, ids[1]!], 'user')).toEqual([ids[0], ids[1]]);
+    expect(refsOf(doc, cover.id)).toMatchObject({ category: 'general', references: [ids[0], ids[1]], missingReferences: 0 });
+    expect(readDocumentBoard(doc).named.general[0]!.prompt.references).toEqual([ids[0], ids[1]]);
+    // A General image is a reference for a scene's prompt, and for its own.
+    expect(setPromptReferences(doc, p.id, [art!.id], 'user')).toEqual([art!.id]);
+    expect(setPromptReferences(doc, cover.id, [art!.id, ids[0]!], 'user')).toEqual([art!.id, ids[0]]);
+    removeFile(doc, art!.id);
+    expect(refsOf(doc, p.id)).toMatchObject({ references: [], missingReferences: 1 });
+    expect(refsOf(doc, cover.id)).toMatchObject({ references: [ids[0]], missingReferences: 1 });
+  });
+
   it('records the references of a generated image, in its map only when there are some', () => {
     const { doc, p, ids } = board();
     const { added } = addFiles(doc, [generated(10, p.id, { references: [ids[0]!, ids[2]!] }), generated(11, p.id, { references: [] }), generated(12, p.id)]);
