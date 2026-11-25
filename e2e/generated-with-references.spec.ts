@@ -223,7 +223,7 @@ test('A General prompt takes references, and its images are references for the o
   await expect(coverCard(page).locator('.refline')).toHaveText('References: Padre Anselmo');
   await panel(page).getByRole('group', { name: 'Images' }).getByRole('button', { name: '1' }).click();
   await panel(page).getByRole('button', { name: 'Generate 1' }).click();
-  await expect(toast(page)).toHaveText('1 image for General · Copertina · $0.04', { timeout: 30_000 });
+  await expect(toast(page)).toHaveText('1 image for Copertina · $0.04', { timeout: 30_000 });
   await expect(coverCard(page).locator('.th-i')).toHaveCount(1);
   expect(last('openrouter')).toEqual({ references: 1 });
 
