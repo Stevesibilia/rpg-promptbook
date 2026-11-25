@@ -410,20 +410,6 @@ describe('cuebardPack', () => {
     expect(visuals).toEqual(['mappa.jpg', 'carta -2.webp']);
   });
 
-  it('exports a campaign’s named images only', () => {
-    const doc = project({ category: 'campaign', document: DOCUMENT });
-    const npc = named(doc, 'npc', 'Padre Anselmo');
-    add(doc, [image(1, 'a.png', npc), image(2, 'b.png', npc)]);
-    const { pack, project: file } = parse(doc);
-    expect(file.items).toEqual([]);
-    expect(file.visualFolders).toEqual(['NPCs']);
-    expect(file.visualMedia.map((v: { displayName: string; linkedCueUuid?: string }) => [v.displayName, v.linkedCueUuid])).toEqual([
-      ['Padre Anselmo', undefined],
-      ['Padre Anselmo (2)', undefined],
-    ]);
-    expect(pack.summary.groups).toBe(0);
-  });
-
   it('reads a board from before image categories migrated, leaving the document as it is', () => {
     const doc = project({ document: DOCUMENT });
     doc.getMap<unknown>('board').set('S1/image', { prompt: 'a library', by: 'claude', at: AT });
@@ -713,6 +699,125 @@ describe('General in the pack', () => {
     const a = parse(doc).pack.projectFile.json;
     const b = parse(doc).pack.projectFile.json;
     expect(a).toBe(b);
+    const uuids = [...a.matchAll(/"uuid": "([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(uuids).size).toBe(uuids.length);
+  });
+});
+
+// A campaign's pack (campaign-board design decision 9): no scene groups, the
+// one group General at index 0 when it exports a track, no folder Scenes.
+describe('A campaign in the pack', () => {
+  const generalTrack = (n: number, name: string, musicId: string, duration: number | null = 200): NewFile => ({
+    ...track(n, name, null, duration),
+    musicId,
+    matchedBy: 'title',
+  });
+
+  // «Kulthos»: its text holds an adventure's appendix, which a campaign never
+  // reads. «Tema della campagna» with its chosen track of two, «Combattimento»
+  // with two tracks, «Riposo alla locanda» with none; a General image with an
+  // image and one with none; a PC, an NPC and a handout with an image each,
+  // and an NPC with none.
+  function kulthos() {
+    const doc = project({ category: 'campaign', title: 'Kulthos', document: DOCUMENT });
+    const theme = addMusicPrompt(doc, { title: 'Tema della campagna', style: 's', lyrics: '' }, 'claude', AT).id;
+    const fight = addMusicPrompt(doc, { title: 'Combattimento', style: 's', lyrics: '' }, 'claude', AT).id;
+    const rest = addMusicPrompt(doc, { title: 'Riposo alla locanda', style: 's', lyrics: '' }, 'claude', AT).id;
+    const cover = named(doc, 'general', 'Copertina della campagna');
+    named(doc, 'general', 'Il mare che guarda');
+    const pc = named(doc, 'pc', 'Ignazio Scuderi');
+    const npc = named(doc, 'npc', 'Padre Anselmo');
+    named(doc, 'npc', "Za' Nina");
+    const handout = named(doc, 'handout', 'Avviso di ricerca');
+    add(doc, [
+      generalTrack(1, 'tema della campagna.mp3', theme),
+      generalTrack(2, 'tema della campagna (1).mp3', theme),
+      generalTrack(3, 'combattimento.mp3', fight),
+      generalTrack(4, 'combattimento (1).mp3', fight),
+      image(5, 'copertina.png', cover),
+      image(6, 'ignazio.png', pc),
+      image(7, 'anselmo.png', npc),
+      image(8, 'avviso.png', handout),
+    ]);
+    const files = new Map(readFiles(doc).map((f) => [f.name, f.id]));
+    const id = (name: string) => files.get(name)!;
+    chooseGeneralTrack(doc, theme, id('tema della campagna (1).mp3'));
+    return { doc, id, rest };
+  }
+
+  it('has the one group General at index 0, named and ordered as on an adventure', () => {
+    const { doc, id } = kulthos();
+    const { pack, project: file } = parse(doc);
+    expect(file.items).toHaveLength(1);
+    expect(file.items[0]).toMatchObject({
+      uuid: cuebardUuid(ID, 'group', 'general'),
+      index: [0],
+      displayName: 'General',
+      type: 'group',
+      startBehavior: { action: 'play-first' },
+    });
+    expect(file.items[0].children.map((c: { displayName: string; index: number[]; uuid: string }) => [c.displayName, c.index, c.uuid])).toEqual([
+      ['Tema della campagna', [0, 0], cuebardUuid(ID, 'track', id('tema della campagna (1).mp3'))],
+      ['Combattimento', [0, 1], cuebardUuid(ID, 'track', id('combattimento.mp3'))],
+      ['Combattimento (2)', [0, 2], cuebardUuid(ID, 'track', id('combattimento (1).mp3'))],
+    ]);
+    expect(pack.summary).toMatchObject({ groups: 1, general: true, tracks: 3, empty: false });
+  });
+
+  it('puts its images in the folders General, PCs, NPCs and Handouts, with no Scenes and no link', () => {
+    const { doc } = kulthos();
+    const { pack, project: file } = parse(doc);
+    expect(file.visualFolders).toEqual(['General', 'PCs', 'NPCs', 'Handouts']);
+    expect(file.visualMedia.map((v: { displayName: string; folder: string; linkedCueUuid?: string }) => [v.displayName, v.folder, v.linkedCueUuid])).toEqual([
+      ['Copertina della campagna', 'General', undefined],
+      ['Ignazio Scuderi', 'PCs', undefined],
+      ['Padre Anselmo', 'NPCs', undefined],
+      ['Avviso di ricerca', 'Handouts', undefined],
+    ]);
+    expect(pack.summary.images).toEqual({ scene: 0, general: 1, pc: 1, npc: 1, handout: 1 });
+  });
+
+  it('lists the General tracks, then the General, PC, NPC and handout images in cuebardFiles', () => {
+    const { doc } = kulthos();
+    expect(cuebardFiles(doc).map((f) => f.name)).toEqual([
+      'tema della campagna (1).mp3',
+      'combattimento.mp3',
+      'combattimento (1).mp3',
+      'copertina.png',
+      'ignazio.png',
+      'anselmo.png',
+      'avviso.png',
+    ]);
+  });
+
+  it('warns of its gaps with no scene: General images, General music, PCs, NPCs, Handouts', () => {
+    const { doc, rest } = kulthos();
+    expect(parse(doc).pack.summary.warnings).toEqual([
+      { kind: 'no-image', category: 'general', label: 'General "Il mare che guarda"', number: null, name: 'Il mare che guarda' },
+      { kind: 'no-track', musicId: rest, label: 'Riposo alla locanda' },
+      { kind: 'no-image', category: 'npc', label: 'NPC "Za\' Nina"', number: null, name: "Za' Nina" },
+    ]);
+  });
+
+  it('has no cue group when it exports no General track, its images still in their folders', () => {
+    const doc = project({ category: 'campaign', document: DOCUMENT });
+    const npc = named(doc, 'npc', 'Padre Anselmo');
+    addMusicPrompt(doc, { title: 'Riposo alla locanda', style: 's', lyrics: '' }, 'claude', AT);
+    add(doc, [image(1, 'a.png', npc), image(2, 'b.png', npc)]);
+    const { pack, project: file } = parse(doc);
+    expect(file.items).toEqual([]);
+    expect(file.visualFolders).toEqual(['NPCs']);
+    expect(file.visualMedia.map((v: { displayName: string; linkedCueUuid?: string }) => [v.displayName, v.linkedCueUuid])).toEqual([
+      ['Padre Anselmo', undefined],
+      ['Padre Anselmo (2)', undefined],
+    ]);
+    expect(pack.summary).toMatchObject({ groups: 0, general: false, tracks: 0, empty: false });
+  });
+
+  it('keeps its ids stable and unique', () => {
+    const { doc } = kulthos();
+    const a = parse(doc).pack.projectFile.json;
+    expect(parse(doc).pack.projectFile.json).toBe(a);
     const uuids = [...a.matchAll(/"uuid": "([^"]+)"/g)].map((m) => m[1]);
     expect(new Set(uuids).size).toBe(uuids.length);
   });
