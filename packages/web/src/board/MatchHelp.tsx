@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { BoardRow } from 'promptbook-project';
-import { promptLabel, sceneLabel, tabLabel, type Named, type ShownPrompt } from './summary.js';
+import type { BoardRow, MusicCardRow } from 'promptbook-project';
+import { musicLabel, promptLabel, sceneLabel, tabLabel, type Named, type ShownPrompt } from './summary.js';
 
 // How matching works (screen 5b): the rules, with examples from the
-// project's first scene prompt with a text, its first PC, NPC or handout with
-// one, and its first music title. Esc or a click outside closes it; the
+// project's first scene prompt with a text, its first General image, PC,
+// NPC or handout with one, its first scene music title and its first General
+// music prompt. Esc or a click outside closes it; the
 // buttons that open it toggle it themselves.
 
 // The first words of a prompt as Midjourney writes them in a name: no
@@ -21,21 +22,24 @@ export function midjourneyWords(prompt: string, count = 6): string {
 export function MatchHelp({
   rows,
   named,
+  music,
   shown,
   onClose,
 }: {
   rows: readonly BoardRow[];
   named: Named;
+  music: readonly MusicCardRow[];
   shown: ReadonlyMap<string, ShownPrompt>;
   onClose(): void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const withText = (p: { prompt: { id: string; prompt: string } }) => p.prompt.prompt.trim() !== '';
   const firstScene = rows.flatMap((r) => r.prompts).find(withText);
-  const firstNamed = [...named.pc, ...named.npc, ...named.handout].find(withText);
+  const firstNamed = [...named.general, ...named.pc, ...named.npc, ...named.handout].find(withText);
   const scene = firstScene && shown.get(firstScene.prompt.id);
   const person = firstNamed && shown.get(firstNamed.prompt.id);
-  const music = rows.find((r) => r.music?.title);
+  const sceneMusic = rows.find((r) => r.music?.title);
+  const general = music[0];
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -66,8 +70,8 @@ export function MatchHelp({
         <b>Midjourney</b>
         <div>
           <p>
-            The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, PCs,
-            NPCs or Handouts.
+            The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, General,
+            PCs, NPCs or Handouts.
           </p>
           {scene && (
             <>
@@ -90,13 +94,24 @@ export function MatchHelp({
       <div className="m">
         <b>Suno</b>
         <div>
-          <p>The filename is the track title from the prompt. A second take gets "(1)".</p>
-          {music?.music && (
+          <p>
+            The filename is the track title from the prompt, of a scene or of a General music prompt. A second take
+            gets "(1)".
+          </p>
+          {sceneMusic?.music && (
             <>
               <div className="fn">
-                <u>{music.music.title.toLowerCase()}</u> (1).mp3
+                <u>{sceneMusic.music.title.toLowerCase()}</u> (1).mp3
               </div>
-              <div className="arrow">→ {sceneLabel(music)}</div>
+              <div className="arrow">→ {sceneLabel(sceneMusic)}</div>
+            </>
+          )}
+          {general && (
+            <>
+              <div className="fn">
+                <u>{general.prompt.title.toLowerCase()}</u>.mp3
+              </div>
+              <div className="arrow">→ {musicLabel(general)}</div>
             </>
           )}
         </div>
@@ -106,7 +121,8 @@ export function MatchHelp({
         <div>
           <p>
             When two prompts start with the same words, their files match both. They wait in Unmatched, marked
-            "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it.
+            "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it. A track title used
+            twice, in scenes or General, warns on both and its tracks wait in Unmatched.
           </p>
         </div>
       </div>

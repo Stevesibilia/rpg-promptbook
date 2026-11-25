@@ -150,7 +150,8 @@ function fenced(text: string): string {
 
 export interface ExportFile {
   // Inside the project's folder: files/scenes/<scene id>/<n>/<name>,
-  // files/scenes/<scene id>/music/<name>, files/pcs/<name>/<name>,
+  // files/scenes/<scene id>/music/<name>, files/general/images/<name>/<name>,
+  // files/general/music/<title>/<name>, files/pcs/<name>/<name>,
   // files/npcs/…, files/handouts/…, or files/unmatched/<name>.
   path: string;
   // The bytes are in the file store under this name.
@@ -164,16 +165,17 @@ const PARTS: [NamedCategory, string, string][] = [
 ];
 
 // board.md and the list of the files to put beside it (asset-board design
-// decision 16, image-categories design decision 6): a part per category,
-// Scenes per appendix row with its image prompts numbered and its music,
-// then PCs, NPCs and Handouts, every prompt with who wrote it and when and
+// decision 16, image-categories design decision 6, general-board-items design
+// decision 8): a part per category, Scenes per appendix row with its image
+// prompts numbered and its music, then General with its images and its music
+// prompts, then PCs, NPCs and Handouts, every prompt with who wrote it and when and
 // its chosen file; every image in its prompt's folder, every track in its
 // scene's, the ones in the Unmatched tray in files/unmatched. A board from
 // before image categories is read migrated, the document left as it is.
 // Thumbnails are not listed. A campaign's board.md is empty.
 export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { markdown: string; files: ExportFile[] } {
   const view = migratedView(doc);
-  const { rows, named, unmatched } = readDocumentBoard(view, templates);
+  const { rows, named, music, unmatched } = readDocumentBoard(view, templates);
   const taken = new Map<string, Set<string>>();
   const names = new Map<string, string>();
   const files: ExportFile[] = [];
@@ -189,6 +191,16 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
     for (const prompt of row.prompts) for (const file of prompt.images) place(file, `${scene}/${prompt.number}`);
     for (const file of row.tracks) place(file, `${scene}/music`);
   }
+  const generalImages = new Set<string>();
+  for (const prompt of named.general) {
+    const own = freeFolder(prompt.prompt.name ?? '', generalImages);
+    for (const file of prompt.images) place(file, `general/images/${own}`);
+  }
+  const generalMusic = new Set<string>();
+  for (const card of music) {
+    const own = freeFolder(card.prompt.title, generalMusic);
+    for (const file of card.tracks) place(file, `general/music/${own}`);
+  }
   for (const [category, , folder] of PARTS) {
     const folders = new Set<string>();
     for (const prompt of named[category]) {
@@ -199,7 +211,11 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
   for (const { file } of unmatched) place(file, 'unmatched');
 
   if (readMeta(view).category === 'campaign') return { markdown: '', files };
-  const empty = rows.length === 0 && PARTS.every(([category]) => named[category].length === 0);
+  const empty =
+    rows.length === 0 &&
+    named.general.length === 0 &&
+    music.length === 0 &&
+    PARTS.every(([category]) => named[category].length === 0);
   if (empty) return { markdown: '', files };
 
   const chosen = (id: string | null) => (id === null ? [] : ['', `Chosen: ${names.get(id) ?? ''}`]);
@@ -209,25 +225,24 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
       : [fenced(row.prompt.prompt), '', `${who(row.prompt.by)} · ${row.prompt.at}`]),
     ...chosen(row.chosen),
   ];
+  const musicLines = (m: { style: string; lyrics: string; by: Author; at: string }) => [
+    'Style:',
+    '',
+    fenced(m.style),
+    '',
+    'Lyrics:',
+    '',
+    fenced(m.lyrics),
+    '',
+    `${who(m.by)} · ${m.at}`,
+  ];
   const scenes = rows.map((row) => {
     const lines = [`## ${row.sceneId} · ${oneLine(row.title)}`, ''];
     for (const prompt of row.prompts) lines.push(`### Image prompt ${prompt.number}`, '', ...promptLines(prompt), '');
     if (row.prompts.length === 0) lines.push('No image prompts yet.', '');
     lines.push('### Music', '');
     if (row.music) {
-      lines.push(
-        `Title: ${oneLine(row.music.title)}`,
-        '',
-        'Style:',
-        '',
-        fenced(row.music.style),
-        '',
-        'Lyrics:',
-        '',
-        fenced(row.music.lyrics),
-        '',
-        `${who(row.music.by)} · ${row.music.at}`,
-      );
+      lines.push(`Title: ${oneLine(row.music.title)}`, '', ...musicLines(row.music));
     } else {
       lines.push('No prompt yet.');
     }
@@ -235,6 +250,15 @@ export function exportBoard(doc: Y.Doc, templates: readonly Template[] = []): { 
     return `${lines.join('\n')}\n`;
   });
   const parts = [`# Scenes\n\n${scenes.length > 0 ? scenes.join('\n') : 'None yet.\n'}`];
+  const generalImageItems = named.general.map(
+    (row) => `${[`### ${oneLine(row.prompt.name ?? '') || 'Untitled'}`, '', ...promptLines(row)].join('\n')}\n`,
+  );
+  const generalMusicItems = music.map(
+    (card) =>
+      `${[`### ${oneLine(card.prompt.title)}`, '', ...musicLines(card.prompt), ...chosen(card.prompt.chosenTrack)].join('\n')}\n`,
+  );
+  const half = (items: string[]) => (items.length > 0 ? items.join('\n') : 'None yet.\n');
+  parts.push(`# General\n\n## Images\n\n${half(generalImageItems)}\n## Music\n\n${half(generalMusicItems)}`);
   for (const [category, title] of PARTS) {
     const items = named[category].map(
       (row) => `${[`## ${oneLine(row.prompt.name ?? '') || 'Untitled'}`, '', ...promptLines(row)].join('\n')}\n`,

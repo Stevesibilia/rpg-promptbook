@@ -439,13 +439,21 @@ the prep document:
   `image-categories`): Scenes, with any number of prompts per scene; PCs,
   NPCs and Handouts, project-wide lists of a name and a prompt. Music stays
   one Suno prompt per scene.
-- A status per image prompt and per scene's music: wanted, received, chosen;
-  one chosen image per prompt.
+- A tab General after Scenes (#68, the OpenSpec change
+  `general-board-items`): images and music for the whole adventure, tied to
+  no scene. Its images are a fifth image category, named like a PC; its
+  music is any number of named Suno prompts in their own map
+  (`musicPrompts`), each with its tracks and one chosen track. A track
+  belongs to a scene or to a General music prompt; the tray, the viewer and
+  the track menu move files between them. Campaigns keep no board for now.
+- A status per image prompt, per scene's music and per General music
+  prompt: wanted, received, chosen; one chosen image per prompt.
 - Claude writes the prompts through the connector (`get_board`,
   `add_image_prompt`, `update_image_prompt`, `remove_image_prompt`,
-  `set_scene_prompts`); the user adds, edits and removes them by hand.
-  Removing a prompt sends its images to the Unmatched tray. Prompts are not
-  versioned.
+  `set_scene_prompts`, `add_music_prompt`, `update_music_prompt`,
+  `remove_music_prompt`); the user adds, edits and removes them by hand.
+  Removing a prompt sends its images, or a General music prompt its tracks,
+  to the Unmatched tray. Prompts are not versioned.
 - Claude puts images on the board through the connector (#61, the OpenSpec
   change `connector-board-images`): `generate_image` starts a generation on
   a prompt exactly as the Generate button does, sharing its limits and
@@ -500,11 +508,13 @@ Downloads say what they are:
   sets the title in the prompt.
 
 Drop the whole Downloads batch on the board: each image matches its prompt
-in any category (Scenes, PCs, NPCs, Handouts), each track its scene.
+in any category (Scenes, General, PCs, NPCs, Handouts), each track its
+scene or General music prompt by title; a title used twice, in scenes or
+General, warns on both and its tracks wait in the tray.
 Unmatched files go to a tray to assign by hand, or to match again once their
 prompt or title is written; an image whose name matches two prompts waits
 there with those prompts listed first. Built 2026-10-20 (#26), across
-categories with #36.
+categories with #36, General with #68.
 
 ### PDF for the table
 
@@ -601,11 +611,14 @@ source is [Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard)
   `media/visuals/<uuid>_<name>`, and `left-out.txt` only when something was
   left out. No waveforms (CueBard draws them), no thumbnails, no prep text.
 - **What goes in:** per image prompt its chosen image, or every matched one
-  when none is chosen; per scene its chosen track, or every matched one. The
+  when none is chosen; per scene and per General music prompt its chosen
+  track, or every matched one. The
   Unmatched tray stays out. One cue group per appendix scene, in order, named
-  «S1. Title», its tracks looping and named after the Suno title; visual
-  folders «Scenes», «PCs», «NPCs», «Handouts», each scene's images linked to
-  its first track. Ids are derived from the project and the file, so the same
+  «S1. Title», its tracks looping and named after the Suno title; then one
+  cue group «General» with the General music prompts' tracks, in their
+  order, left out when it exports no track (#68); visual folders «Scenes»,
+  «General», «PCs», «NPCs», «Handouts», each scene's images linked to its
+  first track, General images linked to none. Ids are derived from the project and the file, so the same
   board gives the same pack.
 - **Track lengths:** CueBard needs each cue's length. The board's recorded
   length, else one read from the file with `music-metadata`; a track with

@@ -239,7 +239,7 @@ body.phone .notch { display: flex; }
 .editbox .pfoot .hint { margin-right: auto; }
 
 /* Category switch: Scenes, PCs, NPCs, Handouts */
-.cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.cats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 12px 0 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
 .cats button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px 9px; min-width: 0; text-align: left; border-right: 1px solid var(--border); }
 .cats button:last-child { border-right: 0; }
 .cats button:hover { background: var(--hover); }
@@ -277,6 +277,16 @@ body.phone .notch { display: flex; }
 .addcard { min-height: 120px; border: 1px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
 .none { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
 .emptyst.catempty { margin: 24px auto; }
+
+/* General: named images, then named music prompts, for the whole project */
+.gsec + .gsec { margin-top: 22px; }
+.gsh { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.gsh .lab { font: 600 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); display: inline-flex; gap: 6px; align-items: center; }
+.gsh .lab .ic { width: 15px; height: 15px; }
+.gsh .hsum { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+.ents.mus { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); }
+.addcard.sm { min-height: 64px; }
+
 
 /* Thumbnails */
 .thumbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -421,6 +431,7 @@ body.phone .notch { display: flex; }
   .scene .sh { padding: 10px 14px; } .half { padding: 12px 14px 14px; }
   .scene .sh .go { margin-left: 0; flex-basis: 100%; }
   .sumline { gap: 10px; } .sumline .spacer { display: none; }
+  .cats { grid-auto-columns: minmax(max-content, 1fr); overflow-x: auto; }
   .cats button { padding: 7px 8px 8px; } .cats .cl { font-size: 16px; gap: 4px; }
   .ip { padding: 8px 8px 10px; } .ent .eb { padding: 12px 12px 14px; }
   .thumbs.tall { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
@@ -443,13 +454,13 @@ body.phone .notch { display: flex; }
 <body>
 <div class="stage">
 <div class="window" id="win">
-  <div class="wt"><span class="tl"><i></i><i></i><i></i></span><span class="ttl">L'Ancora di Sabaoth · Promptbook</span></div>
+  <div class="wt"><span class="tl"><i></i><i></i><i></i></span><span class="ttl" id="wttl">L'Ancora di Sabaoth · Promptbook</span></div>
   <div class="notch"><span>21:42</span><span>●●● ▮</span></div>
   <div class="app" id="app">
     <header class="topbar">
       <div class="logo" title="Promptbook">P</div>
-      <div class="crumbs"><span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L'Ancora di Sabaoth</b></div>
-      <span class="chip">One-shot</span>
+      <div class="crumbs" id="crumbs"><span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L'Ancora di Sabaoth</b></div>
+      <span class="chip" id="kind">One-shot</span>
       <div class="spacer"></div>
       <span class="sync" id="sync" title="Sync status"><i></i><span id="syncT">Synced</span></span>
       <button class="tb hide-n" title="History and snapshots"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
@@ -475,7 +486,7 @@ body.phone .notch { display: flex; }
       <div class="pane">
         <div class="head">
           <h1>Images and music</h1>
-          <p class="lead">Image prompts for scenes, PCs, NPCs and handouts; music for each scene. For the table and the CueBard export.</p>
+          <p class="lead" id="lead">Images and music for each scene and for the whole adventure, with PCs, NPCs and handouts. For the table and the CueBard export.</p>
           <span class="spacer"></span>
           <span class="row acts">
             <button class="tb line sm" id="helpBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.5"/></svg>How matching works</button>
@@ -485,12 +496,13 @@ body.phone .notch { display: flex; }
           </span>
           <div class="pop" id="help" hidden>
             <h4>How files find their prompt <button class="tb xs" id="helpX" title="Close">✕</button></h4>
-            <div class="m"><b>Midjourney</b><div><p>The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, PCs, NPCs or Handouts.</p>
+            <div class="m"><b>Midjourney</b><div><p>The filename holds the first words of the prompt. They pick the prompt, in any category: Scenes, General, PCs, NPCs or Handouts.</p>
               <div class="fn">steve_<u>collapsed_1900s_Sicilian_library_at_night</u>_3f9a1c22-…_2.png</div><div class="arrow">→ Scenes · S1 · prompt 1</div>
               <div class="fn">steve_<u>portrait_of_an_old_Sicilian_priest</u>_c41d07e2-…_0.png</div><div class="arrow">→ NPCs · Padre Anselmo</div></div></div>
-            <div class="m"><b>Suno</b><div><p>The filename is the track title from the prompt. A second take gets "(1)".</p>
-              <div class="fn"><u>dominus deus sabaoth</u> (1).mp3</div><div class="arrow">→ S5 · Capo Peloro, la terza scossa</div></div></div>
-            <div class="m"><b>Two matches</b><div><p>When two prompts start with the same words, their files match both. They wait in Unmatched, marked "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it.</p></div></div>
+            <div class="m"><b>Suno</b><div><p>The filename is the track title from the prompt, of a scene or of a General music prompt. A second take gets "(1)".</p>
+              <div class="fn"><u>dominus deus sabaoth</u> (1).mp3</div><div class="arrow">→ S5 · Capo Peloro, la terza scossa</div>
+              <div class="fn"><u>tema di sabaoth</u>.mp3</div><div class="arrow">→ General · Tema di Sabaoth</div></div></div>
+            <div class="m"><b>Two matches</b><div><p>When two prompts start with the same words, their files match both. They wait in Unmatched, marked "matches 2 prompts": pick the prompt there. Start each prompt differently to avoid it. A track title used twice, in scenes or General, warns on both and its tracks wait in Unmatched.</p></div></div>
             <div class="m"><b>Other files</b><div><p>Renamed files, or prompts you changed in Midjourney or Suno, go to Unmatched. Assign them by hand.</p></div></div>
           </div>
         </div>
@@ -535,7 +547,7 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
           <h2>Drop images and tracks</h2>
           <p>They find their prompt by filename, in any category.</p>
           <p class="hint">Files that match no prompt, or more than one, wait in Unmatched.</p>
-          <div class="cnt">18 files · 14 images, 4 tracks</div>
+          <div class="cnt">19 files · 14 images, 5 tracks</div>
         </div></div>
       </div>
 
@@ -583,16 +595,18 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
   <h5>Mockup notes <button id="legendX" title="Collapse">–</button></h5>
   <div class="lab">Screen</div>
   <div class="lrow" id="screens">
-    <button data-sc="board" class="on">1 Scenes</button><button data-sc="pcs">1b PCs</button><button data-sc="npcs">1c NPCs</button><button data-sc="handouts">1d Handouts</button>
+    <button data-sc="board" class="on">1 Scenes</button><button data-sc="general">1a General</button><button data-sc="pcs">1b PCs</button><button data-sc="npcs">1c NPCs</button><button data-sc="handouts">1d Handouts</button>
     <button data-sc="noprompts">2 No prompts yet</button><button data-sc="noappendix">3 No appendix</button>
     <button data-sc="dropping">4 Dropping</button><button data-sc="afterdrop">5 After a drop</button><button data-sc="matching">5b Matching help</button><button data-sc="viewer">6 Image viewer</button>
-    <button data-sc="edit">7 Edit a prompt</button><button data-sc="addnpc">7b Add an NPC</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
+    <button data-sc="edit">7 Edit a prompt</button><button data-sc="addnpc">7b Add an NPC</button><button data-sc="addmusic">7c Add a music prompt</button><button data-sc="desktop">8 Desktop, offline</button><button data-sc="phone">9 Phone width</button>
     <button data-sc="export">10 Export for CueBard</button><button data-sc="exportempty">10b Nothing to export</button><button data-sc="exportdesk">10c Export, desktop offline</button>
+    <button data-sc="campaign">11 Campaign board</button><button data-sc="campaignexport">11b Campaign export</button><button data-sc="campaignempty">11c Campaign, nothing yet</button>
   </div>
   <ul>
     <li>Route <code>/projects/:id/board</code>. Rail entry <b>Images and music</b>, between Research and Brainstorm log.</li>
     <li><b>Categories</b>: the switch at the top. Each tab shows its number of image prompts and what is still wanted; a blue dot means new files. The filters work inside the active tab.</li>
     <li><b>Scenes</b>: one row per <code>### S… </code> of the appendix. The image half is a stack of prompts (S1 three, S4 two, S6 none), each with Copy, Edit, Remove, its files and its own status: Wanted (no files), Received (files, none chosen), Chosen. The music half is unchanged.</li>
+    <li><b>General</b> (new, #68): images and music for the whole adventure, not tied to a scene. Two sections: image cards (a name and a Midjourney prompt, like NPCs) and music cards (Title, Style and Lyrics, like a scene's music half, with its tracks). Any number of each; each card has its own status and Remove; image cards get Generate like every image prompt (image-generation.html). Filters and the summary count both.</li>
     <li><b>PCs, NPCs, Handouts</b>: project-wide cards, a name and a prompt each. Thumbnails follow the prompt's <code>--ar</code>.</li>
     <li>Click a thumbnail to open it; the round badge chooses it, one per prompt. Removing a prompt sends its images to Unmatched. Play only toggles (no audio).</li>
     <li><b>No prompts yet</b>: the prompts come from Claude through the connector; the request is copyable. Each tab has its empty state with an Add button.</li>
@@ -603,7 +617,9 @@ mood: chaotic, suffocating, low rumbling drones, …</pre>
     <li>Existing boards: the scene's single prompt becomes its prompt 1. Nothing to show.</li>
     <li><b>Desktop, offline</b>: files dropped offline stay on this computer and upload later; choosing and prompts still work.</li>
     <li><b>Phone width</b>: the same board in a 390 px frame. A narrow browser window gets the same layout.</li>
-    <li><b>Export for CueBard</b>: the header button opens a summary of the pack: one cue group per scene with its tracks, the images in four visual folders, then one warning per gap (a scene with no track, a prompt with no image, a track whose length is unknown). Export downloads <code>L'Ancora di Sabaoth.cbpack</code>. With no files on the board, Export is off (10b). The desktop app builds the pack on the device and saves it where you choose, offline too (10c). The projects screen has the same entry in Actions.</li>
+    <li><b>Export for CueBard</b>: the header button opens a summary of the pack: one cue group per scene with its tracks, then one group General with the General music (left out when it has no track), the images in five visual folders (General images have no link to a track), then one warning per gap (a scene with no track, a prompt with no image, a track whose length is unknown). Export downloads <code>L'Ancora di Sabaoth.cbpack</code>. With no files on the board, Export is off (10b). The desktop app builds the pack on the device and saves it where you choose, offline too (10c). The projects screen has the same entry in Actions.</li>
+    <li><b>Campaign board</b> (11): a campaign gets the rail entry too. Tabs General, PCs, NPCs and Handouts; no Scenes tab and no appendix. Its CueBard pack has one cue group, General, and four visual folders (11b). An empty campaign board opens on General with the Claude card (11c).</li>
+    <li>Scene music stays one Suno prompt per scene. A prompt does not move between a scene and General.</li>
     <li>The half-circle in the top bar switches light and dark.</li>
   </ul>
 </div>
@@ -630,6 +646,7 @@ const IC = {
   pc: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   npc: '<svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 5 1.6 5 4.5"/></svg>',
   handout: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h4"/></svg>',
+  general: '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="11" height="9" rx="1.5"/><path d="M3 11l3-2.5 3 2 2-1.5 3 2"/><path d="M19 8v9"/><circle cx="17" cy="17" r="2"/><path d="M19 8l2.5-1"/><path d="M4 17h8M4 20h6"/></svg>',
 };
 
 /* Fake image art: gradients per prompt */
@@ -646,6 +663,7 @@ const PAL = {
   N3: ['#18181a', '#55524e', '#bdb5a8', '#2e2c2a'], N4: ['#0d1824', '#38607a', '#e2c99a', '#1c3244'],
   N5: ['#1a0b14', '#6e2434', '#e8803a', '#3a1844'], N6: ['#161a14', '#5a6448', '#e8e2c0', '#2c3226'],
   H1: ['#3a2e1c', '#a8895a', '#f2e4c0', '#6e5838'], H2: ['#2e2a1e', '#8c7e58', '#e8dcb4', '#5a4e34'], H3: ['#2a2218', '#7a6444', '#e6d2a6', '#4a3a28'],
+  G1: ['#16120e', '#5a4a3a', '#e6cfa0', '#2e2620'], G2: ['#0a1420', '#2a4866', '#a8c8e8', '#16283c'], G3: ['#1e1a14', '#6e5a3a', '#f0dca8', '#3a2e1e'],
   X1: ['#0d1a20', '#2f5866', '#9fd0d0', '#22323a'],
   X2: ['#161b22', '#4d5b6a', '#e0c38c', '#28313b'],
 };
@@ -756,6 +774,38 @@ const PROMPTS = [
     p: 'an antique nautical chart of the Strait of Messina, 1908, sepia ink, compass rose, an anchor drawn by hand at Capo Peloro, torn edges, top-down flat lay --ar 4:3 --v 8.1' },
   { pid: 'h3', cat: 'handout', name: 'Avviso di ricerca', art: 'H3', nf: 0, chosen: null, by: 'you', when: '1 hour ago',
     p: 'a 1908 Italian police wanted poster nailed to a wooden door, engraved portrait of a man in a black coat, bold serif headline, torn corners, plaster dust, illegible text --ar 2:3 --v 8.1' },
+
+  { pid: 'g1', cat: 'general', name: 'Messina dopo il terremoto', art: 'G1', nf: 4, chosen: 0, by: 'cl', when: 'yesterday',
+    p: 'panorama of Messina in ruins after the 1908 earthquake, collapsed palazzi along the harbour, smoke rising, survivors on the quay, the strait grey and still, epic establishing shot, sepia, film grain --ar 16:9 --v 8.1' },
+  { pid: 'g2', cat: 'general', name: 'Lo Stretto di notte', art: 'G2', nf: 4, chosen: null, by: 'cl', when: 'yesterday',
+    p: 'the Strait of Messina at night under a thin moon, black water with faint glints like eyes, the Calabrian coast in darkness, a single lighthouse beam, wide shot, cold indigo, film grain --ar 16:9 --v 8.1' },
+  { pid: 'g3', cat: 'general', name: 'Copertina', art: 'G3', nf: 0, chosen: null, by: 'you', when: '1 hour ago',
+    p: 'an ancient bronze anchor rising from a stormy sea, green with age, carved with unknown letters, lightning over the Strait of Messina, dramatic poster composition, sepia and teal, film grain --ar 2:3 --v 8.1' },
+];
+
+/* General music: any number of Suno prompts for the whole project, each with its own tracks */
+const GENERAL_MUSIC = [
+  { mid: 'g-m1', title: 'Tema di Sabaoth', style: 'dark orchestral main theme, slow, low strings, distant choir, mandolin motif, tolling bell, dread and grandeur', lyrics: '[Intro: tolling bell]\n[Instrumental]\n[Outro: choir fades]\n[End]', by: 'cl', when: 'yesterday',
+    tracks: [{ n: 'tema di sabaoth.mp3', d: '3:58' }, { n: 'tema di sabaoth (1).mp3', d: '4:10' }], chosen: 1 },
+  { mid: 'g-m2', title: 'Tra le macerie', style: 'dark ambient exploration, sparse piano, wind through broken walls, distant church bells, dust, slow', lyrics: LYR('wind'), by: 'cl', when: 'yesterday',
+    tracks: [{ n: 'tra le macerie.mp3', d: '5:02' }], chosen: null },
+  { mid: 'g-m3', title: 'La scossa', style: 'tense percussive, rumbling low drums, rising strings, sudden stops, glass breaking, panic', lyrics: '[Intro: low rumble]\n[Instrumental]\n[Break: sudden stop]\n[End]', by: 'you', when: '1 hour ago',
+    tracks: [], chosen: null },
+];
+/* A campaign's board: General, PCs, NPCs and Handouts, no scenes */
+const CAMPAIGN_GENERAL = [
+  { pid: 'cg1', cat: 'general', name: 'Copertina della campagna', art: 'G3', nf: 4, chosen: 2, by: 'cl', when: '3 days ago',
+    p: 'an ancient bronze anchor half buried in black sand, carved with unknown letters, a ruined Sicilian city on the horizon, storm light, poster composition, sepia and teal, film grain --ar 2:3 --v 8.1' },
+  { pid: 'cg2', cat: 'general', name: 'Il mare che guarda', art: 'G2', nf: 0, chosen: null, by: 'cl', when: '3 days ago',
+    p: 'a calm Mediterranean sea at dusk with countless glints like eyes under the surface, a fishing boat alone, uneasy stillness, wide shot, cold blue and ochre, film grain --ar 16:9 --v 8.1' },
+];
+const CAMPAIGN_MUSIC = [
+  { mid: 'c-m1', title: 'Tema della campagna', style: 'dark orchestral main theme, slow, low strings, choir pads, mandolin motif, sea waves, grandeur', lyrics: LYR('waves'), by: 'cl', when: '3 days ago',
+    tracks: [{ n: 'tema della campagna.mp3', d: '4:21' }], chosen: 0 },
+  { mid: 'c-m2', title: 'Combattimento', style: 'tense orchestral combat, driving low drums, staccato strings, brass stabs, fast', lyrics: LYR('drums'), by: 'cl', when: '3 days ago',
+    tracks: [{ n: 'combattimento.mp3', d: '2:48' }, { n: 'combattimento (1).mp3', d: '3:05' }], chosen: null },
+  { mid: 'c-m3', title: 'Riposo alla locanda', style: 'warm Sicilian folk ambience, guitar and accordion, low chatter, crackling fire, calm', lyrics: LYR('guitar'), by: 'you', when: 'yesterday',
+    tracks: [], chosen: null },
 ];
 const UNMATCHED = [
   { k: 'img', n: 'steve_a_vast_cathedral_nave_flooded_with_seawater_8c1e2f40-1b2a-4c3d-9e8f-0a1b2c3d4e5f_2.png', art: 'X1', i: 1, why: 'No prompt starts with "a vast cathedral nave flooded".' },
@@ -764,9 +814,11 @@ const UNMATCHED = [
     why: 'Two prompts start with "portrait of an old Sicilian fisherwoman singing".' },
 ];
 
-const CATS = ['scene', 'pc', 'npc', 'handout'];
+const CATS = ['scene', 'general', 'pc', 'npc', 'handout'];
 const CAT = {
   scene: { tab: 'Scenes', one: 'Scene', add: 'Add image prompt' },
+  general: { tab: 'General', one: 'General', add: 'Add image', icon: IC.general, empty: 'Nothing general yet', name: 'Messina dopo il terremoto', fresh: 'New image',
+    what: 'Images and music for the whole adventure, not tied to a scene: establishing shots, a cover, a main theme, ambience, combat music.' },
   pc: { tab: 'PCs', one: 'PC', add: 'Add PC', icon: IC.pc, empty: 'No PCs yet', name: 'Rosalia Ferrante',
     what: 'Portraits of the player characters, one prompt each: a name, then a Midjourney prompt.' },
   npc: { tab: 'NPCs', one: 'NPC', add: 'Add NPC', icon: IC.npc, empty: 'No NPCs yet', name: 'Padre Anselmo',
@@ -778,17 +830,26 @@ const CAT = {
 let S, cur = 'board', filter = 'all', cat = 'scene', seq = 0;
 const clone = o => JSON.parse(JSON.stringify(o));
 const mk = d => { const p = clone(d); p.files = mjFiles(d, d.nf); delete p.nf; delete p.uuid; return p; };
-const SCREEN_CAT = { pcs: 'pc', npcs: 'npc', handouts: 'handout', addnpc: 'npc' };
+const SCREEN_CAT = { pcs: 'pc', npcs: 'npc', handouts: 'handout', addnpc: 'npc', general: 'general', addmusic: 'general', campaign: 'general', campaignexport: 'general', campaignempty: 'general' };
+const isCampaign = k => k.startsWith('campaign');
 function build(k) {
-  const st = { scenes: clone(SCENES), prompts: PROMPTS.map(mk), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false };
+  const st = { scenes: clone(SCENES), prompts: PROMPTS.map(mk), music: clone(GENERAL_MUSIC), unmatched: [], result: false, editing: null, local: false, emptyAppendix: false, noAppendix: false, campaign: false };
+  if (isCampaign(k)) {
+    st.campaign = true; st.scenes = [];
+    st.prompts = [...CAMPAIGN_GENERAL.map(mk), ...st.prompts.filter(p => p.cat !== 'scene' && p.cat !== 'general')];
+    st.music = clone(CAMPAIGN_MUSIC);
+    if (k === 'campaignempty') { st.prompts = []; st.music = []; }
+  }
+  if (k === 'addmusic') { st.music.push({ mid: 'new-m1', title: null, style: '', lyrics: '', tracks: [], chosen: null, by: 'you', when: 'just now', fresh: true }); st.editing = 'new-m1.mus'; }
   const P = id => st.prompts.find(p => p.pid === id);
-  if (k === 'noprompts' || k === 'exportempty') { st.prompts = []; st.scenes.forEach(s => { s.mus = { title: null, tracks: [], chosen: null }; }); }
+  if (k === 'noprompts' || k === 'exportempty') { st.prompts = []; st.music = []; st.scenes.forEach(s => { s.mus = { title: null, tracks: [], chosen: null }; }); }
   if (k === 'noappendix') st.noAppendix = true;
   if (k === 'afterdrop') {
     P('s3a').files.forEach(f => f.new = true); P('s5a').files.forEach(f => f.new = true);
     P('n1').files = mjFiles(PROMPTS.find(d => d.pid === 'n1'), 4).map(f => ({ ...f, new: true }));
     st.scenes.find(s => s.id === 'S3').mus.tracks.forEach(t => t.new = true);
     st.scenes.find(s => s.id === 'S5').mus.tracks.push({ n: 'dominus deus sabaoth.mp3', d: '4:05', new: true });
+    st.music.find(m => m.mid === 'g-m2').tracks.push({ n: 'tra le macerie (1).mp3', d: '4:47', new: true });
     st.unmatched = clone(UNMATCHED); st.result = true;
   }
   if (k === 'edit') st.editing = 's2a';
@@ -800,10 +861,16 @@ function build(k) {
 /* Helpers */
 const find = pid => S.prompts.find(p => p.pid === pid);
 const sceneOf = id => S.scenes.find(s => s.id === id);
+const genMus = id => S.music.find(m => m.mid === id);
+/* A music prompt's owner: a scene (its one Suno prompt) or a General music prompt */
+const musOf = id => sceneOf(id)?.mus || genMus(id);
+const musLabel = id => sceneOf(id) ? `${id} · ${sceneOf(id).t}` : `General · ${genMus(id).title || 'New music prompt'}`;
+const liveMusic = () => S.music.filter(m => !m.fresh);
+const newName = c => CAT[c].fresh || 'New ' + CAT[c].one;
 const scenePrompts = id => S.prompts.filter(p => p.cat === 'scene' && p.scene === id);
 const inCat = c => S.prompts.filter(p => p.cat === c);
 const numOf = p => scenePrompts(p.scene).indexOf(p) + 1;
-const label = (p, long) => p.cat === 'scene' ? `${p.scene}${long ? ' · ' + sceneOf(p.scene).t : ''} · prompt ${numOf(p)}` : `${CAT[p.cat].one} · ${p.name || 'New ' + CAT[p.cat].one}`;
+const label = (p, long) => p.cat === 'scene' ? `${p.scene}${long ? ' · ' + sceneOf(p.scene).t : ''} · prompt ${numOf(p)}` : `${CAT[p.cat].one} · ${p.name || newName(p.cat)}`;
 const firstWords = (t, n) => { const w = t.split(/\s+/); return w.slice(0, n).join(' ').replace(/,$/, '') + (w.length > n ? '…' : ''); };
 const optLabel = p => p.cat === 'scene' ? `${p.scene} #${numOf(p)} · ${firstWords(p.p, 5)}` : p.name;
 const pst = p => !p.files.length ? 'wanted' : p.chosen != null ? 'chosen' : 'received';
@@ -821,7 +888,7 @@ function promptBody(p) {
     const named = p.cat !== 'scene';
     const hint = p.fresh ? 'Its first words are how its images find it.' : 'Claude can rewrite it later; History keeps the old text.';
     box = `<div class="editbox">${named
-      ? `<div class="eg"><label for="edn-${p.pid}">Name</label><input id="edn-${p.pid}" value="${esc(p.name || '')}" placeholder="${esc(CAT[p.cat].name)}">
+      ? `<div class="eg"><label for="edn-${p.pid}">Name</label><input id="edn-${p.pid}" value="${esc(p.name || '')}" placeholder="${esc(S.campaign && p.cat === 'general' ? 'Copertina della campagna' : CAT[p.cat].name)}">
          <label for="ed-${p.pid}">Prompt</label><textarea id="ed-${p.pid}" placeholder="portrait of …">${esc(p.p || '')}</textarea></div>`
       : `<textarea id="ed-${p.pid}" aria-label="Midjourney prompt" placeholder="A Midjourney prompt for ${esc(p.scene)}…">${esc(p.p || '')}</textarea>`}
       <div class="pfoot"><span class="hint">${hint}</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${p.pid}">${p.fresh ? 'Add' : 'Save'}</button></div></div>`;
@@ -855,15 +922,15 @@ function imgHalf(s) {
     <div class="hh"><span class="lab">${IC.img}Images · Midjourney</span><span class="hsum">${sum}</span></div>
     ${srcLine('visual', s.visual)}${stack}</div>`;
 }
-/* Music half: unchanged, one Suno prompt per scene */
-function musHalf(s) {
-  const h = s.mus, st = musSt(h), key = s.id + '.mus';
+/* One Suno prompt and its tracks: a scene's music half, or a General music card */
+function musBody(id, h) {
+  const key = id + '.mus';
   let p;
   if (S.editing === key) p = `<div class="editbox"><div class="eg">
-      <label for="ed-${s.id}-t">Title</label><input id="ed-${s.id}-t" value="${esc(h.title || '')}">
-      <label for="ed-${s.id}-s">Style</label><textarea id="ed-${s.id}-s">${esc(h.style || '')}</textarea>
-      <label for="ed-${s.id}-l">Lyrics</label><textarea id="ed-${s.id}-l">${esc(h.lyrics || LYR('low drone'))}</textarea></div>
-      <div class="pfoot"><span class="hint">Suno names the download after the title.</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${key}">Save</button></div></div>`;
+      <label for="ed-${id}-t">Title</label><input id="ed-${id}-t" value="${esc(h.title || '')}" placeholder="${h.fresh ? 'Tema di Sabaoth' : ''}">
+      <label for="ed-${id}-s">Style</label><textarea id="ed-${id}-s">${esc(h.style || '')}</textarea>
+      <label for="ed-${id}-l">Lyrics</label><textarea id="ed-${id}-l">${esc(h.lyrics || LYR('low drone'))}</textarea></div>
+      <div class="pfoot"><span class="hint">Suno names the download after the title.</span><button class="tb sm line" data-cancel-edit>Cancel</button><button class="tb sm primary" data-save="${key}">${h.fresh ? 'Add' : 'Save'}</button></div></div>`;
   else if (h.title) p = `<div class="pbox"><div class="parts3">
       <span class="pl">Title</span><span class="pv title">${esc(h.title)}<small>The download's filename. Used to match tracks.</small></span><span class="pc">${copyBtn(key + '.t')}</span>
       <span class="pl">Style</span><span class="pv">${esc(h.style)}</span><span class="pc">${copyBtn(key + '.s')}</span>
@@ -871,17 +938,23 @@ function musHalf(s) {
       <div class="fixed">Instrumental: ON · Weirdness: low · Style Influence: strong</div>
       <div class="pfoot"><span class="prov">${prov(h)}</span><button class="tb sm" data-edit="${key}">${IC.edit}Edit</button></div></div>`;
   else p = `<div class="noprompt"><span>No Suno prompt yet. Ask Claude, or write one.</span><button class="tb sm line" data-write="${key}">${IC.edit}Write by hand</button></div>`;
+  if (h.fresh) return p;
   const tracks = h.tracks.length
-    ? `<div class="tracks">${h.tracks.map((t, i) => `<div class="trk-r${h.chosen === i ? ' chosen' : ''}" data-trk="${s.id}:${i}">
+    ? `<div class="tracks">${h.tracks.map((t, i) => `<div class="trk-r${h.chosen === i ? ' chosen' : ''}" data-trk="${id}:${i}">
         <button class="play" data-play title="Play">${IC.play}</button>
         <span class="fn" title="${esc(t.n)}">${esc(t.n)}${t.new ? '<span class="newdot">new</span>' : ''}${t.local ? '<span class="devdot">on this device</span>' : ''}<small>Take ${i + 1}</small></span>
         <span class="dur"${t.d ? '' : ' title="Length unknown"'}>${t.d || '?:??'}</span>
-        ${h.chosen === i ? `<button class="chosen-tag" data-choose-t="${s.id}:${i}" title="Click to unchoose">✓ Chosen</button>` : `<button class="tb sm line" data-choose-t="${s.id}:${i}">Choose</button>`}
+        ${h.chosen === i ? `<button class="chosen-tag" data-choose-t="${id}:${i}" title="Click to unchoose">✓ Chosen</button>` : `<button class="tb sm line" data-choose-t="${id}:${i}">Choose</button>`}
         <span class="bar"></span></div>`).join('')}</div>`
     : h.title ? `<div class="empty-drop">${IC.drop}<span>No tracks yet. Drop Suno's downloads anywhere on the board.</span></div>` : '';
+  return p + tracks;
+}
+/* Music half: unchanged, one Suno prompt per scene */
+function musHalf(s) {
+  const st = musSt(s.mus);
   return `<div class="half${filter !== 'all' && st !== filter ? ' dim' : ''}">
     <div class="hh"><span class="lab">${IC.mus}Music · Suno</span>${chip(st)}</div>
-    ${srcLine('mood', s.mood)}${p}${tracks}</div>`;
+    ${srcLine('mood', s.mood)}${musBody(s.id, s.mus)}</div>`;
 }
 function srcLine(k, v) {
   if (S.emptyAppendix) return `<div class="srcline empty"><span class="k">${k}:</span>empty <a data-other-doc>Edit in the document</a></div>`;
@@ -897,8 +970,32 @@ function rows() {
 /* PCs, NPCs, Handouts tabs: project-wide cards */
 function entCard(p) {
   return `<article class="card ent" id="p-${p.pid}">
-    <div class="eh"><span class="enm${p.name ? '' : ' new'}">${esc(p.name || 'New ' + CAT[p.cat].one)}</span>${p.fresh ? '' : chip(pst(p)) + rmBtn(p)}</div>
+    <div class="eh"><span class="enm${p.name ? '' : ' new'}">${esc(p.name || newName(p.cat))}</span>${p.fresh ? '' : chip(pst(p)) + rmBtn(p)}</div>
     <div class="eb">${promptBody(p)}</div></article>`;
+}
+/* General tab: a music card is a Suno prompt with its tracks, named after its title */
+function musCard(m) {
+  return `<article class="card ent" id="row-${m.mid}">
+    <div class="eh"><span class="enm${m.title ? '' : ' new'}">${esc(m.title || 'New music prompt')}</span>${m.fresh ? '' : chip(musSt(m)) + `<button class="tb xs rm" data-rmm="${m.mid}" title="Remove this music prompt" aria-label="Remove ${esc(musLabel(m.mid))}">${IC.trash}</button>`}</div>
+    <div class="eb">${musBody(m.mid, m)}</div></article>`;
+}
+const genShown = (x, st) => filter === 'all' || st === filter || S.editing === x;
+function general() {
+  const imgs = inCat('general'), mus = S.music, c = CAT.general;
+  const whole = S.campaign ? 'campaign' : 'adventure';
+  if (!imgs.length && !mus.length) return `<div class="card emptyst catempty">
+      <div class="big-ic">${c.icon}</div><h2>${c.empty}</h2><p>Images and music for the whole ${whole}, not tied to a scene: establishing shots, a cover, a main theme, ambience, combat music.</p>
+      <div class="row"><button class="tb primary" data-add="general">${IC.plus}Add image</button><button class="tb line" data-addm>${IC.plus}Add music prompt</button></div>
+      <p class="hint" style="margin:10px 0 0">Claude can write them too: ask for "the general images and music of «${esc(S.campaign ? 'Kulthos' : "L'Ancora di Sabaoth")}»".</p></div>`;
+  const li = imgs.filter(p => !p.fresh), lm = liveMusic(), ti = tally(li), tm = tally(lm, musSt);
+  const si = imgs.filter(p => genShown(p.pid, pst(p))), sm = mus.filter(m => genShown(m.mid + '.mus', musSt(m)));
+  const none = what => `<p class="none">No ${what} ${STL[filter].toLowerCase()}. <a data-filter="all">Show all</a></p>`;
+  return `<section class="gsec"><div class="gsh"><span class="lab">${IC.img}Images · Midjourney</span><span class="hsum">${li.length} ${li.length === 1 ? 'image' : 'images'} · ${ti.chosen} chosen</span></div>
+      <div class="ents">${si.map(entCard).join('')}${imgs.some(p => p.fresh) ? '' : `<button class="addcard sm" data-add="general">${IC.plus}Add image</button>`}</div>
+      ${si.length || filter === 'all' ? '' : none('general images are')}</section>
+    <section class="gsec"><div class="gsh"><span class="lab">${IC.mus}Music · Suno</span><span class="hsum">${lm.length} music ${lm.length === 1 ? 'prompt' : 'prompts'} · ${tm.chosen} chosen</span></div>
+      <div class="ents mus">${sm.map(musCard).join('')}${mus.some(m => m.fresh) ? '' : `<button class="addcard sm" data-addm>${IC.plus}Add music prompt</button>`}</div>
+      ${sm.length || filter === 'all' ? '' : none('general music is')}</section>`;
 }
 function grid() {
   const items = inCat(cat), c = CAT[cat];
@@ -913,29 +1010,36 @@ function grid() {
 }
 
 function tabs() {
-  $('#cats').innerHTML = CATS.map(k => {
-    const ps = inCat(k).filter(p => !p.fresh), c = tally(ps), nw = ps.some(p => p.files.some(f => f.new));
-    const sub = !ps.length ? 'none yet' : c.wanted ? `${c.wanted} wanted` : c.received ? `${c.received} received` : 'all chosen';
-    const title = `${ps.length} image ${ps.length === 1 ? 'prompt' : 'prompts'}: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`;
+  $('#cats').innerHTML = CATS.filter(k => !(S.campaign && k === 'scene')).map(k => {
+    const ps = inCat(k).filter(p => !p.fresh), ms = k === 'general' ? liveMusic() : [];
+    const c = tally(ps), cm = tally(ms, musSt); ['chosen', 'received', 'wanted'].forEach(x => c[x] += cm[x]);
+    const n = ps.length + ms.length, nw = ps.some(p => p.files.some(f => f.new)) || ms.some(m => m.tracks.some(t => t.new));
+    const sub = !n ? 'none yet' : c.wanted ? `${c.wanted} wanted` : c.received ? `${c.received} received` : 'all chosen';
+    const title = k === 'general' ? `${ps.length} images and ${ms.length} music prompts: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`
+      : `${ps.length} image ${ps.length === 1 ? 'prompt' : 'prompts'}: ${c.chosen} chosen, ${c.received} received, ${c.wanted} wanted`;
+
     return `<button role="tab" aria-selected="${cat === k}" class="${cat === k ? 'on' : ''}" data-cat="${k}" title="${title}">
-      <span class="cl">${CAT[k].tab}<span class="n">${ps.length}</span>${nw ? '<i class="nd" title="New files"></i>' : ''}</span><span class="cs${c.wanted ? ' w' : ''}">${sub}</span></button>`;
+      <span class="cl">${CAT[k].tab}<span class="n">${n}</span>${nw ? '<i class="nd" title="New files"></i>' : ''}</span><span class="cs${c.wanted ? ' w' : ''}">${sub}</span></button>`;
   }).join('');
 }
 function render() {
   tabs();
   const sceneView = cat === 'scene', noApp = sceneView && S.noAppendix;
+  const empty = !sceneView && !inCat(cat).length && !(cat === 'general' && S.music.length);
+  const whole = S.campaign ? 'campaign' : 'adventure';
   $('#emptySt').hidden = !noApp;
-  $('#sumline').hidden = noApp || (!sceneView && !inCat(cat).length);
+  $('#sumline').hidden = noApp || empty;
   $('#rows').hidden = !sceneView || noApp;
   $('#grid').hidden = sceneView;
   $('#rows').innerHTML = sceneView && !noApp ? rows() : '';
-  $('#grid').innerHTML = sceneView ? '' : grid();
-  $('#hintLine').hidden = noApp || (!sceneView && !inCat(cat).length);
+  $('#grid').innerHTML = sceneView ? '' : cat === 'general' ? general() : grid();
+  $('#hintLine').hidden = noApp || empty;
   $('#hintLine').textContent = sceneView ? 'Rows follow the appendix. Add or rename a scene there and the board follows.'
-    : `${CAT[cat].tab} belong to the whole adventure, not to a scene.`;
+    : cat === 'general' ? `General images and music belong to the whole ${whole}, not to a scene. Their files find them by filename, like the others.`
+    : `${CAT[cat].tab} belong to the whole ${whole}, not to a scene.`;
   summary(); strips(); tray();
-  const n = S.prompts.filter(p => !p.fresh).length;
-  $('#sbCount').textContent = (S.noAppendix ? 'No appendix' : S.scenes.length + ' scenes') + ` · ${n} image prompts`;
+  const n = S.prompts.filter(p => !p.fresh).length, nm = liveMusic().length;
+  $('#sbCount').textContent = (S.campaign ? 'Campaign' : S.noAppendix ? 'No appendix' : S.scenes.length + ' scenes') + ` · ${n} image prompts · ${nm} general music`;
 }
 function summary() {
   const part = c => `<b>${c.chosen}</b> chosen, <b>${c.received}</b> received, <b>${c.wanted}</b> wanted`;
@@ -946,6 +1050,10 @@ function summary() {
     $('#summary').innerHTML = `<b>${S.scenes.length}</b> scenes${sep}${ps.length} image prompts: ${part(tally(ps))}${sep}music ${part(tally(S.scenes.map(s => s.mus), musSt))}`;
     const save = filter;
     counts = k => { filter = k; const r = S.scenes.filter(rowShown).length; filter = save; return r; };
+  } else if (cat === 'general') {
+    const ps = inCat('general').filter(p => !p.fresh), ms = liveMusic();
+    $('#summary').innerHTML = `<b>${ps.length}</b> images: ${part(tally(ps))}${sep}<b>${ms.length}</b> music: ${part(tally(ms, musSt))}`;
+    counts = k => k === 'all' ? ps.length + ms.length : ps.filter(p => pst(p) === k).length + ms.filter(m => musSt(m) === k).length;
   } else {
     const ps = inCat(cat).filter(p => !p.fresh);
     $('#summary').innerHTML = `<b>${ps.length}</b> ${CAT[cat].tab}${sep}${part(tally(ps))}`;
@@ -956,12 +1064,14 @@ function summary() {
 }
 function strips() {
   let h = '';
-  if (cur === 'noprompts' || cur === 'exportempty') h += `<div class="card claude"><span class="avatar cl">C</span><div>
+  if (cur === 'noprompts' || cur === 'exportempty' || cur === 'campaignempty') h += `<div class="card claude"><span class="avatar cl">C</span><div>
       <h3>Prompts come from Claude</h3>
-      <p>Claude reads the document and writes Midjourney prompts for the scenes, the PCs, the NPCs and the handouts, and one Suno prompt per scene from its <code>mood:</code> line. Ask in a chat on claude.ai:</p>
-      <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth», with portraits of the PCs and NPCs and the handouts</span>${copyBtn('ask')}</div>
+      ${S.campaign ? `<p>Claude reads the campaign and writes General images and music for it, like a cover and a main theme, and Midjourney prompts for the PCs, the NPCs and the handouts. Ask in a chat on claude.ai:</p>
+      <div class="ask"><span id="askText">Write the image and music prompts for the board of «Kulthos»: general images and music, portraits of the PCs and NPCs, and the handouts</span>${copyBtn('ask')}</div>`
+      : `<p>Claude reads the document and writes Midjourney prompts for the scenes, the PCs, the NPCs and the handouts, one Suno prompt per scene from its <code>mood:</code> line, and General images and music for the whole adventure. Ask in a chat on claude.ai:</p>
+      <div class="ask"><span id="askText">Write the image and music prompts for the board of «L'Ancora di Sabaoth», with portraits of the PCs and NPCs, the handouts, and general images and music</span>${copyBtn('ask')}</div>`}
       <p class="hint">Claude needs the Promptbook connector, with read and edit access. <a data-other-settings>Settings → Connected apps</a></p></div></div>`;
-  if (S.result) h += `<div class="info good">${IC.check}<span><b>18 files added: 15 matched, 3 to assign.</b> <a data-cat="scene">S3</a>: 4 images, 2 tracks · <a data-cat="scene">S5</a>: 4 images, 1 track · <a data-cat="npc">NPCs · Padre Anselmo</a>: 4 images. New files are marked.</span><button class="tb xs x" id="resX" title="Dismiss">✕</button></div>`;
+  if (S.result) h += `<div class="info good">${IC.check}<span><b>19 files added: 16 matched, 3 to assign.</b> <a data-cat="scene">S3</a>: 4 images, 2 tracks · <a data-cat="scene">S5</a>: 4 images, 1 track · <a data-cat="npc">NPCs · Padre Anselmo</a>: 4 images · <a data-cat="general">General · Tra le macerie</a>: 1 track. New files are marked.</span><button class="tb xs x" id="resX" title="Dismiss">✕</button></div>`;
   if (S.local) h += `<div class="info local">${IC.dev}<span><b>4 files on this computer, uploaded when you are back online.</b> Choosing and editing prompts work offline; they sync too.</span></div>`;
   $('#strips').innerHTML = h;
 }
@@ -977,7 +1087,9 @@ function promptOpts(placeholder, { first = [], except = null } = {}) {
   });
   return h;
 }
-const sceneOpts = () => `<option value="">Assign to scene…</option>` + S.scenes.map(s => `<option value="${s.id}">${s.id} · ${esc(s.t)}</option>`).join('');
+const sceneOpts = () => `<option value="">Assign to scene or music…</option>`
+  + (S.scenes.length ? `<optgroup label="Scenes">${S.scenes.map(s => `<option value="${s.id}">${s.id} · ${esc(s.t)}</option>`).join('')}</optgroup>` : '')
+  + (liveMusic().length ? `<optgroup label="General">${liveMusic().map(m => `<option value="${m.mid}">${esc(m.title)}</option>`).join('')}</optgroup>` : '');
 function tray() {
   const t = $('#tray');
   if (!S.unmatched.length) { t.innerHTML = ''; return; }
@@ -989,7 +1101,7 @@ function tray() {
       return `<div class="uf">
       ${f.k === 'img' ? `<span class="mini" style="${art(f.art, f.i)}"></span>` : `<span class="trk">${IC.mus}</span>`}
       <div style="min-width:0"><div class="fn">${esc(f.n)}</div><div class="why">${f.k === 'img' ? 'Image' : 'Track · ' + f.d} · ${why}</div></div>
-      <div class="uact"><select data-assign="${i}" aria-label="Assign ${esc(f.n)} to ${f.k === 'img' ? 'a prompt' : 'a scene'}">${f.k === 'img' ? promptOpts('Assign to prompt…', { first: amb.length > 1 ? amb : [] }) : sceneOpts()}</select>
+      <div class="uact"><select data-assign="${i}" aria-label="Assign ${esc(f.n)} to ${f.k === 'img' ? 'a prompt' : 'a scene or music prompt'}">${f.k === 'img' ? promptOpts('Assign to prompt…', { first: amb.length > 1 ? amb : [] }) : sceneOpts()}</select>
       <button class="tb sm danger" data-unrm="${i}">Remove</button></div></div>`;
     }).join('')}</div>`;
 }
@@ -1004,6 +1116,11 @@ function screen(k) {
   $('#syncT').textContent = S.local ? 'On this device only' : 'Synced';
   $('#sbSync').innerHTML = S.local ? '<span class="a">Offline · 4 files waiting to upload</span>' : 'Synced 21:40 · promptbook.siberio.eu';
   $('#sbClaude').textContent = S.local ? 'Claude needs a connection' : 'Claude connected · read and edit';
+  $('#wttl').textContent = (S.campaign ? 'Kulthos' : "L'Ancora di Sabaoth") + ' · Promptbook';
+  $('#crumbs').innerHTML = S.campaign ? '<b>Kulthos</b>' : '<span class="hide-n">Kulthos</span><span class="hide-n">›</span><b>L\'Ancora di Sabaoth</b>';
+  $('#kind').textContent = S.campaign ? 'Campaign' : 'One-shot';
+  $('#lead').textContent = S.campaign ? 'Images and music for the whole campaign, with PCs, NPCs and handouts. For the table and the CueBard export.'
+    : 'Images and music for each scene and for the whole adventure, with PCs, NPCs and handouts. For the table and the CueBard export.';
   render();
   $('#dropov').hidden = k !== 'dropping';
   setHelp(false);
@@ -1012,8 +1129,9 @@ function screen(k) {
   if (k === 'viewer') openLb('s3a', 1);
   if (k === 'edit') { const r = $('#row-S2'); $('#center').scrollTop = r.offsetTop - 12; }
   if (k === 'addnpc') { const el = $('#edn-new1'); if (el) el.focus(); }
+  if (k === 'addmusic') { const el = $('#ed-new-m1-t'); if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); } }
   if (k === 'matching') setHelp(true);
-  if (k.startsWith('export')) openCbx();
+  if (k.startsWith('export') || k === 'campaignexport') openCbx();
 }
 $$('#screens button').forEach(b => b.onclick = () => screen(b.dataset.sc));
 $('#legendX').onclick = () => { const l = $('#legend'); l.classList.toggle('min'); document.body.classList.toggle('lmin', l.classList.contains('min')); $('#legendX').textContent = l.classList.contains('min') ? '+' : '–'; };
@@ -1036,8 +1154,8 @@ $('#helpX').onclick = () => setHelp(false);
 function copyText(key) {
   if (key === 'ask') return $('#askText').textContent;
   if (key.startsWith('p:')) return find(key.slice(2)).p;
-  const [id, , part] = key.split('.'), s = sceneOf(id);
-  return { t: s.mus.title, s: s.mus.style, l: s.mus.lyrics }[part];
+  const [id, , part] = key.split('.'), h = musOf(id);
+  return { t: h.title, s: h.style, l: h.lyrics }[part];
 }
 function flash(btn) {
   const sp = btn.querySelector('span'), old = sp.textContent;
@@ -1096,13 +1214,20 @@ function focusEdit(pid) {
   const el = $(`#edn-${pid}`) && !find(pid)?.name ? $(`#edn-${pid}`) : $(`#ed-${pid}`);
   if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
 }
-function dropFresh() { S.prompts = S.prompts.filter(p => !p.fresh); }
+function dropFresh() { S.prompts = S.prompts.filter(p => !p.fresh); S.music = S.music.filter(m => !m.fresh); }
 function addPrompt(where) {
   dropFresh();
   const [c, scene] = where.split(':'), pid = 'new' + (++seq);
   const p = { pid, cat: c, p: '', files: [], chosen: null, by: 'you', when: 'just now', fresh: true, art: ['X1', 'X2', 'S6', 'N4'][seq % 4] };
   if (c === 'scene') p.scene = scene; else p.name = '';
   S.prompts.push(p); S.editing = pid; render(); focusEdit(pid);
+}
+function addMusic() {
+  dropFresh();
+  const mid = 'new-m' + (++seq);
+  S.music.push({ mid, title: null, style: '', lyrics: '', tracks: [], chosen: null, by: 'you', when: 'just now', fresh: true });
+  S.editing = mid + '.mus'; render();
+  const el = $(`#ed-${mid}-t`); if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
 }
 
 /* Board clicks */
@@ -1121,7 +1246,7 @@ document.addEventListener('click', e => {
   const op = t.closest('[data-open]');
   if (op) { const [pid, i] = op.dataset.open.split(':'); openLb(pid, +i); return; }
   const ct = t.closest('[data-choose-t]');
-  if (ct) { const [id, i] = ct.dataset.chooseT.split(':'); const h = sceneOf(id).mus; h.chosen = h.chosen === +i ? null : +i; render(); return; }
+  if (ct) { const [id, i] = ct.dataset.chooseT.split(':'); const h = musOf(id); h.chosen = h.chosen === +i ? null : +i; render(); return; }
   const pl = t.closest('[data-play]');
   if (pl) {
     const r = pl.closest('.trk-r'), on = !r.classList.contains('playing');
@@ -1133,6 +1258,7 @@ document.addEventListener('click', e => {
   if (f) { filter = f.dataset.filter; render(); return; }
   const ad = t.closest('[data-add]');
   if (ad) { addPrompt(ad.dataset.add); return; }
+  if (t.closest('[data-addm]')) { addMusic(); return; }
   const ed = t.closest('[data-edit], [data-write]');
   if (ed) {
     dropFresh(); S.editing = ed.dataset.edit || ed.dataset.write; render();
@@ -1144,14 +1270,16 @@ document.addEventListener('click', e => {
   if (sv) {
     const key = sv.dataset.save;
     if (key.endsWith('.mus')) {
-      const id = key.split('.')[0], s = sceneOf(id);
-      s.mus.title = $(`#ed-${id}-t`).value.trim() || null; s.mus.style = $(`#ed-${id}-s`).value.trim(); s.mus.lyrics = $(`#ed-${id}-l`).value; s.mus.by = 'you'; s.mus.when = 'just now';
-      S.editing = null; render(); toast('Saved. The old text is in History.'); return;
+      const id = key.split('.')[0], h = musOf(id), title = $(`#ed-${id}-t`).value.trim();
+      if (!sceneOf(id) && !title) { toast('Write the title first: it is how its tracks find it.'); $(`#ed-${id}-t`).focus(); return; }
+      h.title = title || null; h.style = $(`#ed-${id}-s`).value.trim(); h.lyrics = $(`#ed-${id}-l`).value; h.by = 'you'; h.when = 'just now';
+      const wasNew = h.fresh; delete h.fresh;
+      S.editing = null; render(); toast(wasNew ? `Added General · ${title}. Copy it into Suno.` : 'Saved. The old text is in History.'); return;
     }
     const p = find(key), text = $(`#ed-${key}`).value.trim(), nameEl = $(`#edn-${key}`);
     if (!text) { toast('Write the prompt first: its first words are how its images find it.'); $(`#ed-${key}`).focus(); return; }
     p.p = text; p.by = 'you'; p.when = 'just now';
-    if (nameEl) p.name = nameEl.value.trim() || 'New ' + CAT[p.cat].one;
+    if (nameEl) p.name = nameEl.value.trim() || newName(p.cat);
     const wasNew = p.fresh; delete p.fresh;
     S.editing = null; render(); toast(wasNew ? `Added ${label(p)}. Copy it into Midjourney.` : 'Saved. The old text is in History.'); return;
   }
@@ -1161,6 +1289,15 @@ document.addEventListener('click', e => {
     ask('Remove this image prompt?', `${label(p, true)} leaves the board.`, n ? `Its ${n} ${n === 1 ? 'image moves' : 'images move'} to Unmatched, where you can assign ${n === 1 ? 'it' : 'them'} to another prompt.` : 'It has no images yet.', () => {
       p.files.forEach(f => S.unmatched.push({ k: 'img', n: f.n, art: f.art, i: f.i, why: 'Its prompt was removed.' }));
       S.prompts = S.prompts.filter(x => x !== p); render(); toast(n ? `Prompt removed. ${n} ${n === 1 ? 'image' : 'images'} in Unmatched.` : 'Prompt removed.');
+    });
+    return;
+  }
+  const rmm = t.closest('[data-rmm]');
+  if (rmm) {
+    const m = genMus(rmm.dataset.rmm), n = m.tracks.length;
+    ask('Remove this music prompt?', `${musLabel(m.mid)} leaves the board.`, n ? `Its ${n} ${n === 1 ? 'track moves' : 'tracks move'} to Unmatched, where you can assign ${n === 1 ? 'it' : 'them'} to a scene or another music prompt.` : 'It has no tracks yet.', () => {
+      m.tracks.forEach(tr => S.unmatched.push({ k: 'mus', n: tr.n, d: tr.d || '?:??', why: 'Its prompt was removed.' }));
+      S.music = S.music.filter(x => x !== m); render(); toast(n ? `Music prompt removed. ${n} ${n === 1 ? 'track' : 'tracks'} in Unmatched.` : 'Music prompt removed.');
     });
     return;
   }
@@ -1178,7 +1315,7 @@ document.addEventListener('change', e => {
   const a = e.target.closest('[data-assign]'); if (!a || !a.value) return;
   const f = S.unmatched.splice(+a.dataset.assign, 1)[0];
   if (f.k === 'img') { const p = find(a.value); p.files.push({ n: f.n, art: f.art, i: f.i, new: true }); render(); toast(`Assigned to ${CAT[p.cat].tab} · ${optLabel(p)}.`); }
-  else { const s = sceneOf(a.value); s.mus.tracks.push({ n: f.n, d: f.d, new: true }); render(); toast(`Assigned to ${s.id} · ${s.t}.`); }
+  else { musOf(a.value).tracks.push({ n: f.n, d: f.d, new: true }); render(); toast(`Assigned to ${musLabel(a.value)}.`); }
 });
 $('#addAppendix').onclick = () => { screen('noprompts'); S.emptyAppendix = true; render(); toast('Appendix added with 6 scenes. Fill in visual: and mood:, or ask Claude.'); };
 $('#addFiles').onclick = () => $('#fileIn').click();
@@ -1187,9 +1324,9 @@ $('#fileIn').onchange = () => screen('afterdrop');
 /* Export for CueBard: what goes in the pack, from the board as it is now.
    Per prompt the chosen image, or every matched image when none is chosen; per scene the same for tracks.
    A track with an unknown length is left out (CueBard needs it). The Unmatched tray stays out. */
-const PACK = "L'Ancora di Sabaoth.cbpack";
+const pack = () => S.campaign ? 'Kulthos.cbpack' : "L'Ancora di Sabaoth.cbpack";
 function cbPlan() {
-  const warn = [], folders = { scene: 0, pc: 0, npc: 0, handout: 0 };
+  const warn = [], folders = { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 };
   const take = (list, ch) => ch != null ? [list[ch]] : list;
   const live = S.prompts.filter(p => !p.fresh);
   let tracks = 0;
@@ -1201,28 +1338,40 @@ function cbPlan() {
     if (!ok.length) warn.push(`<b>${esc(name)}</b> has no track: its cue group is empty.`);
     tracks += ok.length;
   });
+  /* General music: one cue group «General» after the scenes, left out when it exports no track */
+  let gen = 0;
+  liveMusic().forEach(m => {
+    const all = take(m.tracks, m.chosen), ok = all.filter(t => t.d);
+    all.filter(t => !t.d).forEach(t => warn.push(`General <b>"${esc(m.title)}"</b>: the length of "${esc(t.n)}" is unknown, so it is left out.`));
+    if (!m.tracks.length) warn.push(`General music <b>"${esc(m.title)}"</b> has no track.`);
+    gen += ok.length;
+  });
+  tracks += gen;
   live.forEach(p => {
     if (p.cat === 'scene' && S.noAppendix) return;
     folders[p.cat] += take(p.files, p.chosen).length;
     if (p.cat !== 'scene' && !p.files.length) warn.push(`${CAT[p.cat].one} <b>"${esc(p.name)}"</b> has no image.`);
   });
   const groups = S.noAppendix ? 0 : S.scenes.length, images = Object.values(folders).reduce((a, b) => a + b, 0);
-  return { groups, tracks, folders, images, warn, empty: !tracks && !images };
+  return { groups, gen, tracks, folders, images, warn, empty: !tracks && !images };
 }
 function openCbx() {
   const x = cbPlan(), sep = '<span class="sep">·</span>', f = x.folders;
-  const lead = '<p>A CueBard project: one cue group per scene, with its tracks, and the images in four visual folders.</p>';
+  const lead = S.campaign ? '<p>A CueBard project: one cue group General with the campaign\'s music, and the images in four visual folders.</p>'
+    : '<p>A CueBard project: one cue group per scene, with its tracks, then one group General for the music of the whole adventure, and the images in five visual folders.</p>';
   const where = S.local
     ? `<p class="xnote dev">${IC.dev}Built on this device, works offline.</p>`
-    : `<p class="xnote">${IC.drop}Your browser downloads <code>${esc(PACK)}</code></p>`;
+    : `<p class="xnote">${IC.drop}Your browser downloads <code>${esc(pack())}</code></p>`;
+  const grp = (S.campaign ? '' : `<b>${x.groups}</b> scenes${sep}`) + (x.gen ? `General` : '<span class="hint">no General group</span>') + `${sep}<b>${x.tracks}</b> ${x.tracks === 1 ? 'track' : 'tracks'}`;
+  const fold = (S.campaign ? '' : `Scenes <b>${f.scene}</b>${sep}`) + `General <b>${f.general}</b>${sep}PCs <b>${f.pc}</b>${sep}NPCs <b>${f.npc}</b>${sep}Handouts <b>${f.handout}</b>`;
   $('#cbxBody').innerHTML = x.empty
     ? `${lead}<div class="xnone">Nothing to export yet: add files to the board first.</div>`
     : `${lead}
       <dl class="xsum">
-        <dt>Cue groups</dt><dd><b>${x.groups}</b> scenes${sep}<b>${x.tracks}</b> ${x.tracks === 1 ? 'track' : 'tracks'}</dd>
-        <dt>Visual folders</dt><dd>Scenes <b>${f.scene}</b>${sep}PCs <b>${f.pc}</b>${sep}NPCs <b>${f.npc}</b>${sep}Handouts <b>${f.handout}</b> <span class="hint">images</span></dd>
+        <dt>Cue groups</dt><dd>${grp}</dd>
+        <dt>Visual folders</dt><dd>${fold} <span class="hint">images</span></dd>
       </dl>
-      <p class="m">Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. The Unmatched tray stays out.</p>
+      <p class="m">Each prompt and scene gives its chosen file, or every matched file when nothing is chosen. General images are not linked to a track. The Unmatched tray stays out.</p>
       ${x.warn.length ? `<div class="xwarn"><h4>${IC.warn}${x.warn.length} ${x.warn.length === 1 ? 'warning' : 'warnings'}</h4><ul>${x.warn.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}
       ${where}`;
   $('#cbxOk').disabled = x.empty;
@@ -1233,7 +1382,7 @@ function closeCbx() { $('#cbx').hidden = true; }
 $('#cbBtn').onclick = openCbx;
 $$('#cbx [data-cbx-cancel]').forEach(b => b.onclick = closeCbx);
 $('#cbx').onclick = e => { if (e.target.id === 'cbx') closeCbx(); };
-$('#cbxOk').onclick = () => { closeCbx(); toast(S.local ? `Saved ${PACK}.` : `Downloading ${PACK}.`); };
+$('#cbxOk').onclick = () => { closeCbx(); toast(S.local ? `Saved ${pack()}.` : `Downloading ${pack()}.`); };
 
 /* Real drag and drop on the page */
 let dragDepth = 0;

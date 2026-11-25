@@ -3,6 +3,8 @@ import * as Y from 'yjs';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
+  chooseGeneralTrack,
   chooseImage,
   chooseTrack,
   cuebardFileName,
@@ -83,7 +85,7 @@ const track = (n: number, name: string, sceneId: string | null, duration: number
 });
 
 const scenePrompt = (doc: Y.Doc, sceneId: string) => addImagePrompt(doc, { category: 'scene', sceneId, prompt: 'p' }, 'claude', AT).id;
-const named = (doc: Y.Doc, category: 'pc' | 'npc' | 'handout', name: string) =>
+const named = (doc: Y.Doc, category: 'general' | 'pc' | 'npc' | 'handout', name: string) =>
   addImagePrompt(doc, { category, name, prompt: 'p' }, 'claude', AT).id;
 
 // D19's board: S1 with two image prompts (a chosen image of four; three and
@@ -232,8 +234,9 @@ describe('cuebardPack', () => {
     expect(pack.entries[0]).toEqual({ path: 'media/dominus 1.mp3', sha256: hash(8), fileId: id('dominus 1.mp3'), kind: 'audio', size: 4008 });
     expect(pack.summary).toEqual({
       groups: 3,
+      general: false,
       tracks: 3,
-      images: { scene: 5, pc: 2, npc: 0, handout: 1 },
+      images: { scene: 5, general: 0, pc: 2, npc: 0, handout: 1 },
       bytes: 4008 + 4009 + 4011 + 1002 + 1005 + 1006 + 1007 + 1012 + 1013 + 1014 + 1015,
       empty: false,
       warnings: [
@@ -531,5 +534,186 @@ describe('cuebardFileName', () => {
     expect(cuebardFileName('è'.repeat(150))).toBe(`${'è'.repeat(75)}.cbpack`);
     expect(cuebardFileName('AUX')).toBe('_AUX.cbpack');
     expect(cuebardFileName("L'Ancora di Sabaoth")).toBe("L'Ancora di Sabaoth.cbpack");
+  });
+});
+
+// General images and music (general-board-items design decision 7).
+describe('General in the pack', () => {
+  const general = (n: number, name: string, musicId: string, duration: number | null = 200): NewFile => ({
+    ...track(n, name, null, duration),
+    musicId,
+    matchedBy: 'title',
+  });
+
+  // The board of the spec: «Tema di Sabaoth» with two tracks, the second
+  // chosen; «Tra le macerie» with one; «La scossa» with none; a General
+  // image prompt with its chosen image of two, and one with no image.
+  function withGeneral() {
+    const { doc, id } = board();
+    const theme = addMusicPrompt(doc, { title: 'Tema di Sabaoth', style: 's', lyrics: '' }, 'claude', AT).id;
+    const ruins = addMusicPrompt(doc, { title: 'Tra le macerie', style: 's', lyrics: '' }, 'claude', AT).id;
+    const quake = addMusicPrompt(doc, { title: 'La scossa', style: 's', lyrics: '' }, 'claude', AT).id;
+    const city = named(doc, 'general', 'Messina dopo il terremoto');
+    named(doc, 'general', 'Copertina');
+    add(doc, [
+      general(30, 'tema 1.mp3', theme),
+      general(31, 'tema 2.mp3', theme),
+      general(32, 'macerie.mp3', ruins),
+      image(33, 'messina a.png', city),
+      image(34, 'messina b.png', city),
+    ]);
+    const files = new Map(readFiles(doc).map((f) => [f.name, f.id]));
+    chooseGeneralTrack(doc, theme, files.get('tema 2.mp3')!);
+    chooseImage(doc, city, files.get('messina b.png')!);
+    return { doc, id: (name: string) => files.get(name) ?? id(name), theme, ruins, quake };
+  }
+
+  it('adds the group General after the scenes, the chosen track first, every track of a prompt with none chosen', () => {
+    const { doc, id } = withGeneral();
+    const { pack, project: file } = parse(doc);
+    expect(file.items.map((g: { displayName: string }) => g.displayName)).toEqual([
+      'S1. La casa che cede',
+      'S2. Il molo',
+      'S3. La torre',
+      'General',
+    ]);
+    const group = file.items[3];
+    expect(group).toMatchObject({
+      uuid: cuebardUuid(ID, 'group', 'general'),
+      index: [3],
+      type: 'group',
+      isExpanded: true,
+      startBehavior: { action: 'play-first' },
+      endBehavior: { action: 'nothing' },
+    });
+    expect(group.children.map((c: { displayName: string; index: number[]; uuid: string }) => [c.displayName, c.index, c.uuid])).toEqual([
+      ['Tema di Sabaoth', [3, 0], cuebardUuid(ID, 'track', id('tema 2.mp3'))],
+      ['Tra le macerie', [3, 1], cuebardUuid(ID, 'track', id('macerie.mp3'))],
+    ]);
+    expect(group.children[0]).toMatchObject({ endBehavior: { action: 'loop' }, volume: 1, inPoint: 0, outPoint: 200, fadeOutDuration: 1 });
+    expect(pack.entries.filter((e) => e.kind === 'audio').map((e) => e.path)).toEqual([
+      'media/dominus 1.mp3',
+      'media/molo.mp3',
+      'media/tema 2.mp3',
+      'media/macerie.mp3',
+    ]);
+    expect(pack.summary).toMatchObject({ groups: 4, general: true, tracks: 4 });
+  });
+
+  it('names a prompt’s later tracks « (2)», « (3)»…', () => {
+    const { doc, theme } = withGeneral();
+    chooseGeneralTrack(doc, theme, null);
+    const { project: file } = parse(doc);
+    expect(file.items[3].children.map((c: { displayName: string }) => c.displayName)).toEqual([
+      'Tema di Sabaoth',
+      'Tema di Sabaoth (2)',
+      'Tra le macerie',
+    ]);
+  });
+
+  it('puts the General images in the folder General after Scenes, with no link', () => {
+    const { doc, id } = withGeneral();
+    const { pack, project: file } = parse(doc);
+    expect(file.visualFolders).toEqual(['Scenes', 'General', 'PCs', 'Handouts']);
+    const visuals = file.visualMedia.filter((v: { folder: string }) => v.folder === 'General');
+    expect(visuals).toEqual([
+      expect.objectContaining({ displayName: 'Messina dopo il terremoto', uuid: cuebardUuid(ID, 'visual', id('messina b.png')) }),
+    ]);
+    expect(visuals[0].linkedCueUuid).toBeUndefined();
+    // After the scenes' visuals, before the PCs'.
+    const folders = file.visualMedia.map((v: { folder: string }) => v.folder);
+    expect(folders.indexOf('General')).toBeGreaterThan(folders.lastIndexOf('Scenes'));
+    expect(folders.indexOf('General')).toBeLessThan(folders.indexOf('PCs'));
+    expect(pack.summary.images).toEqual({ scene: 5, general: 1, pc: 2, npc: 0, handout: 1 });
+  });
+
+  it('warns of General gaps in board order, after the scenes and before the PCs', () => {
+    const { doc, id, quake } = withGeneral();
+    const { pack } = parse(doc);
+    expect(pack.summary.warnings).toEqual([
+      { kind: 'no-duration', sceneId: 'S1', label: 'S1. La casa che cede', fileId: id('dominus 2.mp3'), fileName: 'dominus 2.mp3' },
+      { kind: 'no-track', sceneId: 'S3', label: 'S3. La torre' },
+      { kind: 'no-image', category: 'general', label: 'General "Copertina"', number: null, name: 'Copertina' },
+      { kind: 'no-track', musicId: quake, label: 'La scossa' },
+      { kind: 'no-image', category: 'npc', label: 'NPC "Za\' Nina"', number: null, name: "Za' Nina" },
+    ]);
+  });
+
+  it('leaves out a General track with no length or no bytes, and the group when none is left', () => {
+    const { doc, id, theme, ruins } = withGeneral();
+    const missing = new Set([id('tema 2.mp3')]);
+    const durations = new Map<string, number>();
+    const unread = add(doc, []);
+    expect(unread.added).toEqual([]);
+    // macerie has no length recorded and none read.
+    doc.transact(() => {
+      const item = doc
+        .getArray<Y.Map<unknown>>('files')
+        .toArray()
+        .find((f) => f.get('id') === id('macerie.mp3'))!;
+      item.set('duration', null);
+    });
+    const { pack, project: file } = parse(doc, { missing, durations });
+    expect(file.items.map((g: { displayName: string }) => g.displayName)).not.toContain('General');
+    expect(pack.summary).toMatchObject({ groups: 3, general: false });
+    expect(pack.summary.warnings).toContainEqual({
+      kind: 'missing',
+      fileId: id('tema 2.mp3'),
+      fileName: 'tema 2.mp3',
+      label: 'General "Tema di Sabaoth"',
+    });
+    expect(pack.summary.warnings).toContainEqual({
+      kind: 'no-duration',
+      musicId: ruins,
+      label: 'Tra le macerie',
+      fileId: id('macerie.mp3'),
+      fileName: 'macerie.mp3',
+    });
+    expect(cuebardLeftOut(pack, 'not on this device')).toContain('General "Tra le macerie": macerie.mp3 (length unknown)');
+    expect(cuebardLeftOut(pack, 'not on this device')).toContain('General "Tema di Sabaoth": tema 2.mp3 (not on this device)');
+    // The length read from the file brings it back.
+    const read = parse(doc, { missing, durations: new Map([[id('macerie.mp3'), 61]]) });
+    expect(read.project.items[3].children.map((c: { displayName: string }) => c.displayName)).toEqual(['Tra le macerie']);
+    expect(needsDuration(doc).map((f) => f.name)).toContain('macerie.mp3');
+    expect(theme).toBeTruthy();
+  });
+
+  it('adds no group for General music with no track, and leaves the tracks of a removed prompt in the tray', () => {
+    const doc = project({ document: DOCUMENT });
+    const quake = addMusicPrompt(doc, { title: 'La scossa', style: 's', lyrics: '' }, 'claude', AT).id;
+    add(doc, [track(1, 'stray.mp3', null)]);
+    const { pack, project: file } = parse(doc);
+    expect(file.items).toHaveLength(3);
+    expect(pack.summary.general).toBe(false);
+    expect(pack.summary.warnings).toContainEqual({ kind: 'no-track', musicId: quake, label: 'La scossa' });
+  });
+
+  it('lists the General tracks after the scenes’ and the General images after the scenes’ in cuebardFiles', () => {
+    const { doc } = withGeneral();
+    expect(cuebardFiles(doc).map((f) => f.name)).toEqual([
+      'dominus 1.mp3',
+      'dominus 2.mp3',
+      'molo.mp3',
+      'tema 2.mp3',
+      'macerie.mp3',
+      'p1 b.png',
+      'p2 a.png',
+      'p2 b.png',
+      'p2 c.png',
+      'torre.png',
+      'messina b.png',
+      'rosalia 1.png',
+      'rosalia 2.png',
+      'lettera.png',
+    ]);
+  });
+
+  it('keeps the ids stable and unique with General', () => {
+    const { doc } = withGeneral();
+    const a = parse(doc).pack.projectFile.json;
+    const b = parse(doc).pack.projectFile.json;
+    expect(a).toBe(b);
+    const uuids = [...a.matchAll(/"uuid": "([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(uuids).size).toBe(uuids.length);
   });
 });

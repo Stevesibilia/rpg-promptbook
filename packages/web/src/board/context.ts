@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { BoardRow, FileEntry, GenerationJob, ImageCategory, ImageProvider, ImageShape } from 'promptbook-project';
+import type {
+  BoardRow,
+  FileEntry,
+  GenerationJob,
+  ImageCategory,
+  ImageProvider,
+  ImageShape,
+  MusicCardRow,
+} from 'promptbook-project';
 import type { GenerateBody, SpendingTotal } from '../api.js';
 import type * as Y from 'yjs';
 import { platform } from '../platform/index.js';
@@ -7,9 +15,10 @@ import type { GenerateChoice } from './generate.js';
 import type { Named, ShownPrompt } from './summary.js';
 import type { PendingStart, Refused, StatusState } from './useGeneration.js';
 
-// Where the one new prompt is being written: a scene's stack, or the PCs,
-// NPCs or Handouts grid.
-export type Adding = { category: 'scene'; sceneId: string } | { category: Exclude<ImageCategory, 'scene'> };
+// Where the one new prompt is being written: a scene's stack, the General,
+// PCs, NPCs or Handouts grid, or the General music section.
+export type ImageAdding = { category: 'scene'; sceneId: string } | { category: Exclude<ImageCategory, 'scene'> };
+export type Adding = ImageAdding | { category: 'music' };
 
 export const addingKey = (a: Adding) => (a.category === 'scene' ? `scene:${a.sceneId}` : a.category);
 
@@ -21,6 +30,8 @@ export interface BoardContextValue {
   projectId: string;
   rows: BoardRow[];
   named: Named;
+  // The General music prompts.
+  music: MusicCardRow[];
   shown: ReadonlyMap<string, ShownPrompt>;
   // Every file of the project, the Unmatched tray's included: a reference
   // image left there is named by its file name.
@@ -31,8 +42,10 @@ export interface BoardContextValue {
   player: Player;
   // A file assigned by hand from the tray is marked new.
   mark(fileId: string): void;
-  // The prompts (by id) and music halves (`<sceneId>/music`) with an editor
-  // open, the prompts (`<id>/remove`) and tracks (`<sceneId>/track`) with a
+  // The prompts (by id) and music halves (`<sceneId>/music`, General
+  // `music:<id>/music`) with an editor open, the prompts and General music
+  // prompts (`<id>/remove`, `music:<id>/remove`) and tracks (`<sceneId>/track`,
+  // `music:<id>/track`) with a
   // confirm open, and the prompt (`<id>/generate`) with its Generate panel,
   // kept on the board whatever the filter, so a draft, a question or a panel
   // is never unmounted by a change of state.

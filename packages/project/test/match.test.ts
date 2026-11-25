@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addImagePrompt,
+  addMusicPrompt,
   matchFile,
   matchKey,
   matchTargets,
@@ -31,6 +32,7 @@ const targets: MatchTargets = {
     { sceneId: 'S4', title: 'Città più già' },
     { sceneId: 'S5', title: null },
   ],
+  music: [],
 };
 
 describe('matchKey', () => {
@@ -154,6 +156,7 @@ describe('matchFile', () => {
         { id: 'nina', prompt: 'portrait of an old Sicilian fisherwoman singing, close up --ar 2:3' },
       ],
       scenes: [],
+      music: [],
     };
     expect(matchFile(`steve_portrait_of_an_old_Sicilian_fisherwoman_singing_${JOB}_0.png`, 'image', shared)).toEqual({
       reason: 'Several prompts start with "portrait of an old Sicilian".',
@@ -189,7 +192,33 @@ describe('matchFile', () => {
   it('matches no track whose title two scenes share', () => {
     const shared = { ...targets, scenes: [...targets.scenes, { sceneId: 'S6', title: 'Cinque e Venti!' }] };
     expect(matchFile('cinque e venti (1).mp3', 'audio', shared)).toEqual({
-      reason: 'Several scenes have the track title "cinque e venti".',
+      reason: 'Several music prompts have the track title "cinque e venti".',
+      candidates: [],
+    });
+  });
+
+  it('finds a track by the title of a General music prompt', () => {
+    const general = { ...targets, music: [{ musicId: 'm1', title: 'Tra le macerie' }] };
+    expect(matchFile('tra le macerie.mp3', 'audio', general)).toEqual({ musicId: 'm1', matchedBy: 'title' });
+    expect(matchFile('Tra le Macerie (1).mp3', 'audio', general)).toEqual({ musicId: 'm1', matchedBy: 'title' });
+    expect(matchFile('cinque e venti.mp3', 'audio', general)).toEqual({ sceneId: 'S1', matchedBy: 'title' });
+  });
+
+  it('matches no track whose title a scene and a General music prompt share, or two General ones', () => {
+    const both = { ...targets, music: [{ musicId: 'm1', title: 'Cinque e venti' }] };
+    expect(matchFile('cinque e venti.mp3', 'audio', both)).toEqual({
+      reason: 'Several music prompts have the track title "cinque e venti".',
+      candidates: [],
+    });
+    const two = {
+      ...targets,
+      music: [
+        { musicId: 'm1', title: 'La scossa' },
+        { musicId: 'm2', title: 'la Scossa' },
+      ],
+    };
+    expect(matchFile('la scossa.mp3', 'audio', two)).toEqual({
+      reason: 'Several music prompts have the track title "la scossa".',
       candidates: [],
     });
   });
@@ -245,5 +274,17 @@ visual: ruined office
       reason: 'No prompt starts with "collapsed cathedral facade".',
       candidates: [],
     });
+  });
+
+  it('takes the General image prompts after the scenes and the General music prompts', () => {
+    const doc = project({ document: APPENDIX });
+    const npc = addImagePrompt(doc, { category: 'npc', name: 'N', prompt: 'portrait of an old priest' }, 'claude').id;
+    const cover = addImagePrompt(doc, { category: 'general', name: 'Copertina', prompt: 'a cover' }, 'claude').id;
+    const s1 = addImagePrompt(doc, { category: 'scene', sceneId: 'S1', prompt: 'collapsed library' }, 'claude').id;
+    const theme = addMusicPrompt(doc, { title: 'Tema di Sabaoth', style: '', lyrics: '' }, 'claude');
+    const found = matchTargets(readDocumentBoard(doc));
+    expect(found.prompts.map((p) => p.id)).toEqual([s1, cover, npc]);
+    expect(found.music).toEqual([{ musicId: theme.id, title: 'Tema di Sabaoth' }]);
+    expect(matchFile('tema di sabaoth (1).mp3', 'audio', found)).toEqual({ musicId: theme.id, matchedBy: 'title' });
   });
 });

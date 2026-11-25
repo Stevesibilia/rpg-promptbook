@@ -1,6 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import { templates } from 'promptbook-format';
-import { addFiles, addImagePrompt, chooseImage, readBoard, readFiles, readImagePrompts, type NewFile } from 'promptbook-project';
+import {
+  addFiles,
+  addImagePrompt,
+  addMusicPrompt,
+  chooseGeneralTrack,
+  chooseImage,
+  readBoard,
+  readFiles,
+  readImagePrompts,
+  readMusicPrompts,
+  type NewFile,
+} from 'promptbook-project';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { createUser, type User } from '../../src/accounts/users.js';
@@ -122,7 +133,8 @@ async function storedDoc(id: string): Promise<Y.Doc> {
 }
 
 // Every key the board's writes touch.
-const boardSize = (doc: Y.Doc) => doc.getMap('board').size + doc.getMap('imagePrompts').size;
+const boardSize = (doc: Y.Doc) =>
+  doc.getMap('board').size + doc.getMap('imagePrompts').size + doc.getMap('musicPrompts').size;
 
 const snapshots = (id: string) => db.query('select id from snapshots where project_id = $1', [id]);
 
@@ -130,7 +142,7 @@ describe('the board tools in the list', () => {
   it('lists get_board as a read tool and set_scene_prompts as an idempotent write tool', async () => {
     const s = await setup();
     const tools = await mcpListTools(s.app, s.token);
-    expect(tools).toHaveLength(30);
+    expect(tools).toHaveLength(33);
     expect(tools.find((t) => t.name === 'get_board')!.annotations).toMatchObject({
       readOnlyHint: true,
       idempotentHint: true,
@@ -208,6 +220,7 @@ describe('get_board', () => {
     expect((await s.call('get_board', { projectId: s.id })).value).toEqual({
       appendix: false,
       scenes: [],
+      general: { images: [], music: [] },
       pcs: [],
       npcs: [],
       handouts: [],
@@ -388,7 +401,7 @@ describe('set_scene_prompts', () => {
     expect(outcome.isError).toBe(false);
     expect(outcome.value.warnings).toHaveLength(1);
     expect(outcome.value.warnings[0]).toContain('S3');
-    expect(outcome.value.warnings[0]).toContain('Give each scene its own title');
+    expect(outcome.value.warnings[0]).toContain('Give each scene and each General music prompt its own title');
     expect(readBoard(await storedDoc(s.id)).get('S2')!.music!.title).toBe('ordini del re!');
     const board = (await s.call('get_board', { projectId: s.id })).value;
     // As the first of the rows writes it.
@@ -715,5 +728,206 @@ describe('remove_image_prompt', () => {
       expect((await s.call(name, { projectId: s.id, ...args })).error, name).toMatchObject({ code: 'rate_limited' });
     }
     expect(readImagePrompts(await storedDoc(s.id))).toMatchObject([{ id: added.id, prompt: 'prompt 119' }]);
+  });
+});
+
+// General images and music (general-board-items design decision 6).
+
+const THEME = {
+  title: 'Tema di Sabaoth',
+  style: 'dark orchestral, slow, low choir, tolling bells, solemn',
+  lyrics: '[Intro: bells]\n[Instrumental]\n[Outro: fade out]\n[End]',
+};
+const generalTrack = (n: number, musicId: string, overrides: Partial<NewFile> = {}): NewFile =>
+  file(n, {
+    name: `tema di sabaoth (${n}).mp3`,
+    kind: 'audio',
+    mime: 'audio/mpeg',
+    thumbSha256: null,
+    width: null,
+    height: null,
+    duration: 180,
+    musicId,
+    matchedBy: 'title',
+    addedAt: `2026-11-24T09:00:0${n}.000Z`,
+    ...overrides,
+  });
+
+describe('the General music tools', () => {
+  it('are listed with their hints, rules and the instructions naming them', async () => {
+    const s = await setup();
+    const tools = await mcpListTools(s.app, s.token);
+    const hints = (name: string) => {
+      const a = tools.find((t) => t.name === name)!.annotations!;
+      return [a.readOnlyHint, a.idempotentHint, a.destructiveHint, a.openWorldHint];
+    };
+    expect(hints('add_music_prompt')).toEqual([false, false, false, false]);
+    expect(hints('update_music_prompt')).toEqual([false, true, false, false]);
+    expect(hints('remove_music_prompt')).toEqual([false, true, true, false]);
+    for (const name of ['set_scene_prompts', 'add_music_prompt', 'update_music_prompt']) {
+      const description = tools.find((t) => t.name === name)!.description!;
+      for (const part of ['[End]', 'unique in the project', 'English', '4 to 7 descriptors', 'instrumental']) {
+        expect(description, name).toContain(part);
+      }
+    }
+    expect(tools.find((t) => t.name === 'remove_music_prompt')!.description).toContain('no file is deleted');
+    const add = tools.find((t) => t.name === 'add_image_prompt')!.description!;
+    expect(add).toContain('General');
+    expect(add).toContain('for a cover');
+    expect(tools.find((t) => t.name === 'get_board')!.description).toContain('five categories');
+  });
+
+  it('adds a General music prompt as Claude, dated now, and get_board reads it back', async () => {
+    const s = await setup();
+    const before = Date.now();
+    const outcome = await s.call('add_music_prompt', { projectId: s.id, ...THEME });
+    expect(outcome.isError).toBe(false);
+    const { music, warnings } = outcome.value;
+    expect(warnings).toEqual([]);
+    expect(music).toMatchObject({ ...THEME, by: 'claude', status: 'wanted', tracks: 0, chosen: null });
+    expect(Date.parse(music.at)).toBeGreaterThanOrEqual(before - 1000);
+    const stored = readMusicPrompts(await storedDoc(s.id));
+    expect(stored).toEqual([{ id: music.id, ...THEME, by: 'claude', at: music.at, order: 1, chosenTrack: null }]);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.general).toEqual({ images: [], music: [music] });
+    expect(await snapshots(s.id)).toEqual([]);
+  });
+
+  it('reads a General music prompt’s tracks and chosen track', async () => {
+    const s = await setup();
+    const id = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+      const m = addMusicPrompt(doc, THEME, 'user');
+      const { added } = addFiles(doc, [generalTrack(1, m.id), generalTrack(2, m.id)]);
+      chooseGeneralTrack(doc, m.id, added[1]!.id);
+      return m.id;
+    });
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.general.music).toEqual([
+      expect.objectContaining({ id, title: THEME.title, by: 'user', status: 'chosen', tracks: 2, chosen: 'tema di sabaoth (2).mp3' }),
+    ]);
+    expect(board.unmatched).toBe(0);
+    expect(board.scenes.every((r: { music: { tracks: number } }) => r.music.tracks === 0)).toBe(true);
+  });
+
+  it('warns, and writes, when a scene or another General prompt has the title', async () => {
+    const s = await setup();
+    await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S3', music: { ...MUSIC, title: 'Ordini del Re' } });
+    const outcome = await s.call('add_music_prompt', { projectId: s.id, ...THEME, title: 'ordini del re!' });
+    expect(outcome.isError).toBe(false);
+    expect(outcome.value.warnings).toHaveLength(1);
+    expect(outcome.value.warnings[0]).toContain('S3 already has the track title «ordini del re!»');
+    const second = await s.call('add_music_prompt', { projectId: s.id, ...THEME, title: 'Ordini del re' });
+    expect(second.value.warnings[0]).toContain('S3, General «ordini del re!» already have the track title');
+    // And the scene is told of the General prompts.
+    const scene = await s.call('set_scene_prompts', { projectId: s.id, sceneId: 'S3', music: { ...MUSIC, title: 'Ordini del Re' } });
+    expect(scene.value.warnings[0]).toContain('General «ordini del re!», General «Ordini del re»');
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.duplicateTitles).toEqual(['Ordini del Re']);
+    expect(board.general.music).toHaveLength(2);
+  });
+
+  it('updates the parts it is given, refusing an empty title, no part and an unknown id', async () => {
+    const s = await setup();
+    const { id } = (await s.call('add_music_prompt', { projectId: s.id, ...THEME })).value.music;
+    const outcome = await s.call('update_music_prompt', { projectId: s.id, musicId: id, style: 'solo cello, slow, sparse, cold' });
+    expect(outcome.isError).toBe(false);
+    expect(outcome.value.music).toMatchObject({ title: THEME.title, style: 'solo cello, slow, sparse, cold', lyrics: THEME.lyrics });
+    // Refused by the input schema, then by the tool.
+    expect((await s.call('update_music_prompt', { projectId: s.id, musicId: id, title: '  ' })).isError).toBe(true);
+    expect((await s.call('update_music_prompt', { projectId: s.id, musicId: id, title: 'a\nb' })).isError).toBe(true);
+    expect((await s.call('update_music_prompt', { projectId: s.id, musicId: id })).error?.code).toBe('invalid_input');
+    const unknown = await s.call('update_music_prompt', { projectId: s.id, musicId: 'nope', style: 'x' });
+    expect(unknown.error).toMatchObject({ code: 'unknown_music', field: 'musicId' });
+    expect(readMusicPrompts(await storedDoc(s.id))[0]).toMatchObject({ title: THEME.title, style: 'solo cello, slow, sparse, cold' });
+  });
+
+  it('removes a prompt: its tracks wait in Unmatched, no file is deleted', async () => {
+    const s = await setup();
+    const id = await withLiveDocument(s.app.sync, s.id, s.user.id, (doc) => {
+      const m = addMusicPrompt(doc, THEME, 'claude');
+      addFiles(doc, [generalTrack(1, m.id), generalTrack(2, m.id)]);
+      return m.id;
+    });
+    const outcome = await s.call('remove_music_prompt', { projectId: s.id, musicId: id });
+    expect(outcome.isError).toBe(false);
+    expect(outcome.value).toEqual({ removed: id, tracksToUnmatched: 2 });
+    const doc = await storedDoc(s.id);
+    expect(readMusicPrompts(doc)).toEqual([]);
+    expect(readFiles(doc)).toHaveLength(2);
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.unmatched).toBe(2);
+    expect(board.general.music).toEqual([]);
+    expect((await s.call('remove_music_prompt', { projectId: s.id, musicId: id })).error?.code).toBe('unknown_music');
+  });
+
+  it('refuses a campaign', async () => {
+    const campaign = await setup({ category: 'campaign' });
+    for (const [name, args] of [
+      ['add_music_prompt', THEME],
+      ['update_music_prompt', { musicId: 'x', style: 'x' }],
+      ['remove_music_prompt', { musicId: 'x' }],
+    ] as const) {
+      expect((await campaign.call(name, { projectId: campaign.id, ...args })).error?.code, name).toBe('no_board');
+    }
+  });
+
+  it('refuses a read grant, and writes nothing', async () => {
+    const read = await setup({ scope: 'read' });
+    const refused = await read.call('add_music_prompt', { projectId: read.id, ...THEME });
+    expect(refused.error).toMatchObject({ code: 'insufficient_scope', scope_required: 'read_write' });
+    expect(boardSize(await storedDoc(read.id))).toBe(0);
+  });
+
+  it('refuses texts over the limits, and writes nothing', async () => {
+    const s = await setup();
+    for (const args of [
+      { ...THEME, title: '' },
+      { ...THEME, title: 'x'.repeat(121) },
+      { ...THEME, style: 'x'.repeat(1001) },
+      { ...THEME, lyrics: 'x'.repeat(3001) },
+    ]) {
+      expect((await s.call('add_music_prompt', { projectId: s.id, ...args })).isError).toBe(true);
+    }
+    expect(boardSize(await storedDoc(s.id))).toBe(0);
+  });
+
+  it('reaches a client that has the project open, without a reload', async () => {
+    const s = await setup();
+    const url = await listen(s.app);
+    const client = connect(url, s.id, { token: s.session });
+    await synced(client);
+    await s.call('add_music_prompt', { projectId: s.id, ...THEME });
+    await waitFor(() => readMusicPrompts(client.doc).length === 1, 'the music prompt');
+    expect(readMusicPrompts(client.doc)[0]).toMatchObject({ title: THEME.title, by: 'claude' });
+  });
+});
+
+describe('General image prompts through the connector', () => {
+  it('adds one with a name and reads it under general.images', async () => {
+    const s = await setup();
+    const outcome = await s.call('add_image_prompt', {
+      projectId: s.id,
+      category: 'general',
+      name: 'Copertina',
+      prompt: 'an old anchor on a stormy sea, engraving, ominous --ar 2:3 --v 8.1',
+    });
+    expect(outcome.isError).toBe(false);
+    expect(outcome.value.prompt).toMatchObject({ category: 'general', name: 'Copertina', number: 1, by: 'claude', status: 'wanted' });
+    const board = (await s.call('get_board', { projectId: s.id })).value;
+    expect(board.general.images).toEqual([outcome.value.prompt]);
+    expect(board.pcs).toEqual([]);
+    expect((await s.call('add_image_prompt', { projectId: s.id, category: 'general', prompt: IMAGE })).error?.code).toBe(
+      'invalid_input',
+    );
+    const renamed = await s.call('update_image_prompt', { projectId: s.id, id: outcome.value.prompt.id, name: 'Copertina II' });
+    expect(renamed.value.prompt.name).toBe('Copertina II');
+    // A General prompt's words count for the warning of the others.
+    const npc = await s.call('add_image_prompt', {
+      projectId: s.id,
+      category: 'npc',
+      name: 'Za',
+      prompt: 'an old anchor on a stormy sea, portrait --ar 2:3',
+    });
+    expect(npc.value.warnings[0]).toContain('General · Copertina II');
   });
 });

@@ -1,25 +1,31 @@
 import { strToU8 } from 'fflate';
 import type { Template } from 'promptbook-format';
 import type * as Y from 'yjs';
-import { readDocumentBoard, type FileEntry, type ImageCategory, type PromptRow } from './board.js';
+import { readDocumentBoard, type FileEntry, type ImageCategory, type MusicCardRow, type PromptRow } from './board.js';
 import { migratedView } from './board-migration.js';
 import { readMeta } from './doc.js';
 import { LIMITS } from './model.js';
 import { sha256Hex } from './sha256.js';
 
-// The CueBard pack (cuebard-export design decisions 4 to 12): the project
-// file CueBard opens at schemaVersion 5 and the list of the media to put
-// beside it, planned from the board alone. The server and the desktop's main
+// The CueBard pack (cuebard-export design decisions 4 to 12, general-board-items
+// design decision 7): the project file CueBard opens at schemaVersion 5 and
+// the list of the media to put beside it, planned from the board alone. The server and the desktop's main
 // process stream the bytes; nothing here reads a file or writes the document.
 
 export const CUEBARD_FOLDERS = {
   scene: 'Scenes',
+  general: 'General',
   pc: 'PCs',
   npc: 'NPCs',
   handout: 'Handouts',
 } as const satisfies Record<ImageCategory, string>;
 
-const CATEGORIES = ['scene', 'pc', 'npc', 'handout'] as const satisfies readonly ImageCategory[];
+const CATEGORIES = ['scene', 'general', 'pc', 'npc', 'handout'] as const satisfies readonly ImageCategory[];
+
+// The uuid key of the cue group «General». No appendix scene id can take it:
+// a scene id is the template's prefix followed by digits (promptbook-format
+// sceneHeading), and this one ends with a letter.
+const GENERAL_GROUP = 'general';
 
 export interface CuebardEntry {
   // In the zip: media/<name> or media/visuals/<uuid>_<name>.
@@ -32,17 +38,22 @@ export interface CuebardEntry {
   size: number;
 }
 
+// A scene's track warnings have the label «S1. Title»; a General music
+// prompt's (general-board-items design decision 7), its bare title.
 export type CuebardWarning =
-  // label «S1. Title».
   | { kind: 'no-track'; sceneId: string; label: string }
+  | { kind: 'no-track'; musicId: string; label: string }
   | { kind: 'no-image'; category: ImageCategory; label: string; number: number | null; name: string | null }
   | { kind: 'no-duration'; sceneId: string; label: string; fileId: string; fileName: string }
+  | { kind: 'no-duration'; musicId: string; label: string; fileId: string; fileName: string }
   // The bytes are not available (D14, D15).
   | { kind: 'missing'; fileId: string; fileName: string; label: string };
 
 export interface CuebardSummary {
-  // Cue groups: the scenes.
+  // Cue groups: the scenes, and the group General when it has a track.
   groups: number;
+  // Whether the group General is in the pack.
+  general: boolean;
   // Tracks in the project file.
   tracks: number;
   // Images per visual folder.
@@ -51,8 +62,9 @@ export interface CuebardSummary {
   bytes: number;
   // Nothing picked, no track and no image: nothing to export.
   empty: boolean;
-  // In board order: the scenes, each its images then its music, then the
-  // PCs, the NPCs and the handouts.
+  // In board order: the scenes, each its images then its music, then
+  // General, its images then its music, then the PCs, the NPCs and the
+  // handouts.
   warnings: CuebardWarning[];
 }
 
@@ -170,7 +182,7 @@ const sceneLabel = (sceneId: string, title: string) => {
 };
 const promptName = (row: PromptRow) => clip(row.prompt.name?.trim() ?? '', LIMITS.name) || 'Untitled';
 const fileLabel = (file: FileEntry) => clip(file.name, LIMITS.fileName);
-const NAMED_LABEL = { pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
+const NAMED_LABEL = { general: 'General', pc: 'PC', npc: 'NPC', handout: 'Handout' } as const;
 
 // What D1 picks: per prompt its chosen image, else all of them, oldest
 // first; per scene its chosen track, else all of them.
@@ -204,9 +216,17 @@ interface PlannedScene {
   visuals: PlannedVisual[];
 }
 
+interface PlannedMusic {
+  card: MusicCardRow;
+  label: string;
+  tracks: PlannedTrack[];
+}
+
 interface Plan {
   title: string;
   scenes: PlannedScene[];
+  // The group General's uuid and its music prompts, in order.
+  general: { uuid: string; music: PlannedMusic[] };
   named: { category: Exclude<ImageCategory, 'scene'>; prompts: PromptRow[]; visuals: PlannedVisual[] }[];
 }
 
@@ -263,7 +283,23 @@ function plan(doc: Y.Doc, templates: readonly Template[] = []): Plan {
     };
   });
 
-  const named = (['pc', 'npc', 'handout'] as const).map((category) => ({
+  // Per General music prompt, its chosen track or all of them, named after
+  // its title, « (2)», « (3)»… for the later ones.
+  // A campaign has no cue groups (cuebard-export spec) until it gets a board.
+  const cards = meta.category === 'campaign' ? [] : board.music;
+  const music = cards.map((card): PlannedMusic => {
+    const label = clip(card.prompt.title.trim(), LIMITS.trackTitle) || 'Untitled';
+    const tracks = once(picked(card.tracks, card.prompt.chosenTrack)).map((file, i): PlannedTrack => ({
+      file,
+      uuid: cuebardUuid(meta.id, 'track', file.id),
+      name: freeName(withExtension(cuebardSafe(file.name, 'track'), file), trackNames),
+      displayName: i === 0 ? label : `${label} (${i + 1})`,
+    }));
+    return { card, label, tracks };
+  });
+  const general = { uuid: cuebardUuid(meta.id, 'group', GENERAL_GROUP), music };
+
+  const named = (['general', 'pc', 'npc', 'handout'] as const).map((category) => ({
     category,
     prompts: board.named[category],
     visuals: board.named[category].flatMap((prompt) => {
@@ -277,20 +313,24 @@ function plan(doc: Y.Doc, templates: readonly Template[] = []): Plan {
   const uuids = new Set<string>();
   for (const id of [
     ...scenes.flatMap((s) => [s.uuid, ...s.tracks.map((t) => t.uuid), ...s.visuals.map((v) => v.uuid)]),
+    general.uuid,
+    ...general.music.flatMap((m) => m.tracks.map((t) => t.uuid)),
     ...named.flatMap((n) => n.visuals.map((v) => v.uuid)),
   ]) {
     if (uuids.has(id)) throw new Error(`CueBard id ${id} given twice`);
     uuids.add(id);
   }
-  return { title: meta.title, scenes, named };
+  return { title: meta.title, scenes, general, named };
 }
 
-// Every file D1 picks, in project-file order: each scene's tracks, then the
-// images of the scenes, the PCs, the NPCs and the handouts.
+// Every file D1 picks, in project-file order: each scene's tracks, the
+// General music's tracks, then the images of the scenes, General, the PCs,
+// the NPCs and the handouts.
 export function cuebardFiles(doc: Y.Doc, templates: readonly Template[] = []): FileEntry[] {
-  const { scenes, named } = plan(doc, templates);
+  const { scenes, general, named } = plan(doc, templates);
   return [
     ...scenes.flatMap((s) => s.tracks.map((t) => t.file)),
+    ...general.music.flatMap((m) => m.tracks.map((t) => t.file)),
     ...scenes.flatMap((s) => s.visuals.map((v) => v.file)),
     ...named.flatMap((n) => n.visuals.map((v) => v.file)),
   ];
@@ -304,11 +344,11 @@ export const needsDuration = (doc: Y.Doc, templates: readonly Template[] = []): 
   cuebardFiles(doc, templates).filter((f) => f.kind === 'audio' && !hasLength(f.duration));
 
 export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
-  const { title, scenes, named } = plan(doc, opts.templates);
+  const { title, scenes, general, named } = plan(doc, opts.templates);
   const missing = opts.missing ?? new Set<string>();
   const warnings: CuebardWarning[] = [];
   const entries: CuebardEntry[] = [];
-  const images: Record<ImageCategory, number> = { scene: 0, pc: 0, npc: 0, handout: 0 };
+  const images: Record<ImageCategory, number> = { scene: 0, general: 0, pc: 0, npc: 0, handout: 0 };
   const visualMedia: Record<string, unknown>[] = [];
   let tracks = 0;
   let picks = 0;
@@ -336,24 +376,32 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
       });
     });
 
-  const groupsAndVisuals = scenes.map((scene, g) => {
-    const visuals = kept('scene', scene.prompts, scene.visuals, () => scene.label);
-    if (scene.tracks.length === 0) warnings.push({ kind: 'no-track', sceneId: scene.sceneId, label: scene.label });
-    const exported = scene.tracks.flatMap((track) => {
+  // The tracks kept of one scene or General music prompt: a warning for
+  // each missing file and each length unknown.
+  const keptTracks = (
+    planned: PlannedTrack[],
+    owner: { sceneId: string } | { musicId: string },
+    label: string,
+    missingLabel: string,
+  ) =>
+    planned.flatMap((track) => {
       picks++;
       const { file } = track;
       if (missing.has(file.id)) {
-        warnings.push({ kind: 'missing', fileId: file.id, fileName: fileLabel(file), label: scene.label });
+        warnings.push({ kind: 'missing', fileId: file.id, fileName: fileLabel(file), label: missingLabel });
         return [];
       }
       const duration = hasLength(file.duration) ? file.duration : opts.durations?.get(file.id);
       if (!hasLength(duration)) {
-        warnings.push({ kind: 'no-duration', sceneId: scene.sceneId, label: scene.label, fileId: file.id, fileName: fileLabel(file) });
+        warnings.push({ kind: 'no-duration', ...owner, label, fileId: file.id, fileName: fileLabel(file) });
         return [];
       }
       return [{ track, duration }];
     });
-    const children = exported.map(({ track, duration }, c) => {
+
+  // A group's cues, each a looping audio cue at [g, c].
+  const cues = (exported: { track: PlannedTrack; duration: number }[], g: number) =>
+    exported.map(({ track, duration }, c) => {
       entries.push({ path: `media/${track.name}`, sha256: track.file.sha256, fileId: track.file.id, kind: 'audio', size: track.file.size });
       tracks++;
       return {
@@ -379,19 +427,40 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
         crossFade: 0,
       };
     });
-    const group = {
-      uuid: scene.uuid,
-      index: [g],
-      displayName: scene.label,
-      color: '#3300FF',
-      type: 'group',
-      children,
-      isExpanded: true,
-      startBehavior: { action: 'play-first' },
-      endBehavior: { action: 'nothing' },
-    };
-    return { group, visuals, link: children[0]?.uuid };
+
+  const groupOf = (uuid: string, g: number, displayName: string, children: ReturnType<typeof cues>) => ({
+    uuid,
+    index: [g],
+    displayName,
+    color: '#3300FF',
+    type: 'group',
+    children,
+    isExpanded: true,
+    startBehavior: { action: 'play-first' },
+    endBehavior: { action: 'nothing' },
   });
+
+  const groupsAndVisuals = scenes.map((scene, g) => {
+    const visuals = kept('scene', scene.prompts, scene.visuals, () => scene.label);
+    if (scene.tracks.length === 0) warnings.push({ kind: 'no-track', sceneId: scene.sceneId, label: scene.label });
+    const owner = { sceneId: scene.sceneId };
+    const children = cues(keptTracks(scene.tracks, owner, scene.label, scene.label), g);
+    return { group: groupOf(scene.uuid, g, scene.label, children), visuals, link: children[0]?.uuid };
+  });
+
+  // General (D7): its images first, as the board shows them; then one group
+  // after the scenes holding every General music prompt's exported tracks,
+  // left out when it holds none.
+  const generalNamed = named.find((n) => n.category === 'general')!;
+  const namedLabel = (category: Exclude<ImageCategory, 'scene'>) => (row: PromptRow) =>
+    `${NAMED_LABEL[category]} "${promptName(row)}"`;
+  const generalVisuals = kept('general', generalNamed.prompts, generalNamed.visuals, namedLabel('general'));
+  const g = scenes.length;
+  const generalExported = general.music.flatMap((m) => {
+    if (m.tracks.length === 0) warnings.push({ kind: 'no-track', musicId: m.card.prompt.id, label: m.label });
+    return keptTracks(m.tracks, { musicId: m.card.prompt.id }, m.label, `General "${m.label}"`);
+  });
+  const generalGroup = generalExported.length === 0 ? null : groupOf(general.uuid, g, 'General', cues(generalExported, g));
 
   const addVisual = (v: PlannedVisual, link: string | undefined) => {
     entries.push({
@@ -417,8 +486,8 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
   };
   for (const { visuals, link } of groupsAndVisuals) for (const v of visuals) addVisual(v, link);
   for (const { category, prompts, visuals } of named) {
-    const label = (row: PromptRow) => `${NAMED_LABEL[category]} "${promptName(row)}"`;
-    for (const v of kept(category, prompts, visuals, label)) addVisual(v, undefined);
+    const shown = category === 'general' ? generalVisuals : kept(category, prompts, visuals, namedLabel(category));
+    for (const v of shown) addVisual(v, undefined);
   }
 
   const fileName = cuebardFileName(title);
@@ -427,7 +496,7 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
     version: '1.0.0',
     schemaVersion: 5,
     folderPath: '',
-    items: groupsAndVisuals.map((g) => g.group),
+    items: [...groupsAndVisuals.map((s) => s.group), ...(generalGroup ? [generalGroup] : [])],
     cartItems: [],
     cartOnlyItems: [],
     visualMedia,
@@ -442,7 +511,8 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
     projectFile: { path: `${fileName.slice(0, -'.cbpack'.length)}.cuebard`, json: `${JSON.stringify(project, null, 2)}\n` },
     entries,
     summary: {
-      groups: scenes.length,
+      groups: scenes.length + (generalGroup ? 1 : 0),
+      general: generalGroup !== null,
       tracks,
       images,
       bytes: entries.reduce((sum, e) => sum + e.size, 0),
@@ -457,7 +527,7 @@ export function cuebardPack(doc: Y.Doc, opts: CuebardOptions): CuebardPack {
 export function cuebardLeftOut(pack: CuebardPack, missingReason: string): string | null {
   const lines = pack.summary.warnings.flatMap((w) =>
     w.kind === 'no-duration'
-      ? [`${w.label}: ${w.fileName} (length unknown)`]
+      ? [`${'musicId' in w ? `General "${w.label}"` : w.label}: ${w.fileName} (length unknown)`]
       : w.kind === 'missing'
         ? [`${w.label}: ${w.fileName} (${missingReason})`]
         : [],

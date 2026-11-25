@@ -204,6 +204,22 @@ test('Claude connects, writes into open views, refreshes, and stops when revoked
   expect(entry.entry.by).toBe('claude');
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 
+  // A General music prompt reaches an open board without a reload.
+  await page.goto(`/projects/${id}/board?tab=general`);
+  await expect(page.getByRole('heading', { name: 'Nothing general yet' })).toBeVisible();
+  const music = await tool(api, first.access_token, 'add_music_prompt', {
+    projectId: id,
+    title: 'Tema di Sabaoth',
+    style: 'dark orchestral main theme, slow, low strings, distant choir, tolling bell',
+    lyrics: '[Intro: tolling bell]\n[Instrumental]\n[End]',
+  });
+  expect(music.music.id).toBeTruthy();
+  expect(music.warnings).toEqual([]);
+  const card = page.locator('.ent', { has: page.locator('.enm', { hasText: /^Tema di Sabaoth$/ }) });
+  await expect(card.locator('.st')).toHaveText('Wanted');
+  await expect(card.locator('.prov')).toContainText('by Claude');
+  await expect(page.getByRole('tab', { name: /^General/ })).toHaveText('General11 wanted');
+
   // A section edit reaches an open Document view with its banner; Undo puts
   // the text back.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Document' }).click();

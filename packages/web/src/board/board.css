@@ -336,7 +336,7 @@
 /* Category switch: Scenes, PCs, NPCs, Handouts */
 .board .cats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin: 12px 0 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -836,6 +836,42 @@
   color: var(--faint);
   font-size: 13px;
   margin: 6px 0 0;
+}
+
+/* General: named images, then named music prompts, for the whole adventure */
+.board .gsec + .gsec {
+  margin-top: 22px;
+}
+.board .gsh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.board .gsh .lab {
+  font: 600 11px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.board .gsh .lab .ic {
+  width: 15px;
+  height: 15px;
+}
+.board .gsh .hsum {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.board .ents.mus {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+}
+.board .addcard.sm {
+  min-height: 64px;
 }
 .board .emptyst.catempty {
   margin: 24px auto;
@@ -1404,8 +1440,19 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
+  /* The five tabs stay in one row and scroll sideways. */
+  .board .cats {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(max-content, 1fr);
+    overflow-x: auto;
+  }
   .board .cats button {
     padding: 7px 8px 8px;
+  }
+  .board .ents,
+  .board .ents.mus {
+    grid-template-columns: minmax(0, 1fr);
   }
   .board .cats .cl {
     font-size: 16px;

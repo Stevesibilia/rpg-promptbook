@@ -25,6 +25,7 @@ import { CategoryTabs } from './CategoryTabs.js';
 import { useThumbBackfill } from './backfill.js';
 import { BoardContext, held, usePlayer, type Adding, type BoardContextValue } from './context.js';
 import { DropOverlay, useWindowDrop } from './DropOverlay.js';
+import { GeneralSummary, GeneralView } from './GeneralView.js';
 import { doneToast, generatedHereTitle, jobFiles, jobsByPrompt, toastLabel } from './generate.js';
 import { GeneratedHere } from './GeneratePanel.js';
 import { progressLine, resultLine, type IntakeState, type ResultPlace } from './intake.js';
@@ -62,11 +63,12 @@ import './board.css';
 // The images and music board (asset-board design decision 12,
 // image-categories design decision 7): the category tabs; on Scenes one row
 // per scene of the document's appendix with its image prompts and music; on
-// PCs, NPCs and Handouts one card per prompt. Files are dropped anywhere on
+// General its images and music prompts (general-board-items design decision
+// 9); on PCs, NPCs and Handouts one card per prompt. Files are dropped anywhere on
 // the window; the Unmatched tray and the viewer serve every tab.
 export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: ProjectMeta }) {
   const board = useBoard(doc);
-  const { parsed, rows, named, shown, tray } = board;
+  const { parsed, rows, named, music, shown, tray } = board;
   const [intake, intakeState] = useIntake(id);
   const [toast, showToast] = useToast();
   const [params, setParams] = useSearchParams();
@@ -190,6 +192,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
     projectId: id,
     rows,
     named,
+    music,
     shown,
     files: board.files,
     marks: intakeState.marks,
@@ -227,13 +230,15 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
       {parsed && (
         <span>
           {hasRows ? `${rows.length} ${rows.length === 1 ? 'scene' : 'scenes'}` : 'No appendix'} · {prompts}{' '}
-          {prompts === 1 ? 'image prompt' : 'image prompts'}
+          {prompts === 1 ? 'image prompt' : 'image prompts'} · {music.length} general music
         </span>
       )}
     </>
   );
   const noPrompts =
-    ![...shown.values()].some((p) => p.row.prompt.prompt.trim() !== '') && !rows.some((r) => r.music?.title);
+    ![...shown.values()].some((p) => p.row.prompt.prompt.trim() !== '') &&
+    !rows.some((r) => r.music?.title) &&
+    music.length === 0;
   const category = categoryOf[tab];
 
   return (
@@ -243,8 +248,8 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
           <div className="head">
             <h1>Images and music</h1>
             <p className="lead">
-              Image prompts for scenes, PCs, NPCs and handouts; music for each scene. For the table and the CueBard
-              export.
+              Images and music for each scene and for the whole adventure, with PCs, NPCs and handouts. For the table
+              and the CueBard export.
             </p>
             <span className="spacer" />
             {loaded && (
@@ -280,7 +285,7 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                 />
               </span>
             )}
-            {help && loaded && <MatchHelp rows={rows} named={named} shown={shown} onClose={closeHelp} />}
+            {help && loaded && <MatchHelp rows={rows} named={named} music={music} shown={shown} onClose={closeHelp} />}
             {exporting && loaded && (
               <CuebardDialog projectId={id} doc={doc} onClose={() => setExporting(false)} onToast={showToast} />
             )}
@@ -290,9 +295,11 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
             <p className="loading">Reading the appendix…</p>
           ) : (
             <>
-              <CategoryTabs tab={tab} onTab={setTab} rows={rows} named={named} marks={intakeState.marks} />
+              <CategoryTabs tab={tab} onTab={setTab} rows={rows} named={named} music={music} marks={intakeState.marks} />
               {category === 'scene' ? (
                 hasRows && <ScenesSummary rows={rows} filter={filter} setFilter={setFilter} />
+              ) : category === 'general' ? (
+                <GeneralSummary filter={filter} setFilter={setFilter} />
               ) : (
                 <NamedSummary category={category} filter={filter} setFilter={setFilter} />
               )}
@@ -326,11 +333,16 @@ export function BoardView({ id, doc, meta }: { id: string; doc: Y.Doc; meta: Pro
                   <NoAppendix doc={doc} id={id} board={board} onToast={showToast} />
                 )}
               </div>
-              {namedCategories.map((c) => (
-                <div key={c} role="tabpanel" aria-label={categoryText[c].tab} hidden={category !== c}>
-                  <NamedGrid category={c} title={meta.title} filter={filter} setFilter={setFilter} />
-                </div>
-              ))}
+              <div role="tabpanel" aria-label="General" hidden={category !== 'general'}>
+                <GeneralView title={meta.title} filter={filter} setFilter={setFilter} />
+              </div>
+              {namedCategories
+                .filter((c) => c !== 'general')
+                .map((c) => (
+                  <div key={c} role="tabpanel" aria-label={categoryText[c].tab} hidden={category !== c}>
+                    <NamedGrid category={c} title={meta.title} filter={filter} setFilter={setFilter} />
+                  </div>
+                ))}
             </>
           )}
           {drag && <DropOverlay count={drag} />}

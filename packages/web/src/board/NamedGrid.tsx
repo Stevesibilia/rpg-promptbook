@@ -1,5 +1,5 @@
-import type { NamedCategory } from 'promptbook-project';
-import { HandoutIcon, PeopleIcon, PersonIcon, PlusIcon } from '../ui/icons.js';
+import type { NamedCategory, PromptRow } from 'promptbook-project';
+import { GeneralIcon, HandoutIcon, PeopleIcon, PersonIcon, PlusIcon } from '../ui/icons.js';
 import { held, useBoardContext } from './context.js';
 import { GeneratedHere } from './GeneratePanel.js';
 import { PromptBody, RemovePrompt } from './ImagePrompt.js';
@@ -15,7 +15,12 @@ import {
   type Filter,
 } from './summary.js';
 
-const icons: Record<NamedCategory, typeof PersonIcon> = { pc: PersonIcon, npc: PeopleIcon, handout: HandoutIcon };
+export const icons: Record<NamedCategory, typeof PersonIcon> = {
+  general: GeneralIcon,
+  pc: PersonIcon,
+  npc: PeopleIcon,
+  handout: HandoutIcon,
+};
 
 // The summary line of the PCs, NPCs or Handouts tab: «4 PCs · 1 chosen, 1
 // received, 2 wanted», and the filters; none for an empty tab.
@@ -59,7 +64,7 @@ export function NamedGrid({
   filter: Filter;
   setFilter(filter: Filter): void;
 }) {
-  const { doc, named, shown, toast, editing, adding, setAdding } = useBoardContext();
+  const { named, editing, adding, setAdding } = useBoardContext();
   const text = categoryText[category];
   const items = named[category];
   const addingHere = adding?.category === category;
@@ -91,30 +96,11 @@ export function NamedGrid({
   return (
     <>
       <div className="ents">
-        {kept.map((p) => {
-          const prompt = shown.get(p.prompt.id) ?? { row: p, scene: null };
-          return (
-            <article className="card ent" key={p.prompt.id} id={`p-${p.prompt.id}`} data-status={p.status}>
-              <div className="eh">
-                <span className={`enm${p.prompt.name ? '' : ' new'}`}>{p.prompt.name || newName(category)}</span>
-                <StatusChip status={p.status} />
-                <RemovePrompt prompt={prompt} />
-              </div>
-              <div className="eb">
-                <PromptBody prompt={prompt} />
-              </div>
-            </article>
-          );
-        })}
+        {kept.map((p) => (
+          <NamedCard key={p.prompt.id} row={p} />
+        ))}
         {addingHere ? (
-          <article className="card ent">
-            <div className="eh">
-              <span className="enm new">New {text.one}</span>
-            </div>
-            <div className="eb">
-              <AddPromptEditor doc={doc} adding={{ category }} onToast={toast} onDone={() => setAdding(null)} />
-            </div>
-          </article>
+          <AddNamedCard category={category} onDone={() => setAdding(null)} />
         ) : (
           <button className="addcard" onClick={add}>
             <PlusIcon />
@@ -134,5 +120,40 @@ export function NamedGrid({
         {text.tab} belong to the whole adventure, not to a scene.
       </p>
     </>
+  );
+}
+
+// A General image's, a PC's, an NPC's or a handout's card.
+export function NamedCard({ row }: { row: PromptRow }) {
+  const { shown } = useBoardContext();
+  const prompt = shown.get(row.prompt.id) ?? { row, scene: null };
+  const category = row.prompt.category as NamedCategory;
+  return (
+    <article className="card ent" id={`p-${row.prompt.id}`} data-status={row.status}>
+      <div className="eh">
+        <span className={`enm${row.prompt.name ? '' : ' new'}`}>{row.prompt.name || newName(category)}</span>
+        <StatusChip status={row.status} />
+        <RemovePrompt prompt={prompt} />
+      </div>
+      <div className="eb">
+        <PromptBody prompt={prompt} />
+      </div>
+    </article>
+  );
+}
+
+// The card of a new General image, PC, NPC or handout: «New NPC», «New
+// image».
+export function AddNamedCard({ category, onDone }: { category: NamedCategory; onDone(): void }) {
+  const { doc, toast } = useBoardContext();
+  return (
+    <article className="card ent">
+      <div className="eh">
+        <span className="enm new">{newName(category)}</span>
+      </div>
+      <div className="eb">
+        <AddPromptEditor doc={doc} adding={{ category }} onToast={toast} onDone={onDone} />
+      </div>
+    </article>
   );
 }

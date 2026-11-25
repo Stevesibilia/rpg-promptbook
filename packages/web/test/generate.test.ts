@@ -51,6 +51,7 @@ const file = (patch: Partial<FileEntry> = {}): FileEntry => ({
   height: 864,
   duration: null,
   sceneId: null,
+  musicId: null,
   promptId: 'p1',
   matchedBy: 'generated',
   addedAt: '2026-11-11T10:00:30.000Z',

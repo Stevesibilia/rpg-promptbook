@@ -4,14 +4,17 @@ import * as Y from 'yjs';
 import {
   addFiles,
   addImagePrompt,
+  addMusicPrompt,
   assignImage,
   assignTrack,
   boardRows,
   CAPS,
+  chooseGeneralTrack,
   chooseImage,
   chooseTrack,
   duplicateTitles,
   fileHashes,
+  generalMusic,
   LIMITS,
   MAX_REFERENCES,
   namedPrompts,
@@ -19,8 +22,11 @@ import {
   readDocumentBoard,
   readFiles,
   readImagePrompts,
+  readMusicPrompts,
   removeFile,
   removeImagePrompt,
+  removeMusicPrompt,
+  updateMusicPrompt,
   setFileThumb,
   setFirstScenePrompt,
   setMusicPrompt,
@@ -219,7 +225,7 @@ describe('image prompts', () => {
     const doc = project();
     expect(() => addImagePrompt(doc, { category: 'scene', prompt: 'x' }, 'user')).toThrow('sceneId: is required');
     expect(() => addImagePrompt(doc, { category: 'scene', sceneId: 'S1', name: 'n', prompt: 'x' }, 'user')).toThrow(
-      'name: only a pc, npc or handout prompt has one',
+      'name: only a general, pc, npc or handout prompt has one',
     );
     expect(() => addImagePrompt(doc, { category: 'npc', prompt: 'x' }, 'user')).toThrow('name: is required');
     expect(() => addImagePrompt(doc, { category: 'npc', name: '  ', prompt: 'x' }, 'user')).toThrow('name: is required');
@@ -293,7 +299,7 @@ describe('image prompts', () => {
       [a!.id, s.id],
       [b!.id, s.id],
     ].sort());
-    const tray = unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc));
+    const tray = unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc), []);
     expect(tray.map((u) => u.reason)).toEqual(['Its prompt was removed.', 'Its prompt was removed.']);
     expect(() => removeImagePrompt(doc, s.id)).toThrow(`No image prompt ${s.id}`);
   });
@@ -306,7 +312,7 @@ describe('image prompts', () => {
     const files = doc.getArray('files').toJSON();
     expect(removeImagePrompt(doc, 'legacy-S1')).toEqual({ images: 1 });
     expect(doc.getArray('files').toJSON()).toEqual(files);
-    expect(unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc))).toMatchObject([
+    expect(unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc), [])).toMatchObject([
       { file: { id: 'old' }, reason: 'Its prompt was removed.' },
     ]);
     // Removed for good: no writer brings it back.
@@ -566,12 +572,12 @@ describe('files', () => {
     expect(readImagePrompts(doc).find((p) => p.id === s.id)?.chosenFileId).toBeNull();
     assignImage(doc, a!.id, null);
     expect(readFiles(doc).find((f) => f.id === a!.id)).toMatchObject({ promptId: null, matchedBy: null });
-    assignTrack(doc, t!.id, 'S4');
+    assignTrack(doc, t!.id, { sceneId: 'S4' });
     expect(readFiles(doc).find((f) => f.id === t!.id)).toMatchObject({ sceneId: 'S4', matchedBy: 'hand' });
     expect(readBoard(doc).get('S1')?.chosenTrack).toBeNull();
     expect(() => assignImage(doc, 'nope', n.id)).toThrow('No file nope');
     expect(() => assignImage(doc, t!.id, n.id)).toThrow('is not an image');
-    expect(() => assignTrack(doc, a!.id, 'S1')).toThrow('is not a track');
+    expect(() => assignTrack(doc, a!.id, { sceneId: 'S1' })).toThrow('is not a track');
     expect(() => assignImage(doc, a!.id, 'gone')).toThrow('No image prompt gone');
   });
 
@@ -689,7 +695,7 @@ describe('rows', () => {
       track(7, n(7)),
     ]);
     removeImagePrompt(doc, gone.id);
-    const tray = unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc)).map(({ file, reason }) => [file.sha256, reason]);
+    const tray = unmatchedFiles(appendix, readImagePrompts(doc), readFiles(doc), []).map(({ file, reason }) => [file.sha256, reason]);
     expect(tray).toEqual([
       [hash(2), null],
       [hash(3), 'Scene S6 is not in the appendix.'],
@@ -1104,5 +1110,334 @@ describe('reference images (reference-images D1 to D3)', () => {
     expect(() => addFiles(doc, [generated(34, p.id, { references: 'a' as unknown as string[] })])).toThrow(/references/);
     // An empty list on a file not generated is the same as none.
     expect(addFiles(doc, [image(35, { references: [] })]).added[0]!.references).toBeNull();
+  });
+});
+
+// General images and music (general-board-items design decisions 1 to 5).
+
+// Files added a second apart, so they read in the order they were added.
+const second = (n: number) => `2026-10-20T09:00:${String(n).padStart(2, '0')}.000Z`;
+const SUNO = { title: 'Tema di Sabaoth', style: 'dark orchestral, choir, slow', lyrics: '[Instrumental]\n[End]' };
+const musicMap = (doc: Y.Doc) => doc.getMap<unknown>('musicPrompts');
+const generalTrack = (n: number, musicId: string, overrides: Partial<NewFile> = {}): NewFile =>
+  track(n, { name: `tema di sabaoth (${n}).mp3`, sceneId: null, musicId, addedAt: second(n), ...overrides });
+const fileMap = (doc: Y.Doc, id: string) =>
+  doc
+    .getArray<Y.Map<unknown>>('files')
+    .toArray()
+    .find((item) => item.get('id') === id)!;
+
+describe('General image prompts', () => {
+  it('are named prompts with no scene, listed with the others', () => {
+    const doc = project({ document: APPENDIX });
+    const cover = addImagePrompt(doc, { category: 'general', name: 'Copertina', prompt: 'a cover --ar 2:3' }, 'claude', AT);
+    const city = addImagePrompt(doc, { category: 'general', name: 'Messina dopo il terremoto', prompt: 'ruins' }, 'user', AT);
+    npc(doc, 'Padre Anselmo', 'portrait');
+    expect(cover).toMatchObject({ category: 'general', sceneId: null, name: 'Copertina', order: 1 });
+    expect(city.order).toBe(2);
+    expect(promptsMap(doc).get(`${cover.id}/def`)).toEqual({ category: 'general', sceneId: null });
+    const board = readDocumentBoard(doc);
+    expect(board.named.general.map((p) => [p.prompt.name, p.number, p.status])).toEqual([
+      ['Copertina', 1, 'wanted'],
+      ['Messina dopo il terremoto', 2, 'wanted'],
+    ]);
+    expect(board.named.npc).toHaveLength(1);
+    expect(Object.keys(namedPrompts(readImagePrompts(doc), []))).toEqual(['general', 'pc', 'npc', 'handout']);
+    const [img] = addFiles(doc, [image(1, { promptId: cover.id, matchedBy: 'prompt' })]).added;
+    chooseImage(doc, cover.id, img!.id);
+    expect(readDocumentBoard(doc).named.general[0]).toMatchObject({ status: 'chosen', chosen: img!.id });
+    expect(readDocumentBoard(doc).unmatched).toEqual([]);
+  });
+
+  it('need a name and take no scene', () => {
+    const doc = project();
+    expect(() => addImagePrompt(doc, { category: 'general', prompt: 'x' }, 'user')).toThrow('name: is required');
+    expect(() => addImagePrompt(doc, { category: 'general', name: 'A', sceneId: 'S1', prompt: 'x' }, 'user')).toThrow(
+      'sceneId: only a scene prompt has one',
+    );
+  });
+});
+
+describe('General music prompts', () => {
+  it('adds prompts in one transaction under flat keys, each appended after the others', () => {
+    const doc = project();
+    let transactions = 0;
+    doc.on('afterTransaction', () => transactions++);
+    const a = addMusicPrompt(doc, SUNO, 'claude', AT);
+    expect(transactions).toBe(1);
+    const b = addMusicPrompt(doc, { title: 'Tra le macerie', style: 'ambient', lyrics: '' }, 'user', LATER);
+    expect(a).toEqual({ id: a.id, ...SUNO, by: 'claude', at: AT, order: 1, chosenTrack: null });
+    expect(b.order).toBe(2);
+    expect([...musicMap(doc).keys()].sort()).toEqual([`${a.id}/music`, `${a.id}/order`, `${b.id}/music`, `${b.id}/order`].sort());
+    expect(musicMap(doc).get(`${a.id}/music`)).toEqual({ ...SUNO, by: 'claude', at: AT });
+    expect(readMusicPrompts(doc).map((m) => m.title)).toEqual(['Tema di Sabaoth', 'Tra le macerie']);
+  });
+
+  it('orders by order then id', () => {
+    const doc = project();
+    musicMap(doc).set('b/music', { ...SUNO, title: 'B' });
+    musicMap(doc).set('b/order', 1);
+    musicMap(doc).set('a/music', { ...SUNO, title: 'A' });
+    musicMap(doc).set('a/order', 1);
+    musicMap(doc).set('c/music', { ...SUNO, title: 'C' });
+    musicMap(doc).set('c/order', 0.5);
+    expect(readMusicPrompts(doc).map((m) => m.id)).toEqual(['c', 'a', 'b']);
+    expect(addMusicPrompt(doc, SUNO, 'user').order).toBe(2);
+  });
+
+  it('checks the title, the limits and the date', () => {
+    const doc = project();
+    expect(() => addMusicPrompt(doc, { ...SUNO, title: '' }, 'user')).toThrow(/title/);
+    expect(() => addMusicPrompt(doc, { ...SUNO, title: '   ' }, 'user')).toThrow('title: is required');
+    expect(() => addMusicPrompt(doc, { ...SUNO, title: 'a\nb' }, 'user')).toThrow('title: must be one line');
+    expect(() => addMusicPrompt(doc, { ...SUNO, title: 'x'.repeat(LIMITS.trackTitle + 1) }, 'user')).toThrow(/title/);
+    expect(() => addMusicPrompt(doc, { ...SUNO, style: 'x'.repeat(LIMITS.style + 1) }, 'user')).toThrow(/style/);
+    expect(() => addMusicPrompt(doc, { ...SUNO, lyrics: 'x'.repeat(LIMITS.lyrics + 1) }, 'user')).toThrow(/lyrics/);
+    expect(() => addMusicPrompt(doc, SUNO, 'user', 'yesterday')).toThrow();
+    expect(musicMap(doc).size).toBe(0);
+  });
+
+  it('updates any of the texts with who and when, refusing an empty title or an unknown id', () => {
+    const doc = project();
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    updateMusicPrompt(doc, m.id, { style: 'solo cello' }, 'user', LATER);
+    expect(readMusicPrompts(doc)[0]).toMatchObject({ title: SUNO.title, style: 'solo cello', lyrics: SUNO.lyrics, by: 'user', at: LATER });
+    updateMusicPrompt(doc, m.id, { title: 'Tema di Sabaoth II', lyrics: '[End]' }, 'claude', LATER);
+    expect(readMusicPrompts(doc)[0]).toMatchObject({ title: 'Tema di Sabaoth II', style: 'solo cello', lyrics: '[End]', by: 'claude' });
+    expect(() => updateMusicPrompt(doc, m.id, {}, 'user')).toThrow('Send title, style, lyrics or several');
+    expect(() => updateMusicPrompt(doc, m.id, { title: '' }, 'user')).toThrow(/title/);
+    expect(() => updateMusicPrompt(doc, 'nope', { style: 'x' }, 'user')).toThrow('No music prompt nope');
+    expect(readMusicPrompts(doc)[0]!.title).toBe('Tema di Sabaoth II');
+  });
+
+  it('removes a prompt: a tombstone stays, its other keys go, its tracks wait in the tray untouched', () => {
+    const doc = project({ document: APPENDIX });
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const keep = addMusicPrompt(doc, { ...SUNO, title: 'Altro' }, 'claude', AT);
+    const { added } = addFiles(doc, [generalTrack(1, m.id), generalTrack(2, m.id)]);
+    chooseGeneralTrack(doc, m.id, added[1]!.id);
+    const files = doc.getArray('files').toJSON();
+    expect(removeMusicPrompt(doc, m.id)).toEqual({ tracks: 2 });
+    expect([...musicMap(doc).keys()].filter((k) => k.startsWith(`${m.id}/`))).toEqual([`${m.id}/removed`]);
+    expect(doc.getArray('files').toJSON()).toEqual(files);
+    expect(readMusicPrompts(doc).map((p) => p.id)).toEqual([keep.id]);
+    expect(readDocumentBoard(doc).unmatched.map((u) => [u.file.id, u.reason])).toEqual([
+      [added[0]!.id, 'Its prompt was removed.'],
+      [added[1]!.id, 'Its prompt was removed.'],
+    ]);
+    expect(() => removeMusicPrompt(doc, m.id)).toThrow(`No music prompt ${m.id}`);
+    expect(() => updateMusicPrompt(doc, m.id, { style: 'x' }, 'user')).toThrow(`No music prompt ${m.id}`);
+    expect(() => chooseGeneralTrack(doc, m.id, null)).toThrow(`No music prompt ${m.id}`);
+    expect(() => assignTrack(doc, added[0]!.id, { musicId: m.id })).toThrow(`No music prompt ${m.id}`);
+  });
+
+  it(`refuses past ${CAPS.musicPrompts} prompts, not counting removed ones, and readers keep the first ${CAPS.musicPrompts}`, () => {
+    const doc = project();
+    let first = '';
+    doc.transact(() => {
+      for (let i = 0; i < CAPS.musicPrompts; i++) {
+        const m = addMusicPrompt(doc, { ...SUNO, title: `T${i}` }, 'claude', AT);
+        if (i === 0) first = m.id;
+      }
+    });
+    expect(() => addMusicPrompt(doc, SUNO, 'claude')).toThrow(`musicPrompts: at most ${CAPS.musicPrompts} items`);
+    removeMusicPrompt(doc, first);
+    expect(addMusicPrompt(doc, SUNO, 'claude').order).toBe(CAPS.musicPrompts + 1);
+    // A newer client may have written more: readers keep the first ones.
+    musicMap(doc).set('zz/music', SUNO);
+    musicMap(doc).set('zz/order', 10_000);
+    expect(readMusicPrompts(doc)).toHaveLength(CAPS.musicPrompts);
+    expect(readMusicPrompts(doc).some((m) => m.id === 'zz')).toBe(false);
+  });
+
+  it('reads hostile values: no title, wrong shapes, orphan keys, a choice of another prompt', () => {
+    const doc = project();
+    const map = musicMap(doc);
+    map.set('a/music', { title: '', style: 's' });
+    map.set('b/music', 'not a record');
+    map.set('c/order', 3);
+    map.set('d/music', { title: 'D', style: 7, lyrics: null, by: 'robot', at: 'now' });
+    map.set('d/order', Number.NaN);
+    map.set('d/other', true);
+    map.set('e/music', { title: 'E' });
+    map.set('e/chosen', 'nope');
+    expect(readMusicPrompts(doc)).toEqual([
+      { id: 'd', title: 'D', style: '', lyrics: '', by: 'user', at: '', order: 0, chosenTrack: null },
+      { id: 'e', title: 'E', style: '', lyrics: '', by: 'user', at: '', order: 0, chosenTrack: null },
+    ]);
+    const { added } = addFiles(doc, [generalTrack(1, 'd')]);
+    map.set('e/chosen', added[0]!.id);
+    expect(readMusicPrompts(doc).find((m) => m.id === 'e')!.chosenTrack).toBeNull();
+  });
+
+  it('converges when two devices edit and remove the same prompt: the removal wins', () => {
+    const web = project();
+    const m = addMusicPrompt(web, SUNO, 'claude', AT);
+    const desktop = replica(web);
+    removeMusicPrompt(web, m.id);
+    updateMusicPrompt(desktop, m.id, { style: 'offline edit' }, 'user', LATER);
+    chooseGeneralTrack(desktop, m.id, null);
+    sync(web, desktop);
+    expect(readMusicPrompts(web)).toEqual([]);
+    expect(readMusicPrompts(desktop)).toEqual([]);
+    expect(musicMap(web).toJSON()).toEqual(musicMap(desktop).toJSON());
+  });
+
+  it('keeps the prompts two devices add at once, and merges edits of different parts', () => {
+    const a = project();
+    const m = addMusicPrompt(a, SUNO, 'claude', AT);
+    const b = replica(a);
+    addMusicPrompt(a, { ...SUNO, title: 'A' }, 'user', AT);
+    addMusicPrompt(b, { ...SUNO, title: 'B' }, 'user', AT);
+    const [t] = addFiles(a, [generalTrack(1, m.id)]).added;
+    sync(a, b);
+    chooseGeneralTrack(a, m.id, t!.id);
+    updateMusicPrompt(b, m.id, { lyrics: '[End]' }, 'user', LATER);
+    sync(a, b);
+    expect(readMusicPrompts(a)).toEqual(readMusicPrompts(b));
+    expect(readMusicPrompts(a).map((p) => p.title).sort()).toEqual(['A', 'B', 'Tema di Sabaoth']);
+    expect(readMusicPrompts(a).find((p) => p.id === m.id)).toMatchObject({ lyrics: '[End]', chosenTrack: t!.id });
+  });
+});
+
+describe('tracks of General music (D3)', () => {
+  it('adds a track to a General music prompt, writing musicId only when set', () => {
+    const doc = project();
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const { added } = addFiles(doc, [generalTrack(1, m.id), track(2, { addedAt: second(2) })]);
+    expect(added.map((f) => [f.sceneId, f.musicId, f.matchedBy])).toEqual([
+      [null, m.id, 'title'],
+      ['S1', null, 'title'],
+    ]);
+    expect(fileMap(doc, added[0]!.id).get('musicId')).toBe(m.id);
+    expect(fileMap(doc, added[1]!.id).has('musicId')).toBe(false);
+    expect(readFiles(doc).map((f) => f.musicId)).toEqual([m.id, null]);
+  });
+
+  it('refuses a track naming a scene and a music prompt, and an image naming a music prompt', () => {
+    const doc = project();
+    expect(() => addFiles(doc, [generalTrack(1, 'm', { sceneId: 'S1' })])).toThrow('not both');
+    expect(() => addFiles(doc, [image(2, { musicId: 'm' })])).toThrow(/musicId/);
+    expect(() => addFiles(doc, [generalTrack(3, 'a/b')])).toThrow(/musicId/);
+    expect(readFiles(doc)).toEqual([]);
+  });
+
+  it('reads a track with both ids as the scene’s: an older client assigned it there', () => {
+    const doc = project({ document: APPENDIX });
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const [t] = addFiles(doc, [generalTrack(1, m.id)]).added;
+    chooseGeneralTrack(doc, m.id, t!.id);
+    // What v0.23's assignTrack writes: sceneId only.
+    fileMap(doc, t!.id).set('sceneId', 'S2');
+    expect(readFiles(doc)[0]).toMatchObject({ sceneId: 'S2', musicId: null });
+    const board = readDocumentBoard(doc);
+    expect(board.rows.find((r) => r.sceneId === 'S2')!.tracks.map((f) => f.id)).toEqual([t!.id]);
+    expect(board.music[0]).toMatchObject({ tracks: [], status: 'wanted', prompt: { chosenTrack: null } });
+    expect(board.unmatched).toEqual([]);
+    // Moving it on clears the stale choice and musicId.
+    assignTrack(doc, t!.id, null);
+    expect(musicMap(doc).get(`${m.id}/chosen`)).toBeNull();
+    expect(fileMap(doc, t!.id).has('musicId')).toBe(false);
+  });
+
+  it('assigns a track between scenes, General music and the tray, unchoosing it in its old owner', () => {
+    const doc = project({ document: APPENDIX });
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const [t] = addFiles(doc, [track(1)]).added;
+    chooseTrack(doc, 'S1', t!.id);
+    let transactions = 0;
+    doc.on('afterTransaction', () => transactions++);
+    assignTrack(doc, t!.id, { musicId: m.id });
+    expect(transactions).toBe(1);
+    expect(readBoard(doc).get('S1')?.chosenTrack).toBeNull();
+    expect(readFiles(doc)[0]).toMatchObject({ sceneId: null, musicId: m.id, matchedBy: 'hand' });
+    expect(fileMap(doc, t!.id).get('sceneId')).toBeNull();
+    chooseGeneralTrack(doc, m.id, t!.id);
+    expect(readMusicPrompts(doc)[0]!.chosenTrack).toBe(t!.id);
+    assignTrack(doc, t!.id, { sceneId: 'S2' }, 'title');
+    expect(musicMap(doc).get(`${m.id}/chosen`)).toBeNull();
+    expect(readFiles(doc)[0]).toMatchObject({ sceneId: 'S2', musicId: null, matchedBy: 'title' });
+    expect(fileMap(doc, t!.id).has('musicId')).toBe(false);
+    assignTrack(doc, t!.id, { musicId: m.id });
+    assignTrack(doc, t!.id, null);
+    expect(readFiles(doc)[0]).toMatchObject({ sceneId: null, musicId: null, matchedBy: null });
+    expect(() => assignTrack(doc, t!.id, { musicId: 'nope' })).toThrow('No music prompt nope');
+    expect(() => assignTrack(doc, t!.id, { musicId: 'a/b' })).toThrow(/musicId/);
+  });
+
+  it('keeps the choice when a track is assigned to the prompt it is in', () => {
+    const doc = project();
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const [t] = addFiles(doc, [generalTrack(1, m.id)]).added;
+    chooseGeneralTrack(doc, m.id, t!.id);
+    assignTrack(doc, t!.id, { musicId: m.id }, 'hand');
+    expect(readMusicPrompts(doc)[0]!.chosenTrack).toBe(t!.id);
+  });
+
+  it('chooses only a track of the prompt, and unchooses a removed file', () => {
+    const doc = project();
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const [own, other] = addFiles(doc, [generalTrack(1, m.id), track(2)]).added;
+    expect(() => chooseGeneralTrack(doc, m.id, other!.id)).toThrow(`No track ${other!.id} in ${m.id}`);
+    expect(() => chooseGeneralTrack(doc, 'nope', null)).toThrow('No music prompt nope');
+    chooseGeneralTrack(doc, m.id, own!.id);
+    expect(() => chooseTrack(doc, 'S1', own!.id)).toThrow(`No track ${own!.id} in S1`);
+    removeFile(doc, own!.id);
+    expect(musicMap(doc).get(`${m.id}/chosen`)).toBeNull();
+    expect(readMusicPrompts(doc)[0]!.chosenTrack).toBeNull();
+  });
+});
+
+describe('General music on the board (D5)', () => {
+  it('derives the cards, their statuses and the titles used twice across scenes and General', () => {
+    const doc = project({ document: APPENDIX });
+    setMusicPrompt(doc, 'S1', { title: 'Cinque e venti', style: 's', lyrics: 'l' }, 'claude', AT);
+    const theme = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const ruins = addMusicPrompt(doc, { ...SUNO, title: 'Tra le macerie' }, 'claude', AT);
+    const twice = addMusicPrompt(doc, { ...SUNO, title: 'cinque e VENTI!' }, 'claude', AT);
+    const { added } = addFiles(doc, [generalTrack(1, theme.id), generalTrack(2, theme.id), generalTrack(3, ruins.id)]);
+    chooseGeneralTrack(doc, theme.id, added[1]!.id);
+    const board = readDocumentBoard(doc);
+    expect(board.music.map((c) => [c.prompt.title, c.tracks.map((f) => f.id), c.status, c.duplicateTitle])).toEqual([
+      ['Tema di Sabaoth', [added[0]!.id, added[1]!.id], 'chosen', false],
+      ['Tra le macerie', [added[2]!.id], 'received', false],
+      ['cinque e VENTI!', [], 'wanted', true],
+    ]);
+    expect(board.music[0]!.prompt.chosenTrack).toBe(added[1]!.id);
+    expect(board.rows.find((r) => r.sceneId === 'S1')!.duplicateTitle).toBe(true);
+    expect(duplicateTitles(board.rows, readMusicPrompts(doc))).toEqual(['Cinque e venti']);
+    expect(duplicateTitles([], [{ title: 'A' }, { title: 'a' }, { title: 'B' }])).toEqual(['A']);
+    expect(board.rows.flatMap((r) => r.tracks)).toEqual([]);
+    expect(board.unmatched).toEqual([]);
+    expect(twice.order).toBe(3);
+  });
+
+  it('builds the cards from prompts and files alone', () => {
+    const doc = project();
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    addFiles(doc, [generalTrack(1, m.id), track(2, { sceneId: null })]);
+    const cards = generalMusic(readMusicPrompts(doc), readFiles(doc));
+    expect(cards.map((c) => [c.tracks.length, c.status, c.duplicateTitle])).toEqual([[1, 'received', false]]);
+  });
+
+  it('puts in the tray a track with no owner and one whose General prompt is gone', () => {
+    const doc = project({ document: APPENDIX });
+    const m = addMusicPrompt(doc, SUNO, 'claude', AT);
+    const { added } = addFiles(doc, [
+      track(1, { sceneId: null, addedAt: second(1) }),
+      generalTrack(2, 'never-there'),
+      generalTrack(3, m.id),
+    ]);
+    expect(readDocumentBoard(doc).unmatched.map((u) => [u.file.id, u.reason])).toEqual([
+      [added[0]!.id, null],
+      [added[1]!.id, 'Its prompt was removed.'],
+    ]);
+    expect(unmatchedFiles(appendix, [], readFiles(doc), [])).toHaveLength(3);
+  });
+
+  it('reads as empty in a document with no General music', () => {
+    const board = readDocumentBoard(project({ document: APPENDIX }));
+    expect(board.music).toEqual([]);
+    expect(board.named.general).toEqual([]);
   });
 });
