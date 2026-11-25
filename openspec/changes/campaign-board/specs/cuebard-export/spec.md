@@ -63,7 +63,7 @@ of the pack computed from the project's document as it is: the number of
 scene cue groups, whether there is a group General, and the number of
 tracks; the number of images per visual folder (Scenes, General, PCs, NPCs,
 Handouts); the rule that each prompt and scene gives its chosen file or
-every matched file, and that General images are not linked to a track; and
+every matched file (on a campaign: each prompt and music prompt), and that General images are not linked to a track; and
 one warning per gap: a scene with no track (its group is empty), a General
 music prompt with no track, an image prompt with no image, a track whose
 length was not recorded (read from the file at export, left out if

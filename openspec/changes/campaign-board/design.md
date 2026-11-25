@@ -1,5 +1,10 @@
 ## Open questions for the owner
 
+**Answered by the owner on 2026-11-25:** Q1 takes the default (no scenes on
+a campaign). Q2 takes the alternative: on a campaign the rule line reads
+«Each prompt and music prompt gives its chosen file, …». The spec deltas
+carry both.
+
 The mockup's campaign screens do not show these; each changes words the
 user reads. The spec deltas carry the recommended default. If the owner
 answers otherwise, the architect amends the delta before brief B reaches
@@ -184,12 +189,12 @@ a campaign reads as General, and the address is replaced. The Scenes panel,
 link to a scene cannot occur (no scene rows), so `goTo` needs no campaign
 branch beyond the default tab.
 
-### D4. Campaign wording (from the mockup; Q1 pending)
+### D4. Campaign wording (from the mockup; Q1 and Q2 answered)
 
 The board reads «campaign» where the adventure reads «adventure», from one
 value `whole: 'adventure' | 'campaign'` in the board context. Strings in
-"Mockup in words". The Q1 strings take the default unless the owner answers
-otherwise. Nothing else on the board changes words: the drop overlay, the
+"Mockup in words". The Q1 strings are the default the owner chose on 2026-11-25.
+The Q2 rule line is «Each prompt and music prompt gives …». Nothing else on the board changes words: the drop overlay, the
 viewer, the editors, the toasts and the tray's reasons name no scene that
 a campaign could show.
 
@@ -411,7 +416,7 @@ Screen 11b, Campaign export (on screen 11's board):
   folders.»
 - «Cue groups» «General · 3 tracks». «Visual folders» «General 1 · PCs 5 ·
   NPCs 9 · Handouts 5 images».
-- «Each prompt and scene gives its chosen file, or every matched file when
+- «Each prompt and music prompt gives its chosen file, or every matched file when
   nothing is chosen. General images are not linked to a track. The
   Unmatched tray stays out.» (Q2)
 - «8 warnings»: «General music "Riposo alla locanda" has no track.»,
@@ -453,14 +458,15 @@ Screen 11c, Campaign, nothing yet:
 - **`no_board` retired.** A client that relied on it (none known; Claude
   reads the descriptions each session) now gets a board.
 - **Older clients** hide the campaign board (D13). No data is lost.
-- **Q1 and Q2** are words only; the defaults ship if the owner does not
-  answer before brief B's group 4.
+- **Q1 and Q2** were answered by the owner on 2026-11-25 (top of this
+  design).
 
 ## Contract for parallel briefs
 
 Brief A (project, server, connector) and brief B (web, e2e, docs) share no
 new type: the model exports nothing new. B builds against D3, D4, D9 and
-D11 and rebases on A's latest pushed commit before e2e. A's group 1 lands
+D11 after A's hand-back, on the same branch, in a fresh session (no rebase:
+the branch is published and force pushes are refused). A's group 1 lands
 first, since B's export dialog lines need D9's summary on a campaign. Any
 change to D6 to D11 goes through the architect.
 

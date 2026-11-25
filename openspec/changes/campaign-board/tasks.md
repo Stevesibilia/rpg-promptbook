@@ -6,13 +6,13 @@ Refs: Stevesibilia/rpg-promptbook#68
 Assisted-by: <agent>/<model-id>
 ```
 
-Brief A is groups 1, 2 and 3; brief B is groups 4 to 7. B may start in its
-own worktree once A has pushed group 1, and rebases on A's latest pushed
-commit before group 5. B never calls control-room `report_tasks`.
+Brief A is groups 1, 2 and 3; brief B is groups 4 to 7. B starts after A's
+hand-back, on the same branch, in a fresh session. No rebase: the branch is
+published and force pushes are refused; bring main in with a merge. B never calls control-room `report_tasks`.
 
 ## 1. Model: CueBard pack and board.md of a campaign (brief A)
 
-- [ ] 1.1 Merge `origin/main` once PR #67 (`reference-images`) has landed; resolve as design D16 says; check "The code today" against the merged code and note corrections
+- [ ] 1.1 If PR #67 (`reference-images`) has landed on main, merge `origin/main` now; if not, build on d6645e9 and merge `origin/main` as soon as the architect says #67 landed (before hand-back of brief A). Resolve as design D16 says; check "The code today" against the merged code and note corrections
 - [ ] 1.2 `packages/project/src/cuebard.ts` (D9): drop the campaign branch at `:288-289`; a campaign's group «General» at index 0; update the header comment
 - [ ] 1.3 `packages/project/src/export.ts` (D10): drop the campaign branch at `:213`; a campaign's `board.md` without `# Scenes`, empty while the board has no item; update the comment at `:175`
 - [ ] 1.4 Tests of D15 in `cuebard.test.ts` (rewrite `:413-424`), `export.test.ts` (rewrite `:486-492`) and `board.test.ts` (a campaign text with an adventure appendix reads no rows)
@@ -49,7 +49,7 @@ Commit: `feat(web): open the images and music board on campaigns`
 
 ## 5. End-to-end tests (brief B)
 
-- [ ] 5.1 Rebase on A's latest pushed commit; build web and desktop (`npm run build -w promptbook-web && npm run build -w promptbook-desktop`)
+- [ ] 5.1 Merge `origin/main` if it moved since brief A; build web and desktop (`npm run build -w promptbook-web && npm run build -w promptbook-desktop`)
 - [ ] 5.2 `e2e/campaign-board.spec.ts` (new, D15): 11c on a new campaign, add by hand, drop files, choose, the 11b dialog lines, the pack's one group «General»; it generates nothing and leaves account-wide settings alone
 - [ ] 5.3 `e2e/connector.spec.ts` (`add_music_prompt` on a campaign, `set_scene_prompts` answering `not_an_adventure`) and `e2e/editor.spec.ts` («campaign not checked»: the rail shows «Images and music»)
 - [ ] 5.4 The whole e2e suite green once normally and once with `E2E_CPU_THROTTLE=3`; check `docker volume ls | grep promptbook-e2e` is empty before each fresh run
