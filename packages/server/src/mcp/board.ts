@@ -46,8 +46,10 @@ import {
   atelierUnavailable,
   labelOf as promptLabel,
   quotaBytesOf,
+  promptStyleOf,
   serverKeyOf,
   startImageGeneration,
+  type PromptStyle,
 } from '../images/start.js';
 import type { ProjectRow } from '../projects.js';
 import { getSettings } from '../routes/settings.js';
@@ -137,7 +139,8 @@ const boardTitles = (board: DocumentBoard) =>
     board.music.map((m) => m.prompt),
   );
 
-const boardOut = (board: DocumentBoard, jobs: Jobs) => ({
+const boardOut = (board: DocumentBoard, jobs: Jobs, style: PromptStyle) => ({
+  imageRules: imageRulesOf(style),
   appendix: board.rows.length > 0,
   scenes: board.rows.map((r) => sceneOut(r, jobs)),
   general: {
@@ -233,10 +236,35 @@ const invalid = (message: string) => new AppError(400, 'invalid_input', message)
 
 const oneLine = z.string().regex(/^[^\r\n]*$/, 'must be one line');
 
-const IMAGE_RULES =
+const MIDJOURNEY_RULES =
   'Midjourney prompts in English, natural description, most important first: subject, setting, lighting, style, mood; concrete words, no quality tokens (8k, masterpiece); one idea per prompt. ' +
   'Scenes: from the scene’s visual: line, end with `--ar 16:9 --v 8.1`. General: images of the whole adventure or campaign, in the image’s own ratio: `--ar 16:9 --v 8.1` for an establishing shot, `--ar 2:3 --v 8.1` for a cover. PCs and NPCs: portraits, end with `--ar 2:3 --v 8.1`. Handouts: the prop in its own ratio, such as a letter `--ar 3:4 --v 8.1` or a map `--ar 4:3 --v 8.1`. ' +
   'Start each image prompt with words no other prompt starts with: the downloads find their prompt by their first words.';
+
+const GENERATOR_RULES =
+  'Image prompts for GPT Image and Nano Banana, which this account generates on the board: in English, two to five full sentences of natural description, not a list of keywords. ' +
+  'Most important first: the subject and what it does, then the setting, the light, the framing, the style and the mood; concrete visual detail, no quality tokens (8k, masterpiece); one idea per prompt. ' +
+  'Text that must appear in the image, such as a sign or a letter’s heading, goes in double quotes with where it sits; keep it short. ' +
+  'Say what to leave out as a sentence («No modern buildings.»), not with --no. ' +
+  'No Midjourney flags (--v, --style, --no and the rest), except the shape at the very end: `--ar 16:9` for scenes and General establishing shots, `--ar 2:3` for PC and NPC portraits and for a cover, and for a handout the prop’s own shape: `--ar 2:3` for a letter, `--ar 3:2` for a map, `--ar 1:1` otherwise. ' +
+  'Only 16:9, 3:2, 1:1 and 2:3 exist. Scenes: from the scene’s visual: line. ' +
+  'To keep a face or a place the same across prompts, describe it the same way each time and pass references to generate_image.';
+
+const IMAGE_RULES_POINTER =
+  'Image prompts in English, most important first, concrete words, no quality tokens (8k, masterpiece), one idea per prompt. The rest of the rules follow the account’s generation setting: read imageRules in get_board first and follow it.';
+
+// The rules for an account's style, as get_board gives them.
+const imageRulesOf = (style: PromptStyle) => ({
+  style,
+  rules: style === 'generator' ? GENERATOR_RULES : MIDJOURNEY_RULES,
+});
+
+// A generating account's prompt with flags other than --ar: Generate leaves
+// them out of what is sent. A warning, never a refusal.
+function flagWarning(prompt: string): string[] {
+  const left = sentPrompt(prompt).flags.replace(/--ar\s+\d+:\d+/g, '').replace(/\s+/g, ' ').trim();
+  return left === '' ? [] : [`Flags other than --ar are left out of what is sent: ${left}. Say it in words instead.`];
+}
 
 // Suno's rules, shared by the scene music and the General music prompts.
 const SUNO_RULES =
@@ -301,6 +329,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
     'The project’s images and music board. Image prompts come in five categories: Scenes (any number per scene of the appendix, with its visual: and mood: lines), General (images of the whole adventure or campaign, under general.images), PCs, NPCs and Handouts (a name and a prompt each). ' +
       'Each image prompt has its id, number, text, who wrote it and when, status (wanted, received, chosen), image count and chosen file; each scene has its Suno music prompt and status; general.music lists the General music prompts (a main theme, combat, ambience), each with its id, title, style, lyrics, who wrote it and when, status, track count and chosen track. ' +
       'outsideAppendix lists scene prompts whose scene has no appendix row: kept, not shown. duplicateTitles lists the music titles used twice, in scenes or General. Read it before writing prompts. ' +
+      'imageRules gives the rules for writing image prompts on this account: for GPT Image and Nano Banana when it generates on the board, for Midjourney otherwise. ' +
       'A campaign has no scenes: scenes is empty. For the style of a campaign’s images and music, read its document.',
     { title: 'Get the board', readOnly: true, idempotent: true },
     { projectId },
@@ -308,13 +337,14 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       const project = await projectOf(args.projectId);
       const extra = await templates();
       const doc = migratedView(await docOf(project));
-      return boardOut(readDocumentBoard(doc, extra), readGenerationJobs(doc));
+      const style = await promptStyleOf(starter.config, starter.db, caller.userId);
+      return boardOut(readDocumentBoard(doc, extra), readGenerationJobs(doc), style);
     },
   );
 
   tool(
     'set_scene_prompts',
-    'Write one scene’s first image prompt, its music prompt, or both. Adventures and one-shots only. Image: one Midjourney prompt in English from the scene’s visual: line, natural description, most important first: subject, setting, lighting, style, mood; concrete words, no quality tokens (8k, masterpiece); one idea per prompt; end with `--ar 16:9 --v 8.1`. It replaces the text of the scene’s prompt 1, creating it when the scene has none; add more shots with add_image_prompt. ' +
+    `Write one scene’s first image prompt, its music prompt, or both. Adventures and one-shots only. Image: one prompt from the scene’s visual: line. ${IMAGE_RULES_POINTER} It replaces the text of the scene’s prompt 1, creating it when the scene has none; add more shots with add_image_prompt. ` +
       `Music: from the mood: line. ${SUNO_RULES} ` +
       'Send image, music or both; the half you leave out is kept. The user can edit any of it by hand.',
     { title: 'Write a scene’s prompts', readOnly: false, idempotent: true },
@@ -335,6 +365,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       const project = await projectOf(args.projectId);
       if (project.category === 'campaign') throw NOT_AN_ADVENTURE();
       const extra = await templates();
+      const style = args.image ? await promptStyleOf(starter.config, starter.db, caller.userId) : 'midjourney';
       return writeBoard(project, (doc: Y.Doc) => {
         const before = readDocumentBoard(doc, extra);
         if (!before.rows.some((r) => r.sceneId === args.sceneId)) throw unknownScene(before, args.sceneId);
@@ -342,7 +373,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         if (args.music) setMusicPrompt(doc, args.sceneId, args.music, 'claude');
         const board = readDocumentBoard(doc, extra);
         const written = board.rows.find((r) => r.sceneId === args.sceneId)!;
-        const warnings = image ? sharedWords(board, image.id) : [];
+        const warnings = image ? (style === 'generator' ? flagWarning(args.image!.prompt) : sharedWords(board, image.id)) : [];
         const shared = args.music ? sharedTitle(board, args.music.title, { sceneId: args.sceneId }) : null;
         if (shared !== null) warnings.push(shared);
         return { scene: sceneOut(written, readGenerationJobs(doc)), warnings };
@@ -353,7 +384,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
   tool(
     'add_image_prompt',
     'Add an image prompt. Scenes (adventures and one-shots only): any number per scene of the appendix, each a different shot. General (images of the whole adventure or campaign: establishing shots, a cover), PCs, NPCs, Handouts: project-wide, a name and a prompt. ' +
-      `${IMAGE_RULES} Read get_board first, so the new prompt does not repeat one that is there.`,
+      `${IMAGE_RULES_POINTER} Read get_board first, so the new prompt does not repeat one that is there.`,
     { title: 'Add an image prompt', readOnly: false, idempotent: false },
     {
       projectId,
@@ -373,6 +404,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
       const project = await projectOf(args.projectId);
       if (args.category === 'scene' && project.category === 'campaign') throw NOT_AN_ADVENTURE();
       const extra = await templates();
+      const style = await promptStyleOf(starter.config, starter.db, caller.userId);
       return writeBoard(project, (doc: Y.Doc) => {
         if (args.category === 'scene') {
           const before = readDocumentBoard(doc, extra);
@@ -388,7 +420,7 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         const board = readDocumentBoard(doc, extra);
         return {
           prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === added.id)!, readGenerationJobs(doc)),
-          warnings: sharedWords(board, added.id),
+          warnings: style === 'generator' ? flagWarning(args.prompt) : sharedWords(board, added.id),
         };
       });
     },
@@ -396,13 +428,14 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
 
   tool(
     'update_image_prompt',
-    `Change an image prompt’s text, its name (General images, PCs, NPCs and handouts only), or both. ${IMAGE_RULES}`,
+    `Change an image prompt’s text, its name (General images, PCs, NPCs and handouts only), or both. ${IMAGE_RULES_POINTER}`,
     { title: 'Change an image prompt', readOnly: false, idempotent: true },
     { projectId, id: promptId, prompt: prompt.optional(), name: name.optional() },
     async (args) => {
       if (args.prompt === undefined && args.name === undefined) throw invalid('Send prompt, name or both.');
       const project = await projectOf(args.projectId);
       const extra = await templates();
+      const style = args.prompt !== undefined ? await promptStyleOf(starter.config, starter.db, caller.userId) : 'midjourney';
       return writeBoard(project, (doc: Y.Doc) => {
         const found = allPrompts(readDocumentBoard(doc, extra)).find((p) => p.prompt.id === args.id);
         if (!found) throw UNKNOWN_PROMPT();
@@ -416,7 +449,8 @@ export function registerBoardTools({ tool, projectOf, docOf, write, templates, c
         const board = readDocumentBoard(doc, extra);
         return {
           prompt: itemOut(allPrompts(board).find((p) => p.prompt.id === args.id)!, readGenerationJobs(doc)),
-          warnings: args.prompt !== undefined ? sharedWords(board, args.id) : [],
+          warnings:
+            args.prompt === undefined ? [] : style === 'generator' ? flagWarning(args.prompt) : sharedWords(board, args.id),
         };
       });
     },

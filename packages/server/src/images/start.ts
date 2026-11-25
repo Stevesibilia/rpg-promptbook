@@ -133,6 +133,19 @@ export function serverKeyOf(config: Config): Buffer {
   return config.secretsKey;
 }
 
+// Which rules an account's image prompts follow: `generator` when the
+// provider chosen in its Settings has a credential this server can use, else
+// `midjourney`. The gate of startImageGeneration, without throwing.
+export type PromptStyle = 'generator' | 'midjourney';
+
+export async function promptStyleOf(config: Config, db: Db, userId: string): Promise<PromptStyle> {
+  if (!config.secretsKey) return 'midjourney';
+  const { provider } = (await getSettings(db, userId)).imageGeneration;
+  if (provider === 'atelier' && config.atelierUrl === null) return 'midjourney';
+  const stored = await readSecret(db, config.secretsKey, userId, provider);
+  return stored.state === 'ok' ? 'generator' : 'midjourney';
+}
+
 // The account's file quota in bytes.
 export const quotaBytesOf = (config: Config) => config.filesQuotaGb * GIB;
 

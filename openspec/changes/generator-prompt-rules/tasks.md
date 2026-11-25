@@ -2,18 +2,18 @@
 
 ## 1. Server
 
-- [ ] 1.1 `promptStyleOf` and `PromptStyle` in `images/start.ts` (D1), with
+- [x] 1.1 `promptStyleOf` and `PromptStyle` in `images/start.ts` (D1), with
       tests: no secrets key, no credential, OpenRouter key saved, Atelier
       chosen without `atelierUrl`, Atelier token saved, unreadable secret.
-- [ ] 1.2 `MIDJOURNEY_RULES`, `GENERATOR_RULES`, `IMAGE_RULES_POINTER` (D2);
+- [x] 1.2 `MIDJOURNEY_RULES`, `GENERATOR_RULES`, `IMAGE_RULES_POINTER` (D2);
       `get_board` `imageRules` and description (D3); the three write
       descriptions (D4); `INSTRUCTIONS` (D5).
-- [ ] 1.3 Warnings by style, `flagWarning` (D6, D7).
-- [ ] 1.4 `mcp-board.test.ts`: `imageRules` both ways and after a key is
+- [x] 1.3 Warnings by style, `flagWarning` (D6, D7).
+- [x] 1.4 `mcp-board.test.ts`: `imageRules` both ways and after a key is
       deleted; warnings both ways; descriptions (`--ar 16:9 --v 8.1` now
       asserted on `imageRules`, not on `add_image_prompt`'s description);
       instructions.
-- [ ] 1.5 Commit `feat(server): image prompt rules follow the generation
+- [x] 1.5 Commit `feat(server): image prompt rules follow the generation
     setting`, push.
 
 ## 2. Web
