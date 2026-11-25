@@ -354,7 +354,10 @@ README says how to connect it.
   board's prompts, and the board's images (`generate_image`,
   `attach_atelier_image`, #61). Claude can add and edit; it never ticks a to-do item and
   never rewrites the seed, and the only thing it deletes is an image prompt
-  (`remove_image_prompt`, #36), whose images go to the Unmatched tray.
+  (`remove_image_prompt`, #36), whose images go to the Unmatched tray. The
+  board tools work on every project, campaigns included (#68); on a
+  campaign `set_scene_prompts` and `add_image_prompt` with the category
+  `scene` answer `not_an_adventure`, as `add_scene` does.
 - **Section-scoped edits:** Claude replaces one section, scene or sheet, or
   adds a scene. The edit carries the hash of the text Claude read, so text
   the user changed in between is never overwritten. Checks never refuse an
@@ -445,7 +448,11 @@ the prep document:
   music is any number of named Suno prompts in their own map
   (`musicPrompts`), each with its tracks and one chosen track. A track
   belongs to a scene or to a General music prompt; the tray, the viewer and
-  the track menu move files between them. Campaigns keep no board for now.
+  the track menu move files between them.
+- A board on campaigns too (#68, the OpenSpec change `campaign-board`):
+  the tabs General, PCs, NPCs and Handouts, opening on General, with no
+  Scenes tab and no appendix read; the same prompts, files, matching,
+  choosing and generation as an adventure's, in the words of a campaign.
 - A status per image prompt, per scene's music and per General music
   prompt: wanted, received, chosen; one chosen image per prompt.
 - Claude writes the prompts through the connector (`get_board`,
@@ -618,7 +625,9 @@ source is [Stevesibilia/cuebard](https://github.com/Stevesibilia/cuebard)
   cue group «General» with the General music prompts' tracks, in their
   order, left out when it exports no track (#68); visual folders «Scenes»,
   «General», «PCs», «NPCs», «Handouts», each scene's images linked to its
-  first track, General images linked to none. Ids are derived from the project and the file, so the same
+  first track, General images linked to none. A campaign's pack has the one
+  cue group «General», at index 0 (none when it exports no track), and the
+  four folders other than Scenes. Ids are derived from the project and the file, so the same
   board gives the same pack.
 - **Track lengths:** CueBard needs each cue's length. The board's recorded
   length, else one read from the file with `music-metadata`; a track with

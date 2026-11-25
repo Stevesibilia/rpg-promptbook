@@ -58,8 +58,8 @@ Commit: `test(e2e): cover the campaign board`
 
 ## 6. Docs, screenshots and owner preview (brief B)
 
-- [ ] 6.1 README (the board on campaigns: tabs, CueBard group, connector) and `docs/design.md` (Asset board: replace «Campaigns keep no board for now.» at `:448`; CueBard export: a campaign's group; MCP connector: campaigns and `not_an_adventure`); Prettier on the Markdown files touched
-- [ ] 6.2 Screenshots of screens 11, 11b and 11c from the running branch, with the seeded campaign filled as the mockup's «Kulthos», for the architect
+- [x] 6.1 README (the board on campaigns: tabs, CueBard group, connector) and `docs/design.md` (Asset board: replace «Campaigns keep no board for now.» at `:448`; CueBard export: a campaign's group; MCP connector: campaigns and `not_an_adventure`); Prettier on the Markdown files touched
+- [x] 6.2 Screenshots of screens 11, 11b and 11c from the running branch, with the seeded campaign filled as the mockup's «Kulthos», for the architect
 - [ ] 6.3 Owner LAN preview: a local compose stack from the branch with a seeded campaign holding General images and music with files, PCs, NPCs and handouts, and an empty campaign; the URLs, login and pages in a status note; stop and wait for the owner's go; take the stack down after
 
 Commit: `docs: describe the campaign board`
