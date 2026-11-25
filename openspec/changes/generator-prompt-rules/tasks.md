@@ -14,7 +14,7 @@
       asserted on `imageRules`, not on `add_image_prompt`'s description);
       instructions.
 - [x] 1.5 Commit `feat(server): image prompt rules follow the generation
-    setting`, push.
+setting`, push.
 
 ## 2. Web
 
@@ -27,19 +27,19 @@
       `generate.test.ts:125` and `generate-board.test.ts:148`; existing
       Midjourney assertions stay where the test has no key.
 - [x] 2.4 Commit `feat(web): board wording follows the generation
-    setting`, push.
+setting`, push.
 
 ## 3. e2e and docs
 
-- [ ] 3.1 `e2e/generate.spec.ts`: `:111` reads «What is sent: flags left
+- [x] 3.1 `e2e/generate.spec.ts`: `:111` reads «What is sent: flags left
       out»; with the key saved, a scene row's image half reads «Images»,
       the Add NPC editor is labelled «Image prompt for the new NPC» and its
       toast is «Added NPC · <name>.». Leave the other specs' Midjourney
       assertions as they are (Risks).
-- [ ] 3.2 `docs/design.md` «Asset board» (`:439-440`, `:458-463`) and
+- [x] 3.2 `docs/design.md` «Asset board» (`:439-440`, `:458-463`) and
       «MCP connector» (`:337`): the two rule sets and how the style is
       chosen. Prettier on the Markdown files touched only.
-- [ ] 3.3 Commit `test(e2e): image wording on a generating account` and
+- [x] 3.3 Commit `test(e2e): image wording on a generating account` and
       `docs: prompt rules follow the generation setting`, push.
 
 ## 4. Proof and hand-back
