@@ -176,6 +176,18 @@ missingCredential(status) !== null)`; else `'image'`. Reason: Midjourney
   stored prompts.
 - The Suno rules.
 
+## Accepted departures (review, 2026-11-25)
+
+- The new tests live in their own files,
+  `packages/server/test/db/mcp-image-rules.test.ts` and
+  `packages/web/test/prompt-wording.test.ts`: saving a key in
+  `mcp-board.test.ts` would need the fake OpenRouter. Assertions that moved
+  to `imageRules` were updated in place in `mcp-board.test.ts`.
+- `namedText` and `addPrompt` take the wording with `'midjourney'` as the
+  default, so callers that pass none keep the earlier text.
+- The «a name, then an image prompt.» line shows only on an empty PCs, NPCs
+  or Handouts tab; the screenshot shows the empty PCs tab.
+
 ## Rejected
 
 - Per-user tool descriptions built at registration: clients cache the tool
