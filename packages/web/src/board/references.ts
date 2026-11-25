@@ -22,8 +22,9 @@ export interface BoardImage {
 }
 
 // The images on the board's prompts, in board order (the scenes' prompts,
-// then the PCs, the NPCs and the handouts, each prompt's images oldest
-// first), the chosen ones moved to the front, each group keeping that order.
+// then the General images, the PCs, the NPCs and the handouts, each prompt's
+// images oldest first), the chosen ones moved to the front, each group
+// keeping that order.
 export function boardImages(shown: ReadonlyMap<string, ShownPrompt>): BoardImage[] {
   const all: BoardImage[] = [];
   for (const prompt of shown.values()) {

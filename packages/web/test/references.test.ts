@@ -9,6 +9,7 @@ import {
   readImagePrompts,
   setPromptReferences,
   type FileEntry,
+  type BoardRow,
   type ImagePromptEntry,
   type NewFile,
   type PromptRow,
@@ -32,7 +33,7 @@ import {
   tileState,
   togglePick,
 } from '../src/board/references.js';
-import type { ShownPrompt } from '../src/board/summary.js';
+import { shownPrompts, type ShownPrompt } from '../src/board/summary.js';
 
 // Reference images on a prompt (reference-images design decisions 12 to
 // 17): the labels, the picker's order and rules, the lines that name them,
@@ -129,6 +130,29 @@ describe('the picker', () => {
       ['npc', 'Padre Anselmo', true],
       ['s1a', 'S1 · 2', false],
     ]);
+  });
+
+  it('offers the General images too, after the scenes and before the PCs, by their name', () => {
+    const cover = file('cover');
+    const untitled = file('untitled');
+    const sceneRow = shown.get('p1')!;
+    const all = shownPrompts([{ sceneId: 'S1', title: 'La casa che cede', prompts: [sceneRow.row] } as unknown as BoardRow], {
+      general: [
+        shownPrompt({ id: 'g1', category: 'general', sceneId: null, name: 'Copertina' }, 1, [cover]).row,
+        shownPrompt({ id: 'g2', category: 'general', sceneId: null, name: null }, 2, [untitled]).row,
+      ],
+      pc: [],
+      npc: [shown.get('p2')!.row],
+      handout: [],
+    });
+    expect(boardImages(all).map((i) => [i.file.id, i.label, i.chosen])).toEqual([
+      ['s1b', 'S1 · 2', true],
+      ['npc', 'Padre Anselmo', true],
+      ['s1a', 'S1 · 2', false],
+      ['cover', 'Copertina', false],
+      ['untitled', 'New image', false],
+    ]);
+    expect(cardLine(['cover', 'npc'], referenceLabels(all, [cover, npc]))).toBe('References: Copertina, Padre Anselmo');
   });
 
   it('turns a tile off when its image is only on this device, or when three are picked', () => {
